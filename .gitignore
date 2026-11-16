@@ -1,0 +1,23 @@
+# Game state and anything personal to this machine
+saves/
+server_address.txt
+
+# Kiosk browser profile made by the launcher (cookies, cache, history)
+.browser/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Editors and OS clutter
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
+*.tmp
+*.bak
