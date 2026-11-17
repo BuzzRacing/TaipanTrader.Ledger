@@ -433,14 +433,18 @@ for _c in CHARACTERS.values():
 LINE_DEFAULTS = {}
 for _who, _keys in {
     "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.robbed", "l.sailed", "l.offcourse", "l.anchored",
-                 "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.sail", "m.stay", "m.unsail", "m.forced", "m.years"],
+                 "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.unsail", "m.forced", "m.years"],
+    # Silent (owner's decision, 17 Nov 2026): giving orders can turn the month at once, so "Orders given:
+    # sail for ..." was heard after the voyage had already begun, over the sea battle or the captain's log.
+    # The words still show on screen. Admin > Cast & Voices can hand them back to a reader.
+    "": ["m.sail", "m.stay", "m.slip"],
     "bosun": ["l.typhoon", "l.storm", "l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
               "l.long_fight", "l.plundered", "l.damage", "l.attack_met", "l.retreated", "l.parley_paid"],
     "lender": ["m.borrowed", "m.repaid", "e.no_more_loans", "e.nothing_to_repay"],
-    "pirate": ["l.lord_found"],
-    "agent": ["l.protect_lapsed", "m.protected", "e.protect_content", "e.protect_cost"],
+    "pirate": ["l.lord_found", "l.tribute_paid"],
+    "agent": ["l.protect_lapsed", "l.protect_low", "m.protected", "e.protect_content", "e.protect_cost"],
     "banker": ["m.deposited", "m.withdrew", "e.no_deposit", "e.account_empty"],
-    "comprador": ["m.bought", "m.sold", "m.stored", "m.loaded", "e.no_room", "e.cost", "e.only_have",
+    "comprador": ["m.bought", "m.sold", "m.stored", "m.loaded", "e.no_room", "e.cost", "e.only_have", "e.sealed",
                   "e.unknown_cargo", "e.nothing_to_store", "e.nothing_to_load", "e.home_only"],
     "shipwright": ["m.ship_joined", "m.ship_sold", "m.gun_mounted", "m.repaired", "e.unknown_ship", "e.no_shipyard",
                    "e.fleet_limit", "e.ship_cost", "e.no_such_ship", "e.last_ship", "e.unload_first",
@@ -485,6 +489,7 @@ SAY = {
     "e.no_room": "There is not enough room in the hold.",
     "e.cost": "You cannot afford that.",
     "e.only_have": "You do not have that much {good} aboard.",
+    "e.sealed": "That {good} is sealed in bond until you sail.",
     "e.fleet_limit": "Your fleet is already as large as it can be.",
     "e.ship_cost": "You cannot afford a {ship}.",
     "e.gun_cost": "You cannot afford a gun.",
@@ -511,6 +516,9 @@ SAY = {
     "l.attack_met": "You were attacked at sea.",
     "l.retreated": "You broke away under fire, and cargo went over the side to do it.",
     "l.parley_paid": "You paid the pirates to let the fleet pass.",
+    "l.customs_sealed": "Your {goods} stayed sealed in bond in {port}.",
+    "l.tribute_paid": "She named her price at sea. You paid her tribute, and she let you pass.",
+    "l.protect_low": "Your arrangement with {pirate} is running out. Renew it in {home}.",
     "l.sank_all": "You sank every one of them and took their booty.",
     "l.outran": "You outran them under fire.",
     "l.long_fight": "After a long fight you sank several of them and the rest broke off.",

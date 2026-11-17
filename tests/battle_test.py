@@ -145,12 +145,86 @@ def test_pay_the_pirates():
             raise AssertionError("paid after the first shot")
     except GameError:
         pass
-    # the pirate lord's fleet never names a price
-    setup(pirates__chance=0.0, liyuen__chance=1.0)
+    # with tribute at sea switched off, the pirate lord's fleet never names a price
+    setup(pirates__chance=0.0, liyuen__chance=1.0, liyuen__tribute=False)
     g = new_game(names=("Ann",))
     sail(g, present=["p1"])
     b = g.view("p1", ["p1"])["me"]["battle"]
     assert b["kind"] == "lord" and b["stage"] == "fight" and b["price"] == 0
+
+
+def test_tribute_at_sea():
+    ly = lambda: engine.R["liyuen"]
+    # at a screen: she names a price dearer than at home; paying it ends the meeting and buys protection
+    setup(pirates__chance=0.0, liyuen__chance=1.0)
+    g = new_game(names=("Ann",), cash=5000)
+    p = g.s["players"]["p1"]
+    home_price = g.protection_cost(p)
+    sail(g, present=["p1"])
+    b = g.view("p1", ["p1"])["me"]["battle"]
+    assert b["kind"] == "lord" and b["stage"] == "parley" and b["can_pay"], b
+    assert b["price"] >= home_price * ly()["tribute_mult"] * 0.9 and b["price"] > home_price, (b["price"], home_price)
+    cash, before, hull = p["cash"], books(p), sum(sh["hull"] for sh in p["ships"])
+    g.act("p1", {"type": "sea", "choice": "pay"}, present=["p1"])
+    assert g.s["phase"] == "port" and p.get("battle") is None
+    assert p["cash"] == cash - b["price"] and sum(sh["hull"] for sh in p["ships"]) == hull
+    assert round(books(p).get("protection", 0) - before.get("protection", 0)) == -b["price"]
+    assert p["protect"] >= ly()["protect_months"] - 1, p["protect"]
+    assert p["fights"][-1]["outcome"] == "paid" and p["fights"][-1]["kind"] == "lord"
+
+    # too little silver: the price is shown, paying is refused, and she attacks
+    g = new_game(names=("Ann",), cash=10)
+    sail(g, present=["p1"])
+    p = g.s["players"]["p1"]
+    b = g.view("p1", ["p1"])["me"]["battle"]
+    assert b["stage"] == "parley" and not b["can_pay"]
+    try:
+        g.act("p1", {"type": "sea", "choice": "pay"}, present=["p1"])
+        raise AssertionError("paid tribute without the silver")
+    except GameError:
+        pass
+    g.act("p1", {"type": "sea", "choice": "run"}, present=["p1"])
+    assert p.get("battle") is None or p["battle"]["stage"] == "fight"
+
+    # nobody at a screen: the house pays if it can, and is not fired on
+    g = new_game(names=("Ann",), cash=5000)
+    p = g.s["players"]["p1"]
+    hull = sum(sh["hull"] for sh in p["ships"])
+    sail(g, present=[])
+    g.resolve("host", set())
+    assert g.s["phase"] == "port" and p["protect"] > 0 and p["cash"] < 5000
+    assert sum(sh["hull"] for sh in p["ships"]) == hull and p["wrecks"] == 0
+
+    # nobody at a screen and no silver: she attacks on standing orders, as before
+    g = new_game(names=("Ann",), cash=0)
+    p = g.s["players"]["p1"]
+    sail(g, present=[])
+    g.resolve("host", set())
+    assert g.s["phase"] == "port" and p["protect"] == 0
+    assert sum(sh["hull"] for sh in p["ships"]) < hull or p["wrecks"] == 1
+
+
+def test_wreck_replacement_is_sound_and_armed():
+    setup()
+    g = new_game(names=("Ann",))
+    p = g.s["players"]["p1"]
+    g._shipwreck(p, [])
+    ship, wk = p["ships"][0], engine.R["wreck"]
+    kind = engine.SHIPS[wk["ship"]]
+    assert len(p["ships"]) == 1 and ship["hull"] == min(wk["hull"], kind["hull"]) == 100, ship
+    assert ship["guns"] == min(wk["guns"], kind["slots"]) == 2 and g.guns(p) == 2, ship
+
+
+def test_protection_running_out_is_warned():
+    setup(pirates__chance=0.0)
+    g = new_game(names=("Ann",))
+    p = g.s["players"]["p1"]
+    p["protect"] = engine.R["liyuen"]["renew_at"] + 1
+    p["log"] = []
+    sail(g, present=["p1"])
+    warn = engine.tx("l.protect_low", months=p["protect"], s="" if p["protect"] == 1 else "s",
+                     home=PORTS[engine.home_of(p)]["name"])
+    assert p["protect"] == engine.R["liyuen"]["renew_at"] and warn in p["log"], p["log"]
 
 
 def test_retreat():

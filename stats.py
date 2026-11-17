@@ -379,7 +379,7 @@ def _walk(events, ps):
                 elif typ == "paid":
                     b["result"], b["paid"] = "paid", int(e.get("price") or 0)
                     h.perils["paid_off"] = h.perils.get("paid_off", 0) + 1
-                    h.line("parley", -b["paid"])
+                    h.line("protection" if e.get("tribute") else "parley", -b["paid"])
                 elif typ == "plundered":
                     v = h.lose(e.get("lost"), "plunder", turn)
                     b["result"], b["plundered"] = "plundered", int(round(v))

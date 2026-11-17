@@ -355,6 +355,9 @@ class Game:
             p["slip"] = bool(p.get("slip", False))
             self._books(p)
             p.pop("declare", None)
+            bond = p.get("bond")
+            if not isinstance(bond, dict) or bond.get("port") != p["port"]:
+                p["bond"] = None
             cu = p.get("customs")
             if not isinstance(cu, dict) or cu.get("port") != p["port"]:
                 p["customs"] = None
@@ -770,6 +773,7 @@ class Game:
     def _open_customs(self, p):
         """Set the Port Authority's desk for a house that has just dropped anchor."""
         port, c = p["port"], R["customs"]
+        p["bond"] = None                         # a new arrival: nothing is sealed yet
         if not c["enabled"]:
             p["customs"] = None
             return
@@ -799,6 +803,14 @@ class Game:
                                      for ln in lines), money(box), cx["mood"])),
             p, port=port, rate=rate, lines=lines, cx=cx, box=box, status=status)
 
+    def sealed(self, p, g=None):
+        """Cargo this house left sealed in bond at the Port Authority's desk in the port it is in:
+        untaxed, and not for sale there until it has sailed. One cargo's units, or all of them."""
+        bond = p.get("bond") or {}
+        goods = bond.get("goods") or {} if bond.get("port") == p["port"] else {}
+        goods = {k: min(int(q), int(p["cargo"].get(k, 0))) for k, q in goods.items() if p["cargo"].get(k, 0) > 0}
+        return goods if g is None else goods.get(g, 0)
+
     def _customs_pending(self, p):
         cu = p.get("customs")
         return bool(cu) and cu.get("status") in ("declare", "verdict") and cu.get("port") == p["port"]
@@ -814,8 +826,11 @@ class Game:
         port, name, rate, cx = cu["port"], PORTS[cu["port"]]["name"], cu["rate"], cu["cx"]
         raw = a.get("values") if isinstance(a.get("values"), dict) else {}
         top = c["max_declare"]
+        seal = a.get("sealed") if isinstance(a.get("sealed"), (list, tuple)) else []
+        seal = {ln["good"] for ln in cu["lines"] if ln["good"] in seal} if c.get("bond", True) else set()
+        open_lines = [ln for ln in cu["lines"] if ln["good"] not in seal]
         declared = {}
-        for ln in cu["lines"]:
+        for ln in open_lines:
             try:
                 v = int(round(float(raw.get(ln["good"], ln["value"]))))
             except (TypeError, ValueError):
@@ -838,7 +853,7 @@ class Game:
                 bribe_mult, bribe = 1 - c["bribe_cut"], {"cost": cost, "taken": True}
         box = int(cu.get("box", 0))
         out, tax_total, paid_in, fine_total, caught = [], 0, 0, 0, False
-        for ln in sorted(cu["lines"], key=lambda x: -x["appetite"]):
+        for ln in sorted(open_lines, key=lambda x: -x["appetite"]):
             g, q, value, d = ln["good"], ln["qty"], ln["value"], declared[ln["good"]]
             buy, audit = self.customs_odds(cx, ln, d, bribe_mult)
             roll = self.rng.random()
@@ -876,12 +891,18 @@ class Game:
                 p, odds=round(buy + audit, 5), roll=round(roll, 5), hit=round(roll, 5) < round(buy + audit, 5),
                 buy=buy, audit=audit, **{k: res[k] for k in ("good", "outcome")})
             out.append(res)
+        for ln in cu["lines"]:
+            if ln["good"] in seal:
+                out.append({"good": ln["good"], "qty": ln["qty"], "value": ln["value"], "declared": 0, "buy": 0.0, "audit": 0.0,
+                            "roll": None, "outcome": "sealed", "units": 0, "paid": 0, "tax": 0, "fine": 0, "back": False})
+        if seal:
+            p["bond"] = {"port": port, "goods": {ln["good"]: ln["qty"] for ln in cu["lines"] if ln["good"] in seal}}
         p["cargo"] = {k: v for k, v in p["cargo"].items() if v > 0}
         owed = self._collect(p, tax_total + fine_total)
         self._book(p, "pa_tax", -tax_total, arrival=True)
         self._book(p, "pa_fine", -fine_total, arrival=True)
         rep_change = 0.0
-        value_total = sum(ln["value"] for ln in cu["lines"])
+        value_total = sum(ln["value"] for ln in open_lines)
         if caught:
             rep_change = -c["caught_rep"]
         elif value_total and total_declared > value_total:
@@ -901,14 +922,20 @@ class Game:
         if bought:
             what = names_of([r["good"] for r in bought])
             p["log"].append(tx("l.customs_bought", port=name, goods=what.lower(), paid=money(paid_in)))
-        if not caught:
+        if seal:
+            p["log"].append(tx("l.customs_sealed", port=name, goods=names_of(sorted(seal)).lower()))
+        if not caught and open_lines:
             p["log"].append(tx("l.customs_paid", port=name, declared=money(total_declared), value=money(value_total),
                                tax=money(tax_total)))
         self._detail = {"port": port, "rate": rate, "declared": declared, "value": value_total, "tax": tax_total,
                         "fine": fine_total, "paid": paid_in, "owed": owed, "bribe": bribe, "rep": round(rep_change, 2),
                         "lines": out,
-                        "note": "declared {} of {} at {}: tax {}{}{}{}".format(
+                        "sealed": sorted(seal),
+                        "note": "declared {} of {} at {}: tax {}{}{}{}{}".format(
                             money(total_declared), money(value_total), pct(rate), money(tax_total),
+                            ", {} kept sealed in bond (worth {})".format(
+                                names_of(sorted(seal)), money(sum(ln["value"] for ln in cu["lines"] if ln["good"] in seal)))
+                            if seal else "",
                             ", fine {}".format(money(fine_total)) if fine_total else "",
                             ", bought out for {}".format(money(paid_in)) if paid_in else "",
                             ", {} short, added to the debt".format(money(owed)) if owed else "")}
@@ -1018,6 +1045,7 @@ class Game:
         out = {k: cu[k] for k in ("status", "port", "officer", "rate", "base", "free", "lines", "cx", "result")}
         out["name"], out["title"], out["line"] = ch.get("name", ""), ch.get("title", ""), ch.get("catchphrase", "")
         out["view"] = MULT.get("customs_view", "bar")
+        out["bond"] = bool(c.get("bond", True))
         out["rules"] = {k: c[k] for k in ("buy_base", "buy_k", "buy_exp", "audit_base", "audit_k", "buy_cap", "audit_cap",
                                           "fine_mult", "caught_rep", "max_declare", "bribe_min", "bribe_share",
                                           "bribe_cut", "bribe_refused_mult", "bribe_rep", "buyback_premium", "over_rep",
@@ -1240,6 +1268,9 @@ class Game:
         g, q = self._good(a), self._qty(a)
         if p["cargo"].get(g, 0) < q:
             raise GameError(tx("e.only_have", qty=p["cargo"].get(g, 0), good=GOODS[g]["name"]))
+        held = self.sealed(p, g)
+        if held and p["cargo"][g] - held < q:
+            raise GameError(tx("e.sealed", qty=held, good=GOODS[g]["name"], left=p["cargo"][g] - held))
         gain, end = self.quote(p, g, q, "sell")
         self._trade_detail(p, g, q, gain, end)
         p["cash"] += gain
@@ -1715,6 +1746,11 @@ class Game:
                 if p["protect"] == 0:
                     p["log"].append(tx("l.protect_lapsed"))
                     self._ev("finance", "protect_lapsed", "{}: protection has run out".format(p["name"]), p)
+                elif p["protect"] == R["liyuen"]["renew_at"]:
+                    p["log"].append(tx("l.protect_low", months=p["protect"], s="" if p["protect"] == 1 else "s",
+                                       home=PORTS[home_of(p)]["name"]))
+                    self._ev("finance", "protect_low", "{}: protection runs out in {} month(s); warned".format(
+                        p["name"], p["protect"]), p)
             if p["cash"] > b["mug_threshold"] and self._chance(b["mug_chance"], "robbery", "{}: robbed ashore (carrying over {})".format(
                     p["name"], money(b["mug_threshold"])), p):
                 lost = int(p["cash"] * rng.uniform(b["mug_min"], b["mug_max"]))
@@ -1966,24 +2002,31 @@ class Game:
                 b["price"] = int(max(1, n * bt["parley_per_junk"] + bt["parley_cargo"] * value))
                 b["stage"] = "parley"
             log.append(tx("l.attack_met", n=n, enemy=label))
+        elif kind == "lord" and R["liyuen"].get("tribute", True):
+            pass                                    # nobody at a screen: she is paid or she attacks, logged then
         elif noguns:
             log.append(tx("l.attack_noguns", n=n, enemy=label))
         else:
             log.append(tx("l.attack", n=n, enemy=label, orders=tx("w.fight" if orders == "fight" else "w.run")))
+        if kind == "lord" and R["liyuen"].get("tribute", True):
+            # She names her price before the first shot: dearer than the tribute at home, and it buys the same months.
+            b["price"] = int(max(1, round(R["liyuen"].get("tribute_mult", 2.0) * self.protection_cost(p))))
+            b["stage"] = "parley"
         p["battle"] = b
         self._say_from, self._said = (b["seed"] or 0) % 9973, 0
         who = p["name"]
         self._ev("battle", "battle", "{} attacked by {} {}: orders {}{}, {} guns, hull {}; enemy hits {} per junk per "
                  "round for {}-{}{}".format(who, n, label, orders, " (no guns, so running)" if orders != p["orders"] else "",
                                             self.guns(p), "/".join(str(sh["hull"]) for sh in p["ships"]), pct(hit), dmg[0], dmg[1],
-                                            "; fought on screen" + ("; they ask {} to let the fleet pass".format(money(b["price"]))
-                                                                    if b["price"] else "") if live else ""),
+                                            ("; fought on screen" if live else "") + ("; they ask {} to let the fleet pass".format(
+                                                money(b["price"])) if b["price"] else "")),
                  p, enemy=label, count=n, orders=orders, guns=self.guns(p), hit=hit, dmg=list(dmg),
-                 **({"live": True, "parley": b["price"]} if live else {}))
+                 **({"live": True} if live else {}), **({"parley": b["price"]} if live or b["price"] else {}))
         where = PORTS[dest]["name"] if dest in PORTS else ""
         frames = [self._frame("sighting", "sighting", "sighting", n=n, enemy=label, port=where)]
         if b["stage"] == "parley":
-            frames.append(self._frame("sighting", "parley", "parley", price=money(b["price"])))
+            talk = "tribute" if kind == "lord" else "parley"
+            frames.append(self._frame("sighting", talk, talk, price=money(b["price"])))
         b["beat"] = {"id": 0, "frames": frames}
 
     def _battle_step(self, p, choice):
@@ -2016,20 +2059,37 @@ class Game:
         who, n, pirates, hit, dmg = p["name"], b["n"], b["hp"], b["hit"], b["dmg"]
         frames = []
         self._say_from, self._said = (b["seed"] or 0) % 9973 + b["step"] * 5, 0
+        lord = b["kind"] == "lord"
         if choice == "auto":
-            choice = b["orders"]
+            # Standing orders say nothing of tribute: with no captain to choose, the house pays her if it can.
+            choice = "pay" if lord and b["stage"] == "parley" and p["cash"] >= b["price"] else b["orders"]
         if b["stage"] == "parley":
             if choice == "pay":
                 price = b["price"]
                 p["cash"] -= price
-                self._book(p, "parley", -price)
                 b["paid"] = price
-                log.append(tx("l.parley_paid", n=n, enemy=b["label"], cost=money(price)))
-                self._ev("battle", "paid", "{} paid {} {} {} to pass".format(who, n, b["label"], money(price)), p, price=price)
-                frames.append(self._frame("got_away", "paid", "paid", price=money(price)))
+                if lord:
+                    self._book(p, "protection", -price)
+                    p["protect"] = R["liyuen"]["protect_months"]
+                    log.append(tx("l.tribute_paid", cost=money(price), months=p["protect"]))
+                    self._ev("battle", "paid", "{} paid {} {} {} in tribute at sea; protected for {} months".format(
+                        who, n, b["label"], money(price), p["protect"]), p, price=price, tribute=True)
+                    frames.append(self._frame("got_away", "tribute_paid", "paid", price=money(price)))
+                else:
+                    self._book(p, "parley", -price)
+                    log.append(tx("l.parley_paid", n=n, enemy=b["label"], cost=money(price)))
+                    self._ev("battle", "paid", "{} paid {} {} {} to pass".format(who, n, b["label"], money(price)), p, price=price)
+                    frames.append(self._frame("got_away", "paid", "paid", price=money(price)))
                 return self._battle_close(p, b, "paid", frames)
             b["stage"] = "fight"
-            self._ev("battle", "parley_refused", "{} refused to pay {}".format(who, money(b["price"])), p, price=b["price"])
+            self._ev("battle", "parley_refused", "{} {} {}".format(
+                who, "could not pay" if p["cash"] < b["price"] else "refused to pay", money(b["price"])), p, price=b["price"])
+            if lord and b.get("seed") is None:
+                # nobody at a screen and no tribute paid: the log line the fight would have opened with
+                if b["orders"] != p["orders"]:
+                    log.append(tx("l.attack_noguns", n=n, enemy=b["label"]))
+                else:
+                    log.append(tx("l.attack", n=n, enemy=b["label"], orders=tx("w.fight" if b["orders"] == "fight" else "w.run")))
         rnd = b["round"] + 1
         s = "" if rnd == 1 else "s"
 
@@ -2335,7 +2395,9 @@ class Game:
         p["port"] = home_of(p)
         p["tab"] = self._new_tab()
         p["wrecks"] += 1
-        p["ships"] = [self._new_ship(wk["ship"], guns=0, hull=wk["hull"])]
+        kind = SHIPS[wk["ship"]]
+        p["ships"] = [self._new_ship(wk["ship"], guns=max(0, min(int(wk.get("guns", 2)), kind["slots"])),
+                                     hull=min(wk["hull"], kind["hull"]))]
         p["log"].append(tx("l.wrecked", home=PORTS[home_of(p)]["name"], lost=money(lost), debt=money(wk["debt"]),
                            ship=SHIPS[wk["ship"]]["name"].lower()))
         news.append(tx("n.wrecked", name=p["name"], firm=p["firm"], home=PORTS[home_of(p)]["name"]))
@@ -2391,7 +2453,7 @@ class Game:
                 "basis": {g: round(v, 2) for g, v in (p.get("basis") or {}).items()},   # average paid per unit
                 "spread": round(sp, 4),
                 "dues": self.dues(p), "slip": bool(p.get("slip")),
-                "customs": self.customs_view(p),
+                "customs": self.customs_view(p), "bond": self.sealed(p),
                 "battle": self.battle_view(p), "fights": p.get("fights") or [],
                 "books": self.books_view(p),
             }

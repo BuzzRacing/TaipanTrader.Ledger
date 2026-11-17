@@ -1157,7 +1157,28 @@ body.player .pt-tabs button.pt-tab.on { color: var(--deck-ivory); border-color: 
 
 .pt-view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; align-items: start; }
 .pt-view > .card { margin: 0; }
-.pt-arrival .pt-land, .pt-log .card, .pt-services .card { grid-column: 1 / -1; }
+.pt-arrival .pt-land, .pt-log .card { grid-column: 1 / -1; }
+.pt-services { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.deck .pt-services .pt-service { min-width: 0; padding: 0; overflow: hidden; border-color: var(--edge-hi); }
+.pt-service-art { position: relative; display: flex; align-items: end; min-height: clamp(7rem, 13vw, 11rem); padding: .8rem 1rem;
+  background: var(--deck-night); border-bottom: 1px solid var(--edge-hi); }
+.pt-service-art::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 20%, #13100ddd 100%); pointer-events: none; }
+.pt-service-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 48%; }
+.deck .pt-service-art h2 { position: relative; z-index: 1; color: #fff1d3; margin: 0; padding: 0; border: 0; background: none;
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem); text-shadow: 0 2px 6px #000; }
+.pt-service-body { padding: .9rem 1rem 1rem; }
+.pt-service-body > p { margin: 0 0 .85rem; }
+.pt-service-stock, .pt-transfer-scale, .pt-transfer-action { display: flex; align-items: center; justify-content: space-between; gap: .4rem .75rem; }
+.pt-service-stock { flex-wrap: wrap; margin-bottom: .35rem; }
+.pt-service-stock span, .pt-transfer-scale { color: var(--muted); font-size: .8rem; }
+.pt-service-good { padding-top: .7rem; margin-top: .7rem; border-top: 1px solid var(--rule); }
+.pt-transfer .pt-range { min-width: 0; margin: .6rem 0 .72rem; }
+.pt-transfer-action { flex-wrap: wrap; }
+.pt-transfer-action output { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brass-hi); }
+.pt-transfer-action[data-side="buy"] output { color: var(--jade-hi); }
+.pt-transfer-action[data-side="sell"] output { color: var(--blood-hi); }
+
 .pt-news .pt-newscard { grid-row: span 2; }
 .pt-sum { font: 600 1.05rem/1.35 var(--sans); margin: 0 0 .35rem; }
 .pt-lead { margin: .2rem 0 .3rem; color: var(--muted); }

@@ -13,8 +13,8 @@
   };
   const $ = id => document.getElementById(id);
   const e = s => esc(s);
-  const KIND_ORDER = ["persona", "port", "ship", "cargo", "scene", "brand", "reference", "other"];
-  const ASPECT_FOR = { persona: "3:4", port: "16:9", ship: "3:2", cargo: "1:1", scene: "16:9", brand: "16:9", reference: "1:1", other: "1:1" };
+  const KIND_ORDER = ["persona", "port", "ship", "cargo", "service", "scene", "brand", "reference", "other"];
+  const ASPECT_FOR = { persona: "3:4", port: "16:9", ship: "3:2", cargo: "1:1", service: "16:9", scene: "16:9", brand: "16:9", reference: "1:1", other: "1:1" };
 
   /* --------------------------------------------------------- helpers -- */
   const kinds = () => (M.lib ? M.lib.kinds : {});
@@ -167,6 +167,7 @@
     if (kind === "port") return `The port of ${name} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, ${style}`;
     if (kind === "ship") return `A ${name} under full sail on the South China Sea, 1860s, detailed rigging and weathered hull, ${style}`;
     if (kind === "cargo") return `Still life of ${name} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, ${style}`;
+    if (kind === "service") return `The interior of the ${name} at a Hong Kong trading harbor in the 1860s, wide environmental shot, period details, no text or people, ${style}`;
     if (kind === "scene") return `${name} on the China Seas in 1860, a trading fleet caught in the moment, ${style}`;
     return `${name}, ${style}`;
   }

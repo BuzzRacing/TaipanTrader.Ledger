@@ -71,7 +71,7 @@ for cid, c in cfg["characters"].items():
     check("adult" in c["portrait_prompt"], "{} portrait prompt states an adult".format(cid))
 for key, who in cast.LINE_DEFAULTS.items():
     check(key in strings.EN, "line default '{}' is a real wording key".format(key))
-    check(who in cfg["characters"], "line default '{}' goes to a real character".format(key))
+    check(who == "" or who in cfg["characters"], "line default '{}' goes to a real character, or is silent".format(key))
 spoken = cast.spoken_keys(strings.EN)
 check("l.sea.0" not in spoken and "l.how_sunk" not in spoken, "fragments are never spoken on their own")
 check("btn.buy" not in spoken, "buttons are never spoken")
@@ -147,6 +147,9 @@ check([p["c"] for p in np] == ["crier", "customs", "crier"], "news speakers incl
 check(voice.PLAN.msg(tx("m.bought", qty=10, good="Silk", cost="$5,200"))["c"] == "comprador", "purchases: comprador")
 check(voice.PLAN.msg(tx("m.borrowed", amount="$1,000", rate="6"))["c"] == "lender", "loans: moneylender")
 check(voice.PLAN.msg("Something the game never says") is None, "text the game never says is not voiced")
+for _k, _f in (("m.sail", {"port": "Manila"}), ("m.stay", {}), ("m.slip", {"port": "Manila"})):
+    check(voice.PLAN.msg(tx(_k, **_f)) is None, "orders given are not read aloud: " + _k)
+check(voice.PLAN.msg(tx("m.unsail"))["c"] == "narrator", "orders cancelled is still read")
 cfg["voice"]["read_confirmations"] = False
 check(voice.PLAN.msg(tx("m.sold", qty=1, good="Tea", gain="$70")) is None, "confirmations can be switched off")
 cfg["voice"]["read_confirmations"] = True

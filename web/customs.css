@@ -118,3 +118,11 @@
   .cx-desk.welcome .cx-say { max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { .cx-vline { animation: none; } .cx-bar i { transition: none; } }
+
+/* A cargo kept sealed in bond: its own row under the line, the slider greyed. */
+.cx-seal { grid-column: 1 / -1; display: flex; align-items: center; gap: .4rem; font-size: .78rem; color: var(--muted); cursor: pointer; }
+.cx-seal input { width: 1.05rem; height: 1.05rem; accent-color: var(--gold); }
+.cx-line.sealed .cx-slide, .cx-line.sealed .cx-decl { opacity: .45; }
+.cx-line.sealed .cx-seal { color: var(--gold); }
+.cx-chip.sealed { color: var(--gold); }
+.cx-out.sealed { color: var(--gold); }

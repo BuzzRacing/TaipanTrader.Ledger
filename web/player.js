@@ -46,9 +46,11 @@ async function act(type, extra) {
 async function refreshInfo() {
   if (reloading) return;
   reloading = true;
+  const requestedCfg = S.cfg;
   try { const info = await loadInfo(); D = info.data; VS = Voice.setup(info.voice); Stage.setCast(VS.cast); } catch (e) { /* try again on the next state */ }
   applyHome();
   reloading = false;
+  if (S.cfg !== requestedCfg && S.cfg !== cfgSeen) return refreshInfo();
   if (ui.dest && !D.ports[ui.dest]) ui.dest = null;
   render();
   speak();
@@ -110,7 +112,6 @@ function toast(msg, bad) {
 
 /* ------------------------------------------------------------- helpers -- */
 const val = k => ui.vals[k] == null ? "" : ui.vals[k];
-const num = k => { const n = parseInt(val(k), 10); return n > 0 ? n : 0; };
 const input = (k, ph, extra) =>
   `<input id="in_${k}" data-k="${k}" type="text" autocomplete="off" ` +
   `placeholder="${esc(ph || "0")}" value="${esc(val(k))}" ${extra || 'inputmode="numeric"'}>`;
@@ -588,9 +589,10 @@ function logModal() {
 function tradeOf(g) {
   const have = S.me.cargo[g] || 0, max = have + maxBuy(g);
   const raw = parseInt(val("t_" + g), 10);
-  const at = isNaN(raw) ? have : Math.max(0, Math.min(max, raw));
+  const sealed = Math.min(have, (S.me.bond || {})[g] || 0);      // sealed in bond at the Port Authority: not for sale here
+  const at = isNaN(raw) ? have : Math.max(sealed, Math.min(max, raw));
   const d = at - have;
-  return { have, max, at, d, qty: Math.abs(d), side: d > 0 ? "buy" : d < 0 ? "sell" : "" };
+  return { have, max, at, d, sealed, qty: Math.abs(d), side: d > 0 ? "buy" : d < 0 ? "sell" : "" };
 }
 
 function barStyle(tr) {
@@ -650,7 +652,7 @@ function marketRow(g) {
   return `<tr data-good="${g}" class="${tr.side}">
     <td class="mk-ico">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
     <td class="mk-name"><b>${esc(good.name)}</b>${tag}</td>
-    <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${paidHtml(g)}</td>
+    <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${tr.sealed ? `<small class="mk-sealed">${te("market.sealed", { n: tr.sealed.toLocaleString() })}</small>` : ""}${paidHtml(g)}</td>
     <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
       value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"></td>
     <td class="mk-do">${tradeButton(g, tr)}</td></tr>`;
@@ -844,8 +846,8 @@ function portTodo() {
   if (me.ready) items.push(["ok", te(me.dest ? "port.todo.sailing" : "port.todo.staying", { port: esc(portName(me.dest || me.port)) }), go("chart", te("tab.chart"))]);
   // Cargo that sells here for more than it cost.
   const sells = Object.keys(me.cargo || {}).map(g => {
-    const q = me.cargo[g], paid = paidFor(g);
-    return paid === null ? null : { g, q, gain: quote(g, q, "sell") - paid * q };
+    const q = me.cargo[g] - ((me.bond || {})[g] || 0), paid = paidFor(g);
+    return paid === null || q <= 0 ? null : { g, q, gain: quote(g, q, "sell") - paid * q };
   }).filter(x => x && x.gain > 0).sort((a, b) => b.gain - a.gain).slice(0, 2);
   sells.forEach(x => items.push(["up", te("port.todo.sell", { qty: x.q.toLocaleString(), good: D.goods[x.g].name, gain: money(x.gain) }), go("market", te("tab.market"))]));
   const repair = (me.ships || []).reduce((n, s) => n + s.repair, 0);
@@ -1006,32 +1008,87 @@ function portNews() {
       <p class="muted pt-fine">${te("port.news.weather_note", { right: pct(D.forecast_accuracy, 0) })}</p></section>`;
 }
 
-/* ---- Services (Hong Kong only): the bank, the moneylender, the warehouse and the protection agent. */
+/* ---- Home port services */
+function serviceTransfer(k, g) {
+  const me = S.me;
+  let left, right, out, into;
+  if (k === "bank") {
+    [left, right, out, into] = ["withdraw", "deposit", me.bank, me.cash];
+  } else if (k === "loan") {
+    [left, right, out, into] = ["repay", "borrow", Math.min(Math.ceil(me.debt), me.cash), me.loan_room];
+  } else {
+    const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
+    [left, right, out, into] = ["load", "store", Math.min(me.wh[g] || 0, me.capacity - me.used),
+      Math.min(me.cargo[g] || 0, me.wh_cap - whUsed)];
+  }
+  const key = g ? "w_" + g : k;
+  const have = Math.max(0, Math.floor(out)), max = have + Math.max(0, Math.floor(into));
+  const at = Math.max(0, Math.min(max, have + (parseInt(val(key), 10) || 0)));
+  const delta = at - have, qty = Math.abs(delta);
+  const label = g ? qty.toLocaleString() : money(qty);
+  return { key, have, max, at, qty, left, right, label,
+    op: delta < 0 ? left : right, side: delta < 0 ? "sell" : delta > 0 ? "buy" : "" };
+}
+
+function serviceSlider(k, title, g) {
+  const tr = serviceTransfer(k, g), locked = S.me.ready;
+  return `<div class="pt-transfer">
+    <div class="pt-transfer-scale"><span>${te("btn." + tr.left)}</span><span>${te("btn." + tr.right)}</span></div>
+    <input type="range" class="mk-range pt-range" data-k="${tr.key}" data-service="${k}" data-good="${g || ""}"
+      min="${-tr.have}" max="${tr.max - tr.have}" step="1" value="${tr.at - tr.have}" style="${barStyle(tr)}"
+      aria-label="${title} · ${te("btn." + tr.left)} / ${te("btn." + tr.right)}"
+      aria-valuetext="${tr.qty ? te("btn." + tr.op) + " " : ""}${esc(tr.label)}" ${locked || !tr.max ? "disabled" : ""}>
+    <div class="pt-transfer-action" data-side="${tr.side}"><output>${esc(tr.label)}</output>
+      ${btn(tr.qty ? te("btn." + tr.op) : te("btn." + tr.left) + " / " + te("btn." + tr.right),
+        "service_transfer", `data-service="${k}" data-good="${g || ""}"`, "", locked || !tr.qty)}</div>
+  </div>`;
+}
+
+function serviceDrag(range) {
+  const tr = serviceTransfer(range.dataset.service, range.dataset.good);
+  const action = range.nextElementSibling;
+  const button = action.querySelector("button");
+  const label = tr.qty ? t("btn." + tr.op) : t("btn." + tr.left) + " / " + t("btn." + tr.right);
+  range.style.cssText = barStyle(tr);
+  range.setAttribute("aria-valuetext", tr.qty ? label + " " + tr.label : tr.label);
+  action.dataset.side = tr.side;
+  action.querySelector("output").textContent = tr.label;
+  button.textContent = label;
+  button.disabled = S.me.ready || !tr.qty;
+}
+
+function serviceCard(art, title, info, body) {
+  return `<section class="card pt-service">
+    <header class="pt-service-art">
+      ${Media.html("service", art, "background", "pt-service-image", "", { strict: true })}
+      <h2>${title}</h2>
+    </header>
+    <div class="pt-service-body"><p>${info}</p>${body}</div>
+  </section>`;
+}
+
 function portServices() {
   const me = S.me;
-  const goods = Object.keys(D.goods).filter(g => (me.cargo[g] || 0) + (me.wh[g] || 0) > 0);
   const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
-  const whRows = goods.length ? goods.map(g => `<tr><td><b>${esc(D.goods[g].name)}</b></td>
-      <td class="n">${me.cargo[g] || "–"}</td><td class="n">${me.wh[g] || "–"}</td>
-      <td class="qty">${input("w_" + g, t("ph.qty"))}</td>
-      <td class="do">${btn(te("btn.store"), "wh", `data-op="store" data-good="${g}"`, "", !me.cargo[g])}${btn(te("btn.load"), "wh", `data-op="take" data-good="${g}"`, "", !me.wh[g])}</td></tr>`).join("")
-    : `<tr><td colspan="5" class="muted">${te("wh.empty")}</td></tr>`;
-  const agent = me.protect > D.renew_at
-    ? `<p>${te("agent.content", { months: me.protect })}</p>`
-    : `<p>${me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none")}</p>
-       ${btn(te("agent.pay", { cost: money(me.protect_cost) }), "protection", "", "primary")}`;
-  return `<section class="card"><h2>${te("bank.title")}</h2>
-      <p class="muted">${te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) })}</p>
-      <div class="row">${input("bank", t("ph.amount"))}${btn(te("btn.deposit"), "bank", 'data-op="deposit"', "primary")}${btn(te("btn.withdraw"), "bank", 'data-op="withdraw"')}
-        ${btn(te("btn.all_silver"), "fill", `data-k="bank" data-v="${me.cash}"`, "link")}</div></section>
-    <section class="card"><h2>${te("loan.title")}</h2>
-      <p class="muted">${te("loan.info", { debt: money(me.debt), rate: pct(D.loan_rate, 2), room: money(me.loan_room) })}</p>
-      <div class="row">${input("loan", t("ph.amount"))}${btn(te("btn.repay"), "loan", 'data-op="repay"', "primary")}${btn(te("btn.borrow"), "loan", 'data-op="borrow"')}
-        ${btn(te("btn.whole_debt"), "fill", `data-k="loan" data-v="${Math.min(me.debt, me.cash)}"`, "link")}</div></section>
-    <section class="card"><h2>${te("wh.title")}</h2>
-      <p class="muted">${te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(), hold_used: me.used, hold: me.capacity })}</p>
-      <table class="grid"><thead><tr><th>${te("col.cargo")}</th><th class="n">${te("col.aboard")}</th><th class="n">${te("col.in_store")}</th><th>${te("col.quantity")}</th><th></th></tr></thead><tbody>${whRows}</tbody></table></section>
-    <section class="card"><h2>${te("agent.title")}</h2>${agent}</section>`;
+  const goods = Object.keys(D.goods).filter(g => (me.cargo[g] || 0) + (me.wh[g] || 0) > 0);
+  const warehouse = goods.map(g => {
+    const name = esc(D.goods[g].name);
+    return `<div class="pt-service-good"><div class="pt-service-stock"><b>${name}</b>
+      <span>${te("col.aboard")} <b>${(me.cargo[g] || 0).toLocaleString()}</b> ·
+        ${te("col.in_store")} <b>${(me.wh[g] || 0).toLocaleString()}</b></span></div>
+      ${serviceSlider("wh", name, g)}</div>`;
+  }).join("") || `<p class="muted">${te("wh.empty")}</p>`;
+  const agent = me.protect > D.renew_at ? te("agent.content", { months: me.protect })
+    : me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none");
+  const tribute = me.protect > D.renew_at ? "" : btn(te("agent.pay", { cost: money(me.protect_cost) }),
+    "protection", "", "primary", me.ready || me.protect_cost > me.cash);
+  return serviceCard("bank", te("bank.title"), te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) }),
+    serviceSlider("bank", te("bank.title")))
+    + serviceCard("lender", te("loan.title"), te("loan.info", { debt: money(me.debt), rate: pct(D.loan_rate, 2), room: money(me.loan_room) }),
+      serviceSlider("loan", te("loan.title")))
+    + serviceCard("warehouse", te("wh.title"), te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(),
+      hold_used: me.used, hold: me.capacity }), warehouse)
+    + serviceCard("agent", te("agent.title"), agent, tribute);
 }
 
 /* ---------------------------------------------------------------- fleet -- */
@@ -1349,6 +1406,10 @@ app.addEventListener("input", e => {
   ui.vals[k] = e.target.value;
   if (k.startsWith("t_")) { ui.drag = true; dragRow(e.target.dataset.good); }
   if (k.startsWith("cx_")) { ui.drag = true; Customs.live(e.target); }
+  if (e.target.dataset.service) serviceDrag(e.target);
+});
+app.addEventListener("pointerdown", e => {
+  if (e.target.matches(".pt-range:enabled")) ui.drag = true;
 });
 /* The pane is held still while a bar is being dragged, then redrawn once it is let go. */
 const endDrag = () => { if (ui.drag) { ui.drag = false; render(); } };
@@ -1397,23 +1458,19 @@ app.addEventListener("click", async e => {
     case "pl_range": ui.plRange = d.v; return render();
     case "years": return act("settings", { years: +d.y });
     case "start": return act("start");
-    case "fill": ui.vals[d.k] = d.v; return render();
     case "trade": {
       const tr = tradeOf(d.good);
       if (!tr.side) return toast(t("e.qty_first"), true);
       if (await act(tr.side, { good: d.good, qty: tr.qty })) { delete ui.vals["t_" + d.good]; render(); }
       return;
     }
-    case "bank": case "loan": {
-      const a = num(d.act);
-      if (!a) return toast(t("e.amount_first"), true);
-      if (await act(d.act, { op: d.op, amount: a })) { ui.vals[d.act] = ""; render(); }
-      return;
-    }
-    case "wh": {
-      const q = num("w_" + d.good);
-      if (!q) return toast(t("e.qty_first"), true);
-      if (await act("warehouse", { op: d.op, good: d.good, qty: q })) { ui.vals["w_" + d.good] = ""; render(); }
+    case "service_transfer": {
+      const tr = serviceTransfer(d.service, d.good);
+      if (!tr.qty || S.me.ready) return;
+      const ok = d.service === "wh"
+        ? await act("warehouse", { op: tr.op === "load" ? "take" : tr.op, good: d.good, qty: tr.qty })
+        : await act(d.service, { op: tr.op, amount: tr.qty });
+      if (ok) { delete ui.vals[tr.key]; render(); }
       return;
     }
     case "protection": return act("protection");

@@ -131,7 +131,7 @@ DEFAULTS = {
         "market": {"spread_base": 0.04, "spread_swing": 0.03, "impact": 0.25, "floor": 0.25,
                    "ceiling": 4.5, "reversion": 0.3, "vol_mult": 1.0, "start_spread": 0.15,
                    "rep_per_value": 5000, "rep_trade_cap": 2.0, "worth_cargo": 0.9},
-        "bank": {"bank_rate": 0.005, "loan_rate": 0.06, "loan_base": 5000, "loan_per_rep": 100,
+        "bank": {"bank_rate": 0.005, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
                  "debt_grace_months": 3, "debt_call_every": 3,
                  "mug_threshold": 20000, "mug_chance": 0.06, "mug_min": 0.15, "mug_max": 0.35},
@@ -154,8 +154,9 @@ DEFAULTS = {
                     "plunder_min": 0.25, "plunder_max": 0.5},
         "liyuen": {"chance": 0.06, "fleet_base": 6, "fleet_per_hold": 25, "fleet_max": 60,
                    "hit": 0.40, "dmg_min": 8, "dmg_max": 20, "protect_months": 8,
-                   "protect_save": 0.5, "cost_share": 0.06, "cost_min": 500, "renew_at": 2},
-        "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 60},
+                   "protect_save": 0.5, "cost_share": 0.06, "cost_min": 500, "renew_at": 2,
+                   "tribute": True, "tribute_mult": 2.0},
+        "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 100, "guns": 2},
         # The sea battle played on screen (engine.Game, "sea battles"). A captain at a screen chooses
         # each round; the month waits at sea until every fight is over.
         "battle": {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
@@ -168,7 +169,7 @@ DEFAULTS = {
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
-        "customs": {"enabled": True, "home_free": True, "drift": 0.005, "range": 0.0125, "min_rate": 0.0, "max_rate": 0.5,
+        "customs": {"enabled": True, "home_free": True, "bond": True, "drift": 0.005, "range": 0.0125, "min_rate": 0.0, "max_rate": 0.5,
                     "buy_base": 0.005, "buy_k": 0.5, "buy_exp": 1.8, "buy_cap": 0.9,
                     "audit_base": 0.01, "audit_k": 0.22, "audit_cap": 0.9,
                     "appetite_power": 1.0, "greed_weight": 0.08, "cunning_weight": 0.08, "rep_audit": 0.5,
@@ -389,7 +390,8 @@ SECTIONS = [
              _pct("rules.wreck.cash_loss", "Share of silver lost"),
              F("rules.wreck.debt", "Debt added for the replacement ship", "int", min=0, max=10**9),
              F("rules.wreck.ship", "Replacement ship", "select", options_from="ships"),
-             F("rules.wreck.hull", "Its hull points", "int", min=1, max=10000)]},
+             F("rules.wreck.hull", "Its hull points", "int", "Never more than a sound ship of that kind.", min=1, max=10000),
+             F("rules.wreck.guns", "Its guns", "int", "Never more than that ship has room for.", min=0, max=1000)]},
          {"title": "Records (see Captain's Report)", "fields": [
              F("journal.keep_games", "Game journals to keep", "int", "Every game has a journal of everything that "
                "happened in it. When there are more than this many, the oldest are deleted, except the game in "
@@ -459,6 +461,9 @@ SECTIONS = [
                "Off: ships come and go without seeing the Port Authority."),
              F("rules.customs.home_free", "A house pays no cargo tax in its own home port", "bool",
                "Each player's home port (where they started) waves them in free, whatever its rate for others."),
+             F("rules.customs.bond", "Cargo may be kept sealed in bond", "bool",
+               "At the desk a captain may leave a cargo sealed aboard: no tax and no risk on it, but none of it "
+               "can be sold in that port until the house has sailed."),
              _pct("rules.customs.drift", "Most the rate moves in a month", "", 0, 0.5),
              _pct("rules.customs.range", "Most the rate strays from the port's base rate", "", 0, 0.5),
              _pct("rules.customs.min_rate", "Lowest rate anywhere", "", 0, 1),
@@ -632,6 +637,11 @@ SECTIONS = [
              _pct("rules.liyuen.protect_save", "Chance her fleet drives off other pirates"),
              _pct("rules.liyuen.cost_share", "Tribute as a share of net worth"),
              F("rules.liyuen.cost_min", "Least tribute", "int", min=0, max=10**9),
+             F("rules.liyuen.tribute", "She names her price at sea before the first shot", "bool",
+               "An unprotected house she finds may pay tribute there and then, and is protected as if it had paid "
+               "at home. She attacks only if the captain refuses or cannot pay. A house with nobody at a screen "
+               "pays if it has the silver."),
+             F("rules.liyuen.tribute_mult", "Her price at sea: times the tribute at home", "num", min=1, max=100),
              F("rules.liyuen.renew_at", "Can renew with this many months left", "int", min=0, max=120)]},
          {"title": "Contraband and customs", "fields": [
              _pct("rules.contraband.seize_chance", "Chance of seizure in an ordinary port", "Multiplied by the difficulty level."),

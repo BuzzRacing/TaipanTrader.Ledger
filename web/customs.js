@@ -44,17 +44,21 @@ const Customs = (() => {
     return v == null ? 100 : Math.max(0, Math.min(Math.round(c.rules.max_declare * 100), +v));
   }
 
+  /* A cargo left sealed in bond: no tax and no risk on it, and none of it sold here this visit. */
+  const sealedOn = (c, g) => !!c.bond && ui.vals["cxs_" + g] === "1";
+
   function numbers(c) {
     const r = c.rules, bribe = !!ui.cxBribe;
     const lines = c.lines.map(ln => {
-      const p = pctOf(c, ln.good), d = Math.round(ln.value * p / 100);
-      return { ln, p, d, tax: Math.ceil(c.rate * d - 1e-9) };
+      const p = pctOf(c, ln.good), sealed = sealedOn(c, ln.good), d = sealed ? 0 : Math.round(ln.value * p / 100);
+      return { ln, p, d, sealed, tax: Math.ceil(c.rate * d - 1e-9) };
     });
     const declared = lines.reduce((n, l) => n + l.d, 0);
     const bribeCost = Math.max(r.bribe_min, Math.ceil(r.bribe_share * c.rate * declared));
     const mult = bribe ? 1 - r.bribe_cut : 1;
     let worth = 0, tax = 0, lose = 0, caught = 0, wb = 0, wa = 0, under = 0, over = 0, hungry = null;
     lines.forEach(l => {
+      if (l.sealed) { l.buy = 0; l.audit = 0; return; }
       const [b, a] = odds(c, l.ln, l.d, mult);
       l.buy = b; l.audit = a;
       worth += l.ln.value; tax += l.tax; wb += b * l.ln.value; wa += a * l.ln.value;
@@ -155,8 +159,8 @@ const Customs = (() => {
     return `<div class="cx-odds"><small>${te("customs.odds_title")}</small><div class="cx-bar" data-cx="bar">${seg("t", n.pt, t("customs.odds_tax"))}${seg("b", n.pb, t("customs.odds_buy"))}${seg("a", n.pa, t("customs.odds_caught"))}</div>${legend}</div>`;
   }
 
-  function chip(p) {
-    return p > 100 ? `<em class="cx-chip over">${te("customs.over")} +${p - 100}%</em>`
+  function chip(p, sealed) {
+    return sealed ? `<em class="cx-chip sealed">${te("customs.sealed")}</em>` : p > 100 ? `<em class="cx-chip over">${te("customs.over")} +${p - 100}%</em>`
       : p < 100 ? `<em class="cx-chip under">${te("customs.under")} −${100 - p}%</em>`
       : `<em class="cx-chip honest">${te("customs.honest")}</em>`;
   }
@@ -164,13 +168,15 @@ const Customs = (() => {
   function lineRow(c, l) {
     const g = l.ln.good, gi = (D.graphics.goods || {})[g];
     const max = Math.round(c.rules.max_declare * 100);
-    return `<div class="cx-line" data-good="${g}">
+    const seal = c.bond ? `<label class="cx-seal" title="${te("customs.seal_tip")}"><input type="checkbox" data-act="cx_seal" data-good="${g}" ${l.sealed ? "checked" : ""}>
+        <span>${te("customs.seal")}</span></label>` : "";
+    return `<div class="cx-line${l.sealed ? " sealed" : ""}" data-good="${g}">
       <span class="cx-good">${gi ? `<img src="${esc(gi)}" alt="">` : ""}<b>${esc(D.goods[g].name)}</b>
         <small title="${te("customs.worth")}">${l.ln.qty.toLocaleString()} × ${money(l.ln.unit)} = <i>${money(l.ln.value)}</i></small></span>
-      <span class="cx-slide" style="--h:${(100 / max * 100).toFixed(1)}%"><input type="range" class="cx-range" data-k="cx_${g}" min="0" max="${max}" step="1" value="${l.p}"
-        aria-label="${te("customs.declare")} ${esc(D.goods[g].name)}"><span data-cx="chip_${g}">${chip(l.p)}</span></span>
-      <span class="cx-decl"><small>${te("customs.declare")}</small><b data-cx="d_${g}">${money(l.d)}</b></span>
-      <span class="cx-tax"><small>${te("customs.tax")}</small><b data-cx="t_${g}">${money(l.tax)}</b></span></div>`;
+      <span class="cx-slide" style="--h:${(100 / max * 100).toFixed(1)}%"><input type="range" class="cx-range" data-k="cx_${g}" min="0" max="${max}" step="1" value="${l.p}" ${l.sealed ? "disabled" : ""}
+        aria-label="${te("customs.declare")} ${esc(D.goods[g].name)}"><span data-cx="chip_${g}">${chip(l.p, l.sealed)}</span></span>
+      <span class="cx-decl"><small>${te("customs.declare")}</small><b data-cx="d_${g}">${l.sealed ? "—" : money(l.d)}</b></span>
+      <span class="cx-tax"><small>${te("customs.tax")}</small><b data-cx="t_${g}">${money(l.tax)}</b></span>${seal}</div>`;
   }
 
   function declareHtml(c) {
@@ -205,12 +211,13 @@ const Customs = (() => {
       const g = r.good, name = esc(D.goods[g].name);
       const out = r.empty ? "empty" : r.outcome;
       let amount = "";
-      if (r.outcome === "caught") amount = money(r.tax + r.fine);
+      if (r.outcome === "sealed") amount = "—";
+      else if (r.outcome === "caught") amount = money(r.tax + r.fine);
       else if (r.units) amount = (r.back ? te("customs.bought_back") : "+" + money(r.paid)) + (r.tax ? " · " + money(r.tax) : "");
       else amount = money(r.tax);
       const back = r.units && !r.back
         ? btn(te("customs.buyback", { cost: money(r.back_price) }), "cx_back", `data-good="${g}"`, "ghost", r.back_price > S.me.cash) : "";
-      return `<div class="cx-vline ${r.outcome}${r.back ? " back" : ""}"><span class="cx-good"><b>${name}</b><small>${money(r.declared)} / ${money(r.value)}</small></span>
+      return `<div class="cx-vline ${r.outcome}${r.back ? " back" : ""}"><span class="cx-good"><b>${name}</b><small>${r.outcome === "sealed" ? money(r.value) : money(r.declared) + " / " + money(r.value)}</small></span>
         <em class="cx-out ${r.outcome}">${te("customs.out." + out)}${r.outcome === "partial" ? ` (${r.units}/${r.qty})` : ""}</em>
         <b class="cx-amt">${amount}</b>${back}</div>`;
     }).join("");
@@ -238,7 +245,7 @@ const Customs = (() => {
     if (!c || S.me.ready) return "";
     if (ui.cxKey !== key(c)) {            // a new visit: start honest, no sweetener
       ui.cxKey = key(c);
-      Object.keys(ui.vals).filter(k => k.startsWith("cx_")).forEach(k => delete ui.vals[k]);
+      Object.keys(ui.vals).filter(k => k.startsWith("cx_") || k.startsWith("cxs_")).forEach(k => delete ui.vals[k]);
       ui.cxBribe = false; ui.cxTell = null; ui.cxSpoken = null;
     }
     const body = c.status === "declare" ? declareHtml(c) : c.status === "verdict" ? verdictHtml(c) : welcomeHtml(c);
@@ -258,7 +265,7 @@ const Customs = (() => {
     const set = (k, h) => { const o = box.querySelector(`[data-cx="${k}"]`); if (o) o.innerHTML = h; };
     n.lines.forEach(l => {
       const g = l.ln.good;
-      set("d_" + g, money(l.d)); set("t_" + g, money(l.tax)); set("chip_" + g, chip(l.p));
+      set("d_" + g, l.sealed ? "—" : money(l.d)); set("t_" + g, money(l.tax)); set("chip_" + g, chip(l.p, l.sealed));
     });
     set("declared", money(n.declared)); set("tax", money(n.tax));
     set("ifb", `<small>${te("customs.if_bought")}</small><b>${n.under ? te("customs.if_bought_sub", { amount: money(n.lose) }) : "—"}</b>`);
@@ -288,8 +295,12 @@ const Customs = (() => {
     if (ui.cxKey !== key(c) || box.dataset.key !== key(c)) return false;
     if (box.querySelectorAll(".cx-line").length !== c.lines.length) return false;
     box.querySelectorAll(".cx-range").forEach(r => {
-      const p = String(pctOf(c, r.dataset.k.slice(3)));
+      const g = r.dataset.k.slice(3), p = String(pctOf(c, g)), sealed = sealedOn(c, g);
       if (r.value !== p) r.value = p;
+      r.disabled = sealed;
+      const row = r.closest(".cx-line"), seal = row && row.querySelector('[data-act="cx_seal"]');
+      if (row) row.classList.toggle("sealed", sealed);
+      if (seal) seal.checked = sealed;
     });
     const tick = box.querySelector('[data-act="cx_bribe"]');
     if (tick) {
@@ -309,10 +320,14 @@ const Customs = (() => {
         render();
         return true;
       case "cx_bribe": ui.cxBribe = !ui.cxBribe; render(); return true;
+      case "cx_seal":
+        if (sealedOn(c, d.good)) delete ui.vals["cxs_" + d.good]; else ui.vals["cxs_" + d.good] = "1";
+        render();
+        return true;
       case "cx_declare": {
-        const values = {};
-        c.lines.forEach(ln => { values[ln.good] = Math.round(ln.value * pctOf(c, ln.good) / 100); });
-        await act("customs_declare", { values, bribe: !!ui.cxBribe });
+        const values = {}, sealed = c.lines.filter(ln => sealedOn(c, ln.good)).map(ln => ln.good);
+        c.lines.forEach(ln => { if (!sealed.includes(ln.good)) values[ln.good] = Math.round(ln.value * pctOf(c, ln.good) / 100); });
+        await act("customs_declare", { values, sealed, bribe: !!ui.cxBribe });
         return true;
       }
       case "cx_back": await act("customs_buyback", { good: d.good }); return true;

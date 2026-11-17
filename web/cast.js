@@ -28,13 +28,14 @@
   }
   function speaker(key) {
     const lines = V().lines, grp = key.split(".")[0];
-    let who = key in lines ? lines[key] : (S().line_defaults[key] || S().prefix_defaults[grp] || "");
+    let who = key in lines ? lines[key] : defaultSpeaker(key);
     if (who && !C()[who]) who = C()[S().prefix_defaults[grp]] ? S().prefix_defaults[grp] : "";
     return who;
   }
   function defaultSpeaker(key) {
     const grp = key.split(".")[0];
-    return S().line_defaults[key] || S().prefix_defaults[grp] || "";
+    const d = S().line_defaults;      // a default of "" means silent, not "the group's usual reader"
+    return key in d ? d[key] : (S().prefix_defaults[grp] || "");
   }
   function sample(tpl) {
     const home = (CFG.ports[CFG.rules.game.home] || {}).name || "Hong Kong";

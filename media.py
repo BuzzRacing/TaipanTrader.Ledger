@@ -96,6 +96,8 @@ KINDS = {
                         ["got_away", "Sea battle: got clear of them"], ["retreat", "Sea battle: breaking away, cargo overboard"],
                         ["victory", "Sea battle: victory"], ["defeat", "Sea battle: the fleet is lost"]],
               "default_role": "event"},
+    "service": {"label": "Home Port Services", "one": "Service", "subjects": "services",
+                "roles": [["background", "Background on the Home Port Services card"]], "default_role": "background"},
     "brand": {"label": "Brand", "one": "Brand slot", "subjects": "brand",
               "roles": [["main", "The main artwork slot"]], "default_role": "main"},
     "reference": {"label": "Art Bible", "one": "Example", "subjects": "free",
@@ -107,6 +109,7 @@ SCENES = [["title", "Title & lobby"], ["loading", "Loading / holding screen"], [
           ["seafight_pirates", "Sea battle: pirate junks"], ["seafight_lord", "Sea battle: war junks"],
           ["wreck", "Shipwreck"], ["seizure", "Customs seizure"], ["robbery", "Robbery"],
           ["victory", "Game over / winner"], ["voyage", "At sea"], ["market", "Trading"]]
+SERVICES = [["bank", "Merchants Bank"], ["lender", "Moneylender"], ["warehouse", "Warehouse"], ["agent", "Agent"]]
 BRAND_SLOTS = [["logo", "Logo"], ["favicon", "Browser tab icon"], ["masthead_bg", "Title banner background"],
                ["page_bg", "Player screen background"], ["board_bg", "Harbor board background"],
                ["chart_bg", "Chart artwork"]]
@@ -117,6 +120,7 @@ RULE_DEFAULTS = {
     "ship": {"mode": "random", "seconds": 14, "video_chance": 0},
     "cargo": {"mode": "fixed", "seconds": 20, "video_chance": 0},
     "scene": {"mode": "shuffle", "seconds": 12, "video_chance": 25},
+    "service": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "brand": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "reference": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "other": {"mode": "fixed", "seconds": 30, "video_chance": 0},
@@ -393,7 +397,7 @@ def subjects(cfg):
         name = (cfg.get("brand") or {}).get(link) if link else ""
         chars.append([cid, name or c.get("name") or cid])
     return {"persona": chars, "port": names("ports"), "ship": names("ships"), "cargo": names("goods"),
-            "scene": [list(s) for s in SCENES], "brand": [list(s) for s in BRAND_SLOTS], "reference": [], "other": []}
+            "service": [list(s) for s in SERVICES], "scene": [list(s) for s in SCENES], "brand": [list(s) for s in BRAND_SLOTS], "reference": [], "other": []}
 
 
 def _guess(fname):

@@ -85,6 +85,54 @@ def main():
         g.act("p1", {"type": "customs_done"}, present=["p1"])
     assert outcomes.get("caught") and (outcomes.get("buyout") or outcomes.get("partial")), outcomes
 
+    # 2b. Sealed in bond: no tax, no roll and no risk on that cargo; none of it sells here; a new arrival clears it.
+    done = 0
+    for seed in range(40):
+        g, p = arrive(seed, "calcutta")
+        cu = p.get("customs")
+        if not cu or cu["status"] != "declare" or len(cu["lines"]) < 2:
+            continue
+        keep, rest = cu["lines"][0]["good"], [ln["good"] for ln in cu["lines"][1:]]
+        qty, cash, debt = p["cargo"][keep], p["cash"], p["debt"]
+        assert g.view("p1", ["p1"])["me"]["customs"]["bond"]
+        g.act("p1", {"type": "customs_declare", "values": {keep: 0}, "sealed": [keep]}, present=["p1"])
+        res = {r["good"]: r for r in p["customs"]["result"]["lines"]}
+        assert res[keep]["outcome"] == "sealed" and res[keep]["tax"] == 0 and p["cargo"][keep] == qty, res[keep]
+        assert set(res) == {keep} | set(rest)
+        assert p["customs"]["result"]["value"] == sum(ln["value"] for ln in cu["lines"][1:])
+        g.act("p1", {"type": "customs_done"}, present=["p1"])
+        assert g.sealed(p) == {keep: qty} and g.view("p1", ["p1"])["me"]["bond"] == {keep: qty}
+        try:
+            g.act("p1", {"type": "sell", "good": keep, "qty": 1}, present=["p1"])
+            raise AssertionError("sold cargo sealed in bond")
+        except GameError:
+            pass
+        if p["cash"] > 2 * g.quote(p, keep, 1, "buy")[0] and g.capacity(p) > g.used(p):
+            g.act("p1", {"type": "buy", "good": keep, "qty": 1}, present=["p1"])       # what is bought here is free to sell
+            g.act("p1", {"type": "sell", "good": keep, "qty": 1}, present=["p1"])
+        g = Game(state=json.loads(json.dumps(g.s)), seed=seed)                        # saves round-trip
+        p = g.s["players"]["p1"]
+        assert g.sealed(p) == {keep: qty}
+        g._open_customs(p)
+        assert g.sealed(p) == {}
+        done += 1
+    assert done > 5, done
+    # everything sealed: nothing owed at all
+    g, p = arrive(1, "calcutta")
+    if p.get("customs") and p["customs"]["status"] == "declare":
+        cash, debt = p["cash"], p["debt"]
+        g.act("p1", {"type": "customs_declare", "sealed": [ln["good"] for ln in p["customs"]["lines"]]}, present=["p1"])
+        assert p["cash"] == cash and p["debt"] == debt and p["customs"]["result"]["tax"] == 0
+    # switched off in Admin, a "sealed" list is ignored and the cargo is taxed as declared
+    cfg = json.loads(json.dumps(base))
+    cfg["rules"]["customs"]["bond"] = False
+    engine.configure(cfg)
+    g, p = arrive(1, "calcutta")
+    if p.get("customs") and p["customs"]["status"] == "declare":
+        g.act("p1", {"type": "customs_declare", "sealed": [ln["good"] for ln in p["customs"]["lines"]]}, present=["p1"])
+        assert all(r["outcome"] != "sealed" for r in p["customs"]["result"]["lines"])
+    engine.configure(base)
+
     # 3. A declaration nobody made is filed honestly when the month ends, and saves round-trip.
     g, p = arrive(3, "nagasaki")
     if p.get("customs") and p["customs"]["status"] == "declare":
