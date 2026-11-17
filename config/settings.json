@@ -351,6 +351,20 @@
    "slip_mult": 2.0,
    "slip_rep": 10.0
   },
+  "gift": {
+   "enabled": true,
+   "cap": 15.0,
+   "appetite": 1500,
+   "soft_from": 50.0,
+   "min_gift": 100,
+   "max_x": 5.0,
+   "step": 50,
+   "gracious_at": 3.0,
+   "warm_at": 7.0,
+   "delighted_at": 11.0,
+   "greet_cold_below": 40.0,
+   "greet_warm_from": 70.0
+  },
   "customs": {
    "enabled": true,
    "home_free": true,
@@ -580,7 +594,7 @@
    "no_ban": false,
    "label_left": true,
    "dues": 1.0,
-   "tax_rate": 0.0,
+   "tax_rate": 0.02,
    "officer": "taxlady",
    "mood": 0.1
   },
@@ -861,7 +875,7 @@
    "origin": "Bombay",
    "home_port": "calcutta",
    "color": "#2f6b5a",
-   "portrait": "/uploads/portrait-narrator-d5ed0175.png",
+   "portrait": "/uploads/portrait-narrator-74bb5d1b.png",
    "voice_id": "Maisie",
    "speaking_rate": 1.0,
    "delivery": "low, poised and intimate, a seasoned pirate officer making every entry sound like a verdict",

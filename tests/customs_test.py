@@ -143,16 +143,30 @@ def main():
         assert p["customs"] is None and p["port"] == port
         assert any("Port Authority of" in line for line in p["log"]), p["log"]
 
-    # 4. Hong Kong is a free port: she waves the house in and trading is not held up.
+    # 4. Hong Kong is not a free port: a house whose home is elsewhere declares there like
+    #    anywhere else. Only a house whose home is Hong Kong is waved in (and can trade at once).
     g = Game(seed=1)
     g.join("Ann", "")
     g.admin("start", {})
     p = g.s["players"]["p1"]
+    assert PORTS["hongkong"]["tax_rate"] > 0 and g.tax_rate("hongkong") > 0
+    p["home"] = "shanghai"
     p["port"] = "hongkong"
     p["cargo"] = {"tea": 10}
     g._open_customs(p)
-    assert p["customs"]["status"] == "welcome" and p["customs"]["free"]
+    assert p["customs"]["status"] == "declare" and not p["customs"]["free"] and not p["customs"]["home_free"]
+    assert p["customs"]["rate"] == g.tax_rate("hongkong") > 0
+    p["home"], p["customs"] = "hongkong", None
+    g._open_customs(p)
+    assert p["customs"]["status"] == "welcome" and p["customs"]["home_free"] and p["customs"]["rate"] == 0
     g.act("p1", {"type": "sell", "good": "tea", "qty": 1}, present=["p1"])
+
+    # 4b. A save made while Hong Kong was free (its rate stored as 0) charges the base rate as
+    #     soon as it is loaded, not a month later.
+    st = json.loads(json.dumps(g.s))
+    st["tax_rates"]["hongkong"] = 0.0
+    g2 = Game(state=st, seed=3)
+    assert g2.tax_rate("hongkong") == PORTS["hongkong"]["tax_rate"]
 
     # 5. Rates drift but stay near each port's base, and a free port stays free.
     g = Game(seed=2)
@@ -228,6 +242,54 @@ def main():
     c, rate = engine.R["customs"], PORTS["calcutta"]["tax_rate"]
     buy, audit = odds[50]
     assert rate * 2000 > buy * 2000 + audit * c["fine_mult"] * rate * 2000, (rate, odds[50])
+    # 8. Her greetings: 30 shared plus 15 of each officer's own. A house hears all of an officer's lines
+    #    before any comes round again, never the same one twice running, and every one is matched back
+    #    to its key and read by that port's officer.
+    keys = ["l.customs_welcome.{}".format(i) for i in range(30)]
+    assert all(k in engine.TEXT for k in keys) and "l.customs_welcome.30" not in engine.TEXT
+    words = [len(engine.TEXT[k].split()) for k in keys]
+    assert max(words[:10]) <= 9 < min(words[10:20]), words                 # short, then medium
+    assert all("{line}" in engine.TEXT[k] and "{rate}" in engine.TEXT[k] for k in keys[20:])   # full
+    voice.PLAN.configure(cfg, engine.TEXT)
+    chars = cfg["characters"]
+    officers = sorted({info.get("officer") for info in PORTS.values() if info.get("officer") in chars} - {"taxlady"})
+    assert len(officers) == 9, officers
+    g = Game(seed=11)
+    g.join("Ann", "")
+    g.admin("start", {})
+    p = g.s["players"]["p1"]
+    for officer in officers:
+        own = ["l.customs_welcome.{}.{}".format(officer, i) for i in range(15)]
+        assert all(k in engine.TEXT for k in own) and "l.customs_welcome.{}.15".format(officer) not in engine.TEXT
+        said = [g._pa_greeting(p, officer) for _ in range(135)]
+        for n in range(3):
+            assert sorted(said[n * 45:(n + 1) * 45]) == sorted(keys + own), officer
+        assert all(a != b for a, b in zip(said, said[1:])), officer
+        assert said[:45] != said[45:90]                                   # each deck is shuffled afresh
+    for port, info in PORTS.items():
+        officer = cfg["ports"].get(port, {}).get("officer") or info.get("officer")
+        if not officer or officer not in chars:
+            continue
+        for k in keys + ["l.customs_welcome.{}.{}".format(officer, i) for i in range(15) if officer != "taxlady"]:
+            line = engine.tx(k, line=chars[officer].get("catchphrase", ""), port=info["name"], rate="3%")
+            found, fields = voice.PLAN.matcher.match(line)
+            assert found == k, (port, k, found)
+            assert voice.PLAN._who(k, port) == officer, (port, k)
+            assert "3%" not in voice.PLAN.spoken(found, fields, line), (port, k)
+    # The desk shows the greeting drawn when she opened it, and keeps it while the house looks at her.
+    for seed in range(40):
+        g, p = arrive(seed, "calcutta")
+        cu = p.get("customs")
+        if cu and cu["status"] == "declare":
+            v1 = g.view("p1", ["p1"])["me"]["customs"]["welcome"]
+            assert isinstance(cu["say"], str) and v1 == g.view("p1", ["p1"])["me"]["customs"]["welcome"]
+            assert voice.PLAN.matcher.match(v1)[0] == cu["say"], v1
+            break
+    else:
+        raise AssertionError("no taxed arrival to greet")
+    # A desk opened before the officers' own lines (a number) still shows its shared greeting.
+    cu["say"] = 4
+    assert g.view("p1", ["p1"])["me"]["customs"]["welcome"] == engine.tx(keys[4], port=PORTS[cu["port"]]["name"])
     print("OK: Port Authority checks passed")
 
 

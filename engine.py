@@ -165,6 +165,7 @@ ACTION_CAT = {"buy": "trade", "sell": "trade", "warehouse": "trade",
               "buy_ship": "fleet", "sell_ship": "fleet", "buy_gun": "fleet", "repair": "fleet",
               "sail": "orders", "unsail": "orders", "sea": "orders",
               "customs_declare": "finance", "customs_buyback": "finance", "customs_done": "finance",
+              "gift": "finance",
               "settings": "host", "start": "host", "force": "host"}
 
 
@@ -338,8 +339,13 @@ class Game:
                           if k in s["crackdown"]}
         s["weather"] = {r: int(s.get("weather", {}).get(r, 1)) for r in REGIONS}
         rates = s.get("tax_rates") if isinstance(s.get("tax_rates"), dict) else {}
-        s["tax_rates"] = {port: (float(rates.get(port, PORTS[port].get("tax_rate", 0.0) or 0.0))
-                                 if (PORTS[port].get("tax_rate", 0.0) or 0.0) > 0 else 0.0) for port in PORTS}
+        # A port that charges a rate never sits at 0: a save made while it was a free port (or a port
+        # just given a rate in Admin > Ports) picks up the base rate at once instead of next month.
+        s["tax_rates"] = {}
+        for port in PORTS:
+            base = float(PORTS[port].get("tax_rate", 0.0) or 0.0)
+            was = float(rates.get(port, 0.0) or 0.0)
+            s["tax_rates"][port] = (was if was > 0 else base) if base > 0 else 0.0
         fallback = R["wreck"]["ship"]
         for p in s["players"].values():
             p["home"] = home_of(p)
@@ -354,6 +360,8 @@ class Game:
             tab = p.get("tab") if isinstance(p.get("tab"), dict) else {}
             p["tab"] = {k: float(tab.get(k, 0) or 0) for k in self._new_tab()}
             p["slip"] = bool(p.get("slip", False))
+            gr = p.get("gift_rep") if isinstance(p.get("gift_rep"), dict) else {}
+            p["gift_rep"] = {k: min(float(v or 0), p["rep"][k]) for k, v in gr.items() if k in PORTS and float(v or 0) > 0}
             self._books(p)
             p.pop("declare", None)
             bond = p.get("bond")
@@ -426,7 +434,8 @@ class Game:
              "rep": {port: float(st["rep"]) for port in PORTS},
              "protect": 0, "ready": False, "dest": None, "orders": "fight",
              "log": [tx("l.arrive", home=PORTS[port]["name"], ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
-             "known": {}, "wrecks": 0, "tab": self._new_tab(), "slip": False, "basis": {}, "customs": None}
+             "known": {}, "wrecks": 0, "tab": self._new_tab(), "slip": False, "basis": {}, "customs": None,
+             "gift_rep": {}}
         p["rep"][port] = float(st["home_rep"])
         p["start_port"] = p["home"] = port
         p["books"] = self._new_books(p)
@@ -509,7 +518,7 @@ class Game:
     def loan_limit(self, p):
         b = R["bank"]
         assets = p["cash"] + p["bank"] + sum(self.ship_value(sh) for sh in p["ships"])
-        return b["loan_base"] + b["loan_per_rep"] * p["rep"][home_of(p)] + b["loan_asset_share"] * max(assets, 0)
+        return b["loan_base"] + b["loan_per_rep"] * self.earned_rep(p, home_of(p)) + b["loan_asset_share"] * max(assets, 0)
 
     def collectors_line(self, p):
         """The debt the collectors tolerate. It is built like the loan limit but leaves out silver and
@@ -517,7 +526,7 @@ class Game:
         over to the lender lowered the line faster than the debt)."""
         b = R["bank"]
         ships = sum(self.ship_value(sh) for sh in p["ships"])
-        return b["debt_warn_mult"] * (b["loan_base"] + b["loan_per_rep"] * p["rep"][home_of(p)]
+        return b["debt_warn_mult"] * (b["loan_base"] + b["loan_per_rep"] * self.earned_rep(p, home_of(p))
                                       + b["loan_asset_share"] * max(ships, 0))
 
     def collectors(self, p):
@@ -569,7 +578,8 @@ class Game:
 
     @staticmethod
     def _new_tab():
-        return {"repair": 0.0, "yard": 0.0, "bank": 0.0, "loan": 0.0, "wh": 0.0, "profit": 0.0, "sales": 0.0}
+        return {"repair": 0.0, "yard": 0.0, "bank": 0.0, "loan": 0.0, "wh": 0.0, "profit": 0.0, "sales": 0.0,
+                "gift": 0.0}     # gift: the purse given to the Mayor this visit (0 = she can still be called on)
 
     def _tally(self, p, key, amount):
         tab = p.setdefault("tab", self._new_tab())
@@ -810,6 +820,8 @@ class Game:
         p["customs"] = {"port": port, "turn": self.s["turn"], "status": status, "officer": self.officer_of(port),
                         "rate": round(rate, 4), "base": float(PORTS[port].get("tax_rate", 0.0) or 0.0),
                         "free": rate <= 0, "home_free": at_home, "lines": lines, "cx": cx, "box": box, "result": None}
+        if status == "declare":
+            p["customs"]["say"] = self._pa_greeting(p, p["customs"]["officer"])
         self._ev("finance", "customs_open", "{}: the Port Authority of {} ({}) {}".format(
             p["name"], PORTS[port]["name"], self.officer_of(port),
             "waves the house in (its home port, no tax)" if at_home else
@@ -1051,6 +1063,14 @@ class Game:
                         self.on_event(e)
         self._close_customs(p)
 
+    def _pa_greeting(self, p, officer):
+        """Which greeting the officer gives on this visit (a key), or None: drawn from a deck of the
+        30 shared greetings (l.customs_welcome.N) and her own (l.customs_welcome.<officer>.N),
+        shuffled per house and per officer (engine _draw_keys), so none repeats until all are heard."""
+        keys = ["l.customs_welcome.{}".format(i) for i in self._bank("l.customs_welcome")]
+        keys += ["l.customs_welcome.{}.{}".format(officer, i) for i in self._bank("l.customs_welcome." + officer)]
+        return self._draw_keys(p, "pa:" + officer, keys)
+
     def customs_view(self, p):
         """What the Port Authority desk shows this house (None when she is done with it)."""
         cu = p.get("customs")
@@ -1078,7 +1098,11 @@ class Game:
         elif not cu["lines"]:
             out["welcome"] = tx("l.customs_empty", port=name)
         else:
-            out["welcome"] = tx("l.customs_welcome", line=out["line"], port=name, rate=pct(cu["rate"]))
+            say = cu.get("say")                  # a key; a number in saves from before the officers' own lines
+            key = say if isinstance(say, str) else "l.customs_welcome.{}".format(say) if say is not None else "l.customs_welcome"
+            if not str(TEXT.get(key, "")).strip():
+                key = "l.customs_welcome"
+            out["welcome"] = tx(key, line=out["line"], port=name, rate=pct(cu["rate"]))
         return out
 
     def _depart(self, p, news):
@@ -1124,6 +1148,147 @@ class Game:
 
     def _gain_rep(self, p, port, amount):
         p["rep"][port] = max(0.0, min(100.0, p["rep"][port] + amount))
+        # Standing bought from the Mayor never exceeds the standing itself. A loss lowers the standing and
+        # leaves the bought share alone, so standing and earned standing drop by the same amount.
+        gr = p.get("gift_rep")
+        if isinstance(gr, dict) and gr.get(port, 0) > p["rep"][port]:
+            gr[port] = p["rep"][port]
+
+    def earned_rep(self, p, port):
+        """Standing in a port without what was bought from its Mayor. The moneylender and her collectors
+        read this one for the home port, so gifts never buy more borrowing (Mayor's Parlour, decision 5)."""
+        gr = p.get("gift_rep") if isinstance(p.get("gift_rep"), dict) else {}
+        return max(0.0, p["rep"][port] - float(gr.get(port, 0.0)))
+
+    # ------------------------------------------------- the Mayor's Parlour --
+    # Once per visit a house may give the port's Mayor a purse of silver for standing in that port.
+    # Standing gained = cap x (1 - e^(-gift / appetite)) x headroom: each dollar buys less than the one
+    # before, appetite is the base appetite x the port's harbour dues level, and headroom is 1 up to
+    # soft_from, falling in a straight line to 0 at standing 100. web/player.js mirrors gift_gain.
+    GIFT_TIERS = ("cool", "gracious", "warm", "delighted")
+
+    def gift_appetite(self, port):
+        g = R["gift"]
+        return max(1.0, float(g["appetite"]) * float(PORTS.get(port, {}).get("dues", 1.0) or 1.0))
+
+    def gift_gain(self, port, rep, amount):
+        g = R["gift"]
+        soft = min(99.0, max(0.0, float(g["soft_from"])))
+        headroom = 1.0 if rep <= soft else max(0.0, (100.0 - rep) / (100.0 - soft))
+        return float(g["cap"]) * (1 - math.exp(-max(0.0, amount) / self.gift_appetite(port))) * headroom
+
+    def gift_tier(self, gain):
+        g = R["gift"]
+        if gain >= g["delighted_at"]:
+            return "delighted"
+        if gain >= g["warm_at"]:
+            return "warm"
+        if gain >= g["gracious_at"]:
+            return "gracious"
+        return "cool"
+
+    def _bank(self, prefix):
+        """The numbered lines of a bank (prefix.0, prefix.1, ...) that are not blanked in Language & Text."""
+        n = 0
+        while "{}.{}".format(prefix, n) in TEXT:
+            n += 1
+        return [i for i in range(n) if str(TEXT.get("{}.{}".format(prefix, i), "")).strip()]
+
+    def _draw(self, p, prefix):
+        """The next line of a numbered bank (prefix.0, prefix.1, ...) for this house; see _draw_keys."""
+        return self._draw_keys(p, prefix, ["{}.{}".format(prefix, i) for i in self._bank(prefix)])
+
+    def _draw_keys(self, p, deck, keys):
+        """The next of these wording keys for this house: each house has its own shuffled deck
+        (p["decks"][deck]), so no line comes round again until all have been heard, and never twice
+        running across a reshuffle. Shuffled from the house's name and deck count, never the game's
+        dice, so replays match. None when there are no keys."""
+        if not keys:
+            return None
+        decks = p.setdefault("decks", {})
+        d = decks.get(deck) if isinstance(decks.get(deck), dict) else {}
+        left = [k for k in (d.get("left") or []) if isinstance(k, str) and k in keys]
+        last, n = d.get("last"), int(d.get("n", 0))
+        if not left:
+            left = list(keys)
+            random.Random("{}:{}:{}:{}".format(deck, p.get("name", ""), p.get("firm", ""), n)).shuffle(left)
+            n += 1
+            if len(left) > 1 and left[-1] == last:      # drawn from the end
+                left[0], left[-1] = left[-1], left[0]
+        pick = left.pop()
+        decks[deck] = {"left": left, "last": pick, "n": n}
+        return pick
+
+    def mayor_mood(self, p, port):
+        """How the Mayor regards a house, for her greeting: cold, neutral or warm."""
+        g, rep = R["gift"], float(p["rep"].get(port, 50.0))
+        if rep < float(g.get("greet_cold_below", 40)):
+            return "cold"
+        return "warm" if rep >= float(g.get("greet_warm_from", 70)) else "neutral"
+
+    def _mayor_greeting(self, p):
+        """Picks the Mayor's greeting for this visit, on anchoring, so it stays put while the house is here."""
+        port = p["port"]
+        key = self._draw(p, "port.mayor.greet." + self.mayor_mood(p, port))
+        p["mayor_greet"] = {"port": port, "key": key or "port.mayor.greet"}
+
+    def gift_view(self, p):
+        """What the Parlour on the Port tab needs: the rule's numbers (the slider works them out live),
+        whether she has been called on this visit, and the thanks if she has."""
+        g, port = R["gift"], p["port"]
+        appetite = self.gift_appetite(port)
+        top = int(max(0.0, min(p["cash"], appetite * float(g["max_x"]))))
+        step = max(1, int(g["step"]))
+        last = p.get("gift_last") if isinstance(p.get("gift_last"), dict) else None
+        given = (p.get("tab") or {}).get("gift", 0) > 0
+        c, m, d = R["customs"], R["market"], R["dues"]
+        mg = p.get("mayor_greet") if isinstance(p.get("mayor_greet"), dict) else {}
+        greet = mg.get("key") if mg.get("port") == port and str(TEXT.get(mg.get("key") or "", "")).strip() else "port.mayor.greet"
+        return {"enabled": bool(g["enabled"]), "given": given, "thanks": last if given and last and last.get("port") == port else None,
+                "greet": greet,
+                "appetite": round(appetite, 2), "cap": float(g["cap"]), "soft_from": float(g["soft_from"]),
+                "min": int(g["min_gift"]), "max": top - top % step if top >= g["min_gift"] else 0, "step": step,
+                "tiers": [float(g["gracious_at"]), float(g["warm_at"]), float(g["delighted_at"])],
+                "rep": round(p["rep"][port], 2), "earned": round(self.earned_rep(p, port), 2), "home": port == home_of(p),
+                "rules": {"rep_discount": d["rep_discount"], "rep_audit": c["rep_audit"], "rep_buy": c.get("rep_buy", 0.0),
+                          "spread_base": m["spread_base"], "spread_swing": m["spread_swing"]}}
+
+    def _act_gift(self, p, a):
+        g, port = R["gift"], p["port"]
+        if not g["enabled"]:
+            raise GameError(tx("e.gift_off"))
+        if (p.get("tab") or {}).get("gift", 0) > 0:
+            raise GameError(tx("e.gift_again", port=PORTS[port]["name"]))
+        try:
+            amount = int(a.get("amount", 0))
+        except (TypeError, ValueError):
+            raise GameError(tx("e.whole_number"))
+        if amount < int(g["min_gift"]):
+            raise GameError(tx("e.gift_small", amount=money(g["min_gift"])))
+        top = self.gift_appetite(port) * float(g["max_x"])
+        if amount > top:
+            raise GameError(tx("e.gift_big", amount=money(top)))
+        if amount > p["cash"]:
+            raise GameError(tx("e.cost"))
+        before = p["rep"][port]
+        gain = self.gift_gain(port, before, amount)
+        tier = self.gift_tier(gain)
+        p["cash"] -= amount
+        self._gain_rep(p, port, gain)
+        got = p["rep"][port] - before
+        gr = p.setdefault("gift_rep", {})
+        gr[port] = min(p["rep"][port], gr.get(port, 0.0) + got)
+        self._tally(p, "gift", amount)
+        self._book(p, "gift", -amount)
+        name = PORTS[port]["name"]
+        key = self._draw(p, "m.gift." + tier) or "m.gift." + tier
+        p["gift_last"] = {"port": port, "turn": self.s["turn"], "amount": amount, "tier": tier, "key": key,
+                          "from": int(round(before)), "to": int(round(p["rep"][port])), "gain": round(got, 2)}
+        p["log"].append(tx("l.gift", port=name, amount=money(amount), gain=int(round(got))))
+        self._ev("finance", "gift", "{} gave the Mayor of {} {}: standing {} -> {} ({}, she is {})".format(
+            p["name"], name, money(amount), int(round(before)), int(round(p["rep"][port])),
+            "+{:.1f}".format(got), tier), p, port=port, amount=amount, gain=round(got, 2), tier=tier)
+        return tx(key, port=name, amount=money(amount), gain=int(round(got)))
 
     def _note_prices(self, p):
         port = p["port"]
@@ -1230,6 +1395,8 @@ class Game:
         s = self.s
         s["phase"] = "port"
         n = len(s["players"])
+        for q in s["players"].values():
+            self._mayor_greeting(q)             # the first port's Parlour greeting
         self._ev("turn", "game_started", "The game has started: {} player{}, {} years".format(
             n, "" if n == 1 else "s", s["years"]), players=[q["name"] for q in s["players"].values()], years=s["years"])
         s["news"].insert(0, "{}: {}".format(date_label(0), tx("n.start_one" if n == 1 else "n.start_many", n=n)))
@@ -1974,6 +2141,7 @@ class Game:
                     return
                 p["port"] = dest
                 p["tab"] = self._new_tab()
+                self._mayor_greeting(p)
                 log.append(tx("l.anchored", port=PORTS[dest]["name"]))
                 self._ev("voyage", "arrived", "{} anchored in {}: {} ship{}, hull {}, hold {}/{}, silver {}".format(
                     who, PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
@@ -2476,6 +2644,7 @@ class Game:
         p["debt"] += wk["debt"]
         p["port"] = home_of(p)
         p["tab"] = self._new_tab()
+        self._mayor_greeting(p)
         p["wrecks"] += 1
         kind = SHIPS[wk["ship"]]
         p["ships"] = [self._new_ship(wk["ship"], guns=max(0, min(int(wk.get("guns", 2)), kind["slots"])),
@@ -2538,6 +2707,7 @@ class Game:
                 "customs": self.customs_view(p), "bond": self.sealed(p),
                 "battle": self.battle_view(p), "fights": p.get("fights") or [],
                 "books": self.books_view(p),
+                "gift": self.gift_view(p),
             }
         return out
 

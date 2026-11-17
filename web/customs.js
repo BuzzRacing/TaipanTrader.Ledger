@@ -366,8 +366,8 @@ const Customs = (() => {
     return false;
   }
 
-  /* The stage in the right-hand column shows her while the desk is open: a new picture each time
-     her mood changes. */
+  /* Her face for the current mood (kept for callers; the right-hand stage now shows the port while
+     the desk is open, since she is already in the popup). */
   function stage() {
     const c = cu();
     if (!c) return null;
@@ -375,8 +375,7 @@ const Customs = (() => {
     return { key: "cx:" + key(c) + ":" + state, html: face(c, state), name: c.name, note: c.title };
   }
   function showOnStage() {
-    const f = stage();
-    if (f) Stage.idle(f.key, f.html, f.name, f.note);
+    // The stage keeps the port pictures while the desk is open: nothing to swap when her mood changes.
   }
 
   /* Her greeting is read aloud once per visit, by the officer of that port, the moment her desk opens:

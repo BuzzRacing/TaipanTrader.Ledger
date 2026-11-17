@@ -400,7 +400,7 @@ def clear_cache():
 # -------------------------------------------------------------- matcher --
 # Captain's log lines that turn up on every voyage (or every month at anchor). They stay on the
 # screen, but are not read aloud unless voice.read_routine_log is on, so the log reads only the news.
-ROUTINE_LOG = frozenset({"l.sailed", "l.anchored", "l.anchor", "l.dues", "l.customs_paid"})
+ROUTINE_LOG = frozenset({"l.sailed", "l.anchored", "l.anchor", "l.dues", "l.dues_short", "l.customs_paid"})
 
 
 class Matcher:

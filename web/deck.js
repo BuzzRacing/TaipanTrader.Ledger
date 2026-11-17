@@ -157,6 +157,15 @@ const Stage = (() => {
         return;
       }
       const c = cast[item.c] || {};
+      // Some speakers leave the stage on the port (stageKeepsPort in player.js: the officer while her
+      // desk is open, since the popup already shows her): only her words go on the plate.
+      if (typeof stageKeepsPort === "function" && stageKeepsPort(item.c)) {
+        talkLayer.innerHTML = "";
+        el.classList.remove("talking");
+        plate(c.name, c.title, item.text || "");
+        talking = true;
+        return;
+      }
       // A speaker can have a picture of her own in this port (stageFace in player.js: the Mayor, the Tax collector).
       const own = typeof stageFace === "function" ? stageFace(item.c) : "";
       const lib = own || (typeof Media !== "undefined" ? Media.speaker(item.c, "stg-img", item.m) : "");

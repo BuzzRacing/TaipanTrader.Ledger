@@ -441,7 +441,8 @@ for _who, _keys in {
     # The words still show on screen. Admin > Cast & Voices can hand them back to a reader.
     "": ["m.sail", "m.stay", "m.slip",
          # The Mayor's Parlour (decision 3): small thanks are text only; the log line is the receipt.
-         "m.gift.cool", "m.gift.gracious", "l.gift"],
+         "m.gift.cool", "m.gift.gracious", "l.gift"]
+        + ["m.gift.{}.{}".format(t, i) for t in ("cool", "gracious") for i in range(10)],
     "bosun": ["l.typhoon", "l.storm", "l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
               "l.long_fight", "l.plundered", "l.damage", "l.attack_met", "l.retreated", "l.parley_paid"],
     "lender": ["m.borrowed", "m.repaid", "e.no_more_loans", "e.nothing_to_repay"] + [
@@ -459,13 +460,14 @@ for _who, _keys in {
     "customs": ["l.seized", "n.ban", "n.ban_lifted", "n.caught"],
     # The Mayor and the Tax collector speak only when they catch a captain (owner's decision).
     # The Mayor's Parlour: she thanks a Warm or Delighted gift aloud (decision 3).
-    "mayor": ["l.slip_caught", "m.gift.warm", "m.gift.delighted"],
+    "mayor": ["l.slip_caught", "m.gift.warm", "m.gift.delighted"]
+             + ["m.gift.{}.{}".format(t, i) for t in ("warm", "delighted") for i in range(10)],
     # The Port Authority: every line is read by the officer of the port the house is in
     # (voice.Planner, OFFICER_KEYS); "taxlady" is her stand-in when a line has no port.
     "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_home", "l.customs_empty", "l.customs_paid", "l.customs_bought",
                 "l.customs_caught", "m.customs_clean", "m.customs_over", "m.customs_bought", "m.customs_caught",
                 "m.customs_bribe_refused", "m.customs_buyback", "e.customs_first", "e.customs_bribe_cost",
-                "e.customs_nothing_back"],
+                "e.customs_nothing_back"] + [k for k in strings.EN if k.startswith("l.customs_welcome.")],
     "crier": ["n.opening", "n.start_one", "n.start_many", "n.game_over", "n.scarce", "n.glut", "n.wrecked",
               "m.begin", "m.new_game"],
 }.items():
@@ -485,6 +487,17 @@ SAY = {
     "m.gift.warm": "Now that is how a captain calls on a lady. My clerks will be told your house is a friend of the city.",
     "m.gift.delighted": "Captain! Sit, sit, you will take a glass with me. Anyone who troubles your house in my harbour answers to me.",
     "l.customs_welcome": "{line} Declare your cargo, Captain. Truly, or not. I do so enjoy finding out.",
+    # Her full-length greetings (strings.py l.customs_welcome.20-29), said without the month's rate.
+    "l.customs_welcome.20": "{line} Declare your cargo, Captain. Truly, or not. I do so enjoy finding out.",
+    "l.customs_welcome.21": "{line} Write your figures honestly, Captain, or write them bravely. I'll know which.",
+    "l.customs_welcome.22": "Good day, Captain. {line} Declare low and I may buy at your price; declare false and I will find out. Choose well.",
+    "l.customs_welcome.23": "{line} I have seen every trick on this coast, Captain: the false bottom, the second ledger, the sad story about the storm. Just give me the numbers.",
+    "l.customs_welcome.24": "There you are. {line} Declare it all, declare it true, and you'll be ashore by supper.",
+    "l.customs_welcome.25": "{line} A little lie may slip past me, Captain. A large one never has. Shall we begin?",
+    "l.customs_welcome.26": "Come in, Captain. {line} The ink is free, and the truth costs you nothing at all. Lies cost a great deal more.",
+    "l.customs_welcome.27": "{line} And before you ask, no, my rate does not come down because you smile at me. Lying costs you double. Declare, Captain.",
+    "l.customs_welcome.28": "Ah, Captain, at last. I've had nothing but rice junks and honest men all morning. {line} Do try to make this interesting.",
+    "l.customs_welcome.29": "{line} You know the rule of this desk, Captain: you name your cargo's worth, and if your price is too modest, I buy at it. Name it wisely.",
     "l.customs_paid": "Your papers are stamped, Captain. Welcome to {port}.",
     "l.customs_bought": "I bought your {goods} at your own price, Captain. You did say that was what it was worth.",
     "l.customs_caught": "I went through your hold, Captain. Every last corner. You paid in full, plus a fine, and {port} will talk.",
@@ -566,6 +579,10 @@ SAY = {
     "n.fight_broke_off": "{name} of {firm} fought off pirates off {port}.",
     "n.game_over": "The game is over. {name} of {firm} is {winner}.",
 }
+
+# The Mayor's banked thanks (strings.py m.gift.<tier>.N) are said without the receipt: just her words.
+SAY.update({k: v.split("+{gain}. ", 1)[1] for k, v in strings.EN.items()
+            if k.startswith(("m.gift.warm.", "m.gift.delighted.")) and "+{gain}. " in v})
 # The same, for lines whose family-friendly wording differs.
 SAY_FAMILY = {
     "m.borrowed.easy.0": "Take it, Captain. Madam Wu does not lend to cowards, and you are not one.",
@@ -620,7 +637,7 @@ VOICE_DEFAULTS = {
     "model_id": "inworld-tts-2-flash",
     "temperature": 1.0,
     "read_log": True,
-    "read_routine_log": False,   # sailed / anchored / dues / customs paid: shown, not read
+    "read_routine_log": False,   # sailed / anchored / dues (paid or short) / customs paid: shown, not read
     "read_news_board": True,
     "read_news_players": False,
     "read_confirmations": True,

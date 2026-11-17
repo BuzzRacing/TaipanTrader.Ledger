@@ -168,6 +168,12 @@ DEFAULTS = {
         "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
                  "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2, "debt_relief": 0.25,
                  "slip_caught": 0.35, "slip_mult": 2.0, "slip_rep": 10},
+        # The Mayor's Parlour: a purse of silver for standing in that port (engine.Game.gift_quote).
+        # Standing gained = cap x (1 - e^(-gift / appetite)) x headroom, once per visit. Appetite is
+        # appetite x the port's harbour dues level; headroom is 1 up to soft_from, falling to 0 at 100.
+        "gift": {"enabled": True, "cap": 15, "appetite": 1500, "soft_from": 50, "min_gift": 100,
+                 "max_x": 5, "step": 50, "gracious_at": 3, "warm_at": 7, "delighted_at": 11,
+                 "greet_cold_below": 40, "greet_warm_from": 70},
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
@@ -206,7 +212,7 @@ DEFAULTS = {
     },
     # mods = local price multipliers (below 1 = made here, above 1 = in demand).
     "ports": {
-        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.0, "officer": "taxlady", "mood": 0.1,
+        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "taxlady", "mood": 0.1,
                       "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
         "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15,
                       "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
@@ -468,6 +474,30 @@ SECTIONS = [
              _pct("rules.dues.slip_caught", "Slipping out at night: chance the harbour watch catches you"),
              F("rules.dues.slip_mult", "Caught slipping out: pay the bill this many times", "num", min=1, max=20, step=0.5),
              F("rules.dues.slip_rep", "Caught slipping out: standing lost in that port", "num", min=0, max=100, step=1)]},
+         {"title": "The Mayor's Parlour (a gift for standing)", "fields": [
+             F("rules.gift.enabled", "Players can call on the Mayor with a gift", "bool",
+               "Off: the Call on the Mayor row is hidden on the Port tab."),
+             F("rules.gift.cap", "Most standing one gift can buy", "num",
+               "A gift of any size never earns more than this. Standing gained = this x (1 - e^(-gift / appetite)) x headroom.",
+               min=0, max=100, step=0.5),
+             F("rules.gift.appetite", "The Mayor's appetite (x the port's harbour dues level)", "int",
+               "A gift of one appetite earns about 63% of the most; two, about 86%; five, about 99%. "
+               "Shanghai's harbour dues level 1.2 makes 1,500 into 1,800.", min=1, max=10**8),
+             F("rules.gift.soft_from", "She gets harder to impress above standing", "num",
+               "Up to this standing a gift earns in full; above it, less and less, down to nothing at 100.",
+               min=0, max=99, step=1),
+             F("rules.gift.min_gift", "Smallest gift", "int", min=1, max=10**8),
+             F("rules.gift.max_x", "Largest gift (x her appetite, never more than the silver on hand)", "num", min=1, max=100, step=0.5),
+             F("rules.gift.step", "Slider step", "int", min=1, max=10**6),
+             F("rules.gift.gracious_at", "Gracious thanks from (standing gained)", "num",
+               "Below this she is Cool. Cool and Gracious thanks are text only.", min=0, max=100, step=0.5),
+             F("rules.gift.warm_at", "Warm thanks from (standing gained)", "num",
+               "Warm and Delighted thanks are read aloud by the Mayor.", min=0, max=100, step=0.5),
+             F("rules.gift.delighted_at", "Delighted thanks from (standing gained)", "num", min=0, max=100, step=0.5),
+             F("rules.gift.greet_cold_below", "She greets you coldly below standing", "num",
+               "Her greeting in the Parlour has three moods, ten lines each: cold, neutral and warm.",
+               min=0, max=100, step=1),
+             F("rules.gift.greet_warm_from", "She greets you warmly from standing", "num", min=0, max=100, step=1)]},
          {"title": "Port Authority: the rate (each port's base rate and officer are in Ports)", "fields": [
              F("rules.customs.enabled", "Declare cargo on arrival", "bool",
                "Off: ships come and go without seeing the Port Authority."),

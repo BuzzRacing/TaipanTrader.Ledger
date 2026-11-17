@@ -136,6 +136,56 @@ def test_switched_off():
         R["gift"]["enabled"] = True
 
 
+
+def test_her_lines_are_banked_and_never_repeat_too_soon():
+    import cast
+    import config
+    import voice
+    # 30 greetings (ten per mood) and 40 thanks (ten per tier).
+    for prefix in ["port.mayor.greet." + m for m in ("cold", "neutral", "warm")] + \
+                  ["m.gift." + t for t in ("cool", "gracious", "warm", "delighted")]:
+        game, _, p = fresh()
+        assert p["mayor_greet"]["key"].startswith("port.mayor.greet.")   # drawn when the game started
+        p["decks"] = {}
+        assert game._bank(prefix) == list(range(10)), prefix
+        drawn = [game._draw(p, prefix) for _ in range(30)]
+        for n in range(3):
+            assert sorted(drawn[n * 10:(n + 1) * 10]) == ["{}.{}".format(prefix, i) for i in range(10)], drawn
+        assert all(a != b for a, b in zip(drawn, drawn[1:])), drawn
+    # Her mood follows standing.
+    game, _, p = fresh(rep=20.0)
+    assert game.mayor_mood(p, "shanghai") == "cold"
+    p["rep"]["shanghai"] = 55.0
+    assert game.mayor_mood(p, "shanghai") == "neutral"
+    p["rep"]["shanghai"] = 85.0
+    assert game.mayor_mood(p, "shanghai") == "warm"
+    # The greeting picked on anchoring is the one the Parlour shows, and it stays put for the visit.
+    game._mayor_greeting(p)
+    key = game.gift_view(p)["greet"]
+    assert key.startswith("port.mayor.greet.warm.") and game.gift_view(p)["greet"] == key
+    p["mayor_greet"]["port"] = "calcutta"                      # stale: from another port
+    assert game.gift_view(p)["greet"] == "port.mayor.greet"
+    # A gift's thanks come from its tier's bank; the Parlour gets the key.
+    game, pid, p = fresh()
+    msg = game.act(pid, {"type": "gift", "amount": 1800})
+    k = p["gift_last"]["key"]
+    assert k.startswith("m.gift.warm.") and msg == engine.tx(k, port="Shanghai", amount="$1,800", gain=p["gift_last"]["to"] - 34)
+    # Every thanks line is matched back to its key; warm and delighted are read by the Mayor without the receipt.
+    cfg = config.defaults()
+    voice.PLAN.configure(cfg, engine.TEXT)
+    for t in ("cool", "gracious", "warm", "delighted"):
+        for i in range(10):
+            k = "m.gift.{}.{}".format(t, i)
+            line = engine.tx(k, port="Shanghai", amount="$1,800", gain=9)
+            found, fields = voice.PLAN.matcher.match(line)
+            assert found == k, (k, found)
+            spoken = voice.PLAN.spoken(found, fields, line)
+            if t in ("warm", "delighted"):
+                assert cast.speaker_for(cfg, k) == "mayor" and "$1,800" not in spoken and "+9" not in spoken, (k, spoken)
+            else:
+                assert cast.speaker_for(cfg, k) == "", k
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

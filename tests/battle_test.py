@@ -465,6 +465,9 @@ def test_guns_can_be_shot_away():
     g = new_game(guns=4)
     g.s["players"]["p2"]["protect"] = 5
     R["liyuen"]["protect_save"] = 1.0
+    # A hull far past the junk's own, so the ship lives to book the guns it lost whatever the dice do
+    # (any change to the month's draws, such as one more port's tax rate drifting, used to sink it).
+    g.s["players"]["p1"]["ships"][0]["hull"] *= 20
     assert sail(g, present=["p1", "p2"])
     p1 = g.s["players"]["p1"]
     hull0, before = p1["ships"][0]["hull"], dict(books(p1))

@@ -279,15 +279,10 @@ function deckArt(inGame) {
   Ambient.set(list);
   if (!inGame) return;
   Stage.mount(document.getElementById("stageSlot"));
-  // At the Port Authority's desk the stage shows the officer, her face changing with her mood.
-  const cx = Customs.isOpen() && !document.querySelector(".captains-log") ? Customs.stage() : null;
-  if (cx) {
-    document.getElementById("deck").classList.add("woman");
-    Stage.idle(cx.key, cx.html, cx.name, cx.note);
-    return;
-  }
+  // At the Port Authority's desk the officer is already in the popup, so the stage shows the port.
+  const cxOpen = Customs.isOpen() && !document.querySelector(".captains-log");
   // In the Mayor's Parlour the stage shows the port's Mayor.
-  const woman = mayorOpen() ? STAGE_WOMEN.chart : STAGE_WOMEN[ui.tab];
+  const woman = cxOpen ? null : mayorOpen() ? STAGE_WOMEN.chart : STAGE_WOMEN[ui.tab];
   const womanImg = woman ? stageWomanHtml(me.port, woman.role) : "";
   document.getElementById("deck").classList.toggle("woman", !!womanImg);
   if (womanImg) {
@@ -354,9 +349,13 @@ const womanPick = {};
 /* Cast members who are port women: while the Mayor or the Tax collector speaks, the stage shows the
    picture for the port the house is in (deck.js Stage asks for it), not one portrait for every port. */
 const PORT_SPEAKERS = { mayor: "mayor", taxlady: "taxlady" };
+/* While the Port Authority's desk is open the officer is already shown in the popup: when she speaks,
+   the stage keeps the port pictures and only her words go on the plate (deck.js Stage.talk). */
+function stageKeepsPort(cid) {
+  return /^officer_|^taxlady$/.test(cid || "") && Customs.isOpen();
+}
 function stageFace(cid) {
   // The Port Authority officers (cast keys officer_<port>) are each port's tax lady too.
-  if (/^officer_|^taxlady$/.test(cid || "") && Customs.isOpen()) { const f = Customs.stage(); if (f) return f.html; }
   const role = PORT_SPEAKERS[cid] || (/^officer_/.test(cid || "") ? "taxlady" : "");
   return role && S && S.me ? stageWomanHtml(S.me.port, role) : "";
 }
@@ -916,7 +915,7 @@ function mayorParlour() {
     let words = "";
     if (th_) {
       // Her own words: the confirmation without its receipt (everything after "+{gain}.").
-      const tpl = T["m.gift." + th_.tier] || "";
+      const tpl = (th_.key && T[th_.key]) || T["m.gift." + th_.tier] || "";
       const at = tpl.indexOf("{gain}.");
       const vars = { port: portName(me.port), amount: money(th_.amount), gain: Math.round(th_.gain) };
       words = esc((at >= 0 ? tpl.slice(at + 7).trim() : tpl).replace(/\{(\w+)\}/g, (m, k) => vars[k] != null ? vars[k] : (TOK[k] != null ? TOK[k] : m)));
@@ -932,7 +931,7 @@ function mayorParlour() {
       <div class="pt-actions mp-actions"><span class="muted">${te("port.mayor.closed", { port })}</span>
         ${btn(te("port.mayor.back") + ' <span aria-hidden="true">&rsaquo;</span>', "mayor_close", "", "pt-go")}</div></section>`;
   }
-  const greet = `<p class="mp-greet">“${te("port.mayor.greet", { port })}”</p>`;
+  const greet = `<p class="mp-greet">“${te(gv.greet && T[gv.greet] ? gv.greet : "port.mayor.greet", { port })}”</p>`;
   const close = btn(te("port.mayor.no"), "mayor_close", "", "pt-go");
   if (gv.max < gv.min) {
     return `<section class="card pt-mayor">${head(te("port.mayor.once"))}${greet}
