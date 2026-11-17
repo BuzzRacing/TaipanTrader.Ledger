@@ -52,10 +52,10 @@
    "#4f5d6b"
   ],
   "font_title": "\"Uncial Antiqua\", \"Palatino Linotype\", Palatino, Georgia, serif",
-  "font_serif": "\"Palatino Linotype\", Palatino, \"Book Antiqua\", Georgia, serif",
+  "font_serif": "\"Alegreya\", \"Palatino Linotype\", Palatino, \"Book Antiqua\", Georgia, serif",
   "font_sans": "\"Segoe UI\", system-ui, -apple-system, Roboto, Arial, sans-serif",
-  "font_special": "\"Almendra SC\", \"Palatino Linotype\", Palatino, Georgia, serif",
-  "web_fonts": "Uncial Antiqua | MedievalSharp | Alegreya:ital,wght@0,400;0,700;1,400;1,700 | Almendra SC",
+  "font_special": "\"Alegreya SC\", \"Palatino Linotype\", Palatino, Georgia, serif",
+  "web_fonts": "Uncial Antiqua | MedievalSharp | Alegreya:ital,wght@0,400;0,700;1,400;1,700 | Alegreya SC:wght@400;700",
   "font_size": 16,
   "radius": 8,
   "ambient_seconds": 40,

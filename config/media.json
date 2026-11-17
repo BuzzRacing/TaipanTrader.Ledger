@@ -2033,33 +2033,6 @@
    "replaces": ""
   },
   {
-   "id": "m423fe0ba61",
-   "url": "/uploads/artbible-cargo-gold-423c064b.png",
-   "type": "image",
-   "kind": "cargo",
-   "subject": "gold",
-   "roles": [
-    "icon"
-   ],
-   "tags": [
-    "graphics"
-   ],
-   "nsfw": true,
-   "reviewed": false,
-   "enabled": true,
-   "primary": true,
-   "weight": 3,
-   "title": "",
-   "prompt": "A single historically plausible gold trade-goods arrangement on a lacquer-black surface: tactile material, antique brass merchant token for scale, three-quarter product view, soft directional lantern light, square composition, clean silhouette, no person, no label, readable at 30 pixels. romanticized cinematic historical realism set in the China Seas in 1860, private-release adult power fantasy with erotic after-hours glamour, humid salt haze, natural skin, believable anatomy, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, ivory and storm blue, premium tabletop-game key art, richly textured, dramatic but plausible lighting",
-   "seed": 143294397699388,
-   "width": 1024,
-   "height": 1024,
-   "bytes": 1630459,
-   "source": "generated",
-   "added": "2026-11-16 22:54",
-   "replaces": ""
-  },
-  {
    "id": "m71a2468748",
    "url": "/media/port/hongkong/port-hongkong-b0ea7a5d.png",
    "type": "image",
@@ -2288,6 +2261,113 @@
    "bytes": 2206163,
    "source": "generated",
    "added": "2026-11-16 23:04",
+   "replaces": ""
+  },
+  {
+   "id": "m9bfd3741cc",
+   "url": "/media/port/foochow/port-foochow-b80f2b4f.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "foochow",
+   "roles": [
+    "shipmaster"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry, dangerous woman in her early thirties, the ship master who rules the Foochow shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, glossy black hair pinned up with a jade comb and loose strands, fitted black lacquer naval coat with oxblood silk lining, brass buttons and gold braid, worn open at the throat, a brass spyglass in one gloved hand, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 115912560184672,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2251769,
+   "source": "generated",
+   "added": "2026-11-16 23:04",
+   "replaces": ""
+  },
+  {
+   "id": "m6b7569dccf",
+   "url": "/media/cargo/gold/cargo-gold-c8820b67.png",
+   "type": "image",
+   "kind": "cargo",
+   "subject": "gold",
+   "roles": [
+    "icon"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": true,
+   "weight": 3,
+   "title": "",
+   "prompt": "Still life of a lot of Solid Gold Bars as 1860s trade cargo, square composition, no person, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, dramatic but plausible lighting, no text",
+   "seed": 1325481865619,
+   "width": 1024,
+   "height": 1024,
+   "bytes": 2085096,
+   "source": "generated",
+   "added": "2026-11-16 23:15",
+   "replaces": ""
+  },
+  {
+   "id": "m186d7b6be3",
+   "url": "/uploads/artbible-cargo-gold-423c064b.png",
+   "type": "image",
+   "kind": "cargo",
+   "subject": "gold",
+   "roles": [
+    "icon"
+   ],
+   "tags": [
+    "graphics"
+   ],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "",
+   "seed": null,
+   "width": 1024,
+   "height": 1024,
+   "bytes": 1630459,
+   "source": "config",
+   "added": "2026-11-16 23:19",
+   "replaces": ""
+  },
+  {
+   "id": "ma0de9e8fea",
+   "url": "/media/port/shanghai/port-shanghai-d3e8f000.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "shanghai",
+   "roles": [
+    "taxlady_bored",
+    "taxlady_curious",
+    "taxlady_hungry",
+    "taxlady_tax",
+    "taxlady_buyout",
+    "taxlady_caught"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her early thirties, the tax collector who works the Shanghai waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless smile and one raised eyebrow, direct eye contact, glossy black hair in a low braid wound with an oxblood silk ribbon, a fitted black lacquer waistcoat over a loose ivory silk blouse slipping off one shoulder, a jade customs seal on a cord at her throat, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 114566839265296,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2361290,
+   "source": "generated",
+   "added": "2026-11-16 23:44",
    "replaces": ""
   }
  ],
@@ -2800,7 +2880,7 @@
   },
   "cargo:gold": {
    "url": "/uploads/artbible-cargo-gold-423c064b.png",
-   "item": "m423fe0ba61",
+   "item": "m186d7b6be3",
    "since": "2026-11-16 23:01",
    "bytes": 1630459,
    "mtime": 1794898472,

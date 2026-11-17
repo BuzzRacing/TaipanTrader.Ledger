@@ -107,11 +107,11 @@ DEFAULTS = {
         "level": "normal",
         "presets": {
             "easy":   {"name": "Calm waters", "pirates": 0.6, "storms": 0.6, "interest": 0.75,
-                       "start_cash": 1.5, "seizure": 0.6},
+                       "start_cash": 1.5, "seizure": 0.6, "customs_view": "exact"},
             "normal": {"name": "Trade winds", "pirates": 1.0, "storms": 1.0, "interest": 1.0,
-                       "start_cash": 1.0, "seizure": 1.0},
+                       "start_cash": 1.0, "seizure": 1.0, "customs_view": "bar"},
             "hard":   {"name": "Typhoon season", "pirates": 1.4, "storms": 1.3, "interest": 1.25,
-                       "start_cash": 0.7, "seizure": 1.5},
+                       "start_cash": 0.7, "seizure": 1.5, "customs_view": "tell"},
         },
     },
     "ranks": [
@@ -158,8 +158,18 @@ DEFAULTS = {
         "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
                  "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2,
                  "slip_caught": 0.35, "slip_mult": 2.0, "slip_rep": 10},
-        # The tax lady's cut of cargo profit, settled on leaving port (engine.Game.tax).
-        "tax": {"rate": 0.10, "audit_max": 0.5, "penalty_mult": 3.0, "rep": 8},
+        # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
+        # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
+        # Each port's base rate, officer and mood are in the Ports table.
+        "customs": {"enabled": True, "drift": 0.01, "range": 0.025, "min_rate": 0.0, "max_rate": 0.5,
+                    "buy_base": 0.005, "buy_k": 0.5, "buy_exp": 1.8, "buy_cap": 0.9,
+                    "audit_base": 0.01, "audit_k": 0.22, "audit_cap": 0.9,
+                    "appetite_power": 1.0, "greed_weight": 0.08, "cunning_weight": 0.08, "rep_audit": 0.5,
+                    "mood_swing": 0.15, "fine_mult": 2.0, "caught_rep": 6,
+                    "strongbox": 9000, "strongbox_swing": 0.4, "buyback_premium": 0.25,
+                    "bribe_share": 0.3, "bribe_min": 50, "bribe_cut": 0.5, "bribe_honest": 0.25,
+                    "bribe_refused_mult": 1.5, "bribe_rep": 8, "over_rep": 5, "max_declare": 1.5,
+                    "tell_curious": 0.08, "tell_hungry": 0.25, "seeded": []},
     },
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
     "goods": {
@@ -186,25 +196,25 @@ DEFAULTS = {
     },
     # mods = local price multipliers (below 1 = made here, above 1 = in demand).
     "ports": {
-        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0,
+        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.0, "officer": "taxlady", "mood": 0.1,
                       "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
-        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2,
+        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.06, "officer": "officer_shanghai", "mood": 0.15,
                       "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
-        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4,
+        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.05, "officer": "officer_nagasaki", "mood": 0.1,
                       "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}},
-        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8,
+        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.03, "officer": "officer_manila", "mood": 0.15,
                       "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}},
-        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0,
+        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.05, "officer": "officer_foochow", "mood": 0.15,
                       "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}},
-        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9,
+        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.04, "officer": "officer_saigon", "mood": 0.5,
                       "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}},
-        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7,
+        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.06, "officer": "officer_bangkok", "mood": 0.12,
                       "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}},
-        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6,
+        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.02, "officer": "officer_singapore", "mood": 0.1,
                       "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}},
-        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1,
+        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.07, "officer": "officer_batavia", "mood": 0.1,
                       "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}},
-        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3,
+        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.09, "officer": "officer_calcutta", "mood": 0.2,
                       "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}},
     },
     # hold = cargo units; hull = damage it can take; slots = guns it can mount.
@@ -331,7 +341,12 @@ SECTIONS = [
                       C("storms", "Storms", "num", min=0, max=5, step=0.05),
                       C("interest", "Loan interest", "num", min=0, max=5, step=0.05),
                       C("start_cash", "Starting silver", "num", min=0, max=20, step=0.05),
-                      C("seizure", "Customs seizures", "num", min=0, max=5, step=0.05)]},
+                      C("seizure", "Customs seizures", "num", "Also multiplies the Port Authority's chance of catching a lie.",
+                        min=0, max=5, step=0.05),
+                      C("customs_view", "Port Authority odds shown", "select",
+                        "What a captain sees while declaring cargo: the exact chances, a coloured bar without numbers, "
+                        "or only the officer's face and manner.", default="bar",
+                        options=[["exact", "Exact percentages"], ["bar", "Bar and her tell"], ["tell", "Her tell only"]])]},
          {"path": "ranks", "title": "Player ranks", "kind": "list",
           "help": "A player holds the highest rank whose net worth they have reached.",
           "columns": [C("worth", "Net worth from", "int", min=-10**12, max=10**12),
@@ -418,13 +433,49 @@ SECTIONS = [
              _pct("rules.dues.slip_caught", "Slipping out at night: chance the harbour watch catches you"),
              F("rules.dues.slip_mult", "Caught slipping out: pay the bill this many times", "num", min=1, max=20, step=0.5),
              F("rules.dues.slip_rep", "Caught slipping out: standing lost in that port", "num", min=0, max=100, step=1)]},
-         {"title": "Tax collector (her cut of cargo profit on leaving port)", "fields": [
-             _pct("rules.tax.rate", "Tax on profit from cargo sold this visit",
-                  "Profit is the sale price less the average price paid. Multiplied by the port's harbour dues level."),
-             _pct("rules.tax.audit_max", "Chance she checks the books if nothing is declared",
-                  "Falls in proportion to how much is declared; none when everything is declared."),
-             F("rules.tax.penalty_mult", "Caught hiding profit: fine as a multiple of the hidden tax", "num", min=0, max=50, step=0.5),
-             F("rules.tax.rep", "Caught hiding profit: standing lost in that port", "num", min=0, max=100, step=1)]},
+         {"title": "Port Authority: the rate (each port's base rate and officer are in Ports)", "fields": [
+             F("rules.customs.enabled", "Declare cargo on arrival", "bool",
+               "Off: ships come and go without seeing the Port Authority."),
+             _pct("rules.customs.drift", "Most the rate moves in a month", "", 0, 0.5),
+             _pct("rules.customs.range", "Most the rate strays from the port's base rate", "", 0, 0.5),
+             _pct("rules.customs.min_rate", "Lowest rate anywhere", "", 0, 1),
+             _pct("rules.customs.max_rate", "Highest rate anywhere", "", 0, 1),
+             _pct("rules.customs.max_declare", "Highest declaration allowed (share of true worth)",
+                  "Above 100% is over-declaring: she never buys, you pay more tax, and your standing rises.", 1, 5)]},
+         {"title": "Port Authority: her odds", "fields": [
+             _pct("rules.customs.buy_base", "Chance she buys an honest line", "Times her greed, her mood and how much the port wants that cargo."),
+             _pct("rules.customs.buy_k", "Buyout chance added by a 100% lie", "", 0, 5),
+             F("rules.customs.buy_exp", "Buyout curve", "num", "1 rises evenly with the lie; above 1 small lies are "
+               "safe and big ones are not.", min=0.2, max=5, step=0.05),
+             _pct("rules.customs.buy_cap", "Most chance of a buyout"),
+             _pct("rules.customs.audit_base", "Chance she checks any under-declared line"),
+             _pct("rules.customs.audit_k", "Audit chance added by a 100% lie", "Times her cunning, your standing, her mood "
+                  "and the difficulty level's customs setting.", 0, 5),
+             _pct("rules.customs.audit_cap", "Most chance of an audit"),
+             F("rules.customs.appetite_power", "How much the port's own demand matters", "num",
+               "Her buyout chance is multiplied by the port's local price for that cargo raised to this power. 0 ignores it.",
+               min=0, max=5, step=0.1),
+             _pct("rules.customs.greed_weight", "Each point of greed above 5: more buyouts", "", 0, 1),
+             _pct("rules.customs.cunning_weight", "Each point of cunning above 5: more audits", "", 0, 1),
+             _pct("rules.customs.rep_audit", "Standing 100 cuts audits by (standing 0 adds the same)", "", 0, 1),
+             _pct("rules.customs.mood_swing", "Her mood swing, for ports that do not set their own", "", 0, 1),
+             _pct("rules.customs.tell_curious", "Her tell: curious above this risk", "", 0, 1),
+             _pct("rules.customs.tell_hungry", "Her tell: hungry above this risk", "", 0, 1)]},
+         {"title": "Port Authority: outcomes and second chances", "fields": [
+             F("rules.customs.fine_mult", "Caught: fine as a multiple of the tax dodged", "num", min=0, max=50, step=0.5),
+             F("rules.customs.caught_rep", "Caught: standing lost in that port", "num", min=0, max=100, step=1),
+             F("rules.customs.over_rep", "Over-declaring to the limit: standing gained", "num", min=0, max=100, step=0.5),
+             F("rules.customs.strongbox", "Her strongbox: silver she can spend on buyouts", "int",
+               "Once it is empty she cannot buy any more, so a big lie may only be partly bought.", min=0, max=10**9),
+             _pct("rules.customs.strongbox_swing", "Strongbox varies by up to", "", 0, 1),
+             _pct("rules.customs.buyback_premium", "Buying it back costs her price plus", "", 0, 10),
+             _pct("rules.customs.bribe_share", "Sweetener: share of the tax declared", "", 0, 10),
+             F("rules.customs.bribe_min", "Sweetener: least it costs", "int", min=0, max=10**7),
+             _pct("rules.customs.bribe_cut", "Sweetener taken: audit chance cut by"),
+             _pct("rules.customs.bribe_honest", "Chance she is honest and refuses it",
+                  "Less for greedy officers, more for upright ones."),
+             F("rules.customs.bribe_refused_mult", "Sweetener refused: audit chance multiplied by", "num", min=1, max=10, step=0.05),
+             F("rules.customs.bribe_rep", "Sweetener refused: standing lost", "num", min=0, max=100, step=1)]},
      ]},
     {"id": "goods", "title": "Cargo", "intro": "What can be traded. Removing a cargo during a game discards any that players hold.",
      "tables": [
@@ -451,7 +502,15 @@ SECTIONS = [
                       C("no_ban", "Never bans contraband", "bool"),
                       C("label_left", "Name left of dot", "bool", "Which side of the dot the name sits on the chart."),
                       C("dues", "Harbour dues level", "num", "Multiplies the Mayor's whole bill when leaving this port. 1 is normal, 0.5 half, 2 double.",
-                        min=0, max=20, step=0.05, default=1.0)]},
+                        min=0, max=20, step=0.05, default=1.0),
+                      C("tax_rate", "Port Authority base rate", "pct", "Taken on the declared value of cargo on arrival. "
+                        "0 makes a free port: no declaration at all. The rate drifts around this each month.",
+                        min=0, max=1, default=0.05),
+                      C("officer", "Port Authority officer", "select", "The cast member at the desk (Cast & Voices). "
+                        "Her greed and cunning shape the odds; her pictures are this port's Tax lady pictures.",
+                        options_from="characters", default="taxlady"),
+                      C("mood", "Officer's mood swing", "pct", "How far her odds can move from one visit to the next.",
+                        min=0, max=1, default=0.15)]},
      ],
      "matrix": {"path": "ports", "sub": "mods", "cols_from": "goods", "title": "Local prices",
                 "help": "Each cell multiplies the cargo's usual price in that port. Below 1 it is made there and cheap; "
@@ -818,6 +877,16 @@ def validate(raw):
     for group, table in (("goods", goods), ("ports", ports), ("ships", ships)):
         src = gr.get(group) if isinstance(gr.get(group), dict) else {}
         gr[group] = {k: v for k, v in src.items() if k in table and isinstance(v, str) and URL_RE.match(v)}
+    # Cast members added in a later version join a saved cast once (deleting one afterwards sticks).
+    seeded = set(cfg["rules"]["customs"].get("seeded") or [])
+    for cid in cast.SEEDED:
+        if cid not in seeded and cid not in cfg["characters"]:
+            cfg["characters"][cid] = copy.deepcopy(cast.CHARACTERS[cid])
+        seeded.add(cid)
+    cfg["rules"]["customs"]["seeded"] = sorted(seeded)
+    for key, p in ports.items():
+        if p.get("officer") not in cfg["characters"]:
+            p["officer"] = "taxlady" if "taxlady" in cfg["characters"] else next(iter(cfg["characters"]), "")
     lang = str(cfg["language"].get("active") or "en")
     cfg["language"] = {"active": lang if re.match(r"^[a-z]{2,3}(-[a-z0-9]{2,8})?$", lang) else "en"}
     cast.clean(cfg, URL_RE, errors)

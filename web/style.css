@@ -334,3 +334,9 @@ video.portart, video.shipart { background: #000; }
 /* ------------------------------------------------------------ lettering -- */
 /* Four roles, set under Admin > Look & Style: --title (game name), --serif (name headers),
    --sans (general text) and --special (taglines, ranks, log heading, board headline). */
+
+/* Names in the game title font (16 Nov 2026). House, ship and port names
+   follow Admin > Look & Style > Game title font. Uncial Antiqua has one
+   weight, so these are set to 400 (faux bold is off). */
+.roster li > b, .btable td > b, .hname,
+.chart .port .port-name { font-family: var(--title); font-weight: 400; }

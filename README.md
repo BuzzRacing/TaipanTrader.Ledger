@@ -128,6 +128,7 @@ One turn is one month. Everyone does their port business at the same time: trade
 - **Money.** The bank in Hong Kong pays 0.5% a month and is safe from thieves. Elder Brother Wu lends at 6% a month, compounding.
 - **Opium.** The most profitable cargo and the riskiest. Ports ban it from time to time: prices jump there, and so do seizures.
 - **Gold.** Legal bullion: high value, steady prices, cheap in Nagasaki and dear in Calcutta. But when a port declares a ban it sometimes covers gold too (50% by default, *Cargo → Sometimes contraband* in Admin). While it does, gold sells for more there and customs will seize it. The market and price board flag gold as banned in those ports.
+- **The Port Authority.** Arriving in any port but Hong Kong (a free port), you first meet that port's tax officer. Declare what each line of cargo is worth with its slider (0 to 150% of its true worth there). She takes her rate (2% in Singapore up to 9% in Calcutta, drifting a little each month) on what you declare, or buys the line at your declared price, or goes through the hold and finds the lie: full tax, a fine and lost standing. Small lies are a fair gamble where the rate is high; big lies rarely pay. You can slip her a sweetener (she may refuse), buy back what she bought for her price plus 25%, or over-declare to raise your standing. How much of her odds you see depends on the difficulty. Each port's officer, base rate and mood are in *Admin → Ports*; her odds under *Economy*; her pictures are the port's `taxlady_bored`, `taxlady_curious`, `taxlady_hungry`, `taxlady_tax`, `taxlady_buyout` and `taxlady_caught` roles in the Media Library (several in a role = a different one each time).
 - **Winning.** When the game length runs out, the house with the highest net worth is Taipan.
 
 ## Project layout
@@ -144,7 +145,7 @@ One turn is one month. Everyone does their port business at the same time: trade
 | `stats.py` | The Tally Book's numbers: works out a player's voyage and career from the journal, with the fair-play rules. Never writes anything. |
 | `replay.py` | Plays a recorded month again from the journal and checks it comes out the same. `python replay.py --list` shows the recorded games. |
 | `journal/` | Created on first run: one folder per game under `games/`, one server log per day under `server/`. Not uploaded to GitHub. |
-| `web/` | Player screen (`index.html`, `player.js`), Tally Book (`stats.html`, `stats.js`, `stats.css`), harbor board (`board.html`, `board.js`), admin (`admin.html`, `admin.js`), chart and styles. |
+| `web/` | Player screen (`index.html`, `player.js`, the Port Authority desk in `customs.js` and `customs.css`), Tally Book (`stats.html`, `stats.js`, `stats.css`), harbor board (`board.html`, `board.js`), admin (`admin.html`, `admin.js`), chart and styles. |
 | `fonts.py` | Downloads the Google Fonts named under Look & Style into `web/fonts/` once, in the background, so every screen gets them from the game with no internet. Run `python fonts.py` to fetch them by hand. |
 | `web/fonts/` | The downloaded fonts. Copy it with the folder so a Pi without internet has them. |
 | `config/` | Created on first save: `settings.json`, `lang/`, `presets/`, `backups/`. |
@@ -153,4 +154,5 @@ One turn is one month. Everyone does their port business at the same time: trade
 | `tests/config_test.py` | Checks the settings, the wording, and that a game survives its ports, cargoes and ships being changed mid-game. |
 | `tests/journal_test.py` | Plays recorded bot games through a restart, admin corrections and a settings change, then replays every month from the journal and checks each comes out exactly as recorded. |
 | `tests/stats_test.py` | Plays recorded bot games and checks the Tally Book: the books balance, fair play holds while a game runs, everything opens when it ends, and the career adds up. |
+| `tests/customs_test.py` | Checks the Port Authority: the desk on arrival, over-declaring, buyouts and buy-backs, the honest filing at month end, drifting rates and who reads her lines. |
 | `tests/voice_test.py` | Checks the cast and the voice layer against a pretend Inworld, so it runs offline. |

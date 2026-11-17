@@ -1,0 +1,111 @@
+/* SeaTrader: the Port Authority desk (customs.js). Sits in the deck's overlay like the captain's log.
+   Landscape: her picture on the left, the declaration on the right. Portrait: picture as a band on top.
+   The window never scrolls; the desk scrolls inside itself on a small screen. */
+
+.deck .veil.cx-veil { display: flex; align-items: center; justify-content: center; }
+.deck .modal.cx-desk { max-width: min(46rem, 100%); width: 100%; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.deck .modal.cx-desk.welcome { max-width: min(44rem, 100%); }
+
+.cx-body { padding: clamp(.7rem, 1.6vw, 1.2rem); overflow-y: auto; min-height: 0; max-height: 100%; scrollbar-width: thin;
+  display: flex; flex-direction: column; gap: .45rem; }
+.deck .modal.cx-desk { max-height: 100%; }
+.cx-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.cx-head h2 { margin: 0; }
+.cx-head .eyebrow { margin: 0 0 .1rem; }
+.cx-title { margin: 0; color: var(--muted); font-style: italic; font-size: .9rem; }
+.cx-rate { text-align: right; padding: .35rem .7rem; border: 1px solid var(--edge-hi); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--deck-brass) 10%, transparent); white-space: nowrap; }
+.cx-rate small, .cx-rate em { display: block; font-size: .72rem; color: var(--muted); font-style: normal; }
+.cx-rate b { font: 400 1.7rem var(--serif); color: var(--brass-hi); line-height: 1.1; }
+.cx-rate.up b { color: var(--blood-hi); } .cx-rate.dn b { color: var(--jade-hi); }
+.cx-rate.free b { font-size: 1.2rem; color: var(--jade-hi); }
+
+.cx-say { margin: 0; padding: .4rem .75rem; font-size: .92rem; line-height: 1.35; border-left: 3px solid var(--deck-oxblood); font-style: italic;
+  background: color-mix(in srgb, var(--deck-oxblood) 12%, transparent); border-radius: 0 var(--radius) var(--radius) 0; }
+.cx-tell { margin: 0; min-height: 1.4em; color: var(--brass-hi); font-family: var(--special, var(--serif)); font-size: .95rem; }
+.cx-desk[data-state="hungry"] .cx-tell { color: var(--blood-hi); }
+.cx-desk[data-state="over"] .cx-tell { color: var(--jade-hi); }
+
+.cx-lines, .cx-vlines { display: flex; flex-direction: column; gap: .35rem; }
+.cx-line { display: grid; grid-template-columns: minmax(7.5rem, 1.1fr) minmax(7rem, 1.6fr) 4.9rem 3.9rem; gap: .55rem; align-items: center;
+  padding: .3rem .5rem; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass-2); }
+.cx-line small, .cx-sums small, .cx-vline small { display: block; font-size: .7rem; color: var(--muted); }
+.cx-line b { font-variant-numeric: tabular-nums; }
+.cx-good { display: grid; grid-template-columns: auto 1fr; column-gap: .45rem; align-items: center; min-width: 0; }
+.cx-good small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-good small i { font-style: normal; color: var(--deck-ivory); }
+.cx-decl, .cx-tax { text-align: right; }
+.cx-good img { grid-row: span 2; width: 2.1rem; height: 2.1rem; object-fit: cover; border-radius: 50%; border: 1px solid var(--edge-hi); }
+.cx-good b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-decl b { color: var(--brass-hi); }
+.cx-slide { display: flex; flex-direction: column; gap: .1rem; }
+.cx-chip { font-style: normal; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
+.cx-chip.honest { color: var(--muted); } .cx-chip.under { color: var(--blood-hi); } .cx-chip.over { color: var(--jade-hi); }
+
+/* The slider: brass where honest, oxblood when under, jade when over; a tick marks 100%. */
+.deck .cx-desk input.cx-range { -webkit-appearance: none; appearance: none; width: 100%; height: 1.05rem; min-height: 0; padding: 0; margin: .3rem 0 .1rem; border-radius: 1rem; cursor: grab;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--deck-oxblood) 70%, transparent) 0, color-mix(in srgb, var(--deck-brass) 60%, transparent) var(--h),
+    color-mix(in srgb, var(--deck-jade) 70%, transparent) 100%);
+  border: 1px solid var(--edge-hi); position: relative; touch-action: none; }
+.cx-range::-webkit-slider-runnable-track { background: transparent; border: 0; height: 100%; }
+.cx-range::-webkit-slider-thumb { -webkit-appearance: none; width: 1.3rem; height: 1.75rem; margin-top: -.4rem; border-radius: .45rem;
+  background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass)); border: 1px solid #000; box-shadow: 0 3px 8px #000a; }
+.cx-range::-moz-range-thumb { width: 1.5rem; height: 1.9rem; border-radius: .45rem; background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass));
+  border: 1px solid #000; box-shadow: 0 3px 8px #000a; }
+.cx-slide { position: relative; }
+.cx-slide::before { content: ""; position: absolute; top: .1rem; height: 1.3rem; width: 2px; left: calc(var(--h, 66.7%)); background: var(--deck-ivory); opacity: .5; pointer-events: none; }
+
+.cx-quick { display: flex; gap: .4rem; flex-wrap: wrap; }
+.cx-quick button { flex: 1; min-height: 2rem; padding: .2rem .5rem; font-size: .85rem; white-space: nowrap; }
+
+.cx-sums { display: flex; gap: .4rem; flex-wrap: wrap; }
+.cx-sums > span { flex: 1 1 5.5rem; padding: .3rem .5rem; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass-2); }
+.cx-sums b { font-variant-numeric: tabular-nums; }
+.cx-sums .due { border-color: var(--edge-hi); } .cx-sums .due b { color: var(--brass-hi); font-size: 1.15rem; }
+.cx-sums .risk.b b, .cx-sums .b b { color: #e9b964; } .cx-sums .risk.a b { color: var(--blood-hi); }
+.cx-sums .up b { color: var(--jade-hi); } .cx-sums .dn b { color: var(--blood-hi); }
+
+.cx-odds small { display: block; font-size: .72rem; color: var(--muted); margin-bottom: .2rem; }
+.cx-bar { display: flex; height: .8rem; border-radius: 1rem; overflow: hidden; border: 1px solid var(--edge-hi); background: var(--glass-2); }
+.cx-bar i { flex: 0 0 0; transition: flex-basis .2s; }
+.cx-bar .t, .cx-legend .t i { background: color-mix(in srgb, var(--deck-jade) 80%, #000); }
+.cx-bar .b, .cx-legend .b i { background: #c98a2a; }
+.cx-bar .a, .cx-legend .a i { background: var(--deck-oxblood); }
+.cx-legend { display: flex; gap: .9rem; flex-wrap: wrap; font-size: .78rem; margin-top: .25rem; color: var(--muted); }
+.cx-legend i { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .3rem; vertical-align: -.05rem; }
+.cx-legend b { color: var(--deck-ivory); font-variant-numeric: tabular-nums; }
+.cx-hidden { margin: 0; color: var(--muted); font-style: italic; }
+
+.cx-bribe { display: flex; align-items: center; gap: .55rem; padding: .3rem .6rem; border: 1px dashed var(--edge); border-radius: var(--radius); cursor: pointer; }
+.cx-bribe input { width: 1.2rem; height: 1.2rem; margin-top: .15rem; accent-color: var(--deck-brass); }
+.cx-bribe small { display: block; color: var(--muted); font-size: .7rem; line-height: 1.25; }
+.cx-bribe b { font-size: .92rem; }
+.cx-bribe.on { border-style: solid; border-color: #c98a2a; background: color-mix(in srgb, #c98a2a 12%, transparent); }
+.cx-short { margin: 0; color: var(--blood-hi); font-size: .82rem; min-height: 0; }
+.cx-short:empty { display: none; }
+.cx-note { margin: 0; font-style: italic; color: var(--muted); } .cx-note.bad { color: var(--blood-hi); }
+
+.cx-verdict { margin: .2rem 0 0; font: 400 1.25rem var(--serif); color: var(--brass-hi); }
+.cx-verdict.caught { color: var(--blood-hi); } .cx-verdict.buyout { color: #e9b964; }
+.cx-vline { display: grid; grid-template-columns: 1fr auto auto auto; gap: .6rem; align-items: center; padding: .4rem .6rem;
+  border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass-2); animation: cxIn .4s ease-out backwards; }
+.cx-vline:nth-child(2) { animation-delay: .12s; } .cx-vline:nth-child(3) { animation-delay: .24s; } .cx-vline:nth-child(4) { animation-delay: .36s; }
+.cx-vline.caught { border-color: color-mix(in srgb, var(--deck-oxblood) 80%, transparent); }
+.cx-vline.buyout, .cx-vline.partial { border-color: #c98a2a; }
+.cx-vline.back { opacity: .7; }
+.cx-out { font-style: normal; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; padding: .15rem .5rem; border-radius: 1rem;
+  background: color-mix(in srgb, var(--deck-jade) 30%, transparent); }
+.cx-out.caught { background: color-mix(in srgb, var(--deck-oxblood) 60%, transparent); }
+.cx-out.buyout, .cx-out.partial { background: color-mix(in srgb, #c98a2a 45%, transparent); }
+.cx-amt { font-variant-numeric: tabular-nums; }
+.cx-vline button { min-height: 2rem; padding: .2rem .6rem; }
+@keyframes cxIn { from { opacity: 0; transform: translateY(6px); } }
+
+.cx-body > .primary.wide { margin-top: .2rem; min-height: 2.8rem; }
+
+/* Portrait and narrow screens: the cargo slider takes its own row. */
+@media (max-width: 760px) {
+  .cx-line { grid-template-columns: 1fr 5rem 4rem; }
+  .cx-line .cx-slide { grid-column: 1 / -1; order: 5; }
+}
+@media (prefers-reduced-motion: reduce) { .cx-vline { animation: none; } .cx-bar i { transition: none; } }

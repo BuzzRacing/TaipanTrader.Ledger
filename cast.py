@@ -275,6 +275,158 @@ CHARACTERS = {
                            "over a corset, spectacles pushed up into pinned hair, knowing half-smile, {style}",
     },
 }
+# The Port Authority officers, one for each taxed port (Admin > Ports > Port Authority officer).
+# Hong Kong is a free port; her desk is kept by the Tax Collector above.
+_OFFICERS = {
+    "officer_singapore": dict(
+        name="Mrs. Eliza Thornbury", title="Customs Mistress of the Singapore Roads", age=44, origin="Bath, England",
+        home_port="singapore", color="#6f8f4e", voice_id="Elizabeth", speaking_rate=0.92,
+        delivery="languid, upper-class English and lightly tipsy, flirting out of sheer boredom",
+        catchphrase="Oh, don't trouble yourself with the paperwork, darling. Neither do I.",
+        bio="Widow of a Straits Settlements magistrate, Eliza took over his desk because nobody else wanted the heat. "
+            "She runs the cheapest wharf in the East from a rattan chair, a glass of gin and bitters sweating at her elbow, "
+            "and judges a captain by his shoulders rather than his manifest.",
+        quirk="Fans herself with your declaration instead of reading it.",
+        vice="Gin by noon, young first mates by sunset.",
+        secret="She is not as drunk as she looks. Every lie she lets slide goes in a little book, for later.",
+        stats={"cunning": 4, "nerve": 4, "charm": 8, "greed": 3},
+        prompt="An {adult} English woman (age 44), the languid widowed Port Authority officer of Singapore lounging in a "
+               "rattan chair on a shaded colonial wharf office veranda, loosened white muslin gown slipping from one "
+               "shoulder over a lace corset, a glass of gin sweating in one hand and a customs stamp dangling forgotten "
+               "from the other, ceiling fan and palms, heavy-lidded amused bedroom gaze, {style}"),
+    "officer_manila": dict(
+        name="Doña Inés Villaraza", title="Collector of the Manila Aduana", age=38, origin="Seville and Manila",
+        home_port="manila", color="#a8323a", voice_id="Julia", speaking_rate=0.98,
+        delivery="warm, honeyed Spanish-accented English, charming you while she picks your pocket",
+        catchphrase="Such a beautiful cargo, Captain. It would be a shame to let it leave Manila.",
+        bio="Inés married the richest trading house in Manila and then quietly took over its customs post as well. "
+            "She is the kindest face on any wharf, and she buys more cargo at the declared price than any officer in "
+            "the East, every bale of it for her husband's warehouses.",
+        quirk="Touches your sleeve when she likes what is in your hold.",
+        vice="Silk, porcelain, and captains who lie badly.",
+        secret="Her husband has no idea how much of his fortune is in her name.",
+        stats={"cunning": 6, "nerve": 6, "charm": 9, "greed": 9},
+        prompt="An {adult} Spanish-Filipina woman (age 38), the charming Port Authority officer of Manila in a "
+               "carved narra-wood customs office, off-shoulder black lace mantilla gown with a deep neckline and a "
+               "crimson silk sash, a fan of Manila embroidery in one hand and an ivory customs seal in the other, "
+               "bales of silk behind her, warm candlelight, inviting smile and hungry eyes, {style}"),
+    "officer_saigon": dict(
+        name="Madame Céleste Durand", title="Directrice of the Saigon Customs House", age=33, origin="Marseille",
+        home_port="saigon", color="#5b4a8c", voice_id="Olivia", speaking_rate=1.0,
+        delivery="French, sultry and mercurial, purring one moment and icy the next",
+        catchphrase="Today I am in a good mood, mon capitaine. Tomorrow? Who knows.",
+        bio="Céleste came out with the French fleet in 1859 as an admiral's companion and stayed when he sailed home "
+            "without her. The new colonial customs house was the consolation prize. She runs it on whim, and no two "
+            "captains ever get the same Madame Durand.",
+        quirk="Changes her mind halfway through stamping your papers.",
+        vice="Absinthe, opera, and the thrill of being unpredictable.",
+        secret="She keeps a coin in her bodice and flips it when she cannot decide what to do with you.",
+        stats={"cunning": 7, "nerve": 7, "charm": 9, "greed": 6},
+        prompt="An {adult} French woman (age 33), the mercurial colonial Port Authority officer of Saigon reclining "
+               "on a chaise in a shuttered customs house, half-laced violet silk corset and loosened tricolour sash, "
+               "a glass of absinthe and a gold coin on the table beside an open ledger, slatted tropical light across "
+               "her skin, a teasing sidelong smile, {style}"),
+    "officer_nagasaki": dict(
+        name="Okada Suzu", title="Ledger-Keeper of the Dejima Customs House", age=35, origin="Nagasaki",
+        home_port="nagasaki", color="#3c4f6b", voice_id="Sarah", speaking_rate=0.9,
+        delivery="soft, quiet and precise, every word placed like a stamp; unsettlingly calm",
+        catchphrase="Your ledger says one thing, Captain. Your eyes say another.",
+        bio="Suzu grew up translating Dutch manifests on Dejima and learned that every captain lies in the same "
+            "three places. She audits more holds than any officer in the East and finds something in most of them. "
+            "Captains leave her office feeling undressed.",
+        quirk="Never blinks while you speak.",
+        vice="Perfect columns, warm sake, and the moment a liar's voice cracks.",
+        secret="She can read four languages upside down, including the one you think is private.",
+        stats={"cunning": 10, "nerve": 7, "charm": 6, "greed": 4},
+        prompt="An {adult} Japanese woman (age 35), the precise Port Authority officer of Nagasaki kneeling at a low "
+               "lacquer desk in the Dejima customs house, deep indigo silk kimono worn loose off both shoulders with "
+               "the obi half undone, brush and inkstone, an abacus and a Dutch ledger before her, paper lantern glow, "
+               "a calm piercing stare that sees straight through you, {style}"),
+    "officer_foochow": dict(
+        name="Madam Lin Bao-zhu", title="Tea-House Collector of the Min River", age=40, origin="Foochow",
+        home_port="foochow", color="#2f6b3a", voice_id="Ashley", speaking_rate=0.95,
+        delivery="unhurried and smoky, a tea-house hostess who negotiates like a pirate",
+        catchphrase="Sit, Captain. Drink my tea. Then we will talk about what you really carry.",
+        bio="Bao-zhu ran the finest tea house on the Min River before the treaty made Foochow a customs port. She "
+            "simply moved her tea service into the customs house. Captains sit, sip, relax, and confess.",
+        quirk="Pours your tea slowly while you declare, and stops pouring when you lie.",
+        vice="Wuyi oolong, jade hairpins, and secrets told over the second cup.",
+        secret="The tea is very good, and very slightly drugged.",
+        stats={"cunning": 8, "nerve": 6, "charm": 8, "greed": 6},
+        prompt="An {adult} Chinese woman (age 40), the Port Authority officer of Foochow serving tea in a customs "
+               "house hung with tea-chest labels, a jade-green silk qipao with a thigh-high slit unbuttoned at the "
+               "collar, jade pins in her black hair, a steaming clay teapot tilted in her hand and a customs seal on "
+               "the table, river light through lattice, a slow knowing smile, {style}"),
+    "officer_shanghai": dict(
+        name="Madam Fong Mei-lin", title="Collector of the Bund", age=37, origin="Ningbo",
+        home_port="shanghai", color="#9b2d20", voice_id="Ashley", speaking_rate=1.05,
+        delivery="brisk, commanding and amused, a powerful woman who enjoys being obeyed",
+        catchphrase="On my wharf, Captain, nothing moves unless I say so. Not even you.",
+        bio="Mei-lin clawed her way from a Ningbo comprador's daughter to the most powerful desk on the Bund. "
+            "Shanghai hungers for arms, spices and Indian goods, and so does she. If your hold carries what the city "
+            "wants, she will have it, at your price or at hers.",
+        quirk="Snaps her fingers once, and two clerks appear.",
+        vice="Power, French perfume, and making proud captains wait.",
+        secret="Half the Bund's warehouses pay her rent through a cousin.",
+        stats={"cunning": 8, "nerve": 9, "charm": 7, "greed": 8},
+        prompt="An {adult} Chinese woman (age 37), the commanding Port Authority officer of Shanghai standing on the "
+               "Bund customs house steps, fitted oxblood brocade jacket open over a black silk corset, high collar "
+               "undone, gold-embroidered riding gloves and a customs baton, clerks and cargo behind her, imperious "
+               "half-smile, {style}"),
+    "officer_bangkok": dict(
+        name="Khun Ying Malai", title="Keeper of the King's River Tolls", age=42, origin="Bangkok",
+        home_port="bangkok", color="#b07a1c", voice_id="Priya", speaking_rate=0.9,
+        delivery="gentle, patient and gracious, with steel underneath; she forgives once",
+        catchphrase="A small mistake, Captain, is forgiven. Make it twice and I will remember your face forever.",
+        bio="A lady of the Siamese court, Malai keeps the King's river tolls with impeccable manners. Honest captains "
+            "find her the warmest friend in the East and are welcomed back like family. Liars find her memory long.",
+        quirk="Offers you a jasmine garland on arrival and takes it back if you lie.",
+        vice="Jasmine, temple bells, and the slow ruin of men who disappointed her.",
+        secret="She keeps a garden behind the customs house, with a stone for every captain she never forgave.",
+        stats={"cunning": 7, "nerve": 6, "charm": 9, "greed": 4},
+        prompt="An {adult} Thai court lady (age 42), the gracious Port Authority officer of Bangkok seated in a "
+               "gilded river pavilion, a gold-threaded silk sabai draped over one bare shoulder and wrapped low, "
+               "jasmine garland and gold court jewellery, a palm-leaf tally and a royal seal beside her, river barges "
+               "behind, serene smile with steel in her eyes, {style}"),
+    "officer_batavia": dict(
+        name="Mevrouw Anneke van der Berg", title="Tollmistress of the Batavia Roads", age=39, origin="Rotterdam",
+        home_port="batavia", color="#e07b1f", voice_id="Wendy", speaking_rate=0.96,
+        delivery="crisp, dry Dutch precision with a wicked streak of humour; strict and enjoys it",
+        catchphrase="Every guilder, Captain. I count every single one. Slowly.",
+        bio="Anneke learned her trade from the old Sound Toll clerks at Elsinore, where captains first declared "
+            "their own cargo and the Crown could buy it at their word. She brought the rule to Batavia and enforces "
+            "it with a riding crop she says is for flies.",
+        quirk="Taps the riding crop on the desk once for every column she checks.",
+        vice="Genever, lace, and a captain sweating under her questions.",
+        secret="She has never once needed the crop for flies.",
+        stats={"cunning": 9, "nerve": 8, "charm": 5, "greed": 5},
+        prompt="An {adult} Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC "
+               "customs hall, severe black lace-collared gown with a laced leather corset over it and long black "
+               "gloves, a riding crop resting across an open ledger, spectacles low on her nose, pale blonde hair "
+               "pinned tight, a stern stare with a hint of wicked enjoyment, {style}"),
+    "officer_calcutta": dict(
+        name="Mrs. Honoria Blackwood", title="Collector of the Port of Calcutta", age=46, origin="London and Calcutta",
+        home_port="calcutta", color="#4a2a5c", voice_id="Deborah", speaking_rate=0.94,
+        delivery="velvet and venomous, a society hostess who smiles sweetly while she ruins you",
+        catchphrase="Do sit, Captain. This won't hurt a bit. Well. Not me.",
+        bio="Honoria arrived in Calcutta as a governor's niece and outlived three husbands, each richer than the "
+            "last. She now holds the dearest desk in the East and buys and audits more than anyone. She calls it "
+            "her charity work.",
+        quirk="Always offers you a chair, and it is always slightly too low.",
+        vice="Rubies, gossip, and the sound of a strongbox closing on someone else's silver.",
+        secret="Two of the three husbands were captains who under-declared.",
+        stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 10},
+        prompt="An {adult} English woman (age 46), the ruthless Port Authority officer of Calcutta at a mahogany "
+               "desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, "
+               "long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying "
+               "overhead, a sweet venomous smile, {style}"),
+}
+for _cid, _o in _OFFICERS.items():
+    _o["brand_link"], _o["portrait"] = "", ""
+    _o["portrait_prompt"] = _o.pop("prompt")
+    CHARACTERS[_cid] = _o
+# Added after games were already saved: config.validate adds these to a saved cast once.
+SEEDED = list(_OFFICERS)
 for _c in CHARACTERS.values():
     _c["portrait_prompt"] = _c["portrait_prompt"].format(adult=_ADULT, style=_STYLE)
 
@@ -296,12 +448,18 @@ for _who, _keys in {
     "customs": ["l.seized", "n.ban", "n.ban_lifted", "n.caught"],
     # The Mayor and the Tax collector speak only when they catch a captain (owner's decision).
     "mayor": ["l.slip_caught"],
-    "taxlady": ["l.tax_caught"],
+    # The Port Authority: every line is read by the officer of the port the house is in
+    # (voice.Planner, OFFICER_KEYS); "taxlady" is her stand-in when a line has no port.
+    "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_empty", "l.customs_paid", "l.customs_bought",
+                "l.customs_caught", "m.customs_clean", "m.customs_over", "m.customs_bought", "m.customs_caught",
+                "m.customs_bribe_refused", "m.customs_buyback", "e.customs_first", "e.customs_bribe_cost",
+                "e.customs_nothing_back"],
     "crier": ["n.opening", "n.start_one", "n.start_many", "n.game_over", "n.scarce", "n.glut", "n.wrecked",
               "m.begin", "m.new_game"],
 }.items():
     for _k in _keys:
         LINE_DEFAULTS[_k] = _who
+OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_DEFAULTS.items() if _w == "taxlady")
 
 # Short spoken versions of lines with amounts in them. The screen still shows the
 # full wording; the voice says this instead, so a line sounds the same however
@@ -312,7 +470,16 @@ for _who, _keys in {
 # Admin page gives it a spoken version of its own (cfg voice.say).
 SAY = {
     "l.slip_caught": "Slipping out of {port} in the dark, Captain? My watch never sleeps. You will pay double, and {port} will remember your name.",
-    "l.tax_caught": "Did you think I could not count, Captain? The full tax, a fine on top, and {port} will not forget it.",
+    "l.customs_welcome": "{line} Declare your cargo, Captain. Truly, or not. I do so enjoy finding out.",
+    "l.customs_paid": "Your papers are stamped, Captain. Welcome to {port}.",
+    "l.customs_bought": "I bought your {goods} at your own price, Captain. You did say that was what it was worth.",
+    "l.customs_caught": "I went through your hold, Captain. Every last corner. You paid in full, plus a fine, and {port} will talk.",
+    "m.customs_clean": "Stamped and sealed. A pleasure doing business with you, Captain.",
+    "m.customs_over": "So generous, Captain. A woman remembers a man who overpays.",
+    "m.customs_bought": "I'll take the {goods}, Captain. At your own price. You did say that was what it was worth.",
+    "m.customs_caught": "Naughty, naughty, Captain. I went through your hold. You'll pay the full tax and a fine on top.",
+    "m.customs_buyback": "Back so soon? The {goods} is yours again. Sentiment is expensive, Captain.",
+    "e.customs_bribe_cost": "You can't afford to sweeten me, Captain.",
     "e.full": "This game is full.",
     "e.years": "Choose one of the game lengths shown.",
     "e.no_room": "There is not enough room in the hold.",
@@ -353,6 +520,8 @@ SAY = {
 }
 # The same, for lines whose family-friendly wording differs.
 SAY_FAMILY = {
+    "m.customs_caught": "Caught, Captain. I went through your hold. You'll pay the full tax and a fine on top.",
+    "m.customs_over": "So generous, Captain. I remember captains who overpay.",
     "l.robbed": "A pickpocket made off with your silver in the market. Silver is safer in the bank.",
     "l.sank_all": "You drove them all off and won salvage.",
     "l.long_fight": "After a long chase you drove some of them off and the rest gave up.",

@@ -33,9 +33,40 @@ def try_act(game, pid, action):
         return False
 
 
+def clear_customs(game, pid, rng, wild=False):
+    """The Port Authority on arrival: a trader shaves a little off; a random bot does anything."""
+    p = game.s["players"][pid]
+    cu = p.get("customs")
+    if not cu:
+        return
+    if cu["status"] == "declare":
+        if wild:
+            assert not try_act(game, pid, {"type": "buy", "good": rng.choice(list(GOODS)), "qty": 1}), "trade before customs"
+            vals = {ln["good"]: rng.choice([0, ln["value"] * rng.random() * 2, "x", -5, ln["value"]]) for ln in cu["lines"]}
+            try_act(game, pid, {"type": "customs_declare", "values": vals, "bribe": rng.random() < 0.3})
+        else:
+            vals = {ln["good"]: int(ln["value"] * rng.choice([0.9, 1.0, 1.0])) for ln in cu["lines"]}
+            assert try_act(game, pid, {"type": "customs_declare", "values": vals})
+        check(game)
+    cu = p.get("customs")
+    if cu and cu["status"] == "verdict":
+        for r in cu["result"]["lines"]:
+            if r["units"] and rng.random() < 0.5:
+                try_act(game, pid, {"type": "customs_buyback", "good": r["good"]})
+                check(game)
+        assert try_act(game, pid, {"type": "customs_done"})
+    elif cu and cu["status"] == "declare":     # the wild bot's nonsense was refused: declare honestly
+        assert try_act(game, pid, {"type": "customs_declare", "values": {}})
+        return clear_customs(game, pid, rng)
+    elif cu:
+        assert try_act(game, pid, {"type": "customs_done"})
+    assert not p.get("customs")
+
+
 def trader_bot(game, pid, rng):
     """Sells what is dear here, buys what is cheap here, sails to the best market."""
     p = game.s["players"][pid]
+    clear_customs(game, pid, rng)
     here = p["port"]
     for g, q in list(p["cargo"].items()):
         if game.s["prices"][here][g] > GOODS[g]["base"] * 1.05:
@@ -71,6 +102,7 @@ def trader_bot(game, pid, rng):
 def random_bot(game, pid, rng):
     """Presses every button with nonsense to make sure nothing breaks."""
     p = game.s["players"][pid]
+    clear_customs(game, pid, rng, wild=True)
     for _ in range(12):
         action = rng.choice([
             {"type": "buy", "good": rng.choice(list(GOODS)), "qty": rng.randint(1, 400)},

@@ -262,6 +262,34 @@ def _walk(events, ps):
             h.trades.append(t)
             continue
 
+        if typ in ("customs_declare", "customs_auto"):
+            # The Port Authority: what she bought counts as a sale at the declared price; the rest of the
+            # silver that changed hands (tax, fines, a sweetener) is the Port Authority's line.
+            bought_in = 0
+            for r in e.get("lines") or ():
+                if r.get("units"):
+                    g, q, paid = r["good"], int(r["units"]), float(r.get("paid") or 0)
+                    basis = h.remove(g, q)
+                    c = h._c(g)
+                    c["sold_qty"] += q
+                    c["sold_rev"] += paid
+                    c["profit"] += paid - basis
+                    bought_in += paid
+                    h.line("sales", paid)
+            if e.get("cash"):
+                was, now = e["cash"]
+                h.line("customs", now - was - bought_in)
+            continue
+        if typ == "customs_buyback" and e.get("good"):
+            g, q, cost = e["good"], int(e.get("qty") or 0), float(e.get("cost") or 0)
+            units, held = h.hold.get(g, (0, 0))
+            h.hold[g] = (units + q, held + cost)
+            c = h._c(g)
+            c["bought_qty"] += q
+            c["bought_cost"] += cost
+            h.line("purchases", -cost)
+            continue
+
         if typ in ACTION_LINES and e.get("cash"):
             was, now = e["cash"]
             h.line(ACTION_LINES[typ], now - was)

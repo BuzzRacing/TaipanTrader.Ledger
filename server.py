@@ -220,8 +220,12 @@ class Hub:
         v["cfg"] = self.cfg_version
         # Who reads each line aloud, with a link to the audio (made only when a screen asks for it).
         me = v.get("me") or {}
-        v["voice"] = {"log": voice.PLAN.lines(me.get("log"), "log"),
+        v["voice"] = {"log": voice.PLAN.lines(me.get("log"), "log", port=me.get("port")),
                       "news": voice.PLAN.lines(v.get("news"), "news", 14)}
+        cu = me.get("customs")
+        if cu and cu.get("welcome"):
+            # The Port Authority officer's greeting, read by the officer of that port.
+            v["voice"]["customs"] = voice.PLAN.lines([cu["welcome"]], "log", port=cu.get("port"))
         return v
 
     def reload_settings(self, langs_saved=()):
@@ -530,7 +534,7 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         msg = HUB.game.act(pid, body, present)
                         HUB.changed()
-                    said = voice.PLAN.msg(msg)
+                    said = voice.PLAN.msg(msg, port=HUB.game.s["players"].get(pid, {}).get("port"))
                 return self._send(200, {"ok": True, "msg": msg, "voice": said})
             if path == "/api/shutdown":
                 if not self._local():

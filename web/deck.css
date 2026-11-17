@@ -859,53 +859,58 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
 .deck[data-tab="chart"] .dk-dyn { display: block; flex: 0 1 auto; min-height: 0; overflow: auto; width: min(100cqw, 100cqh - 18.5rem); }
 .deck[data-tab="chart"] .dk-stage { flex: none; width: min(100cqw, 100cqh - 18.5rem - clamp(.45rem, .9vw, .85rem)); }
 
-.cl-card { --paper: #ead9b2; --paper-hi: #f5e9ce; --ink: #241b14; --ink-soft: #6c5a44; --form-rule: rgba(85, 61, 34, .3);
-  position: relative; overflow: hidden; padding: .55rem .65rem .5rem .95rem; color: var(--ink);
-  background: linear-gradient(100deg, rgba(120, 72, 36, .12), transparent 10%),
-    repeating-linear-gradient(0deg, transparent 0 1.34rem, rgba(94, 67, 38, .07) 1.36rem),
+/* Aged, tea-stained paper rather than bright cream, so it sits in the dark deck without glaring;
+   type sized up for reading at arm's length. Same height budget (18.5rem above), tighter padding. */
+.cl-card { --paper: #b99d6f; --paper-hi: #cbb284; --ink: #1c130c; --ink-soft: #46372a; --form-rule: rgba(60, 40, 20, .42);
+  position: relative; overflow: hidden; padding: .5rem .6rem .45rem .95rem; color: var(--ink);
+  background: radial-gradient(ellipse 120% 90% at 50% 40%, transparent 55%, rgba(70, 42, 18, .38) 100%),
+    linear-gradient(100deg, rgba(90, 52, 22, .22), transparent 12%),
+    repeating-linear-gradient(0deg, transparent 0 1.6rem, rgba(70, 48, 26, .1) 1.62rem),
     linear-gradient(135deg, var(--paper-hi), var(--paper));
-  border: 1px solid #b4935d; border-radius: 3px;
-  box-shadow: 0 18px 34px -22px #000, inset 0 0 26px rgba(101, 67, 30, .11); }
-.cl-card::before { content: ""; position: absolute; top: 0; bottom: 0; left: .62rem; width: 1px; background: rgba(116, 45, 37, .38); }
-.cl-head { position: relative; min-height: 2.7rem; padding: 0 6.4rem .35rem 0; border-bottom: 2px double rgba(53, 36, 20, .55); }
-.cl-head > span { display: block; font: 700 .58rem/1.1 var(--special); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
-.cl-head h3 { margin: .08rem 0 0; font: 700 1.18rem/1 var(--serif); letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
+  border: 1px solid #7d6236; border-radius: 3px;
+  box-shadow: 0 18px 34px -22px #000, inset 0 0 34px rgba(64, 38, 14, .32), inset 0 0 0 1px rgba(255, 236, 190, .12); }
+.cl-card::before { content: ""; position: absolute; top: 0; bottom: 0; left: .62rem; width: 1px; background: rgba(110, 36, 28, .5); }
+.cl-head { position: relative; min-height: 2.9rem; padding: 0 7.6rem .3rem 0; border-bottom: 2px double rgba(40, 26, 12, .65); }
+.cl-head > span { display: block; font: 700 .7rem/1.1 var(--special); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-head h3 { margin: .1rem 0 0; font: 700 1.32rem/1 var(--serif); letter-spacing: .03em; text-transform: uppercase; color: var(--ink); }
 .cl-pay { position: absolute; top: 0; right: 0; text-align: right; }
-.cl-pay small { display: block; font: 700 .55rem/1 var(--special); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
-.cl-pay b { display: block; margin-top: .2rem; font: 800 1.3rem/1 var(--sans); font-variant-numeric: tabular-nums; color: #6f2e28; }
-.cl-meta { display: flex; align-items: center; justify-content: space-between; gap: .45rem; padding: .26rem 0 .2rem;
-  font: 700 .57rem/1.15 var(--special); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-pay small { display: block; font: 700 .66rem/1 var(--special); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-pay b { display: block; margin-top: .15rem; font: 800 1.6rem/1 var(--sans); font-variant-numeric: tabular-nums; color: #5e1f19; }
+.cl-meta { display: flex; align-items: center; justify-content: space-between; gap: .45rem; padding: .22rem 0 .16rem;
+  font: 700 .68rem/1.15 var(--special); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-soft); }
 .cl-rate { overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-.cl-rate.credit, .cl-row.credit strong { color: #286349; }
-.cl-rate.surcharge, .cl-row.surcharge strong { color: #7b3029; }
-.cl-section { margin-top: .22rem; }
-.cl-section h4 { margin: 0; padding: .22rem .35rem; font: 800 .62rem/1 var(--special); letter-spacing: .1em; text-transform: uppercase;
-  color: var(--paper-hi); background: rgba(51, 38, 26, .86); }
-.cl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .45rem; min-height: 1.2rem;
-  padding: .12rem .24rem; border-bottom: 1px dotted var(--form-rule); }
-.cl-row > span { min-width: 0; display: flex; align-items: baseline; gap: .3rem; overflow: hidden; font: 700 .7rem/1.1 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+.cl-rate.credit, .cl-row.credit strong { color: #1d4a35; }
+.cl-rate.surcharge, .cl-row.surcharge strong { color: #6a2019; }
+.cl-section { margin-top: .18rem; }
+.cl-section h4 { margin: 0; padding: .2rem .35rem; font: 800 .72rem/1 var(--special); letter-spacing: .09em; text-transform: uppercase;
+  color: #e9d8b0; background: rgba(38, 26, 15, .9); }
+.cl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .45rem; min-height: 1.5rem;
+  padding: .08rem .24rem; border-bottom: 1px dotted var(--form-rule); }
+.cl-row > span { min-width: 0; display: flex; align-items: baseline; gap: .35rem; overflow: hidden; font: 700 .88rem/1.1 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
 .cl-row span b { overflow: hidden; font: inherit; text-overflow: ellipsis; white-space: nowrap; }
-.cl-row small { overflow: hidden; font: .56rem/1.1 var(--sans); color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
-.cl-row strong { font: 800 .74rem/1 var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.cl-row.subtotal { min-height: 1.35rem; border-bottom: 0; border-top: 1px solid rgba(53, 36, 20, .65); }
+.cl-row small { overflow: hidden; font: 600 .7rem/1.1 var(--sans); color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+.cl-row strong { font: 800 .98rem/1 var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cl-row.subtotal { min-height: 1.6rem; border-bottom: 0; border-top: 1px solid rgba(40, 26, 12, .75); }
 .cl-row.subtotal span, .cl-row.subtotal strong { font-weight: 900; color: var(--ink); }
+.cl-row.subtotal strong { font-size: 1.05rem; }
 .cl-boxes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: solid var(--form-rule); border-width: 0 1px 1px 0; }
-.cl-boxes > span { min-width: 0; padding: .25rem .3rem .22rem; border: solid var(--form-rule); border-width: 1px 0 0 1px; }
-.cl-boxes small { display: block; overflow: hidden; font: 700 .52rem/1.05 var(--special); letter-spacing: .03em; text-transform: uppercase;
+.cl-boxes > span { min-width: 0; padding: .22rem .3rem .2rem; border: solid var(--form-rule); border-width: 1px 0 0 1px; }
+.cl-boxes small { display: block; overflow: hidden; font: 700 .64rem/1.05 var(--special); letter-spacing: .03em; text-transform: uppercase;
   color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
-.cl-boxes b { display: block; margin-top: .14rem; overflow: hidden; font: 800 .74rem/1 var(--sans); font-variant-numeric: tabular-nums;
+.cl-boxes b { display: block; margin-top: .12rem; overflow: hidden; font: 800 .92rem/1 var(--sans); font-variant-numeric: tabular-nums;
   color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
-.cl-foot { position: relative; margin-top: .28rem; padding-top: .25rem; border-top: 2px double rgba(53, 36, 20, .55); }
-.cl-foot p { margin: 0; font-size: .62rem; line-height: 1.22; }
-.cl-foot p + p { display: flex; justify-content: space-between; gap: .4rem; margin-top: .18rem; }
+.cl-foot { position: relative; margin-top: .24rem; padding-top: .22rem; border-top: 2px double rgba(40, 26, 12, .65); }
+.cl-foot p { margin: 0; font-size: .8rem; line-height: 1.22; }
+.cl-foot p + p { display: flex; justify-content: space-between; gap: .4rem; margin-top: .14rem; }
 .cl-foot p > b { font-weight: 800; }
-.cl-foot em { font-style: normal; font-weight: 800; color: #7b3029; }
+.cl-foot em { font-style: normal; font-weight: 800; color: #6a2019; }
 .cl-foot em:empty { display: none; }
-.cl-foot > small { display: block; margin-top: .18rem; font: 700 .52rem/1.1 var(--special); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
-.cl-status { padding: .22rem .34rem; border: 1px solid rgba(39, 92, 66, .45); background: rgba(39, 92, 66, .08); color: #285d45; }
-.cl-card.hiding .cl-status, .cl-card.slipping .cl-status { border-color: rgba(123, 48, 41, .5); background: rgba(123, 48, 41, .08); color: #7b3029; }
+.cl-foot > small { display: block; margin-top: .14rem; font: 700 .64rem/1.1 var(--special); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-status { padding: .2rem .34rem; border: 1px solid rgba(29, 74, 53, .55); background: rgba(29, 74, 53, .12); color: #1d4a35; }
+.cl-status:empty { display: none; }
+.cl-card.hiding .cl-status, .cl-card.slipping .cl-status { border-color: rgba(106, 32, 25, .6); background: rgba(106, 32, 25, .12); color: #6a2019; }
 .cl-card.slipping .cl-pay b { text-decoration: line-through; text-decoration-thickness: 2px; }
-.cl-note { margin: .55rem 0 0; font-size: .72rem; color: var(--ink-soft); }
+.cl-note { margin: .55rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 
 .du-choice-h { margin-top: .9rem; }
 .du-slipnote { color: color-mix(in srgb, var(--blood-hi) 70%, var(--deck-ivory)); }
@@ -958,3 +963,9 @@ body.player button.mk-go em.mk-pl { display: block; margin-top: .08rem; padding:
   font: 800 .72rem/1.05 var(--sans); font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
 body.player button.mk-go em.mk-pl.up { color: #eafff6; background: color-mix(in srgb, var(--deck-jade) 85%, #000); box-shadow: inset 0 0 0 1px var(--jade-hi); }
 body.player button.mk-go em.mk-pl.down { color: #ffd9cf; background: rgba(0, 0, 0, .45); box-shadow: inset 0 0 0 1px var(--blood-hi); }
+
+/* Names in the game title font (16 Nov 2026): your house in the top bar,
+   ship names on the Fleet cards, port names on the destination cards,
+   the price book and the stage plate (not while someone is speaking). */
+.dk-house b, .fl-ship .fl-name b, .dest-title b, .pb-pname,
+#stage:not(.talking) .stg-plate b { font-family: var(--title); font-weight: 400; }

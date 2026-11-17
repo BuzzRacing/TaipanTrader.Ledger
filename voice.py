@@ -472,8 +472,19 @@ class Planner:
             return None
         return {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, self.cfg["voice"])))}
 
-    def line(self, text, kind):
-        """kind: 'log' (captain's log), 'news', 'msg' (an answer to something the player did)."""
+    def _who(self, key, port):
+        """Who reads a line: the Port Authority's lines go to the officer of the player's port."""
+        cid = cast.speaker_for(self.cfg, key)
+        if port and key in cast.OFFICER_KEYS and cid == cast.LINE_DEFAULTS.get(key):
+            officer = ((self.cfg.get("ports") or {}).get(port) or {}).get("officer")
+            ch = self.cfg["characters"].get(officer) if officer else None
+            if ch and ch.get("voice_id"):
+                return officer
+        return cid
+
+    def line(self, text, kind, port=None):
+        """kind: 'log' (captain's log), 'news', 'msg' (an answer to something the player did).
+        port: where the player is, so the Port Authority's lines go to that port's officer."""
         v = self.cfg["voice"]
         if kind == "news":
             text = DATE_PREFIX.sub("", str(text))
@@ -481,26 +492,26 @@ class Planner:
         if kind == "log":
             if not v["read_log"]:
                 return None
-            cid = cast.speaker_for(self.cfg, key) if key else cast.speaker_for(self.cfg, "l.?")
+            cid = self._who(key, port) if key else cast.speaker_for(self.cfg, "l.?")
         elif kind == "news":
             cid = cast.speaker_for(self.cfg, key) if key else v["custom_news"]
         else:
             if not key or (key.startswith("m.") and not v["read_confirmations"]) or \
                     (key.startswith("e.") and not v["read_errors"]):
                 return None
-            cid = cast.speaker_for(self.cfg, key)
+            cid = self._who(key, port)
         return self._clip(self.spoken(key, fields, str(text).strip()), cid) if cid else None
 
-    def lines(self, texts, kind, limit=None):
+    def lines(self, texts, kind, limit=None, port=None):
         if not self.ready():
             return None
         texts = list(texts or [])[:limit] if limit else list(texts or [])
-        return [self.line(t, kind) for t in texts]
+        return [self.line(t, kind, port) for t in texts]
 
-    def msg(self, text):
+    def msg(self, text, port=None):
         if not self.ready():
             return None
-        return self.line(text, "msg")
+        return self.line(text, "msg", port)
 
     def public(self):
         """Settings the screens need: who is who, and what they read."""
