@@ -1191,7 +1191,7 @@ def lan_address():
 
 def main():
     global HUB
-    ap = argparse.ArgumentParser(description="SeaTrader game server")
+    ap = argparse.ArgumentParser(description="Crimson Ledger game server")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--new", action="store_true", help="archive the saved game and start a fresh one")
     ap.add_argument("--archive-only", action="store_true", help="archive the saved game and exit")
@@ -1244,13 +1244,13 @@ def main():
         httpd = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     except OSError as e:
         print("Could not open port {}: {}".format(args.port, e))
-        print("SeaTrader may already be running.")
+        print("Crimson Ledger may already be running.")
         journal.log("ERROR", "server", "Could not open port {}: {}".format(args.port, e))
         sys.exit(1)
     httpd.daemon_threads = True
     threading.Thread(target=HUB.ticker, daemon=True).start()
     print("")
-    print("  SeaTrader is running.")
+    print("  Crimson Ledger is running.")
     print("  This computer:   http://localhost:{}".format(args.port))
     print("  Other devices:   {}".format(join_url))
     print("  Harbor board:    {}/board".format(join_url))

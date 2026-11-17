@@ -38,8 +38,8 @@ if not errorlevel 1 set "PY=py -3"
 %PY% --version >nul 2>nul
 if errorlevel 1 goto nopython
 
-echo Starting the SeaTrader server...
-start "SeaTrader Server" /min %PY% server.py --port %PORT%
+echo Starting the Crimson Ledger server...
+start "Crimson Ledger Server" /min %PY% server.py --port %PORT%
 set /a TRIES=0
 :wait
 call :ping
@@ -71,7 +71,7 @@ goto end
 
 :unreachable
 echo.
-echo Could not reach the SeaTrader server at %HOST%
+echo Could not reach the Crimson Ledger server at %HOST%
 echo Check that it is switched on and that server_address.txt has the right address.
 echo To run the game on this computer instead, delete server_address.txt.
 echo.

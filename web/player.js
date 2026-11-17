@@ -305,7 +305,7 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "dues.slip": "Slip out at night",
     "dues.slip_note": "{pct}% chance the harbour watch catches you. Get away and you pay nothing; get caught and you pay {caught} and lose {rep} standing in {port}.",
     "dues.slipping": "Slipping out at night: nothing to pay if you get away, {caught} if you are caught.", "dues.level": "{port} rates ×{level}",
-    "dues.level_lo": "{port} rates ×{level}, cheaper than most", "dues.level_hi": "{port} rates ×{level}, dearer than most", "dues.restart": "The Mayor's bill shows once the SeaTrader server is restarted.",
+    "dues.level_lo": "{port} rates ×{level}, cheaper than most", "dues.level_hi": "{port} rates ×{level}, dearer than most", "dues.restart": "The Mayor's bill shows once the Crimson Ledger server is restarted.",
     "dues.anchorage": "Anchorage", "dues.anchorage_sub": "{n} ship(s) × {rate}",
     "dues.tonnage": "Tonnage", "dues.tonnage_sub": "{n} hold × {rate} per 100",
     "dues.repair": "Shipyard levy", "dues.repair_sub": "{rate} of {n} repairs",

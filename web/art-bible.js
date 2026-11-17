@@ -338,7 +338,7 @@
 
     define("surf_logo", { title: "Logo / wordmark", aspect: "16:5", size: "1600 × 500 PNG", kicker: "16:5 transparent", current: G.logo, apply: setG("logo"), negative: neg,
       notes: "No baked background. Test at 320 px wide and on dark teak. The game name itself is set in Uncial Antiqua, so the art is the emblem only.",
-      prompt: "Sea Trader emblem artwork for a wide wordmark: an engraved antique-brass maritime crest combining a compass rose, a furled square sail and a merchant's balance in a horizontal cartouche, on a plain pure-black ground for easy cut-out, crisp silhouette, no lettering, readable at 320 pixels wide. " + recipeStyle });
+      prompt: "Crimson Ledger emblem artwork for a wide wordmark: an engraved antique-brass maritime crest combining a compass rose, a furled square sail and a merchant's balance in a horizontal cartouche, on a plain pure-black ground for easy cut-out, crisp silhouette, no lettering, readable at 320 pixels wide. " + recipeStyle });
     define("surf_favicon", { title: "Browser icon", aspect: "1:1", size: "512 × 512 PNG", kicker: "1:1", current: G.favicon, apply: setG("favicon"), negative: neg,
       notes: "One brass mark: coin, sail or ST monogram. Must read at 32 px.",
       prompt: "A single antique-brass trade coin stamped with a full-bellied square sail, centered on plain black, bold simple silhouette, high contrast, no lettering, designed to read at 32 pixels. " + recipeStyle });
@@ -424,7 +424,7 @@
       <section class="ab-hero" style="--ab-mobile-image:url('${KEY_ART}');background-image:linear-gradient(90deg,rgba(13,9,7,.96) 0%,rgba(13,9,7,.74) 38%,rgba(13,9,7,.06) 76%),url('${KEY_ART}')">
         <div class="ab-hero-copy"><span class="ab-kicker">Historical mode · visual canon v1.1</span>
           <h1>Silk, salt<br><em>&amp; dangerous money.</em></h1>
-          <p>Sea Trader is a private-release adult 1860s China Seas power fantasy: trade, appetite, kink, risk and ambition rendered with cinematic historical realism.</p>
+          <p>Crimson Ledger is a private-release adult 1860s China Seas power fantasy: trade, appetite, kink, risk and ambition rendered with cinematic historical realism.</p>
           <div class="ab-tags"><span>1860 China Seas</span><span>Adults 25+ only</span><span>Nudity permitted</span><span>Private release</span></div>
         </div>
       </section>
@@ -586,7 +586,7 @@
     const constraints = familyMode
       ? "every person is unmistakably adult age 25 or older and fully dressed; no nudity, erotic framing, fetishwear or kink imagery; original faces, poses, garments and composition; natural skin; believable anatomy; historically plausible maritime details; no text, logo, border, signature or watermark"
       : "every person is unmistakably adult age 25 or older; adult nudity, exposed breasts, buttocks and genitals, erotic posing and period-plausible consensual kink cues are permitted when selected; clear agency; no explicit sex act, sexual violence or coercion; original faces, poses, garments and composition; natural skin; believable anatomy; historically plausible maritime details; no text, logo, border, signature or watermark";
-    const prompt = `Use case: historical-scene\nAsset type: Sea Trader ${mode} ${value("asset")}\nPrimary request: ${subject} in ${value("place")}, ${value("moment")}.\nWorld and style: ${style}.\nLighting: ${value("light")}.\nTone: ${value("heat")}.\nComposition: ${value("composition")}.\nPalette: lacquer black, oxblood silk, antique brass, imperial jade, ivory linen, tobacco leather and storm blue.${cargo}${ship}\nConstraints: ${constraints}.`;
+    const prompt = `Use case: historical-scene\nAsset type: Crimson Ledger ${mode} ${value("asset")}\nPrimary request: ${subject} in ${value("place")}, ${value("moment")}.\nWorld and style: ${style}.\nLighting: ${value("light")}.\nTone: ${value("heat")}.\nComposition: ${value("composition")}.\nPalette: lacquer black, oxblood silk, antique brass, imperial jade, ivory linen, tobacco leather and storm blue.${cargo}${ship}\nConstraints: ${constraints}.`;
     const out = root.querySelector("#ab-positive");
     if (out) out.value = prompt;
     if (SLOTS.studio) {

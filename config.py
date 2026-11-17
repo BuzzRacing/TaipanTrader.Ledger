@@ -33,7 +33,7 @@ LON_MIN, LON_MAX, LAT_MIN, LAT_MAX = 85.0, 135.0, -10.0, 35.0
 
 DEFAULTS = {
     "brand": {
-        "title_a": "Sea", "title_b": "Trader",
+        "title_a": "Crimson", "title_b": "Ledger",
         "tagline": "Trading the China seas, 1860",
         "currency": "$",
         "lender": "Madam Wu Lian",

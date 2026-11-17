@@ -55,16 +55,20 @@ async function loadInfo() {
   cfgSeen = info.cfg;
   if (typeof Media !== "undefined") Media.setup(info.media);
   document.documentElement.lang = d.lang || "en";
-  document.title = d.brand.title_a + d.brand.title_b + (document.body.classList.contains("board") ? " · " + t("board.houses") : "");
+  document.title = brandName(d.brand) + (document.body.classList.contains("board") ? " · " + t("board.houses") : "");
   const fav = document.getElementById("fav");
   if (fav) fav.href = d.graphics.favicon || "data:,";
   return info;
 }
 
+function brandName(b) {
+  return [b.title_a, b.title_b].filter(Boolean).join(" ");
+}
+
 function brandHtml(D) {
   const b = D.brand;
-  if (D.graphics.logo) return `<img class="logo" src="${esc(D.graphics.logo)}" alt="${esc(b.title_a + b.title_b)}">`;
-  return `${esc(b.title_a)}<span>${esc(b.title_b)}</span>`;
+  if (D.graphics.logo) return `<img class="logo" src="${esc(D.graphics.logo)}" alt="${esc(brandName(b))}">`;
+  return `${esc(b.title_a)} <span>${esc(b.title_b)}</span>`;
 }
 
 function pic(url, cls) {

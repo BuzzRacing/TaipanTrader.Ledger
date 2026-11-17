@@ -152,7 +152,7 @@
    "seed": null,
    "width": 0,
    "height": 0,
-   "bytes": 1081,
+   "bytes": 8859,
    "source": "config",
    "added": "2026-11-16 18:40",
    "replaces": ""
@@ -179,7 +179,7 @@
    "seed": null,
    "width": 0,
    "height": 0,
-   "bytes": 2526,
+   "bytes": 10655,
    "source": "config",
    "added": "2026-11-16 18:40",
    "replaces": ""
@@ -2042,7 +2042,7 @@
     "keeper"
    ],
    "tags": [],
-   "nsfw": true,
+   "nsfw": false,
    "reviewed": true,
    "enabled": true,
    "primary": false,
@@ -2069,7 +2069,7 @@
    "tags": [
     "breast exposed"
    ],
-   "nsfw": true,
+   "nsfw": false,
    "reviewed": true,
    "enabled": true,
    "primary": false,
@@ -2669,6 +2669,331 @@
    "source": "generated",
    "added": "2026-11-17 00:56",
    "replaces": ""
+  },
+  {
+   "id": "m0d333e0527",
+   "url": "/uploads/portrait-mayor-29f09073.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "mayor",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult woman (age 47), the Mayor of a treaty port behind a teak harbour-office desk, ledger and iron strongbox before her, gold chain of office over a fitted pirate frock coat and corset, harbour lanterns through the window behind, cool appraising smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2255157,
+   "source": "generated",
+   "added": "2026-11-17 05:54",
+   "replaces": ""
+  },
+  {
+   "id": "mbf98b25cdd",
+   "url": "/uploads/portrait-officer_singapore-d326ddeb.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_singapore",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult English woman (age 44), the languid widowed Port Authority officer of Singapore lounging in a rattan chair on a shaded colonial wharf office veranda, loosened white muslin gown slipping from one shoulder over a lace corset, a glass of gin sweating in one hand and a customs stamp dangling forgotten from the other, ceiling fan and palms, heavy-lidded amused bedroom gaze, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2313648,
+   "source": "generated",
+   "added": "2026-11-17 05:55",
+   "replaces": ""
+  },
+  {
+   "id": "me14ca1f8fb",
+   "url": "/uploads/portrait-taxlady-6bbeb4a0.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "taxlady",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult woman (age 36), a treaty-port tax collector on a busy gangway with an open tally book, pencil and brass customs seal, strongbox at her feet, fitted dark revenue coat over a corset, spectacles pushed up into pinned hair, knowing half-smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2296286,
+   "source": "generated",
+   "added": "2026-11-17 05:56",
+   "replaces": ""
+  },
+  {
+   "id": "m4ba792f0da",
+   "url": "/uploads/portrait-officer_manila-b8a53d03.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_manila",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Spanish-Filipina woman (age 38), the charming Port Authority officer of Manila in a carved narra-wood customs office, off-shoulder black lace mantilla gown with a deep neckline and a crimson silk sash, a fan of Manila embroidery in one hand and an ivory customs seal in the other, bales of silk behind her, warm candlelight, inviting smile and hungry eyes, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2257052,
+   "source": "generated",
+   "added": "2026-11-17 05:57",
+   "replaces": ""
+  },
+  {
+   "id": "m1b716a8817",
+   "url": "/uploads/portrait-officer_saigon-0f2061f3.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_saigon",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult French woman (age 33), the mercurial colonial Port Authority officer of Saigon reclining on a chaise in a shuttered customs house, half-laced violet silk corset and loosened tricolour sash, a glass of absinthe and a gold coin on the table beside an open ledger, slatted tropical light across her skin, a teasing sidelong smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2132203,
+   "source": "generated",
+   "added": "2026-11-17 05:57",
+   "replaces": ""
+  },
+  {
+   "id": "m92062d0c21",
+   "url": "/uploads/portrait-officer_nagasaki-d4993606.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_nagasaki",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Japanese woman (age 35), the precise Port Authority officer of Nagasaki kneeling at a low lacquer desk in the Dejima customs house, deep indigo silk kimono worn loose off both shoulders with the obi half undone, brush and inkstone, an abacus and a Dutch ledger before her, paper lantern glow, a calm piercing stare that sees straight through you, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 1987085,
+   "source": "generated",
+   "added": "2026-11-17 05:58",
+   "replaces": ""
+  },
+  {
+   "id": "mf7a442a593",
+   "url": "/uploads/portrait-officer_foochow-2991db6f.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_foochow",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Chinese woman (age 40), the Port Authority officer of Foochow serving tea in a customs house hung with tea-chest labels, a jade-green silk qipao with a thigh-high slit unbuttoned at the collar, jade pins in her black hair, a steaming clay teapot tilted in her hand and a customs seal on the table, river light through lattice, a slow knowing smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2176629,
+   "source": "generated",
+   "added": "2026-11-17 05:59",
+   "replaces": ""
+  },
+  {
+   "id": "mfc9addca3d",
+   "url": "/uploads/portrait-officer_shanghai-45bcf0d6.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_shanghai",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Chinese woman (age 37), the commanding Port Authority officer of Shanghai standing on the Bund customs house steps, fitted oxblood brocade jacket open over a black silk corset, high collar undone, gold-embroidered riding gloves and a customs baton, clerks and cargo behind her, imperious half-smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2257514,
+   "source": "generated",
+   "added": "2026-11-17 06:00",
+   "replaces": ""
+  },
+  {
+   "id": "m3890ea47fb",
+   "url": "/uploads/portrait-officer_bangkok-8302134d.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_bangkok",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Thai court lady (age 42), the gracious Port Authority officer of Bangkok seated in a gilded river pavilion, a gold-threaded silk sabai draped over one bare shoulder and wrapped low, jasmine garland and gold court jewellery, a palm-leaf tally and a royal seal beside her, river barges behind, serene smile with steel in her eyes, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2610855,
+   "source": "generated",
+   "added": "2026-11-17 06:00",
+   "replaces": ""
+  },
+  {
+   "id": "m6281b9afaa",
+   "url": "/uploads/portrait-officer_batavia-c6601f97.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_batavia",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC customs hall, severe black lace-collared gown with a laced leather corset over it and long black gloves, a riding crop resting across an open ledger, spectacles low on her nose, pale blonde hair pinned tight, a stern stare with a hint of wicked enjoyment, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2160702,
+   "source": "generated",
+   "added": "2026-11-17 06:03",
+   "replaces": ""
+  },
+  {
+   "id": "m91eb4bfa84",
+   "url": "/uploads/portrait-officer_batavia-cb0e29a4.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_batavia",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC customs hall, severe black lace-collared gown with a laced leather corset over it and long black gloves, a riding crop resting across an open ledger, spectacles low on her nose, pale blonde hair pinned tight, a stern stare with a hint of wicked enjoyment, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2146620,
+   "source": "generated",
+   "added": "2026-11-17 06:03",
+   "replaces": ""
+  },
+  {
+   "id": "md6037b503f",
+   "url": "/uploads/portrait-officer_calcutta-f77f45aa.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "officer_calcutta",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult English woman (age 46), the ruthless Port Authority officer of Calcutta at a mahogany desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying overhead, a sweet venomous smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 1967950,
+   "source": "generated",
+   "added": "2026-11-17 06:04",
+   "replaces": ""
+  },
+  {
+   "id": "me4dd0aa0e9",
+   "url": "/uploads/portrait-banker-1ba0a27f.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "banker",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset, steel spectacles, pinned auburn hair, leather gloves, silver dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": null,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2167204,
+   "source": "generated",
+   "added": "2026-11-17 06:04",
+   "replaces": ""
   }
  ],
  "rules": {
@@ -2725,9 +3050,9 @@
   "brand:logo": {
    "url": "/uploads/historical-logo.svg",
    "item": "m282264f146",
-   "since": "2026-11-16 19:57",
-   "bytes": 2526,
-   "mtime": 1794873760,
+   "since": "2026-11-17 06:05",
+   "bytes": 10655,
+   "mtime": 1794924312,
    "history": [
     {
      "at": "2026-11-16 19:57",
@@ -2735,15 +3060,22 @@
      "to": "/uploads/historical-logo.svg",
      "item": "m282264f146",
      "how": "first"
+    },
+    {
+     "at": "2026-11-17 06:05",
+     "from": "/uploads/historical-logo.svg",
+     "to": "/uploads/historical-logo.svg",
+     "item": "m282264f146",
+     "how": "file"
     }
    ]
   },
   "brand:favicon": {
    "url": "/uploads/historical-favicon.svg",
    "item": "m9785e45676",
-   "since": "2026-11-16 19:57",
-   "bytes": 1081,
-   "mtime": 1794873760,
+   "since": "2026-11-17 06:05",
+   "bytes": 8859,
+   "mtime": 1794924313,
    "history": [
     {
      "at": "2026-11-16 19:57",
@@ -2751,6 +3083,13 @@
      "to": "/uploads/historical-favicon.svg",
      "item": "m9785e45676",
      "how": "first"
+    },
+    {
+     "at": "2026-11-17 06:05",
+     "from": "/uploads/historical-favicon.svg",
+     "to": "/uploads/historical-favicon.svg",
+     "item": "m9785e45676",
+     "how": "file"
     }
    ]
   },

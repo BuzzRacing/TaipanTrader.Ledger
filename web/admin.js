@@ -190,7 +190,7 @@ async function boot() {
     (sec.groups || []).forEach(g => g.fields.forEach(f => { FIELD[f.path] = f; }));
     (sec.tables || []).forEach(t => { COL[t.path] = {}; t.columns.forEach(c => { COL[t.path][c.key] = c; }); });
   });
-  $("#gname").textContent = CFG.brand.title_a + CFG.brand.title_b;
+  $("#gname").textContent = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
   draw();
   refreshDirty();
   if (!polling) { polling = true; pollLive(); }
@@ -538,7 +538,7 @@ function edited(e) {
     const box = el.closest(".f");
     if (box) box.classList.toggle("mod", !same(v, get(A.defaults, d.path)));
     if (d.path.startsWith("theme.")) previewTheme();
-    if (d.path.startsWith("brand.title")) $("#gname").textContent = CFG.brand.title_a + CFG.brand.title_b;
+    if (d.path.startsWith("brand.title")) $("#gname").textContent = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
   } else if (d.t) {
     const rows = get(CFG, d.t), row = rows[d.r];
     const v = readControl(el, COL[d.t][d.c], row[d.c]);
