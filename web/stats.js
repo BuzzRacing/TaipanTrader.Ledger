@@ -18,6 +18,9 @@ const ui = { scope: store("tally_scope") || "voyage", tab: store("tally_tab") ||
              good: null, tables: {}, raceAt: null, raceTimer: null, mapTimer: null, lastJson: {} };
 let V = null;                         // voyage answer
 let C = null;                         // career answer
+const EMBED = new URLSearchParams(location.search).has("embed");   // inside the player screen
+if (EMBED) document.body.classList.add("embed");
+ui.visible = true;
 const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* Categorical slots for houses (validated for the dark deck: adjacent CVD and normal-vision
@@ -936,6 +939,7 @@ app.addEventListener("click", e => {
       return;
     }
     case "back":
+      if (EMBED) { parent.postMessage({ tally: "close" }, location.origin); return; }
       if (window.opener && !window.opener.closed) { window.close(); return; }
       location.href = "/";
       return;
@@ -956,13 +960,21 @@ function redraw() {
   main.scrollTop = keep;
 }
 let resizeT = null;
-window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(redraw, 160); });
+window.addEventListener("resize", () => { if (!ui.visible) return; clearTimeout(resizeT); resizeT = setTimeout(redraw, 160); });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") { const x = app.querySelector(".tl-x"); if (x) x.click(); }
 });
 // While a game is in progress the numbers move every month: look again now and then.
-setInterval(() => { if (!document.hidden && V && V.voyage.game.running && !ui.raceTimer && !ui.mapTimer) load(true); }, 20000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden && V) load(true); });
+setInterval(() => { if (ui.visible && !document.hidden && V && V.voyage.game.running && !ui.raceTimer && !ui.mapTimer) load(true); }, 20000);
+// Inside the player screen: the deck says when the Tally Book is shown or hidden, and when a month passes.
+window.addEventListener("message", e => {
+  if (e.origin !== location.origin || !e.data || !e.data.tally) return;
+  const m = e.data.tally;
+  if (m === "hide") { ui.visible = false; stopTimers(); hideTip(); return; }
+  if (m === "show") { ui.visible = true; requestAnimationFrame(() => { if (V || C) render(true); load(true); }); return; }
+  if (m === "refresh" && ui.visible) load(true);
+});
+document.addEventListener("visibilitychange", () => { if (ui.visible && !document.hidden && V) load(true); });
 
 (async function start() {
   try {

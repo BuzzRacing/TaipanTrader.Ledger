@@ -213,6 +213,8 @@ EN = {
     "market.hold": "Hold: {used} of {cap} units used.",
     "market.standing_short": "Standing {rep} of 100 · {margin}% margin",
     "market.hold_short": "Hold {used} / {cap}",
+    "market.hold_plan": "Hold {used} → {after} / {cap}",
+    "deck.plan_now": "now {now}",
     "market.aboard": "{n} aboard",
     "market.buy_n": "Buy {n} · {cost}",
     "market.sell_n": "Sell {n} · {cost}",
@@ -275,6 +277,8 @@ EN = {
 
     # --- ledger ------------------------------------------------------------
     "ledger.title": "Price book",
+    "ledger.taxlady": "Tax collector of {port}, keeper of the ledger",
+    "chart.mayor": "Mayor of {port}",
     "ledger.info": "Prices as you last saw them in each port. They will have moved since.",
     "ledger.now": "seen now", "ledger.ago": "seen {n} mo", "ledger.never": "not visited",
     "ledger.standings": "Standings",

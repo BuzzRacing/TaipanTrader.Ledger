@@ -10,8 +10,7 @@ let stream = null;
 let online = true;
 let reloading = false;
 const ui = { tab: "market", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
-             spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, menu: false,
-             tgt: {}, dragging: false };
+             spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false };
 let VS = {};             // voice settings: who is in the cast, what this screen reads aloud
 const app = document.getElementById("app");
 
@@ -172,7 +171,7 @@ function render() {
     const deck = deckFrame(), parts = gameScreen();
     deck.classList.toggle("locked", !!S.me.ready);
     deck.dataset.tab = ui.tab;
-    ["top", "nav", "pane", "side", "over"].forEach(k => { if (!(k === "pane" && ui.dragging)) region(k, parts[k]); });
+    ["top", "nav", "pane", "side", "over"].forEach(k => { if (!(ui.drag && k === "pane")) region(k, parts[k]); });
     if (ui.paneTab !== ui.tab) { ui.paneTab = ui.tab; app.querySelector(".dk-pane").scrollTop = 0; }
   } else {
     const html = !S.me ? joinScreen() : S.phase === "lobby" ? lobbyScreen() : endScreen();
@@ -201,27 +200,91 @@ function deckArt(inGame) {
   Ambient.set(list);
   if (!inGame) return;
   Stage.mount(document.getElementById("stageSlot"));
-  const woman = stageWomanHtml(ui.tab);
-  document.getElementById("deck").classList.toggle("woman", !!woman);
-  if (woman) return Stage.idle(me.port + ":" + ui.tab, woman.html, woman.name, woman.note);
+  const woman = STAGE_WOMEN[ui.tab];
+  const womanImg = woman ? stageWomanHtml(me.port, woman.role) : "";
+  document.getElementById("deck").classList.toggle("woman", !!womanImg);
+  if (womanImg) {
+    Stage.idle(me.port + "#" + woman.role, womanImg, te(woman.title, { port: portName(me.port) }), S.date);
+    return;
+  }
   Stage.idle(me.port, Media.html("port", me.port, "banner", "stg-img", (g.ports || {})[me.port],
                                  { video: true, slot: "stage", mode: "shuffle" }),
              portName(me.port), S.date);
 }
 
-/* The women who keep the stage while a tab is open: the market keeper on the Market tab and the
-   ship master on the Fleet tab. Pictures come from Media Library > Ports > (port) in that role. A
-   port without one borrows one from another port; with none anywhere the port picture shows. */
-const STAGE_WOMEN = { market: { role: "keeper", key: "market.keeper" }, fleet: { role: "shipmaster", key: "fleet.master" } };
-function stageWomanHtml(tab) {
-  const w = STAGE_WOMEN[tab];
-  if (!w) return null;
-  const own = p => Media.items("port", p, w.role, true).some(i => i.r.includes(w.role));
-  const here = S.me.port;
-  const from = own(here) ? here : Object.keys(D.ports).find(own);
-  if (!from) return null;
-  const html = Media.html("port", from, w.role, "stg-img", "", { video: true, strict: true, slot: "stage-" + w.role, mode: "shuffle" });
-  return html ? { html, name: t(w.key, { port: portName(here) }), note: S.date } : null;
+/* The women on the stage: while the Market tab is open, the keeper behind the stalls; while the
+   Fleet tab is open, the ship master; while the Ledger tab is open, the tax lady, who keeps the
+   books; while the Set sail tab is open, the town's lady mayor, who sees the ships off. Media Library > Ports > (port) pictures
+   with the "Market keeper", "Ship master", "Mayor" or "Tax lady" role; a port without its own borrows one from another port. One pick per port
+   visit, so she does not flicker on redraws. */
+const STAGE_WOMEN = {
+  market: { role: "keeper", title: "market.title" },
+  fleet: { role: "shipmaster", title: "fleet.master" },
+  ledger: { role: "taxlady", title: "ledger.taxlady" },
+  chart: { role: "mayor", title: "chart.mayor" },
+};
+/* Stage titles until the server is restarted with the current strings.py. */
+var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {},
+  { "ledger.taxlady": "Tax collector of {port}, keeper of the ledger", "chart.mayor": "Mayor of {port}" });
+const womanPick = {};
+
+/* The tab rail shows a picture instead of an icon: the same woman the stage shows for that tab where
+   there is one (Market: the market keeper, Fleet: the ship master, Ledger: the tax lady, Set sail: the
+   mayor), the port the house is in for Port (and for Set sail without a mayor), and a cast member's
+   profile picture for the rest (Ledger without a tax lady: the crier, Advice: the first mate, Tally Book:
+   the bookmaker). Repaint any of them in the Media Library and the tab follows. The SVG
+   icon is the fallback when there is no picture at all. */
+const TAB_FACES = {
+  market: { woman: "keeper", cast: "comprador" },
+  fleet: { woman: "shipmaster", cast: "shipwright" },
+  port: { port: true },
+  ledger: { woman: "taxlady", cast: "crier" },
+  advice: { cast: "narrator" },
+  tally: { cast: "bookmaker" },
+  chart: { woman: "mayor", port: true },
+};
+function tabFaceUrl(k) {
+  const f = TAB_FACES[k], me = S.me;
+  if (!f) return "";
+  if (f.woman) {
+    const tagged = subs => Media.items("port", subs, f.woman, false).filter(i => i.r.includes(f.woman));
+    let list = tagged(me.port);
+    if (!list.length) list = tagged(Object.keys(D.ports));
+    if (list.length) {
+      const key = f.woman + ":" + me.port;   // same pick as the stage, so tab and stage match
+      let it = list.find(i => i.id === womanPick[key]);
+      if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
+      return it.u;
+    }
+  }
+  if (f.port) {   // Port, or Set sail without a mayor: the port the house is in
+    const it = Media.choose("port", me.port, "banner", { slot: "tab", mode: "fixed" });
+    return (it && it.u) || (D.graphics.ports || {})[me.port] || "";
+  }
+  const pic = Media.choose("persona", f.cast, "portrait", { slot: "tab", mode: "fixed" });
+  return (pic && pic.u) || ((VS.cast || {})[f.cast] || {}).portrait || "";
+}
+function womanTabbed(k) {
+  const f = TAB_FACES[k];
+  return !!(f && f.woman && Media.items("port", Object.keys(D.ports), f.woman, false).some(i => i.r.includes(f.woman)));
+}
+function tabFace(k) {
+  const u = tabFaceUrl(k);
+  const isPort = TAB_FACES[k] && TAB_FACES[k].port && !womanTabbed(k);
+  return u ? `<img class="dk-tabimg${isPort ? " port" : ""}" src="${esc(u)}" alt="">` : (DECK_ICONS[k] || "");
+}
+function stageWomanHtml(port, role) {
+  const tagged = subs => Media.items("port", subs, role, true).filter(i => i.r.includes(role));
+  let list = tagged(port);
+  if (!list.length) list = tagged(Object.keys(D.ports));
+  if (!list.length) return "";
+  const key = role + ":" + port;
+  let it = list.find(i => i.id === womanPick[key]);
+  if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
+  const u = esc(it.u), cls = "stg-img stg-keeper stg-" + role;
+  return it.t === "video"
+    ? `<video class="${cls}" src="${u}" muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`
+    : `<img class="${cls}" src="${u}" alt="">`;
 }
 
 function masthead(sub) {
@@ -284,55 +347,50 @@ function endScreen() {
       <p class="muted">${te("end.kept")}</p></section></main>`;
 }
 
+/* The header plaques. While trades are lined up on the market bars, silver and hold show where they
+   will land if every lined-up trade goes through, tinted by which way they move. */
+function topHtml() {
+  const me = S.me, p = pending();
+  const dir = (to, from) => to > from ? " up" : to < from ? " dn" : "";
+  const stats = [["stat.silver", money(p.cash), "silver" + dir(p.cash, me.cash)], ["stat.bank", money(me.bank)], ["stat.debt", money(me.debt), me.debt > 0 ? "bad" : ""],
+                 ["stat.worth", money(me.worth), "worth"], ["stat.hold", p.used + " / " + me.capacity, dir(p.used, me.used).trim()], ["stat.guns", guns()]]
+    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b></div>`).join("");
+  return `<div class="dk-house"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
+      <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
+      <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
+    <div class="dk-stats">${stats}</div>`;
+}
+
+/* Silver and hold after every trade lined up on the market bars (the live ones, before Buy/Sell). */
+function pending() {
+  const me = S.me;
+  let cash = me.cash, used = me.used;
+  if (me.ready || !D.goods) return { cash, used };
+  Object.keys(D.goods).forEach(g => {
+    if (ui.vals["t_" + g] == null) return;
+    const tr = tradeOf(g);
+    if (!tr.side) return;
+    const q = quote(g, tr.qty, tr.side);
+    cash += tr.side === "buy" ? -q : q;
+    used += tr.d;
+  });
+  return { cash, used };
+}
+
 function gameScreen() {
   const me = S.me;
   if (ui.seenTurn === null) ui.seenTurn = me.log.length && S.turn > 0 ? -1 : S.turn;
   const report = ui.seenTurn !== S.turn && me.log.length ? logModal() : "";
   if (ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
-  const stats = [["stat.silver", money(me.cash), "silver"], ["stat.bank", money(me.bank)], ["stat.debt", money(me.debt), me.debt > 0 ? "bad" : ""],
-                 ["stat.worth", money(me.worth), "worth"], ["stat.hold", me.used + " / " + me.capacity], ["stat.guns", guns()]]
-    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b></div>`).join("");
-  const top = `<div class="dk-house"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
-      <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
-      <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
-    <div class="dk-stats">${stats}</div>`;
-  const tabBtn = k =>
-    `<button type="button" class="${ui.tab === k ? "on" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
-    `${DECK_ICONS[k] || ""}<span>${te("tab." + k)}</span></button>`;
-  // tabs, the Tally Book, a gap, then Advice and the captain at the foot
-  const nav = ["market", "port", "fleet", "chart", "ledger"].map(tabBtn).join("") +
-    `<button type="button" class="dk-tally" data-act="tally" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
-    `${DECK_ICONS.tally || ""}<span>${te("st.open")}</span></button>` +
-    `<i class="dk-gap"></i>${tabBtn("advice")}${captainButton()}`;
-  const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab, advice: adviceTab }[ui.tab]();
+  const top = topHtml();
+  const nav = ["market", "port", "fleet", "chart", "ledger"].map(k =>
+    `<button type="button" class="${ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
+    `${tabFace(k)}<span>${te("tab." + k)}</span></button>`).join("") +
+    `<button type="button" class="dk-tally${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
+    `${tabFace("tally")}<span>${te("st.open")}</span></button>`;
+  const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
   return { top, nav, pane, side: feed() + helm(), over: report };
-}
-
-/* The bottom of the rail: the player's own picture (or their initials in the house colour).
-   It opens a small menu of the player's own things: voices on or off, options, and more later. */
-function captainButton() {
-  const me = S.me;
-  const face = me.portrait
-    ? `<img src="${esc(me.portrait)}" alt="">`
-    : `<em>${esc(String(me.name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase())}</em>`;
-  const voices = Voice.enabled();
-  const muted = Voice.muted();
-  const fly = !ui.menu ? "" : `<div class="dk-fly" role="menu">
-      <button type="button" role="menuitem" data-act="speech" class="${voices && !muted ? "on" : ""}" ${voices ? "" : "disabled"}
-        aria-label="${te(!voices ? "deck.speech_none" : muted ? "deck.speech_off" : "deck.speech_on")}" title="${te(!voices ? "deck.speech_none" : muted ? "deck.speech_off" : "deck.speech_on")}">
-        ${DECK_ICONS[voices && !muted ? "speech_on" : "speech_off"]}<span>${te("deck.speech")}</span></button>
-      <button type="button" role="menuitem" data-act="options" aria-label="${te("deck.options")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button>
-    </div>`;
-  return `<div class="dk-me${ui.menu ? " open" : ""}">${fly}
-    <button type="button" class="dk-face" data-act="menu" aria-haspopup="menu" aria-expanded="${ui.menu}" aria-label="${te("deck.me", { name: me.name })}"
-      style="--house:${COLORS[me.color % 8]}">${face}<span>${esc(me.name)}</span></button></div>`;
-}
-
-/* Advice from one of the cast, based on the player's numbers. Planned, not built yet. */
-function adviceTab() {
-  return `<section class="card"><p class="eyebrow">${te("advice.eyebrow")}</p><h2>${te("advice.title")}</h2>
-    <p class="muted">${te("advice.soon")}</p></section>`;
 }
 
 /* The side column under the stage: this month's log or the port news, scrolling inside itself. */
@@ -375,61 +433,82 @@ function logModal() {
 }
 
 /* --------------------------------------------------------------- market -- */
-/* One drag bar per cargo sets how much will be aboard. It starts at what is aboard now (the brass
-   tick); drag right to buy (jade), left to sell (oxblood). The row's one button does the trade. */
+/* One fat drag bar per cargo. The bar is how much of it the house will have aboard: it starts at what
+   is aboard now (the brass tick), dragging right buys, dragging left sells. The single button beside
+   it turns into "Buy n" or "Sell n" with the price. Dragging updates the row in place and the pane
+   is not redrawn until the finger lifts, so the bar never jumps out from under it. */
 function tradeOf(g) {
-  const me = S.me, have = me.cargo[g] || 0, max = have + maxBuy(g);
-  const tgt = Math.max(0, Math.min(max, ui.tgt[g] == null ? have : ui.tgt[g]));
-  const n = tgt - have;
-  const side = n > 0 ? "buy" : n < 0 ? "sell" : "";
-  return { have, max, tgt, n: Math.abs(n), side, cost: side ? quote(g, Math.abs(n), side) : 0 };
+  const have = S.me.cargo[g] || 0, max = have + maxBuy(g);
+  const raw = parseInt(val("t_" + g), 10);
+  const at = isNaN(raw) ? have : Math.max(0, Math.min(max, raw));
+  const d = at - have;
+  return { have, max, at, d, qty: Math.abs(d), side: d > 0 ? "buy" : d < 0 ? "sell" : "" };
 }
 
 function barStyle(tr) {
-  const f = v => (tr.max ? v / tr.max : 0).toFixed(4);
-  return `--h:${f(tr.have)};--a:${f(Math.min(tr.have, tr.tgt))};--b:${f(Math.max(tr.have, tr.tgt))}`;
+  // Positions follow the thumb's centre, which travels from half a thumb in to half a thumb short.
+  const at = v => `calc(var(--tw) / 2 + (100% - var(--tw)) * ${tr.max ? (v / tr.max).toFixed(4) : 0})`;
+  const h = at(tr.have), lo = at(Math.min(tr.have, tr.at)), hi = at(Math.max(tr.have, tr.at));
+  const tick = `linear-gradient(90deg,transparent calc(${h} - 2px),var(--bar-tick) calc(${h} - 2px) calc(${h} + 2px),transparent calc(${h} + 2px))`;
+  const fill = tr.side === "buy"
+    ? `linear-gradient(90deg,var(--bar-held) 0 ${lo},var(--bar-buy) ${lo} ${hi},var(--bar-empty) ${hi} 100%)`
+    : tr.side === "sell"
+      ? `linear-gradient(90deg,var(--bar-held) 0 ${lo},var(--bar-sell) ${lo} ${hi},var(--bar-empty) ${hi} 100%)`
+      : `linear-gradient(90deg,var(--bar-held) 0 ${h},var(--bar-empty) ${h} 100%)`;
+  return `background:${tick},${fill}`;
 }
 
-function tradeLabel(tr) {
-  if (!tr.max) return te("market.no_room");
-  if (!tr.side) return te("market.drag");
-  return te(tr.side === "buy" ? "market.buy_n" : "market.sell_n", { n: tr.n.toLocaleString(), cost: money(tr.cost) });
+function tradeButton(g, tr) {
+  if (!tr.side) return `<button type="button" class="mk-go" data-act="trade" data-good="${g}" disabled>
+    <b>${tr.max ? te("market.drag") : te("market.no_room")}</b></button>`;
+  return `<button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}">
+    <b>${te(tr.side === "buy" ? "btn.buy" : "btn.sell")} ${tr.qty.toLocaleString()}</b>
+    <small>${money(quote(g, tr.qty, tr.side))}</small></button>`;
+}
+
+/* "12 aboard", or "12 → 40 aboard" while a trade is lined up. */
+function haveHtml(tr) {
+  return (tr.side ? `<s>${tr.have.toLocaleString()}</s> → ` : "") + th("market.aboard", { n: `<b class="mk-at">${tr.at.toLocaleString()}</b>` });
+}
+
+function marketRow(g) {
+  const me = S.me, good = D.goods[g], tr = tradeOf(g);
+  const tag = good.contraband ? ` <span class="tag">${te("tag.contraband")}</span>` : "";
+  return `<tr data-good="${g}" class="${tr.side}">
+    <td class="mk-ico">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
+    <td class="mk-name"><b>${esc(good.name)}</b>${tag}</td>
+    <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span></td>
+    <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
+      value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"></td>
+    <td class="mk-do">${tradeButton(g, tr)}</td></tr>`;
 }
 
 function marketTab() {
   const me = S.me;
   const banned = S.crackdown.includes(me.port);
-  const rows = Object.keys(D.goods).map(g => {
-    const tr = tradeOf(g), good = D.goods[g];
-    return `<div class="mk-row ${tr.side}" data-good="${g}">
-      <div class="mk-pic">${Media.html("cargo", g, "icon", "mk-img", D.graphics.goods[g])}</div>
-      <div class="mk-name"><b>${esc(good.name)}</b>${good.contraband ? `<span class="tag">${te("tag.contraband")}</span>` : ""}</div>
-      <div class="mk-price"><b>${money(me.prices[g])}</b><small>${te("market.aboard", { n: tr.have.toLocaleString() })}</small></div>
-      <div class="mk-bar"><input type="range" class="mk-range" data-good="${g}" min="0" max="${tr.max}" step="1" value="${tr.tgt}"
-        style="${barStyle(tr)}" aria-label="${te("market.bar", { good: good.name })}" ${tr.max ? "" : "disabled"}></div>
-      <button type="button" class="mk-do ${tr.side}" data-act="trade" data-good="${g}" ${tr.side ? "" : "disabled"}>${tradeLabel(tr)}</button></div>`;
-  }).join("");
-  return `<section class="card mk">
-    <div class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
-      <span class="muted" title="${te("market.standing", { rep: me.rep[me.port], margin: pct(me.spread) })}">${te("market.standing_short", { rep: me.rep[me.port], margin: pct(me.spread) })}</span>
-      <span class="mk-hold">${te("market.hold_short", { used: me.used, cap: me.capacity })}</span></div>
+  const rows = Object.keys(D.goods).map(marketRow).join("");
+  return `<section class="card mk" style="--n:${Object.keys(D.goods).length}">
+    <header class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
+      <span class="muted">${te("market.standing_short", { rep: me.rep[me.port], margin: pct(me.spread) })}</span>
+      <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span></header>
     ${banned ? `<p class="note bad">${te("market.banned")}</p>` : ""}
-    <div class="mk-list">${rows}</div></section>`;
+    <table class="mk-table"><thead><tr><th colspan="2">${te("col.cargo")}</th><th class="n">${te("col.price")} · ${te("col.aboard")}</th><th class="mk-scale"><span>${te("btn.sell")}</span><span>${te("btn.buy")}</span></th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table></section>`;
 }
 
-/* While a bar is dragged only its own row changes; the pane redraws when the finger lifts. */
-function dragRow(input) {
-  const g = input.dataset.good;
-  ui.tgt[g] = parseInt(input.value, 10) || 0;
-  const tr = tradeOf(g), row = input.closest(".mk-row"), b = row && row.querySelector(".mk-do");
-  input.setAttribute("style", barStyle(tr));
-  if (row) row.className = "mk-row " + tr.side;
-  if (b) { b.className = "mk-do " + tr.side; b.disabled = !tr.side; b.innerHTML = tradeLabel(tr); }
-}
-function dragEnd() {
-  if (!ui.dragging) return;
-  ui.dragging = false;
-  render();
+/* Live update of one market row while its bar is dragged (no redraw). */
+function dragRow(g) {
+  const row = app.querySelector('.mk-table tr[data-good="' + g + '"]');
+  if (!row) return;
+  const tr = tradeOf(g), range = row.querySelector(".mk-range");
+  range.setAttribute("style", barStyle(tr));
+  row.className = tr.side;
+  row.querySelector(".mk-have").innerHTML = haveHtml(tr);
+  row.querySelector(".mk-do").innerHTML = tradeButton(g, tr);
+  // Keep the header plaques and the market's hold count in step with the bar.
+  region("top", topHtml());
+  const hold = app.querySelector(".mk-head .mk-hold");
+  if (hold) hold.innerHTML = te("market.hold_short", { used: pending().used, cap: S.me.capacity });
 }
 
 /* ----------------------------------------------------------------- port -- */
@@ -466,49 +545,61 @@ function portTab() {
 }
 
 /* ---------------------------------------------------------------- fleet -- */
+/* Compact ship cards (picture left, name, hull bar, gun pips, slim buttons) and a shipyard table
+   built on the same row pattern as the market: picture cell, name, numbers, one button. */
+function gunPips(guns, slots) {
+  return Array.from({ length: slots }, (_, j) => `<i class="${j < guns ? "on" : ""}"></i>`).join("");
+}
+
 function shipCard(s, i, yard) {
   const me = S.me, spec = D.ships[s.type], p = Math.round(100 * s.hull / spec.hull);
-  const pips = Array.from({ length: spec.slots }, (_, k) => `<i class="${k < s.guns ? "on" : ""}"></i>`).join("");
-  const repair = s.repair
-    ? btn(te("fleet.repair", { cost: money(s.repair) }), "repair", `data-i="${i}"`, "slim")
+  const fix = s.repair
+    ? btn(te("fleet.repair", { cost: money(s.repair) }), "repair", `data-i="${i}"`, "fl-btn")
     : `<span class="fl-ok">${te("fleet.seaworthy")}</span>`;
-  return `<div class="fl-row">
-    <div class="fl-pic">${Media.html("ship", s.type, "card", "fl-img", D.graphics.ships[s.type], { slot: "fleet:" + s.name })}</div>
-    <div class="fl-name"><b>${esc(s.name)}</b><span class="muted">${te("fleet.ship_line", { type: spec.name, hold: spec.hold })}</span></div>
-    <div class="fl-stats">
-      <div class="fl-hull"><div class="hull"><i style="width:${p}%" class="${p < 35 ? "low" : ""}"></i></div><small>${te("fleet.hull_short", { hull: s.hull, max: spec.hull })}</small></div>
-      <div class="fl-guns"><span class="fl-pips">${pips}</span><small>${te("fleet.guns_short", { guns: s.guns, slots: spec.slots })}</small></div></div>
-    <div class="fl-do">${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${te("fleet.gun_tip", { price: money(D.gun_price) })}"`, "slim", s.guns >= spec.slots)}
-      ${repair}
-      ${yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "slim ghost", me.ships.length < 2) : ""}</div></div>`;
+  return `<article class="fl-ship">
+    <div class="fl-art">${Media.html("ship", s.type, "card", "fl-img", D.graphics.ships[s.type], { slot: "fleet:" + s.name })}</div>
+    <div class="fl-body">
+      <header class="fl-name"><b>${esc(s.name)}</b>${spec.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}
+        <span class="fl-type">${te("fleet.ship_line", { type: spec.name, hold: spec.hold })}</span></header>
+      <div class="fl-stat"><span class="fl-lbl">${te("col.hull")}</span>
+        <div class="hull"><i style="width:${p}%" class="${p < 35 ? "low" : ""}"></i></div><span class="fl-v">${s.hull}/${spec.hull}</span></div>
+      <div class="fl-stat"><span class="fl-lbl">${te("col.guns")}</span>
+        <span class="fl-pips">${gunPips(s.guns, spec.slots)}</span><span class="fl-v">${s.guns}/${spec.slots}</span></div>
+      <div class="fl-acts">${btn(te("fleet.gun_short", { price: money(D.gun_price) }), "gun", `data-i="${i}"`, "fl-btn", s.guns >= spec.slots)}
+        ${fix}
+        ${yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "fl-btn ghost", me.ships.length < 2) : ""}</div>
+    </div></article>`;
 }
 
 function yardRow(k) {
   const me = S.me, s = D.ships[k];
-  const no = me.cash < s.price || me.ships.length >= D.max_fleet;
-  return `<div class="yd-row${no ? " dim" : ""}">
-    <div class="yd-pic">${Media.html("ship", k, "card", "yd-img", D.graphics.ships[k], { slot: "yard" })}</div>
-    <div class="yd-name"><b>${esc(s.name)}</b>${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}</div>
-    <div class="yd-n">${s.hold}</div><div class="yd-n yd-hull">${s.hull}</div><div class="yd-n">${s.slots}</div>
-    <div class="yd-n yd-price">${money(s.price)}</div>
-    <div class="yd-do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "slim primary", no)}</div></div>`;
+  const cant = me.cash < s.price || me.ships.length >= D.max_fleet;
+  return `<tr class="${cant ? "dim" : ""}">
+    <td class="yd-ico">${Media.html("ship", k, "card", "yd-img", D.graphics.ships[k], { slot: "yard" })}</td>
+    <td class="yd-name"><b>${esc(s.name)}</b>${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}</td>
+    <td class="n">${s.hold}</td><td class="n">${s.hull}</td><td class="n">${s.slots}</td>
+    <td class="n yd-price">${money(s.price)}</td>
+    <td class="yd-do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "fl-btn primary", cant)}</td></tr>`;
 }
 
 function fleetTab() {
   const me = S.me, yard = D.ports[me.port].shipyard;
   const totalRepair = me.ships.reduce((n, s) => n + s.repair, 0);
-  const head = `<div class="yd-row yd-th"><div></div><div>${te("col.ship")}</div><div class="yd-n">${te("col.hold")}</div>
-    <div class="yd-n yd-hull">${te("col.hull")}</div><div class="yd-n">${te("col.guns")}</div><div class="yd-n">${te("col.price")}</div><div></div></div>`;
+  const ships = me.ships.map((s, i) => shipCard(s, i, yard)).join("");
+  const yardBody = yard
+    ? `<table class="yd-table"><thead><tr><th colspan="2">${te("col.ship")}</th><th class="n">${te("col.hold")}</th><th class="n">${te("col.hull")}</th>
+        <th class="n">${te("col.guns")}</th><th class="n">${te("col.price")}</th><th></th></tr></thead>
+        <tbody>${Object.keys(D.ships).map(yardRow).join("")}</tbody></table>`
+    : `<p class="muted fl-none">${te("yard.none", { port: portName(me.port), yards: D.yards.join(", ") })}</p>`;
   return `<section class="card fl">
-      <div class="mk-head"><h2>${te("fleet.title")}</h2>
-        <span class="muted" title="${te("fleet.info")}">${te("fleet.info_short")}</span>
+      <header class="mk-head"><h2>${te("fleet.title")}</h2>
+        <span class="muted" title="${esc(t("fleet.info"))}">${te("fleet.info_short")}</span>
         <span class="mk-hold">${te("fleet.count", { n: me.ships.length, max: D.max_fleet })}</span>
-        ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "slim primary") : ""}</div>
-      <div class="fl-list">${me.ships.map((s, i) => shipCard(s, i, yard)).join("")}</div></section>
-    <section class="card yd"><h2>${te("yard.title")}</h2>${yard
-      ? `<div class="yd-list">${head}${Object.keys(D.ships).map(yardRow).join("")}</div>
-         <p class="muted">${te("yard.limit", { n: D.max_fleet })}</p>`
-      : `<p class="muted">${te("yard.none", { port: portName(me.port), yards: D.yards.join(", ") })}</p>`}</section>`;
+        ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "fl-btn primary") : ""}</header>
+      <div class="fl-ships">${ships}</div></section>
+    <section class="card fl yd">
+      <header class="mk-head"><h2>${te("yard.title")}</h2>${yard ? `<span class="muted">${te("yard.limit", { n: D.max_fleet })}</span>` : ""}</header>
+      ${yardBody}</section>`;
 }
 
 /* ---------------------------------------------------------------- chart -- */
@@ -563,29 +654,18 @@ app.addEventListener("input", e => {
   const k = e.target.dataset.k;
   if (!k) return;
   ui.vals[k] = e.target.value;
+  if (k.startsWith("t_")) { ui.drag = true; dragRow(e.target.dataset.good); }
 });
-
-/* The market's drag bars. */
-app.addEventListener("input", e => {
-  if (!e.target.classList || !e.target.classList.contains("mk-range")) return;
-  ui.dragging = true;
-  dragRow(e.target);
-});
-app.addEventListener("change", e => { if (e.target.classList && e.target.classList.contains("mk-range")) dragEnd(); });
-["pointerup", "pointercancel", "touchend"].forEach(ev => document.addEventListener(ev, () => setTimeout(dragEnd, 0)));
+/* The pane is held still while a bar is being dragged, then redrawn once it is let go. */
+const endDrag = () => { if (ui.drag) { ui.drag = false; render(); } };
+app.addEventListener("change", e => { if (e.target.classList.contains("mk-range")) endDrag(); });
+window.addEventListener("pointerup", endDrag);
+window.addEventListener("pointercancel", endDrag);
 
 app.addEventListener("keydown", e => {
   if (e.key !== "Enter" || !e.target.dataset.k) return;
   const k = e.target.dataset.k;
   if (k === "name" || k === "firm") doJoin();
-});
-
-/* Tapping anywhere outside the captain's menu closes it. */
-document.addEventListener("click", e => {
-  if (ui.menu && !(e.target.closest && e.target.closest(".dk-me"))) { ui.menu = false; render(); }
-});
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && ui.menu) { ui.menu = false; render(); }
 });
 
 async function doJoin() {
@@ -603,10 +683,7 @@ app.addEventListener("click", async e => {
   const d = el.dataset;
   switch (d.act) {
     case "join": return doJoin();
-    case "tab": ui.tab = d.tab; ui.menu = false; return render();
-    case "menu": ui.menu = !ui.menu; return render();
-    case "speech": Voice.setMuted(!Voice.muted()); return render();
-    case "options": ui.menu = false; render(); return toast(t("deck.options_soon"));
+    case "tab": ui.tab = d.tab; return render();
     case "tally": {
       // The Tally Book opens in its own window so the deck never scrolls or loses its place.
       const w = window.open("/stats", "seatrader_tally");
@@ -621,7 +698,7 @@ app.addEventListener("click", async e => {
     case "trade": {
       const tr = tradeOf(d.good);
       if (!tr.side) return toast(t("e.qty_first"), true);
-      if (await act(tr.side, { good: d.good, qty: tr.n })) { delete ui.tgt[d.good]; render(); }
+      if (await act(tr.side, { good: d.good, qty: tr.qty })) { delete ui.vals["t_" + d.good]; render(); }
       return;
     }
     case "bank": case "loan": {

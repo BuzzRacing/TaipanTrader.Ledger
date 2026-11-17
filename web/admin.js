@@ -161,6 +161,8 @@ function go(id) {
   if (section === "cast" && id !== "cast") SeaTraderCast.leave();
   if (section === "report" && id !== "report") SeaTraderReport.leave();
   if (section === "media" && id !== "media") SeaTraderMedia.leave();
+  if (section === "graphics" && id !== "graphics") SeaTraderGraphics.leave();
+  if (id === "graphics") SeaTraderGraphics.enter();
   if (id === "live") openNavGroups.add("Game");
   section = id;
   history.replaceState(null, "", "#" + section);
@@ -334,7 +336,7 @@ function draw() {
   if (!CFG) return;
   const sec = A.sections.find(s => s.id === section);
   if (sec) main.innerHTML = schemaSection(sec);
-  else if (section === "graphics") main.innerHTML = graphicsSection();
+  else if (section === "graphics") main.innerHTML = SeaTraderGraphics.render();
   else if (section === "artbible") {
     main.innerHTML = SeaTraderArtBible.render(CFG);
     SeaTraderArtBible.hydrate();
@@ -360,23 +362,8 @@ function previewTheme() {
 }
 
 /* ------------------------------------------------------------ graphics -- */
-function slotHtml(path, label, help, small) {
-  const url = get(CFG, path) || "";
-  return `<div class="slot${small ? " sm" : ""}"><div class="thumb">${url ? `<img src="${esc(url)}" alt="">` : "no image"}</div>
-    <b>${esc(label)}</b>${help ? `<small class="help">${esc(help)}</small>` : ""}
-    <div class="row"><label class="pick">Choose image<input type="file" accept="image/*,.ico" data-up="${esc(path)}"></label>
-    ${url ? `<button type="button" class="link" data-clear="${esc(path)}">remove</button>` : ""}</div></div>`;
-}
-function graphicsSection() {
-  const per = (group, title, note) => `<section class="card"><h2>${title}</h2><p class="help">${note}</p><div class="slots">` +
-    Object.keys(CFG[group]).map(k => slotHtml(`graphics.${group}.${k}`, CFG[group][k].name, "", true)).join("") + "</div></section>";
-  return head("Graphics", "Your own artwork for the game. Images are copied into the game's web/uploads folder, so they move with it. " +
-      "PNG, JPG, WebP, GIF or SVG, up to 8 MB each. Choose images, then Save & apply.") +
-    `<section class="card"><h2>Main artwork</h2><div class="slots">${A.graphic_slots.map(s => slotHtml("graphics." + s[0], s[1], s[2])).join("")}</div></section>` +
-    per("goods", "Cargo pictures", "Shown beside each cargo in the market. Small square images work best.") +
-    per("ports", "Port pictures", "Shown as a banner at the top of the market when a player is in that port.") +
-    per("ships", "Ship pictures", "Shown on fleet cards and in the shipyard.");
-}
+/* Admin > Graphics lives in graphics-admin.js (SeaTraderGraphics): large pictures, each linked to the
+   Media Library item it comes from, with its history and the newer pictures waiting for that slot. */
 
 /* ------------------------------------------------------------ language -- */
 function languageSection() {
@@ -740,6 +727,7 @@ $("#save").addEventListener("click", async () => {
   const keep = section;
   await boot();
   section = keep;
+  if (section === "graphics") SeaTraderGraphics.enter();
 });
 
 $("#discard").addEventListener("click", () => {

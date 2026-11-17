@@ -71,7 +71,9 @@ KINDS = {
                        ["night", "Night or mood pictures"],
                        ["board", "Harbor board gallery"],
                        ["keeper", "Market keeper: the woman behind the stalls, on the stage while the Market tab is open"],
-                       ["shipmaster", "Ship master: the woman who runs the fleet, on the stage while the Fleet tab is open"]],
+                       ["shipmaster", "Ship master: the woman who runs the fleet, on the stage while the Fleet tab is open"],
+                       ["mayor", "Mayor: the town's lady mayor who sees the ships off, on the stage and the tab while Set sail is open"],
+                       ["taxlady", "Tax lady: the town's tax collector who keeps the books, on the stage and the tab while the Ledger is open"]],
              "default_role": "banner"},
     "ship": {"label": "Ships", "one": "Ship type", "subjects": "ships",
              "roles": [["card", "Fleet cards and the shipyard"], ["sailing", "Under sail"], ["battle", "In battle"]],
@@ -125,7 +127,7 @@ class MediaError(Exception):
 # ------------------------------------------------------------------ store --
 def _blank():
     return {"version": 1, "items": [], "rules": {"defaults": copy.deepcopy(RULE_DEFAULTS), "subjects": {}},
-            "options": dict(OPTION_DEFAULTS)}
+            "options": dict(OPTION_DEFAULTS), "slots": {}}
 
 
 def _read():
@@ -225,12 +227,36 @@ def _tidy(lib):
         "board_gallery": bool(opt.get("board_gallery", True)),
         "new_nsfw": opt.get("new_nsfw") if opt.get("new_nsfw") in ("auto", "yes", "no") else "auto",
     }
+    out["slots"] = _clean_slots(lib.get("slots"))
     seen = set()
     for it in lib.get("items") if isinstance(lib.get("items"), list) else []:
         it = _clean_item(it)
         if it and it["id"] not in seen:
             seen.add(it["id"])
             out["items"].append(it)
+    return out
+
+
+SLOT_KEY_RE = re.compile(r"^(brand|port|ship|cargo):[a-z][a-z0-9_]{0,47}$")
+HOW = ("settings", "upload", "generated", "library", "removed", "file", "first")
+
+
+def _clean_slots(v):
+    """slots: {"port:hongkong": {url, item, since, bytes, mtime, history: [{at, from, to, item, how}]}}."""
+    out = {}
+    for key, s in (v.items() if isinstance(v, dict) else []):
+        if not SLOT_KEY_RE.match(str(key)) or not isinstance(s, dict):
+            continue
+        url = str(s.get("url") or "")
+        hist = []
+        for h in s.get("history") if isinstance(s.get("history"), list) else []:
+            if isinstance(h, dict):
+                hist.append({"at": str(h.get("at") or "")[:20], "from": str(h.get("from") or "")[:300],
+                             "to": str(h.get("to") or "")[:300], "item": str(h.get("item") or "")[:12],
+                             "how": h.get("how") if h.get("how") in HOW else "settings"})
+        out[key] = {"url": url if (not url or URL_RE.match(url)) else "", "item": str(s.get("item") or "")[:12],
+                    "since": str(s.get("since") or "")[:20], "bytes": _clamp(s.get("bytes"), 0, 10 ** 10, 0),
+                    "mtime": _clamp(s.get("mtime"), 0, 10 ** 12, 0), "history": hist[-25:]}
     return out
 
 
@@ -260,6 +286,7 @@ def _clean_item(it):
         "bytes": _clamp(it.get("bytes"), 0, 10 ** 10, 0),
         "source": it.get("source") if it.get("source") in ("generated", "upload", "scan", "import", "config") else "import",
         "added": str(it.get("added") or "")[:20],
+        "replaces": str(it.get("replaces") or "") if ITEM_RE.match(str(it.get("replaces") or "")) else "",
     }
     return out
 
@@ -318,7 +345,7 @@ def _image_size(path):
 
 
 def _make_item(url, kind, subject, roles=(), tags=(), nsfw=False, source="import", prompt="", seed=None,
-               title="", reviewed=None):
+               title="", reviewed=None, replaces=""):
     p = path_for(url)
     size = os.path.getsize(p) if p and os.path.isfile(p) else 0
     w, h = _image_size(p) if p and os.path.splitext(p)[1].lower() in IMAGE_EXT else (0, 0)
@@ -326,7 +353,7 @@ def _make_item(url, kind, subject, roles=(), tags=(), nsfw=False, source="import
         "id": new_id(), "url": url, "kind": kind, "subject": subject, "roles": list(roles), "tags": list(tags),
         "nsfw": nsfw, "reviewed": (not nsfw) if reviewed is None else reviewed, "enabled": True, "primary": False,
         "weight": 3, "title": title, "prompt": prompt, "seed": seed, "width": w, "height": h, "bytes": size,
-        "source": source, "added": time.strftime("%Y-%m-%d %H:%M"),
+        "source": source, "added": time.strftime("%Y-%m-%d %H:%M"), "replaces": replaces,
     })
 
 
@@ -442,24 +469,136 @@ def _migrate(lib, cfg):
     _scan_media_dir(lib)
 
 
-def sync_from_config(cfg):
-    """After Save & apply: make sure every picture the settings use is in the library."""
+def graphic_slots(cfg):
+    """Every picture slot on Admin > Graphics: [(key, kind, subject, role, url)].
+    key is "<kind>:<subject>", the same pair the library files the picture under."""
+    cfg = cfg or {}
+    gr = cfg.get("graphics") or {}
+    out = []
+    for slot, _label in BRAND_SLOTS:
+        out.append(("brand:" + slot, "brand", slot, "main", gr.get(slot) or ""))
+    for group, table, kind, role in (("ports", "ports", "port", "banner"), ("ships", "ships", "ship", "card"),
+                                     ("goods", "goods", "cargo", "icon")):
+        g = gr.get(group) or {}
+        for k in (cfg.get(table) or {}):
+            if ID_RE.match(k):
+                out.append(("{}:{}".format(kind, k), kind, k, role, g.get(k) or ""))
+    return out
+
+
+def _fingerprint(url):
+    p = path_for(url)
+    try:
+        st = os.stat(p) if p else None
+    except OSError:
+        st = None
+    return (st.st_size, int(st.st_mtime)) if st else (0, 0)
+
+
+def sync_from_config(cfg, how="settings"):
+    """After Save & apply: every picture the settings use is in the library, filed (tagged) under the slot
+    it fills, and every change to a Graphics slot is written into that slot's history.
+    Returns {"added": n, "retagged": n, "changes": [(key, from_url, to_url, how)]}."""
     with LOCK:
         lib = load(cfg)
-        have = {i["url"] for i in lib["items"]}
-        added = 0
-        for url, kind, subject, roles in _config_refs(cfg):
-            if url in have or not _exists(url):
+        by_url = {i["url"]: i for i in lib["items"]}
+        added = retagged = 0
+        dirty = False
+        # Cast portraits: just make sure they are in the library.
+        for cid, c in ((cfg or {}).get("characters") or {}).items():
+            url = c.get("portrait") or ""
+            if url and URL_RE.match(url) and url not in by_url and _exists(url):
+                it = _make_item(url, "persona", cid, ["portrait"], source="config")
+                if it:
+                    lib["items"].append(it)
+                    by_url[url] = it
+                    added += 1
+        # Graphics slots: file, tag and track.
+        now = time.strftime("%Y-%m-%d %H:%M")
+        slots = lib.setdefault("slots", {})
+        changes = []
+        live_keys = set()
+        for key, kind, subject, role, url in graphic_slots(cfg):
+            live_keys.add(key)
+            it = None
+            if url and URL_RE.match(url) and _exists(url):
+                it = by_url.get(url)
+                if it is None:
+                    it = _make_item(url, kind, subject, [role], ["graphics"], source="config")
+                    if it:
+                        lib["items"].append(it)
+                        by_url[url] = it
+                        added += 1
+                elif it["kind"] != kind or it["subject"] != subject or role not in it["roles"] \
+                        or "graphics" not in it["tags"]:
+                    if it["kind"] != kind:
+                        it["kind"], it["roles"] = kind, []
+                    it["subject"] = subject
+                    if role not in it["roles"]:
+                        it["roles"].append(role)
+                    if "graphics" not in it["tags"]:
+                        it["tags"] = (it["tags"] + ["graphics"])[:24]
+                    fixed = _clean_item(it)
+                    it.clear()
+                    it.update(fixed)
+                    retagged += 1
+                    dirty = True
+                if it and not it["primary"] and not any(o["kind"] == kind and o["subject"] == subject and o["primary"]
+                                                        for o in lib["items"]):
+                    it["primary"] = True
+                    dirty = True
+            size, mtime = _fingerprint(url) if url else (0, 0)
+            prev = slots.get(key)
+            if prev is None:
+                slots[key] = {"url": url, "item": it["id"] if it else "", "since": now, "bytes": size, "mtime": mtime,
+                              "history": [{"at": now, "from": "", "to": url, "item": it["id"] if it else "",
+                                           "how": "first"}] if url else []}
+                dirty = True
                 continue
-            it = _make_item(url, kind, subject, roles, source="config")
-            if not any(i["kind"] == kind and i["subject"] == subject and i["primary"] for i in lib["items"]):
-                it["primary"] = True
-            lib["items"].append(it)
-            have.add(url)
-            added += 1
-        if added:
+            if prev["url"] != url:
+                h = how
+                if not url:
+                    h = "removed"
+                elif it and how == "settings":
+                    h = {"upload": "upload", "generated": "generated"}.get(it["source"], "library")
+                prev["history"] = (prev["history"] + [{"at": now, "from": prev["url"], "to": url,
+                                                       "item": it["id"] if it else "", "how": h}])[-25:]
+                changes.append((key, prev["url"], url, h))
+                prev.update(url=url, item=it["id"] if it else "", since=now, bytes=size, mtime=mtime)
+                dirty = True
+            elif url and (prev["bytes"], prev["mtime"]) != (size, mtime) and size:
+                prev["history"] = (prev["history"] + [{"at": now, "from": url, "to": url,
+                                                       "item": it["id"] if it else "", "how": "file"}])[-25:]
+                changes.append((key, url, url, "file"))
+                prev.update(item=it["id"] if it else prev["item"], since=now, bytes=size, mtime=mtime)
+                if it:
+                    w, hgt = _image_size(path_for(url)) if os.path.splitext(url)[1].lower() in IMAGE_EXT else (0, 0)
+                    it.update(bytes=size, width=w, height=hgt)
+                dirty = True
+            elif it and prev["item"] != it["id"]:
+                prev["item"] = it["id"]
+                dirty = True
+        for key in [k for k in slots if k not in live_keys]:
+            del slots[key]
+            dirty = True
+        if added or dirty:
             _write(lib)
-        return added
+        return {"added": added, "retagged": retagged, "changes": changes}
+
+
+def slot_status(cfg):
+    """For Admin > Graphics: each slot's library link, history and whether its file changed on disk."""
+    lib = load(cfg)
+    slots = lib.get("slots") or {}
+    out = {}
+    for key, kind, subject, role, url in graphic_slots(cfg):
+        s = slots.get(key) or {}
+        size, mtime = _fingerprint(url) if url else (0, 0)
+        out[key] = {"url": s.get("url", ""), "item": s.get("item", ""), "since": s.get("since", ""),
+                    "history": s.get("history", []),
+                    "file_changed": bool(url and s.get("url") == url and size and
+                                         (s.get("bytes"), s.get("mtime")) != (size, mtime))}
+    return out
 
 
 def _scan_media_dir(lib):
@@ -529,7 +668,7 @@ def _url_for(path):
 
 
 def add_bytes(data, ext, kind, subject, roles=(), tags=(), nsfw=False, source="upload", prompt="", seed=None,
-              title="", stem=None, reviewed=None, primary=False):
+              title="", stem=None, reviewed=None, primary=False, replaces=""):
     """Save a file into web/media/<kind>/<subject>/ and register it. Returns the new item."""
     ext = ext.lower()
     if ext not in IMAGE_EXT + VIDEO_EXT:
@@ -542,15 +681,16 @@ def add_bytes(data, ext, kind, subject, roles=(), tags=(), nsfw=False, source="u
     path = os.path.join(folder, fname)
     with open(path, "wb") as f:
         f.write(data)
-    return register_file(path, kind, subject, roles, tags, nsfw, source, prompt, seed, title, reviewed, primary)
+    return register_file(path, kind, subject, roles, tags, nsfw, source, prompt, seed, title, reviewed, primary,
+                         replaces)
 
 
 def register_file(path, kind, subject, roles=(), tags=(), nsfw=False, source="upload", prompt="", seed=None,
-                  title="", reviewed=None, primary=False):
+                  title="", reviewed=None, primary=False, replaces=""):
     url = _url_for(path)
     with LOCK:
         lib = load()
-        it = _make_item(url, kind, subject, roles, tags, nsfw, source, prompt, seed, title, reviewed)
+        it = _make_item(url, kind, subject, roles, tags, nsfw, source, prompt, seed, title, reviewed, replaces)
         if it is None:
             raise MediaError("That file name cannot be used.")
         if primary or not any(i["kind"] == it["kind"] and i["subject"] == it["subject"] and i["primary"]
@@ -759,7 +899,7 @@ def admin_view(cfg):
               "bytes": sum(i["bytes"] for i in items)}
     return {"items": items, "rules": lib["rules"], "options": lib["options"], "kinds": KINDS, "modes": MODES,
             "subjects": subjects(cfg), "in_use": sorted(in_use), "counts": counts, "family": family(cfg),
-            "rule_defaults": RULE_DEFAULTS}
+            "rule_defaults": RULE_DEFAULTS, "slots": slot_status(cfg)}
 
 
 # ------------------------------------------------------------ generation --
@@ -780,11 +920,13 @@ class Jobs:
             self.thread = threading.Thread(target=self._run, daemon=True, name="media-jobs")
             self.thread.start()
 
-    def add(self, kind, subject, roles, prompt, width, height, count, nsfw, negative=None, tags=(), aspect=""):
+    def add(self, kind, subject, roles, prompt, width, height, count, nsfw, negative=None, tags=(), aspect="",
+            replaces=""):
         job = {"id": "j" + secrets.token_hex(4), "kind": kind, "subject": subject, "roles": list(roles),
                "tags": list(tags), "prompt": prompt, "negative": negative, "width": width, "height": height,
                "aspect": aspect, "count": count, "done": 0, "failed": 0, "items": [], "nsfw": nsfw,
-               "status": "waiting", "error": "", "started": time.time(), "finished": None}
+               "status": "waiting", "error": "", "started": time.time(), "finished": None,
+               "replaces": replaces if ITEM_RE.match(replaces or "") else ""}
         with self.lock:
             self.jobs.append(job)
             self.jobs = [j for j in self.jobs if j["status"] in ("waiting", "running")] + \
@@ -828,7 +970,7 @@ class Jobs:
                     nsfw = nsfw_from_prompt(job["prompt"], {"new_nsfw": job["nsfw"]})
                     it = add_bytes(data, ".png", job["kind"], job["subject"], job["roles"], job["tags"], nsfw,
                                    "generated", job["prompt"], seed, stem="{}-{}".format(job["kind"], job["subject"]),
-                                   reviewed=not nsfw)
+                                   reviewed=not nsfw, replaces=job.get("replaces") or "")
                     job["items"].append(it["id"])
                     job["done"] += 1
                     if self.log:

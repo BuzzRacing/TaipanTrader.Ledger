@@ -64,7 +64,7 @@ voice._transport = fake
 # --- defaults are valid and complete ------------------------------------------------
 cfg, errs = config.validate(config.defaults())
 check(not errs, "default settings validate: {}".format(errs[:3]))
-check(len(cfg["characters"]) == 10, "ten default characters")
+check(len(cfg["characters"]) == 11, "eleven default characters")
 for cid, c in cfg["characters"].items():
     check(c["voice_id"], "{} has a voice".format(cid))
     check(c["bio"] and c["catchphrase"] and c["secret"] and c["portrait_prompt"], "{} has a full profile".format(cid))

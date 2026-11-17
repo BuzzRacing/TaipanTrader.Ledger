@@ -31,7 +31,15 @@
    "land": "#e9dcb8",
    "board-bg": "#1f1410",
    "board-panel": "#2c1d15",
-   "board-ink": "#f1e4c3"
+   "board-ink": "#f1e4c3",
+   "deck-night": "#15100c",
+   "deck-lacquer": "#2a1b14",
+   "deck-oxblood": "#7b2428",
+   "deck-brass": "#c9a34e",
+   "deck-jade": "#2f6b5a",
+   "deck-ivory": "#f1e3c5",
+   "deck-storm": "#385467",
+   "deck-leather": "#6b452d"
   },
   "player_colors": [
    "#b3261e",
@@ -50,6 +58,8 @@
   "web_fonts": "Uncial Antiqua | MedievalSharp | Alegreya:ital,wght@0,400;0,700;1,400;1,700 | Almendra SC",
   "font_size": 16,
   "radius": 8,
+  "ambient_seconds": 40,
+  "ambient_dim": 55,
   "custom_css": ""
  },
  "graphics": {
@@ -918,6 +928,31 @@
     "greed": 4
    },
    "portrait_prompt": "An unmistakably adult English woman (age 29), dazzling pirate news crier on the Hong Kong waterfront, holding a fresh broadsheet and brass handbell, short fitted tobacco-leather jacket over an ivory corset and dramatically split oxblood skirt, ink on her fingers, auburn hair escaping beneath a small cocked hat, one boot on a bollard, mid-call with a wicked grin, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "bookmaker": {
+   "name": "Isabel “Fan-Tan Bella” da Rocha",
+   "title": "Bookmaker of the Golden Fan & Keeper of the Tally",
+   "brand_link": "",
+   "age": 34,
+   "origin": "Macau",
+   "home_port": "hongkong",
+   "color": "#8c5a9e",
+   "portrait": "/uploads/portrait-bookmaker-2ed8ebda.png",
+   "voice_id": "Olivia",
+   "speaking_rate": 0.98,
+   "delivery": "warm, amused and unhurried, a Macanese gambling-house queen quoting odds as if they were secrets",
+   "catchphrase": "Every house on these seas has a price, darling. Yours is on my board.",
+   "bio": "Born above her father's fan-tan parlour in Macau, Bella was running the tables at fourteen and the whole house at twenty-five. Now she keeps the Golden Fan on the Hong Kong waterfront, where every trading house on the China Seas is chalked on her odds board and every rise and ruin is written in her tally book before the gazette hears of it.",
+   "quirk": "Clicks one bead of her gold-and-jade abacus every time a house loses a ship, whoever is watching.",
+   "vice": "Long odds, French champagne and captains who think they can bluff her.",
+   "secret": "She has a standing wager on how you will finish, and she will not say which way she bet.",
+   "stats": {
+    "cunning": 9,
+    "nerve": 7,
+    "charm": 8,
+    "greed": 6
+   },
+   "portrait_prompt": "An unmistakably adult Macanese woman (age 34), the bookmaker who runs the Golden Fan gambling house on the Hong Kong waterfront, leaning over a lacquered fan-tan table with one ringed hand on a gold-and-jade abacus, a leather tally book open beside towers of silver dollars, a chalked odds board of trading-house names behind her, fitted black silk cheongsam-cut gown with oxblood and gold embroidery and a daring high slit, jade drop earrings, glossy black hair pinned with a gold fan comb, lantern smoke and green baize glow, amused knowing gaze straight into the camera as if she has already bet against you, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   }
  },
  "voice": {

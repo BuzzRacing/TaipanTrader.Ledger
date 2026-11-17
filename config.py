@@ -527,7 +527,8 @@ GRAPHIC_SLOTS = [
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".ico")
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
-URL_RE = re.compile(r"^(/uploads/[A-Za-z0-9._-]+|https?://[^\s\"'()<>]+)$")
+# Pictures may live in web/uploads (older art), web/media/<kind>/<subject>/ (the media library) or web/assets.
+URL_RE = re.compile(r"^(/uploads/[A-Za-z0-9._-]+|/(media|assets)/(?!_trash/)(?!.*\.\.)[A-Za-z0-9._/-]+|https?://[^\s\"'()<>]+)$")
 
 
 def defaults():

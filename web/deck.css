@@ -77,7 +77,7 @@ body.board #ambient { display: none; }
   gap: clamp(.45rem, .9vw, .85rem);
   padding: max(.55rem, env(safe-area-inset-top)) max(.65rem, env(safe-area-inset-right))
            max(.55rem, env(safe-area-inset-bottom)) max(.65rem, env(safe-area-inset-left));
-  grid-template-columns: 4.9rem minmax(0, 1fr) clamp(15.5rem, 28vw, 25rem);
+  grid-template-columns: 6.6rem minmax(0, 1fr) clamp(15.5rem, 28vw, 25rem);
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "top top top" "nav main side";
 }
@@ -357,7 +357,7 @@ body.player .roster li { border-bottom-color: var(--rule); }
 
 /* phones held sideways: very little height */
 @media (orientation: landscape) and (max-height: 560px) {
-  .deck { grid-template-columns: 3.9rem minmax(0, 1fr) clamp(12rem, 30vw, 17rem); gap: .4rem; }
+  .deck { grid-template-columns: 4.6rem minmax(0, 1fr) clamp(12rem, 30vw, 17rem); gap: .4rem; }
   .dk-top { padding: .3rem .55rem; }
   .dk-house small { display: none; }
   .dk-house .chip { height: 1.6rem; }
@@ -381,90 +381,105 @@ body.player .roster li { border-bottom-color: var(--rule); }
 /* The Tally Book button in the tab rail: opens the statistics window. */
 .dk-nav .dk-tally { color: var(--brass-hi); border-color: var(--edge); border-style: dashed; }
 .dk-nav .dk-tally:hover:not(:disabled) { border-style: solid; }
+.dk-nav .dk-tally.face { border-style: solid; }   /* the bookmaker's face replaces the dashed tally icon */
 
 /* ============================================================================ MARKET == */
-/* One drag bar per cargo. Rows grow to fill the pane (about 4rem on an iPad, never under 2.7rem). */
-.deck .card.mk { min-height: 100%; display: flex; flex-direction: column; margin-bottom: 0; }
-.mk-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: .25rem 1rem; margin-bottom: .45rem;
-  padding-bottom: .35rem; border-bottom: 1px solid; border-image: linear-gradient(90deg, var(--edge-hi), transparent 70%) 1; }
+/* One tight table row per cargo: picture, name, price over what is aboard, a fat drag bar, a narrow button.
+   Rows hug their content (no stretching to fill the pane) so the whole market sits in one glance. */
+.deck .card.mk { display: flex; flex-direction: column; margin-bottom: 0; padding-top: .55rem; padding-bottom: .4rem; }
+.mk-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: .15rem 1rem; margin-bottom: .2rem;
+  padding-bottom: .25rem; border-bottom: 1px solid; border-image: linear-gradient(90deg, var(--edge-hi), transparent 70%) 1; }
 .deck .mk-head h2 { margin: 0; padding: 0; border: 0; }
-.mk-head .muted { font-size: .88rem; cursor: help; }
+.mk-head .muted { font-size: .85rem; cursor: help; }
 .mk-head .mk-hold { margin-left: auto; font: .8rem/1.2 var(--special); letter-spacing: .08em; color: var(--brass-hi); white-space: nowrap; }
 .mk-head button.slim { align-self: center; }
-.mk-list { flex: 1 1 auto; display: grid; gap: .3rem 0; align-content: stretch;
-  grid-template-columns: [pic] 3.9rem [name] max-content [price] max-content [bar] minmax(6rem, 1fr) [do] max-content;
-  grid-auto-rows: minmax(2.7rem, 1fr); }
-.mk-row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; column-gap: .8rem;
-  padding-right: .35rem; border-bottom: 1px solid var(--rule); border-radius: calc(var(--radius) * .6); transition: background .2s; }
-.mk-row:hover { background: color-mix(in srgb, var(--deck-brass) 6%, transparent); }
-.mk-row.buy { background: color-mix(in srgb, var(--deck-jade) 9%, transparent); }
-.mk-row.sell { background: color-mix(in srgb, var(--deck-oxblood) 13%, transparent); }
-.mk-pic { align-self: stretch; padding: .2rem 0 .2rem .2rem; min-height: 0; }
-.mk-pic { display: flex; align-items: center; }
-.mk-pic .mk-img, .mk-pic img, .mk-pic video { display: block; width: 100%; height: auto; max-height: 100%; aspect-ratio: 1; object-fit: cover;
-  border-radius: calc(var(--radius) * .7); box-shadow: 0 0 0 1px var(--edge-hi), 0 3px 8px rgba(0, 0, 0, .5); }
-.mk-name { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; }
-.mk-name b { font: 400 1.08rem/1.15 var(--serif); color: var(--deck-ivory); white-space: nowrap; }
-.mk-name .tag { margin: 0; font-size: .72rem; }
-.mk-price { text-align: right; line-height: 1.15; }
-.mk-price b { display: block; font: 700 1.02rem/1.2 var(--sans); font-variant-numeric: tabular-nums; color: var(--brass-hi); white-space: nowrap; }
-.mk-price small { display: block; color: var(--muted); font-size: .76rem; white-space: nowrap; }
-.mk-bar { min-width: 0; display: flex; align-items: center; }
+.deck .mk .note { margin: .25rem 0; }
 
-/* the drag bar: brass tick at what is aboard now, jade to buy, oxblood to sell */
-.mk-range { --r: .72rem; --h: 0; --a: 0; --b: 0; --pos: calc(var(--r) + (100% - 2 * var(--r)) * var(--a)); --end: calc(var(--r) + (100% - 2 * var(--r)) * var(--b));
-  --tick: calc(var(--r) + (100% - 2 * var(--r)) * var(--h));
-  -webkit-appearance: none; appearance: none; width: 100%; height: 2.2rem; margin: 0; padding: 0; background: transparent; cursor: grab; touch-action: none;
-  border: 0 !important; box-shadow: none !important; }
+.mk-table { width: 100%; border-collapse: collapse; border-spacing: 0; }
+.mk-table th { padding: .1rem .4rem .2rem; font: 400 .7rem/1.1 var(--special); letter-spacing: .08em; text-align: left; white-space: nowrap;
+  color: color-mix(in srgb, var(--deck-brass) 80%, var(--deck-ivory)); border-bottom: 1px solid var(--edge-hi); }
+.mk-table th.n { text-align: right; }
+.mk-table th.mk-scale span:last-child { float: right; }
+.mk-table th.mk-scale span:first-child::before { content: "\25C2  "; }
+.mk-table th.mk-scale span:last-child::after { content: "  \25B8"; }
+.mk-table td { display: table-cell; padding: .14rem .4rem; vertical-align: middle; border-bottom: 1px solid var(--rule); }
+.mk-table tbody tr { transition: background .2s; }
+.mk-table tbody tr:hover { background: color-mix(in srgb, var(--deck-brass) 6%, transparent); }
+.mk-table tbody tr.buy { background: color-mix(in srgb, var(--deck-jade) 11%, transparent); }
+.mk-table tbody tr.sell { background: color-mix(in srgb, var(--deck-oxblood) 15%, transparent); }
+
+/* picture: no air above or below it, so the rule sits right under it */
+.mk-table td.mk-ico { width: 1%; padding: .15rem .15rem .15rem .2rem; line-height: 0; }
+body.player .mk-ico .gicon, .mk-ico img, .mk-ico video { display: block; width: 3.6rem; height: 3.6rem; margin: 0; object-fit: cover;
+  border-radius: calc(var(--radius) * .5); box-shadow: 0 0 0 1px var(--edge-hi), 0 2px 6px rgba(0, 0, 0, .5); }
+.mk-table td.mk-name { width: 1%; white-space: nowrap; }
+.mk-name b { font: 400 1.08rem/1.1 var(--serif); color: var(--deck-ivory); }
+.mk-name .tag { display: block; width: max-content; margin: .1rem 0 0; font-size: .68rem; }
+
+/* price big and bold, what is aboard small beneath it */
+.mk-table td.mk-num { width: 1%; text-align: right; white-space: nowrap; line-height: 1; }
+.mk-price { display: block; font: 800 1.42rem/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--brass-hi); letter-spacing: -.01em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .6); }
+.mk-have { display: block; margin-top: .12rem; font-size: .72rem; line-height: 1.1; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mk-have b { color: var(--deck-ivory); font-weight: 700; }
+.mk-have s { opacity: .7; }
+tr.buy .mk-have .mk-at { color: var(--jade-hi); }
+tr.sell .mk-have .mk-at { color: var(--blood-hi); }
+
+/* the drag bar: a fat track (its fill is drawn by player.js) and a tall brass handle */
+.deck { --bar-tick: var(--brass-hi); --bar-held: color-mix(in srgb, var(--deck-brass) 34%, transparent);
+  --bar-buy: var(--jade-hi); --bar-sell: var(--blood-hi); --bar-empty: color-mix(in srgb, var(--deck-night) 80%, #000); }
+.mk-table td.mk-bar { padding-left: .55rem; padding-right: .55rem; }
+.mk-range { --tw: 1.35rem; -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 7rem; height: 1.15rem; min-height: 0; margin: .45rem 0;
+  padding: 0; border-radius: .58rem; cursor: grab; touch-action: none;
+  border: 0 !important; box-shadow: inset 0 0 0 1px var(--rule), inset 0 2px 5px rgba(0, 0, 0, .65) !important; }
 .mk-range:active { cursor: grabbing; }
-.mk-range::-webkit-slider-runnable-track { height: .7rem; border-radius: .35rem; box-shadow: inset 0 0 0 1px var(--rule), inset 0 2px 4px rgba(0, 0, 0, .6);
-  background:
-    linear-gradient(90deg, transparent calc(var(--tick) - 1.5px), var(--brass-hi) calc(var(--tick) - 1.5px), var(--brass-hi) calc(var(--tick) + 1.5px), transparent calc(var(--tick) + 1.5px)),
-    linear-gradient(90deg, color-mix(in srgb, var(--deck-brass) 30%, transparent) var(--pos), var(--seg, transparent) var(--pos), var(--seg, transparent) var(--end), transparent var(--end)),
-    color-mix(in srgb, var(--deck-night) 80%, #000); }
-.mk-range::-moz-range-track { height: .7rem; border-radius: .35rem; box-shadow: inset 0 0 0 1px var(--rule);
-  background:
-    linear-gradient(90deg, transparent calc(var(--tick) - 1.5px), var(--brass-hi) calc(var(--tick) - 1.5px), var(--brass-hi) calc(var(--tick) + 1.5px), transparent calc(var(--tick) + 1.5px)),
-    linear-gradient(90deg, color-mix(in srgb, var(--deck-brass) 30%, transparent) var(--pos), var(--seg, transparent) var(--pos), var(--seg, transparent) var(--end), transparent var(--end)),
-    color-mix(in srgb, var(--deck-night) 80%, #000); }
-.mk-range::-webkit-slider-thumb { -webkit-appearance: none; width: calc(var(--r) * 2); height: calc(var(--r) * 2); margin-top: calc(.35rem - var(--r)); border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff1c9, var(--deck-brass) 55%, color-mix(in srgb, var(--deck-brass) 60%, #000));
-  border: 1px solid color-mix(in srgb, var(--deck-brass) 50%, #000); box-shadow: 0 2px 6px rgba(0, 0, 0, .7), 0 0 0 3px color-mix(in srgb, var(--deck-brass) 18%, transparent); }
-.mk-range::-moz-range-thumb { width: calc(var(--r) * 2); height: calc(var(--r) * 2); border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff1c9, var(--deck-brass) 55%, color-mix(in srgb, var(--deck-brass) 60%, #000));
-  border: 1px solid color-mix(in srgb, var(--deck-brass) 50%, #000); box-shadow: 0 2px 6px rgba(0, 0, 0, .7); }
-.mk-row.buy .mk-range { --seg: var(--jade-hi); }
-.mk-row.sell .mk-range { --seg: var(--blood-hi); }
+.mk-range::-webkit-slider-runnable-track { height: 100%; background: transparent; border: 0; }
+.mk-range::-moz-range-track { height: 100%; background: transparent; border: 0; }
+.mk-range::-webkit-slider-thumb { -webkit-appearance: none; width: var(--tw); height: 2.05rem; margin-top: calc((1.15rem - 2.05rem) / 2); border-radius: .5rem;
+  background: linear-gradient(90deg, transparent 44%, color-mix(in srgb, var(--deck-brass) 45%, #000) 44% 56%, transparent 56%),
+    radial-gradient(ellipse at 40% 25%, #fff1c9, var(--deck-brass) 58%, color-mix(in srgb, var(--deck-brass) 55%, #000));
+  border: 1px solid color-mix(in srgb, var(--deck-brass) 45%, #000);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .75), 0 0 0 3px color-mix(in srgb, var(--deck-brass) 20%, transparent); }
+.mk-range::-moz-range-thumb { width: var(--tw); height: 2.05rem; border-radius: .5rem; box-sizing: border-box;
+  background: linear-gradient(90deg, transparent 44%, color-mix(in srgb, var(--deck-brass) 45%, #000) 44% 56%, transparent 56%),
+    radial-gradient(ellipse at 40% 25%, #fff1c9, var(--deck-brass) 58%, color-mix(in srgb, var(--deck-brass) 55%, #000));
+  border: 1px solid color-mix(in srgb, var(--deck-brass) 45%, #000); box-shadow: 0 3px 8px rgba(0, 0, 0, .75); }
+.mk-range:hover::-webkit-slider-thumb { box-shadow: 0 3px 8px rgba(0, 0, 0, .75), 0 0 0 4px color-mix(in srgb, var(--deck-brass) 32%, transparent); }
 .mk-range:disabled { opacity: .35; cursor: not-allowed; }
 .mk-range:disabled::-webkit-slider-thumb { visibility: hidden; }
+.mk-range:disabled::-moz-range-thumb { visibility: hidden; }
 
-body.player button.mk-do { min-width: 9.5rem; padding: .45rem .75rem; font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
-body.player button.mk-do:disabled { background: transparent; box-shadow: none; border-style: dashed; color: var(--muted); opacity: 1; }
-body.player button.mk-do.buy { color: #eafff6; border-color: var(--jade-hi);
+/* the button: narrow and bold */
+.mk-table td.mk-do { width: 1%; padding-left: 0; padding-right: .25rem; }
+body.player button.mk-go { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .05rem;
+  width: 6.4rem; min-height: 2.35rem; padding: .18rem .35rem; line-height: 1.05; font-variant-numeric: tabular-nums; text-align: center; }
+body.player button.mk-go b { font: 800 .86rem/1.05 var(--sans); letter-spacing: .01em; white-space: nowrap; }
+body.player button.mk-go small { font: 700 .74rem/1 var(--sans); opacity: .92; white-space: nowrap; }
+body.player button.mk-go:disabled { background: transparent; box-shadow: none; border-style: dashed; border-color: var(--edge); color: var(--brass-hi); opacity: 1; }
+body.player button.mk-go:disabled b { font: 700 .7rem/1.05 var(--special); letter-spacing: .07em; text-transform: uppercase; white-space: normal; }
+body.player button.mk-go.buy { color: #eafff6; border-color: var(--jade-hi);
   background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 80%, #fff 10%), var(--deck-jade) 60%, color-mix(in srgb, var(--deck-jade) 70%, #000)); }
-body.player button.mk-do.sell { color: #fff6e3; border-color: var(--blood-hi);
+body.player button.mk-go.sell { color: #fff6e3; border-color: var(--blood-hi);
   background: linear-gradient(180deg, color-mix(in srgb, var(--deck-oxblood) 78%, #ff9b84 10%), var(--deck-oxblood) 55%, color-mix(in srgb, var(--deck-oxblood) 70%, #000)); }
 
 /* slim buttons used by the market, fleet and shipyard */
 body.player button.slim { padding: .3rem .65rem; font-size: .84rem; line-height: 1.2; white-space: nowrap; }
 
-/* narrow panes (phones): name, price and aboard on one line; bar and button below */
+/* narrow panes (phones): smaller picture, price and button so the row still fits on one line */
 @container pane (max-width: 620px) {
-  .mk-list { display: flex; flex-direction: column; gap: .3rem; }
-  .mk-row { flex: 1 0 auto; display: grid; grid-template-columns: 2.7rem minmax(0, 1fr) auto; grid-template-areas: "pic name price" "pic bar do";
-    column-gap: .55rem; row-gap: .1rem; padding: .3rem .3rem .35rem 0; }
-  .mk-pic { grid-area: pic; } .mk-name { grid-area: name; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 .4rem; min-width: 0; }
-  .mk-name b { font-size: 1rem; }
-  .mk-price { grid-area: price; display: flex; align-items: baseline; gap: .45rem; }
-  .mk-bar { grid-area: bar; } .mk-do { grid-area: do; }
-  .mk-pic .mk-img, .mk-pic img, .mk-pic video { max-height: 2.7rem; }
-  body.player button.mk-do { min-width: 0; font-size: .8rem; padding: .3rem .5rem; }
+  body.player .mk-ico .gicon, .mk-ico img, .mk-ico video { width: 2.8rem; height: 2.8rem; }
+  .mk-name b { font-size: .95rem; }
+  .mk-price { font-size: 1.15rem; }
+  .mk-table td { padding-left: .25rem; padding-right: .25rem; }
+  .mk-range { min-width: 4.5rem; }
+  body.player button.mk-go { width: 5.2rem; }
   .mk-head .mk-hold { margin-left: 0; }
 }
 
-/* the stage is made taller while the market keeper or the ship master is on it (landscape) */
+/* the stage is made taller while the market keeper, ship master, mayor or tax lady is on it (landscape) */
 @media (orientation: landscape) and (min-aspect-ratio: 1/1) {
-  .deck.woman[data-tab="market"] .dk-side, .deck.woman[data-tab="fleet"] .dk-side { grid-template-rows: minmax(0, 2.1fr) minmax(0, 1fr); }
+  .deck.woman[data-tab="market"] .dk-side, .deck.woman[data-tab="fleet"] .dk-side, .deck.woman[data-tab="ledger"] .dk-side, .deck.woman[data-tab="chart"] .dk-side { grid-template-rows: minmax(0, 2.1fr) minmax(0, 1fr); }
   .deck.woman .stg-idle .stg-img { object-position: 50% 18%; animation: none; }
 }
 
@@ -508,4 +523,60 @@ body.player button.slim { padding: .3rem .65rem; font-size: .84rem; line-height:
   .yd-list { grid-template-columns: [pic] 2.8rem [name] minmax(0, 1fr) repeat(2, max-content) [price] max-content [do] max-content; column-gap: .5rem; }
   .yd-hull { display: none; }
   .yd-row { column-gap: .5rem; }
+}
+
+/* Plaques while market trades are planned: the figure after the trades, the present one small beneath. */
+.plq.plan b { color: var(--deck-ivory); }
+.plq.plan.up b { color: var(--jade-hi); }
+.plq.plan.down b { color: color-mix(in srgb, var(--blood-hi) 85%, var(--deck-ivory)); }
+.plq.plan.bad b { color: var(--blood-hi); }
+.plq.plan { border-color: var(--edge-hi); box-shadow: inset 0 1px 0 rgba(255, 236, 190, .1), 0 0 14px -6px var(--deck-brass); }
+.plq small { display: block; margin-top: -.1rem; font: .62rem/1.1 var(--sans); color: var(--muted); white-space: nowrap; }
+.dk-stats.over .plq.bad { animation: plqWarn 1.2s ease-in-out infinite; }
+@keyframes plqWarn { 50% { box-shadow: 0 0 16px -2px var(--blood-hi); } }
+
+/* ------------------------------------------------------------- the Tally Book, in place -- */
+/* Tally in the rail swaps the working pane and the side column (stage, log, helm) for the
+   statistics, which then fill everything right of the rail. */
+.dk-tallyhost { grid-area: main; display: none; position: relative; z-index: 1; min-height: 0; min-width: 0;
+  border: 1px solid var(--edge); border-radius: calc(var(--radius) * 1.4); overflow: hidden;
+  background: color-mix(in srgb, var(--deck-night) 55%, transparent); }
+.deck[data-tab="tally"] { grid-template-areas: "top top top" "nav main main"; }
+.deck[data-tab="tally"] .dk-main, .deck[data-tab="tally"] .dk-side { display: none; }
+.deck[data-tab="tally"] .dk-tallyhost { display: block; animation: tallyIn .35s ease both; }
+@keyframes tallyIn { from { opacity: 0; transform: translateX(14px); } }
+.tally-frame { display: block; width: 100%; height: 100%; border: 0; background: var(--deck-night); }
+.dk-nav .dk-tally.on { border-style: solid; color: var(--brass-hi); border-color: var(--edge-hi);
+  background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--deck-brass) 26%, transparent), color-mix(in srgb, var(--deck-oxblood) 22%, transparent) 75%); }
+.tally-solo { position: fixed; inset: 0; z-index: 40; background: var(--deck-night); }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .deck[data-tab="tally"] { grid-template-areas: "top" "main" "main" "nav"; }
+}
+@media (prefers-reduced-motion: reduce) { .deck[data-tab="tally"] .dk-tallyhost { animation: none; } }
+
+/* Tab rail pictures (the woman for that tab, or the port): square and as big as the rail allows, with the
+   tab's name in bold white across the foot of the picture. --ti is the picture's side: capped by the
+   rail's width and by the screen's height, so all five tabs, Tally and the captain still fit. */
+.dk-nav { padding: .4rem .35rem; --ti: min(calc(5.4rem - 2px), calc((100dvh - 19.5rem) / 5)); }
+.dk-nav button.face { display: grid; place-items: center; min-height: 0; padding: .25rem; gap: 0; }
+.dk-nav button.face > * { grid-area: 1 / 1; }
+.dk-nav .dk-tabimg { display: block; width: var(--ti); height: var(--ti); object-fit: cover; object-position: 50% 18%;
+  border-radius: calc(var(--radius) * .6); box-shadow: 0 0 0 1px var(--edge-hi), 0 3px 8px rgba(0, 0, 0, .6); }
+.dk-nav .dk-tabimg.port { object-position: 50% 50%; }
+.dk-nav button.face span { align-self: end; width: var(--ti); max-width: none; padding: .9rem .1rem .22rem; box-sizing: border-box;
+  border-radius: 0 0 calc(var(--radius) * .6) calc(var(--radius) * .6); text-align: center;
+  font: 800 .78rem/1 var(--sans); letter-spacing: .05em; text-transform: uppercase; color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .55) 45%, rgba(0, 0, 0, .88));
+  text-shadow: 0 1px 2px #000, 0 0 6px rgba(0, 0, 0, .9); pointer-events: none; }
+.dk-nav button.face.on span { color: #fff6dc; }
+.dk-nav button.on .dk-tabimg { box-shadow: 0 0 0 2px var(--brass-hi), 0 0 14px color-mix(in srgb, var(--deck-brass) 70%, transparent); }
+.dk-nav button.face:not(.on) .dk-tabimg { filter: saturate(.8) brightness(.85); }
+.dk-nav button.face:hover .dk-tabimg { filter: none; }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .dk-nav { --ti: min(3.8rem, calc((100vw - 3rem) / 6 - .7rem)); }
+  .dk-nav button.face span { font-size: .6rem; padding-top: .6rem; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .dk-nav { --ti: min(calc(4.6rem - 1.3rem), calc((100dvh - 9rem) / 5)); }
+  .dk-nav button.face { padding: .15rem; }
 }

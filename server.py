@@ -774,7 +774,14 @@ class Handler(BaseHTTPRequestHandler):
             with HUB.cond:
                 config.save(cfg)
                 HUB.reload_settings(langs_saved=[c for c, d in langs.items() if isinstance(d, dict)])
-            media.sync_from_config(engine.CFG)
+            synced = media.sync_from_config(engine.CFG)
+            for key, was, now, how in synced["changes"]:
+                journal.log("INFO", "admin", "Graphics: {} {} ({} -> {})".format(
+                    key, "file changed on disk" if how == "file" else "removed" if how == "removed" else
+                    "changed (" + how + ")", was or "none", now or "none"), **self._via())
+            if synced["retagged"]:
+                journal.log("INFO", "admin", "Media library: re-filed {} picture(s) under the Graphics slot they "
+                            "fill".format(synced["retagged"]), **self._via())
             return self._send(200, {"ok": True, "msg": "Saved. Every screen has been updated."})
         if what == "lang_delete":
             code = str(body.get("code") or "")
@@ -874,8 +881,10 @@ class Handler(BaseHTTPRequestHandler):
         subject = one("subject").lower()
         roles = [r for r in one("roles").split(",") if r]
         try:
-            it = media.add_bytes(data, ext, kind, subject, roles, (), one("nsfw") == "1", "upload",
-                                 title=re.sub(r"[_-]+", " ", stem)[:80])
+            replaces = one("replaces")
+            it = media.add_bytes(data, ext, kind, subject, roles, media._tags(one("tags")), one("nsfw") == "1",
+                                 "upload", title=re.sub(r"[_-]+", " ", stem)[:80],
+                                 replaces=replaces if media.ITEM_RE.match(replaces) else "")
         except media.MediaError as e:
             return self._send(200, {"ok": False, "error": str(e)})
         journal.log("INFO", "admin", "Media library: uploaded {} as {}/{} ({:,} bytes)".format(
@@ -951,7 +960,8 @@ class Handler(BaseHTTPRequestHandler):
             roles = [r for r in body.get("roles") or [] if r in roles_ok]
             w, h = imagegen.ASPECTS[aspect]
             job = media.JOBS.add(kind, subject, roles, prompt[:6000], w, h, count, nsfw,
-                                 tags=media._tags(body.get("tags") or ""), aspect=aspect)
+                                 tags=media._tags(body.get("tags") or ""), aspect=aspect,
+                                 replaces=str(body.get("replaces") or ""))
             journal.log("INFO", "admin", "Media library: queued {} picture(s) for {}/{}".format(
                 count, kind, subject or "-"), **self._via())
             return self._send(200, {"ok": True, "job": job["id"], "msg": "Queued {} picture{}. Each is filed as it "

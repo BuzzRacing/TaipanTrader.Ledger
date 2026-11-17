@@ -218,6 +218,28 @@ CHARACTERS = {
                            "ivory corset and dramatically split oxblood skirt, ink on her fingers, auburn hair escaping "
                            "beneath a small cocked hat, one boot on a bollard, mid-call with a wicked grin, {style}",
     },
+    "bookmaker": {
+        "name": "Isabel “Fan-Tan Bella” da Rocha", "title": "Bookmaker of the Golden Fan & Keeper of the Tally", "brand_link": "",
+        "age": 34, "origin": "Macau", "home_port": "hongkong", "color": "#8c5a9e", "portrait": "",
+        "voice_id": "Olivia", "speaking_rate": 0.98,
+        "delivery": "warm, amused and unhurried, a Macanese gambling-house queen quoting odds as if they were secrets",
+        "catchphrase": "Every house on these seas has a price, darling. Yours is on my board.",
+        "bio": "Born above her father's fan-tan parlour in Macau, Bella was running the tables at fourteen and the "
+               "whole house at twenty-five. Now she keeps the Golden Fan on the Hong Kong waterfront, where every "
+               "trading house on the China Seas is chalked on her odds board and every rise and ruin is written "
+               "in her tally book before the gazette hears of it.",
+        "quirk": "Clicks one bead of her gold-and-jade abacus every time a house loses a ship, whoever is watching.",
+        "vice": "Long odds, French champagne and captains who think they can bluff her.",
+        "secret": "She has a standing wager on how you will finish, and she will not say which way she bet.",
+        "stats": {"cunning": 9, "nerve": 7, "charm": 8, "greed": 6},
+        "portrait_prompt": "An {adult} Macanese woman (age 34), the bookmaker who runs the Golden Fan gambling house "
+                           "on the Hong Kong waterfront, leaning over a lacquered fan-tan table with one ringed hand on "
+                           "a gold-and-jade abacus, a leather tally book open beside towers of silver dollars, a chalked "
+                           "odds board of trading-house names behind her, fitted black silk cheongsam-cut gown with "
+                           "oxblood and gold embroidery and a daring high slit, jade drop earrings, glossy black hair "
+                           "pinned with a gold fan comb, lantern smoke and green baize glow, amused knowing gaze straight "
+                           "into the camera as if she has already bet against you, {style}",
+    },
 }
 for _c in CHARACTERS.values():
     _c["portrait_prompt"] = _c["portrait_prompt"].format(adult=_ADULT, style=_STYLE)

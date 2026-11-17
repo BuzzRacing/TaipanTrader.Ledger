@@ -43,7 +43,8 @@ async function loadInfo() {
   const r = await fetch("/api/info");
   const info = await r.json();
   const d = info.data;
-  T = d.text || {};
+  // screens may carry their own fallback wording for keys an older server does not have yet
+  T = Object.assign({}, typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {}, d.text || {});
   TOK = d.tokens || {};
   CUR = d.brand.currency || "";
   COLORS = d.colors || COLORS;
