@@ -66,6 +66,18 @@ Records are organised by game, with months inside. A game's journal is kept unti
 
 The files are plain text in the `journal` folder: `journal/games/<game>/events.jsonl` (one event per line) and `journal/server/server-<date>.log`.
 
+## Tally Book (player statistics)
+
+Every player has a Tally Book: their numbers as charts, heat maps and records. Open it with **Tally** at the foot of the tab rail (also in the Ledger tab, the lobby and the end-of-game screen), or go to `http://<server>:8765/stats`. It opens in its own window, so the deck never loses its place, and like the deck it never scrolls: only the panel area scrolls on a small screen.
+
+- **This voyage / Career.** One game month by month, or every recorded game you sat in (matched by player name). Pick an earlier game from the Game list, or tap one in Career.
+- **Fortune & Trade.** Net worth with each new rank starred and shipwrecks marked; silver, bank and debt; profit by cargo; where the silver went (cargo, guns, repairs, ships, protection, interest, booty, losses); best and worst sales.
+- **Routes & Ports.** Every voyage traced on the sea chart (thicker for routes sailed more, marks for storms, battles, seizures and wrecks) with **Replay** to sail the whole run again; profit by port; a port-by-month heat map of profit or standing.
+- **Markets.** A price map of every cargo in every port against the average; one cargo's price in every port over time with your buys and sales on it; the **trade score**: each trade scored 0 to 100 by where its price sat among every price of that cargo you saw (100 is the cheapest buy or the dearest sale), plus what you paid the dealers and what your big orders cost by moving the market.
+- **Perils & Rivals.** The race between every house, a bar race you can play, storms, battles, gunnery, booty, seizures, robberies and wrecks with what each cost, the battle log, and head to head.
+- **Fair play.** While a game is running you see your own numbers, only the prices you actually saw, and rivals' net worth (already public on the standings). When the game ends every book opens: every price in every port and every rival's full breakdown. Without a seat in the game in progress, a name shows only that player's past games.
+- **Nothing new is recorded.** It is all worked out from the Captain's Report journal (`stats.py`), so every game recorded since records began has stats. Every chart has a hover read-out and a table view.
+
 ## Voices
 
 The game's lines are read aloud by a cast of ten characters through [Inworld](https://inworld.ai) text-to-speech: the first mate reads the captain's log, the bosun calls the battles and storms, Elder Brother Wu answers about loans, the comprador about trades, the crier reads the news on the harbor board, and so on.
@@ -128,9 +140,10 @@ One turn is one month. Everyone does their port business at the same time: trade
 | `voice.py` | Inworld voices: works out who reads a line, makes the audio on request, keeps it in `cache/voice/`. |
 | `server.py` | Web server, live updates to every screen, saves, and the admin interface. |
 | `journal.py` | The records: writes the game journal and the server log, reads them back for the Captain's Report, and prunes old ones. |
+| `stats.py` | The Tally Book's numbers: works out a player's voyage and career from the journal, with the fair-play rules. Never writes anything. |
 | `replay.py` | Plays a recorded month again from the journal and checks it comes out the same. `python replay.py --list` shows the recorded games. |
 | `journal/` | Created on first run: one folder per game under `games/`, one server log per day under `server/`. Not uploaded to GitHub. |
-| `web/` | Player screen (`index.html`, `player.js`), harbor board (`board.html`, `board.js`), admin (`admin.html`, `admin.js`), chart and styles. |
+| `web/` | Player screen (`index.html`, `player.js`), Tally Book (`stats.html`, `stats.js`, `stats.css`), harbor board (`board.html`, `board.js`), admin (`admin.html`, `admin.js`), chart and styles. |
 | `fonts.py` | Downloads the Google Fonts named under Look & Style into `web/fonts/` once, in the background, so every screen gets them from the game with no internet. Run `python fonts.py` to fetch them by hand. |
 | `web/fonts/` | The downloaded fonts. Copy it with the folder so a Pi without internet has them. |
 | `config/` | Created on first save: `settings.json`, `lang/`, `presets/`, `backups/`. |
@@ -138,4 +151,5 @@ One turn is one month. Everyone does their port business at the same time: trade
 | `tests/sim_test.py` | Plays 40 full games with bots and checks the rules never break. Run `python tests/sim_test.py`. |
 | `tests/config_test.py` | Checks the settings, the wording, and that a game survives its ports, cargoes and ships being changed mid-game. |
 | `tests/journal_test.py` | Plays recorded bot games through a restart, admin corrections and a settings change, then replays every month from the journal and checks each comes out exactly as recorded. |
+| `tests/stats_test.py` | Plays recorded bot games and checks the Tally Book: the books balance, fair play holds while a game runs, everything opens when it ends, and the career adds up. |
 | `tests/voice_test.py` | Checks the cast and the voice layer against a pretend Inworld, so it runs offline. |

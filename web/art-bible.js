@@ -639,6 +639,7 @@
     buildPrompt();
     refreshCoverage();
     refreshQueue();
+    if (!EX.running && !EX.loading) EX.loaded = false;   // re-read history so deleted images drop out
     loadBook();
   }
 

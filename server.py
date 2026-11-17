@@ -6,6 +6,7 @@ Run:  python server.py [--port 8765] [--new] [--admin-password WORD]
   /            player screen (phones, tablets, laptops)
   /board       harbor board for a big shared screen
   /admin       command center: every setting, the look, the wording, the live game
+  /stats       the player's statistics: this voyage and career, charts and heat maps (see stats.py)
   /voice/...   lines read aloud by the cast (Inworld voices; see voice.py)
   journal/     everything that happens, written down (see journal.py); read it on
                the Admin page under Captain's Report
@@ -39,6 +40,8 @@ import engine
 import fonts
 import imagegen
 import journal
+import media
+import stats
 import strings
 import voice
 from engine import Game, GameError, static_data
@@ -58,14 +61,51 @@ def artbible_examples():
             book = json.load(f)
     except (OSError, ValueError):
         return {}
-    return {k: v for k, v in book.items() if isinstance(v, list) and ARTBIBLE_SLOT_RE.match(str(k))}
+    out = {}
+    for k, v in book.items():
+        if not isinstance(v, list) or not ARTBIBLE_SLOT_RE.match(str(k)):
+            continue
+        # Skip examples whose image was deleted (e.g. from the media library).
+        live = [x for x in v if isinstance(x, dict) and media._exists(x.get("url"))]
+        if live:
+            out[k] = live
+    return out
+
+
+def prune_artbible(urls):
+    """Drop Art Bible examples that point at these URLs (or at files that no longer exist)."""
+    urls = set(urls or ())
+    with ARTBIBLE_LOCK:
+        try:
+            with open(ARTBIBLE_FILE, encoding="utf-8") as f:
+                book = json.load(f)
+        except (OSError, ValueError):
+            return 0
+        if not isinstance(book, dict):
+            return 0
+        removed, fresh = 0, {}
+        for k, v in book.items():
+            if not isinstance(v, list):
+                fresh[k] = v
+                continue
+            keep = [x for x in v if isinstance(x, dict) and x.get("url") not in urls and media._exists(x.get("url"))]
+            removed += len(v) - len(keep)
+            if keep:
+                fresh[k] = keep
+        if removed:
+            tmp = ARTBIBLE_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(fresh, f, indent=1, ensure_ascii=False)
+            os.replace(tmp, ARTBIBLE_FILE)
+        return removed
 SAVE_FILE = os.path.join(SAVES, "current.json")
 MAX_UPLOAD = 8 * 1024 * 1024
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
          ".js": "application/javascript; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".ico": "image/x-icon", ".json": "application/json",
          ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif",
-         ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf"}
+         ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
+         ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime"}
 STARTED = time.time()
 SESSIONS = set()      # admin sign-ins from other devices (cookie values)
 
@@ -75,7 +115,8 @@ TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
          ".js": "application/javascript; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".ico": "image/x-icon", ".json": "application/json",
          ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif",
-         ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf"}
+         ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
+         ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime"}
 STARTED = time.time()
 SESSIONS = set()      # admin sign-ins from other devices (cookie values)
 
@@ -98,6 +139,25 @@ def _fonts_ready():
         with hub.cond:
             hub.cfg_version += 1
             hub.changed(save=False)
+
+
+def _media_changed():
+    """The media library changed: nudge open screens to reload it."""
+    hub = globals().get("HUB")
+    if hub is not None:
+        with hub.cond:
+            hub.cfg_version += 1
+            hub.changed(save=False)
+
+
+def screen_cfg():
+    """The settings as screens may see them: NSFW artwork swapped out while family-friendly."""
+    cfg = engine.CFG
+    if not media.family(cfg):
+        return cfg
+    out = dict(cfg)
+    out["graphics"] = media.safe_graphics(cfg.get("graphics"), cfg)
+    return out
 
 
 def settings_now():
@@ -285,6 +345,51 @@ class Handler(BaseHTTPRequestHandler):
         extra = {"Content-Security-Policy": "script-src 'none'"} if name.startswith("uploads/") else None
         self._send(200, data, TYPES.get(os.path.splitext(path)[1].lower(), "application/octet-stream"), extra)
 
+    def _stream(self, name):
+        """Send a picture or video clip, honouring Range requests so videos can seek."""
+        path = os.path.normpath(os.path.join(WEB, name))
+        if not path.startswith(WEB + os.sep) or not os.path.isfile(path):
+            return self._send(404, "Not found", "text/plain")
+        size = os.path.getsize(path)
+        ctype = TYPES.get(os.path.splitext(path)[1].lower(), "application/octet-stream")
+        start, end, code = 0, size - 1, 200
+        m = re.match(r"^bytes=(\d*)-(\d*)$", self.headers.get("Range", "").strip())
+        if m and size:
+            if m.group(1):
+                start = int(m.group(1))
+                if m.group(2):
+                    end = min(int(m.group(2)), size - 1)
+            elif m.group(2):
+                start = max(0, size - int(m.group(2)))
+            if start > end or start >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", "bytes */{}".format(size))
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            code = 206
+        length = end - start + 1 if size else 0
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(length))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Security-Policy", "script-src 'none'")
+        if code == 206:
+            self.send_header("Content-Range", "bytes {}-{}/{}".format(start, end, size))
+        self.end_headers()
+        if self.command == "HEAD":
+            return
+        with open(path, "rb") as f:
+            f.seek(start)
+            left = length
+            while left > 0:
+                chunk = f.read(min(256 * 1024, left))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
+
     def _raw(self, limit):
         try:
             length = int(self.headers.get("Content-Length", 0))
@@ -339,6 +444,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         return self._guard("GET", self._get)
 
+    def do_HEAD(self):
+        return self._guard("HEAD", self._get)
+
     def do_POST(self):
         return self._guard("POST", self._post)
 
@@ -352,14 +460,25 @@ class Handler(BaseHTTPRequestHandler):
             return self._file("board.html")
         if path == "/admin":
             return self._file("admin.html")
+        if path == "/stats":
+            return self._file("stats.html")
+        if path == "/api/stats":
+            return self._stats_get(query)
         if path == "/fonts.css":
             return self._send(200, config.fonts_css(engine.CFG, fonts.local_css()), "text/css; charset=utf-8")
         if path == "/theme.css":
-            return self._send(200, config.theme_css(engine.CFG), "text/css; charset=utf-8")
+            return self._send(200, config.theme_css(screen_cfg()), "text/css; charset=utf-8")
         if path == "/api/info":
             with HUB.cond:
+                cfg = engine.CFG
+                data = static_data()
+                said = voice.PLAN.public()
+                if media.family(cfg):
+                    data = dict(data, graphics=media.safe_graphics(data.get("graphics"), cfg))
+                    if said.get("cast"):
+                        said = dict(said, cast=media.safe_cast(said["cast"], cfg))
                 return self._send(200, {"ok": True, "join_url": HUB.join_url, "cfg": HUB.cfg_version,
-                                        "data": static_data(), "voice": voice.PLAN.public()})
+                                        "data": data, "voice": said, "media": media.public(cfg)})
         if path.startswith("/voice/") and path.endswith(".mp3"):
             return self._voice_clip(path[len("/voice/"):-4])
         if path == "/events":
@@ -368,6 +487,10 @@ class Handler(BaseHTTPRequestHandler):
             if not self._admin_ok():
                 return self._deny()
             return self._admin_get(path[len("/api/admin/"):], query)
+        if media.is_blocked(path, engine.CFG) and not self._admin_ok():
+            return self._send(404, "Not found", "text/plain")
+        if path.startswith("/media/") or os.path.splitext(path)[1].lower() in media.VIDEO_EXT:
+            return self._stream(path.lstrip("/"))
         return self._file(path.lstrip("/"))
 
     def _post(self):
@@ -424,6 +547,46 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": False, "error": str(e), "voice": said})
         self._send(404, {"ok": False, "error": "Not found"})
 
+    # ------------------------------------------------------------- stats --
+    def _stats_get(self, query):
+        """A player's statistics (stats.py). The seat token says who is asking. Without a
+        seat in the game in progress, a name gives that player's past games only, so
+        nobody can look at another house's numbers while the game is still being played."""
+        one = lambda k, d="": query.get(k, [d])[0]
+        with HUB.cond:
+            g = HUB.game
+            pid = g.pid_for_token(one("token")) if one("token") else None
+            me = g.s["players"].get(pid) if pid else None
+            running = g.s["phase"] != "ended"
+        cur = journal.current()
+        name = (me["name"] if me else one("name")).strip()
+        scope = one("scope", "voyage")
+        try:
+            if scope == "players":
+                return self._send(200, {"ok": True, "players": stats.players_seen(), "me": name})
+            if not name:
+                return self._send(200, {"ok": False, "error": engine.tx("st.e_who"), "who": True,
+                                        "players": stats.players_seen()})
+            if scope == "career":
+                data = stats.career(name, running_gid=cur if running else None, running_pid=pid)
+                return self._send(200, {"ok": True, "scope": "career", "name": name, "current": cur,
+                                        "seated": bool(me), "career": data})
+            gid = one("game") or cur or ""
+            if gid == cur and running:
+                if not me:
+                    return self._send(200, {"ok": False, "error": engine.tx("st.e_seat"), "seat": True})
+                target = pid
+            else:
+                target = stats.find_pid(gid, name)
+            data = stats.voyage(gid, target, running=(gid == cur and running)) if target else None
+            if data is None:
+                return self._send(200, {"ok": False, "error": engine.tx("st.e_none"), "none": True})
+            return self._send(200, {"ok": True, "scope": "voyage", "name": name, "current": cur,
+                                    "seated": bool(me), "voyage": data})
+        except Exception:
+            crash("Working out statistics failed", scope=scope, game=one("game"))
+            return self._send(200, {"ok": False, "error": engine.tx("st.e_failed")})
+
     # --------------------------------------------------------- art bible --
     def _artbible_generate(self, body):
         slot = str(body.get("slot") or "").strip().lower()
@@ -456,6 +619,8 @@ class Handler(BaseHTTPRequestHandler):
             os.replace(tmp, ARTBIBLE_FILE)
         journal.log("INFO", "admin", "Generated Art Bible example {} ({:,} bytes, seed {})".format(
             slot, len(data), seed), **self._via())
+        media.register_url(entry["url"], "reference", slot, ["reference"], nsfw=media.nsfw_from_prompt(prompt),
+                           source="generated", prompt=prompt.strip(), seed=seed)
         return self._send(200, {"ok": True, "slot": slot, "example": entry, "history": book[slot]})
 
     # ------------------------------------------------------------- admin --
@@ -490,6 +655,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": False, "error": str(e)})
         if what == "artbible/examples":
             return self._send(200, {"ok": True, "examples": artbible_examples(), "aspects": imagegen.ASPECTS})
+        if what == "media/library":
+            v = media.admin_view(engine.CFG)
+            v.update(ok=True, jobs=media.JOBS.list(), aspects=imagegen.ASPECTS)
+            return self._send(200, v)
+        if what == "media/jobs":
+            return self._send(200, {"ok": True, "jobs": media.JOBS.list()})
         if what.startswith("journal/"):
             return self._journal_get(what[len("journal/"):], query)
         if what == "export":
@@ -535,7 +706,12 @@ class Handler(BaseHTTPRequestHandler):
             journal.log("INFO", "admin", "Image uploaded: {} ({:,} bytes)".format(fname, len(data)), **self._via())
             return self._send(200, {"ok": True, "url": "/uploads/" + fname})
 
+        if what == "media/upload":
+            return self._media_upload(query)
+
         body = self._body(4 * 1024 * 1024)
+        if what.startswith("media/"):
+            return self._media_post(what[len("media/"):], body)
         if what == "imagegen/portrait":
             character = str(body.get("character") or "").strip().lower()
             if not re.match(r"^[a-z][a-z0-9_]{0,23}$", character):
@@ -552,6 +728,10 @@ class Handler(BaseHTTPRequestHandler):
                 f.write(data)
             journal.log("INFO", "admin", "Generated a new portrait for {} ({:,} bytes)".format(
                 character, len(data)), **self._via())
+            prompt = str(body.get("prompt") or "")
+            media.register_url("/uploads/" + fname, "persona", character, ["portrait"],
+                               nsfw=media.nsfw_from_prompt(prompt, media.load(engine.CFG)["options"]),
+                               source="generated", prompt=prompt)
             return self._send(200, {"ok": True, "url": "/uploads/" + fname,
                                     "msg": "New portrait generated. Save & apply to keep it."})
         if what == "imagegen/artbible":
@@ -566,6 +746,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": False, "error": str(e)})
             journal.log("INFO", "admin", "Art Bible example {} {} ({:,} bytes)".format(
                 example, "imported" if mode == "import" else "regenerated", entry["bytes"]), **self._via())
+            if entry.get("file"):
+                media.register_url("/assets/artbible/" + entry["file"], "reference",
+                                   re.sub(r"[^a-z0-9_]", "_", example.lower())[:48], ["reference"],
+                                   nsfw=media.nsfw_from_prompt(entry.get("prompt") or ""), source="generated",
+                                   prompt=entry.get("prompt") or "", seed=entry.get("seed"))
             return self._send(200, {"ok": True, "entry": entry})
         if what == "imagegen/example":
             return self._artbible_generate(body)
@@ -589,6 +774,7 @@ class Handler(BaseHTTPRequestHandler):
             with HUB.cond:
                 config.save(cfg)
                 HUB.reload_settings(langs_saved=[c for c, d in langs.items() if isinstance(d, dict)])
+            media.sync_from_config(engine.CFG)
             return self._send(200, {"ok": True, "msg": "Saved. Every screen has been updated."})
         if what == "lang_delete":
             code = str(body.get("code") or "")
@@ -670,6 +856,109 @@ class Handler(BaseHTTPRequestHandler):
                 msg = HUB.game.admin(op, body)
                 HUB.changed()
             return self._send(200, {"ok": True, "msg": msg})
+        self._send(404, {"ok": False, "error": "Not found"})
+
+    # ------------------------------------------------------- media library --
+    def _media_upload(self, query):
+        one = lambda k, d="": query.get(k, [d])[0]
+        name = os.path.basename(one("name", "file"))
+        stem, ext = os.path.splitext(name)
+        ext = ext.lower()
+        if ext not in media.IMAGE_EXT + media.VIDEO_EXT:
+            return self._send(200, {"ok": False, "error": "Use a PNG, JPG, WebP, GIF or SVG picture, or an MP4, WebM or MOV video."})
+        limit = media.MAX_VIDEO if ext in media.VIDEO_EXT else media.MAX_IMAGE
+        data = self._raw(limit)
+        if data is None:
+            return self._send(200, {"ok": False, "error": "The file is empty or larger than {} MB.".format(limit // (1024 * 1024))})
+        kind = one("kind", "other")
+        subject = one("subject").lower()
+        roles = [r for r in one("roles").split(",") if r]
+        try:
+            it = media.add_bytes(data, ext, kind, subject, roles, (), one("nsfw") == "1", "upload",
+                                 title=re.sub(r"[_-]+", " ", stem)[:80])
+        except media.MediaError as e:
+            return self._send(200, {"ok": False, "error": str(e)})
+        journal.log("INFO", "admin", "Media library: uploaded {} as {}/{} ({:,} bytes)".format(
+            it["url"], it["kind"], it["subject"] or "-", len(data)), **self._via())
+        return self._send(200, {"ok": True, "item": it})
+
+    def _media_post(self, what, body):
+        cfg = engine.CFG
+        ids = [str(x) for x in body.get("ids") or [] if isinstance(x, str)][:2000]
+        if what == "update":
+            changes = body.get("changes") if isinstance(body.get("changes"), dict) else {}
+            lst = lambda k: [str(x) for x in body.get(k) or [] if isinstance(x, str)]
+            n = media.update(ids, changes, lst("add_tags"), lst("remove_tags"), lst("add_roles"), lst("remove_roles"))
+            return self._send(200, {"ok": True, "changed": n, "msg": "Saved."})
+        if what == "delete":
+            in_use = [u for u, *_ in media._config_refs(cfg)]
+            want = set(ids)
+            urls = [i["url"] for i in media.load(cfg)["items"] if i.get("id") in want and i.get("url") not in in_use]
+            n = media.remove(ids, in_use)
+            prune_artbible(urls)
+            journal.log("INFO", "admin", "Media library: removed {} item(s)".format(n), **self._via())
+            return self._send(200, {"ok": True, "msg": "Removed {} item{} (files moved to web/media/_trash).".format(
+                n, "" if n == 1 else "s")})
+        if what == "rules":
+            media.set_rules(body.get("rules"), body.get("options"))
+            return self._send(200, {"ok": True, "msg": "Playback rules saved. Every screen has been updated."})
+        if what == "scan":
+            added, missing = media.scan(cfg)
+            return self._send(200, {"ok": True, "msg": "Scan done: {} new, {} missing file{} dropped.".format(
+                added, missing, "" if missing == 1 else "s")})
+        if what == "safe":
+            rating = "family" if body.get("family") else "historical"
+            with HUB.cond:
+                new = json.loads(json.dumps(engine.CFG))
+                new["content"]["rating"] = rating
+                config.save(new)
+                HUB.reload_settings()
+            journal.log("INFO", "admin", "Content rating set to {} from the Media Library".format(rating), **self._via())
+            return self._send(200, {"ok": True, "rating": rating, "msg": "Family-friendly is on: NSFW items are hidden "
+                                    "everywhere." if rating == "family" else "Family-friendly is off."})
+        if what == "profile":
+            it = next((i for i in media.load(cfg)["items"] if ids and i["id"] == ids[0]), None)
+            if not it or it["kind"] != "persona" or it["type"] != "image":
+                return self._send(200, {"ok": False, "error": "Choose a persona picture first."})
+            cid = it["subject"]
+            if cid not in cfg.get("characters", {}):
+                return self._send(200, {"ok": False, "error": "That persona is not in the cast."})
+            with HUB.cond:
+                new = json.loads(json.dumps(engine.CFG))
+                new["characters"][cid]["portrait"] = it["url"]
+                config.save(new)
+                HUB.reload_settings()
+            media.update([it["id"]], {"primary": True}, add_roles=["portrait"])
+            return self._send(200, {"ok": True, "cid": cid, "url": it["url"],
+                                    "msg": "Profile picture set for {}.".format(cid)})
+        if what == "generate":
+            kind = str(body.get("kind") or "")
+            subject = str(body.get("subject") or "").lower()
+            if kind not in media.KINDS or (subject and not media.ID_RE.match(subject)):
+                return self._send(200, {"ok": False, "error": "Choose what the pictures are of first."})
+            aspect = str(body.get("aspect") or "3:4")
+            if aspect not in imagegen.ASPECTS:
+                return self._send(200, {"ok": False, "error": "That shape is not supported."})
+            prompt = str(body.get("prompt") or "").strip()
+            if len(prompt) < 20:
+                return self._send(200, {"ok": False, "error": "Write a prompt (at least 20 characters) first."})
+            try:
+                count = max(1, min(8, int(body.get("count") or 1)))
+            except (TypeError, ValueError):
+                count = 1
+            nsfw = body.get("nsfw") if body.get("nsfw") in ("auto", "yes", "no") else "auto"
+            roles_ok = {r[0] for r in media.KINDS[kind]["roles"]}
+            roles = [r for r in body.get("roles") or [] if r in roles_ok]
+            w, h = imagegen.ASPECTS[aspect]
+            job = media.JOBS.add(kind, subject, roles, prompt[:6000], w, h, count, nsfw,
+                                 tags=media._tags(body.get("tags") or ""), aspect=aspect)
+            journal.log("INFO", "admin", "Media library: queued {} picture(s) for {}/{}".format(
+                count, kind, subject or "-"), **self._via())
+            return self._send(200, {"ok": True, "job": job["id"], "msg": "Queued {} picture{}. Each is filed as it "
+                                    "finishes.".format(count, "" if count == 1 else "s")})
+        if what == "cancel":
+            ok = media.JOBS.cancel(str(body.get("job") or ""))
+            return self._send(200, {"ok": ok, "msg": "Cancelled.", "error": "That job has already finished."})
         self._send(404, {"ok": False, "error": "Not found"})
 
     # ----------------------------------------------------------- journal --
@@ -902,6 +1191,10 @@ def main():
     fonts.on_log = lambda level, msg: journal.log(level, "fonts", msg)
     threading.excepthook = lambda a: (crash("A background task hit an error") if a.exc_type is not SystemExit else None)
     apply_settings()
+    media.load(engine.CFG)
+    media.sync_from_config(engine.CFG)
+    media.on_change(_media_changed)
+    media.JOBS.start(imagegen.generate_image, lambda level, msg: journal.log(level, "media", msg))
     join_url = "http://{}:{}".format(lan_address(), args.port)
     journal.log("INFO", "server", "Server starting on port {} ({}, Python {}, code {})".format(
         args.port, platform.system(), platform.python_version(), git_commit() or "unversioned"),

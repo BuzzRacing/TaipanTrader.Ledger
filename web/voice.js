@@ -66,12 +66,13 @@ const Voice = (() => {
   document.addEventListener("pointerdown", unlock, true);
   document.addEventListener("keydown", unlock, true);
 
-  muteBtn.addEventListener("click", () => {
-    muted = !muted;
+  function setMuted(on) {
+    muted = !!on;
     store("seatrader_mute", muted ? "1" : null);
     if (muted) stop(); else pump();
     drawMute();
-  });
+  }
+  muteBtn.addEventListener("click", () => setMuted(!muted));
 
   function stop() {
     queue = [];
@@ -107,6 +108,10 @@ const Voice = (() => {
       if (cur && cur.item.group === group) { cur.a.pause(); finish(); }
     },
     current: () => (cur ? cur.item : null),
+    /* The player screen's own Voices switch (in the captain's menu) uses these. */
+    enabled: () => enabled,
+    muted: () => muted,
+    setMuted,
     onChange(fn) { onChange = fn; },
   };
 })();

@@ -168,6 +168,15 @@ const Media = (() => {
       });
     },
     html, has, choose,
+    /* Every item of a kind for these subjects that fits a role (an item with no roles fits any role).
+       Used for full-screen backgrounds, which rotate on their own clock. */
+    items(kind, subjects, role, video) {
+      const out = [];
+      [].concat(subjects).forEach(s => ((L.items[kind] || {})[s] || []).forEach(i => {
+        if ((!role || !i.r.length || i.r.includes(role)) && (video || i.t === "image")) out.push(i);
+      }));
+      return out;
+    },
     /* The picture or clip for a persona reading a line: a fresh pick for every line. */
     speaker(cid, cls, mood) {
       if (mood && has("persona", cid, mood, { video: true, strict: true })) {

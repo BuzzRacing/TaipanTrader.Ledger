@@ -69,7 +69,7 @@ if __name__ == "__main__":
                 "n name firm list years free cost cash qty good what port ship price months amount rate value "
                 "lost origin dest weather enemy orders rounds s booty points debt worth good_lower fine gain "
                 "url date margin rep buy sell used cap balance room hold_used hold type hull max guns slots "
-                "yards pct names turns ports how").split()}), key
+                "yards pct names turns ports how " + "a b buys dmg first last o off place players ran rank result sales sunk v visits when won").split()}), key
     # 4. a changed world plays to the end
     cfg, errors = config.validate(variant())
     assert not errors, errors

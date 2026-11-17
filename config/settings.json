@@ -677,7 +677,7 @@
    "origin": "Bombay",
    "home_port": "calcutta",
    "color": "#2f6b5a",
-   "portrait": "/uploads/portrait-narrator-230a604b.png",
+   "portrait": "/uploads/portrait-narrator-d5ed0175.png",
    "voice_id": "Deborah",
    "speaking_rate": 1.0,
    "delivery": "low, poised and intimate, a seasoned pirate officer making every entry sound like a verdict",
@@ -930,6 +930,7 @@
   "model_id": "inworld-tts-2-flash",
   "temperature": 1.0,
   "custom_news": "crier",
-  "lines": {}
+  "lines": {},
+  "say": {}
  }
 }

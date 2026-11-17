@@ -10,7 +10,8 @@ let stream = null;
 let online = true;
 let reloading = false;
 const ui = { tab: "market", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
-             spokenTurn: null, newsSeen: null };
+             spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, menu: false,
+             tgt: {}, dragging: false };
 let VS = {};             // voice settings: who is in the cast, what this screen reads aloud
 const app = document.getElementById("app");
 
@@ -31,7 +32,7 @@ async function act(type, extra) {
   const res = await post("/api/act", Object.assign({ token, type }, extra || {}));
   ui.busy = false;
   toast(res.ok ? res.msg : res.error, !res.ok);
-  if (res.voice) Voice.say([res.voice], { group: "msg", replace: "msg" });
+  if (res.voice) Voice.say([Object.assign({ text: res.ok ? res.msg : res.error }, res.voice)], { group: "msg", replace: "msg" });
   return res.ok;
 }
 
@@ -39,7 +40,7 @@ async function act(type, extra) {
 async function refreshInfo() {
   if (reloading) return;
   reloading = true;
-  try { const info = await loadInfo(); D = info.data; VS = Voice.setup(info.voice); } catch (e) { /* try again on the next state */ }
+  try { const info = await loadInfo(); D = info.data; VS = Voice.setup(info.voice); Stage.setCast(VS.cast); } catch (e) { /* try again on the next state */ }
   reloading = false;
   if (ui.dest && !D.ports[ui.dest]) ui.dest = null;
   render();
@@ -62,12 +63,12 @@ function speak() {
   if (!S || !S.voice) return;
   if (S.voice.log && document.querySelector(".modal .log") && ui.spokenTurn !== S.turn) {
     ui.spokenTurn = S.turn;
-    Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + i }, x)), { group: "log", replace: "log" });
+    Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
   }
   const news = S.news || [], plans = S.voice.news || [];
   if (ui.newsSeen === null) { ui.newsSeen = new Set(news); return; }
   const fresh = [];
-  news.forEach((n, i) => { if (!ui.newsSeen.has(n)) { ui.newsSeen.add(n); if (plans[i]) fresh.unshift(plans[i]); } });
+  news.forEach((n, i) => { if (!ui.newsSeen.has(n)) { ui.newsSeen.add(n); if (plans[i]) fresh.unshift(Object.assign({ text: n }, plans[i])); } });
   if (fresh.length && VS.news_players) Voice.say(fresh, { group: "news" });
 }
 
@@ -77,7 +78,7 @@ function markSpeaking() {
   document.querySelectorAll(".modal .log li").forEach((li, i) =>
     li.classList.toggle("speaking", !!item && item.tag === "log:" + i));
 }
-Voice.onChange(markSpeaking);
+Voice.onChange(item => { markSpeaking(); Stage.talk(item); });
 
 let toastTimer = null;
 function toast(msg, bad) {
@@ -129,26 +130,98 @@ function newGameControl() {
 }
 
 /* -------------------------------------------------------------- screens -- */
+/* The game screen ("the deck") is a fixed frame that never scrolls: top bar, tab rail, the working
+   pane, and the side column with the speaker stage, log and helm. Each region is only rewritten
+   when its content changed, so scroll positions, focus and playing clips survive every update. */
+const drawn = {};
+function region(name, html) {
+  const el = app.querySelector('[data-r="' + name + '"]');
+  if (el && drawn[name] !== html) { el.innerHTML = html; drawn[name] = html; }
+}
+function forget() { Object.keys(drawn).forEach(k => delete drawn[k]); }
+
+function deckFrame() {
+  let deck = document.getElementById("deck");
+  if (!deck) {
+    forget();
+    app.innerHTML = `<div class="deck" id="deck">
+      <header class="dk-top" data-r="top"></header>
+      <nav class="dk-nav" data-r="nav"></nav>
+      <main class="dk-main"><div class="dk-pane" data-r="pane"></div></main>
+      <aside class="dk-side"><div class="dk-stage" id="stageSlot"></div><div class="dk-dyn" data-r="side"></div></aside>
+      <div class="dk-over" data-r="over"></div></div>`;
+    deck = document.getElementById("deck");
+  }
+  return deck;
+}
+
 function render() {
   if (!D || !S) return;
   const active = document.activeElement;
   const focusId = active && active.id && active.id.startsWith("in_") ? active.id : null;
   const caret = focusId ? active.selectionStart : null;
-  const scroll = window.scrollY;
 
-  let html;
-  if (!S.me) html = joinScreen();
-  else if (S.phase === "lobby") html = lobbyScreen();
-  else if (S.phase === "ended") html = endScreen();
-  else html = gameScreen();
-  app.innerHTML = (online ? "" : `<div class="offline">${te("ui.offline")}</div>`) + html;
+  let off = document.getElementById("offline");
+  if (!off) { off = document.createElement("div"); off.id = "offline"; off.className = "offline"; document.body.appendChild(off); }
+  off.textContent = t("ui.offline");
+  off.hidden = online;
+
+  const inGame = S.me && S.phase !== "lobby" && S.phase !== "ended";
+  document.body.classList.toggle("ingame", !!inGame);
+  if (inGame) {
+    const deck = deckFrame(), parts = gameScreen();
+    deck.classList.toggle("locked", !!S.me.ready);
+    deck.dataset.tab = ui.tab;
+    ["top", "nav", "pane", "side", "over"].forEach(k => { if (!(k === "pane" && ui.dragging)) region(k, parts[k]); });
+    if (ui.paneTab !== ui.tab) { ui.paneTab = ui.tab; app.querySelector(".dk-pane").scrollTop = 0; }
+  } else {
+    const html = !S.me ? joinScreen() : S.phase === "lobby" ? lobbyScreen() : endScreen();
+    if (!app.querySelector(".solo")) { forget(); app.innerHTML = '<div class="solo" data-r="solo"></div>'; }
+    region("solo", html);
+  }
 
   if (focusId) {
     const el = document.getElementById(focusId);
-    if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) { /* ignore */ } }
+    if (el && el !== document.activeElement) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) { /* ignore */ } }
   }
-  window.scrollTo(0, scroll);
+  deckArt(inGame);
   markSpeaking();
+}
+
+/* The living background and the stage's picture between lines. */
+function deckArt(inGame) {
+  const g = D.graphics || {}, me = S.me;
+  let list = inGame
+    ? Media.items("scene", ["market", "voyage"], "background", true).concat(Media.items("port", me.port, "night", true))
+    : Media.items("scene", ["title", "loading"], "background", true);
+  if (!list.length) {
+    list = [g.page_bg, g.masthead_bg].concat(inGame && g.ports ? [g.ports[me.port]] : []).filter(Boolean)
+      .map(u => ({ id: u, u, t: "image", w: 1 }));
+  }
+  Ambient.set(list);
+  if (!inGame) return;
+  Stage.mount(document.getElementById("stageSlot"));
+  const woman = stageWomanHtml(ui.tab);
+  document.getElementById("deck").classList.toggle("woman", !!woman);
+  if (woman) return Stage.idle(me.port + ":" + ui.tab, woman.html, woman.name, woman.note);
+  Stage.idle(me.port, Media.html("port", me.port, "banner", "stg-img", (g.ports || {})[me.port],
+                                 { video: true, slot: "stage", mode: "shuffle" }),
+             portName(me.port), S.date);
+}
+
+/* The women who keep the stage while a tab is open: the market keeper on the Market tab and the
+   ship master on the Fleet tab. Pictures come from Media Library > Ports > (port) in that role. A
+   port without one borrows one from another port; with none anywhere the port picture shows. */
+const STAGE_WOMEN = { market: { role: "keeper", key: "market.keeper" }, fleet: { role: "shipmaster", key: "fleet.master" } };
+function stageWomanHtml(tab) {
+  const w = STAGE_WOMEN[tab];
+  if (!w) return null;
+  const own = p => Media.items("port", p, w.role, true).some(i => i.r.includes(w.role));
+  const here = S.me.port;
+  const from = own(here) ? here : Object.keys(D.ports).find(own);
+  if (!from) return null;
+  const html = Media.html("port", from, w.role, "stg-img", "", { video: true, strict: true, slot: "stage-" + w.role, mode: "shuffle" });
+  return html ? { html, name: t(w.key, { port: portName(here) }), note: S.date } : null;
 }
 
 function masthead(sub) {
@@ -189,7 +262,7 @@ function lobbyScreen() {
     : `<h2>${te("lobby.wait_title")}</h2><p class="muted">${te("lobby.wait", { years: S.years })}</p>${level}`;
   return masthead(esc(D.brand.tagline)) + `<main class="narrow">
     <section class="card">${host}</section>
-    <section class="card"><h2>${te("join.houses")}</h2>${roster()}</section>
+    <section class="card"><h2>${te("join.houses")}</h2>${roster()}${btn(te("st.open_hint"), "tally", "", "ghost wide")}</section>
     <p class="muted center">${th("join.url", { url: "<b>" + esc(S.join_url) + "</b>" })}<br>
     ${th("join.board_url", { url: "<b>" + esc(S.join_url) + "/board</b>" })}</p></main>`;
 }
@@ -206,6 +279,7 @@ function endScreen() {
   const top = S.players.slice().sort((a, b) => b.worth - a.worth)[0];
   return masthead(te("end.sub", { date: S.date })) + `<main class="narrow">
     <section class="card"><h2>${te("end.title", { name: top.name, firm: top.firm })}</h2>${standings()}</section>
+    <section class="card">${btn(te("st.open_end"), "tally", "", "primary wide")}</section>
     <section class="card">${newGameControl() || `<p class="muted">${te("end.host_can")}</p>`}
       <p class="muted">${te("end.kept")}</p></section></main>`;
 }
@@ -216,23 +290,76 @@ function gameScreen() {
   const report = ui.seenTurn !== S.turn && me.log.length ? logModal() : "";
   if (ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
-  const stats = [["stat.silver", money(me.cash)], ["stat.bank", money(me.bank)], ["stat.debt", money(me.debt), me.debt > 0 ? "bad" : ""],
-                 ["stat.worth", money(me.worth)], ["stat.hold", me.used + " / " + me.capacity], ["stat.guns", guns()]]
-    .map(s => `<div class="stat ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b></div>`).join("");
-  const tabs = ["market", "port", "fleet", "chart", "ledger"]
-    .map(k => btn(te("tab." + k), "tab", `data-tab="${k}"`, ui.tab === k ? "on" : "")).join("");
-  const sailing = me.ready
-    ? `<div class="banner"><div><b>${me.dest ? te("sail.orders_to", { port: portName(me.dest) }) : te("sail.orders_stay")}</b><br>
-        <span>${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</span></div>
-        ${btn(te("sail.cancel"), "unsail", "", "ghost")}</div>` : "";
-  const body = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
-  return `<header class="bar">
-      <div class="where"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
-        <div><b>${esc(me.firm)}<span class="rankname">${esc(me.rank)}</span></b><span>${te("bar.where", { port: portName(me.port), date: S.date, months: S.turns_left })}</span></div></div>
-      <div class="stats">${stats}</div>
-    </header>
-    <nav class="tabs">${tabs}</nav>${sailing}
-    <main class="${me.ready ? "locked" : ""}">${body}</main>${report}`;
+  const stats = [["stat.silver", money(me.cash), "silver"], ["stat.bank", money(me.bank)], ["stat.debt", money(me.debt), me.debt > 0 ? "bad" : ""],
+                 ["stat.worth", money(me.worth), "worth"], ["stat.hold", me.used + " / " + me.capacity], ["stat.guns", guns()]]
+    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b></div>`).join("");
+  const top = `<div class="dk-house"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
+      <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
+      <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
+    <div class="dk-stats">${stats}</div>`;
+  const tabBtn = k =>
+    `<button type="button" class="${ui.tab === k ? "on" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
+    `${DECK_ICONS[k] || ""}<span>${te("tab." + k)}</span></button>`;
+  // tabs, the Tally Book, a gap, then Advice and the captain at the foot
+  const nav = ["market", "port", "fleet", "chart", "ledger"].map(tabBtn).join("") +
+    `<button type="button" class="dk-tally" data-act="tally" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
+    `${DECK_ICONS.tally || ""}<span>${te("st.open")}</span></button>` +
+    `<i class="dk-gap"></i>${tabBtn("advice")}${captainButton()}`;
+  const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab, advice: adviceTab }[ui.tab]();
+  return { top, nav, pane, side: feed() + helm(), over: report };
+}
+
+/* The bottom of the rail: the player's own picture (or their initials in the house colour).
+   It opens a small menu of the player's own things: voices on or off, options, and more later. */
+function captainButton() {
+  const me = S.me;
+  const face = me.portrait
+    ? `<img src="${esc(me.portrait)}" alt="">`
+    : `<em>${esc(String(me.name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase())}</em>`;
+  const voices = Voice.enabled();
+  const muted = Voice.muted();
+  const fly = !ui.menu ? "" : `<div class="dk-fly" role="menu">
+      <button type="button" role="menuitem" data-act="speech" class="${voices && !muted ? "on" : ""}" ${voices ? "" : "disabled"}
+        aria-label="${te(!voices ? "deck.speech_none" : muted ? "deck.speech_off" : "deck.speech_on")}" title="${te(!voices ? "deck.speech_none" : muted ? "deck.speech_off" : "deck.speech_on")}">
+        ${DECK_ICONS[voices && !muted ? "speech_on" : "speech_off"]}<span>${te("deck.speech")}</span></button>
+      <button type="button" role="menuitem" data-act="options" aria-label="${te("deck.options")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button>
+    </div>`;
+  return `<div class="dk-me${ui.menu ? " open" : ""}">${fly}
+    <button type="button" class="dk-face" data-act="menu" aria-haspopup="menu" aria-expanded="${ui.menu}" aria-label="${te("deck.me", { name: me.name })}"
+      style="--house:${COLORS[me.color % 8]}">${face}<span>${esc(me.name)}</span></button></div>`;
+}
+
+/* Advice from one of the cast, based on the player's numbers. Planned, not built yet. */
+function adviceTab() {
+  return `<section class="card"><p class="eyebrow">${te("advice.eyebrow")}</p><h2>${te("advice.title")}</h2>
+    <p class="muted">${te("advice.soon")}</p></section>`;
+}
+
+/* The side column under the stage: this month's log or the port news, scrolling inside itself. */
+function feed() {
+  const f = ui.feed === "news" ? "news" : "log";
+  const items = f === "log" ? S.me.log : S.news;
+  const list = items.length ? items.map(n => "<li>" + esc(n) + "</li>").join("")
+    : `<li class="muted">${te(f === "log" ? "ledger.no_log" : "ledger.no_news")}</li>`;
+  return `<section class="dk-feed"><div class="dk-feedtabs">
+      ${btn(te("deck.log"), "feed", 'data-f="log"', f === "log" ? "on" : "")}${btn(te("deck.news"), "feed", 'data-f="news"', f === "news" ? "on" : "")}</div>
+    <ul class="dk-list">${list}</ul></section>`;
+}
+
+/* Sailing orders, always in reach. */
+function helm() {
+  const me = S.me;
+  if (me.ready) {
+    return `<section class="dk-helm ready"><p class="eyebrow">${te("deck.helm")}</p>
+      <b>${me.dest ? te("sail.orders_to", { port: portName(me.dest) }) : te("sail.orders_stay")}</b>
+      <span class="muted">${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</span>
+      ${btn(te("sail.cancel"), "unsail", "", "ghost wide")}</section>`;
+  }
+  const dest = ui.dest && D.ports[ui.dest] ? ui.dest : null;
+  return `<section class="dk-helm"><p class="eyebrow">${te("deck.helm")}</p>
+      <b>${dest ? te("deck.course", { port: portName(dest) }) : te("deck.no_course")}</b>
+      ${dest ? btn(te("sail.go", { port: portName(dest) }), "sail", "", "primary wide")
+             : btn(te("deck.plot"), "tab", 'data-tab="chart"', "primary wide")}</section>`;
 }
 
 function logModal() {
@@ -248,25 +375,61 @@ function logModal() {
 }
 
 /* --------------------------------------------------------------- market -- */
+/* One drag bar per cargo sets how much will be aboard. It starts at what is aboard now (the brass
+   tick); drag right to buy (jade), left to sell (oxblood). The row's one button does the trade. */
+function tradeOf(g) {
+  const me = S.me, have = me.cargo[g] || 0, max = have + maxBuy(g);
+  const tgt = Math.max(0, Math.min(max, ui.tgt[g] == null ? have : ui.tgt[g]));
+  const n = tgt - have;
+  const side = n > 0 ? "buy" : n < 0 ? "sell" : "";
+  return { have, max, tgt, n: Math.abs(n), side, cost: side ? quote(g, Math.abs(n), side) : 0 };
+}
+
+function barStyle(tr) {
+  const f = v => (tr.max ? v / tr.max : 0).toFixed(4);
+  return `--h:${f(tr.have)};--a:${f(Math.min(tr.have, tr.tgt))};--b:${f(Math.max(tr.have, tr.tgt))}`;
+}
+
+function tradeLabel(tr) {
+  if (!tr.max) return te("market.no_room");
+  if (!tr.side) return te("market.drag");
+  return te(tr.side === "buy" ? "market.buy_n" : "market.sell_n", { n: tr.n.toLocaleString(), cost: money(tr.cost) });
+}
+
 function marketTab() {
   const me = S.me;
   const banned = S.crackdown.includes(me.port);
   const rows = Object.keys(D.goods).map(g => {
-    const have = me.cargo[g] || 0, q = num("q_" + g);
-    const est = q ? `<div class="est">${te("market.est", { qty: q, buy: money(quote(g, q, "buy")), sell: money(quote(g, q, "sell")) })}</div>` : "";
-    return `<tr><td>${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}<b>${esc(D.goods[g].name)}</b>${D.goods[g].contraband ? ` <span class="tag">${te("tag.contraband")}</span>` : ""}${est}</td>
-      <td class="n">${money(me.prices[g])}</td><td class="n">${have || "–"}</td>
-      <td class="qty">${input("q_" + g, t("ph.qty"))}
-        <div class="mini">${btn(te("btn.max"), "fill", `data-k="q_${g}" data-v="${maxBuy(g)}"`, "link")}${have ? btn(te("btn.all"), "fill", `data-k="q_${g}" data-v="${have}"`, "link") : ""}</div></td>
-      <td class="do">${btn(te("btn.buy"), "buy", `data-good="${g}"`, "primary")}${btn(te("btn.sell"), "sell", `data-good="${g}"`, "", !have)}</td></tr>`;
+    const tr = tradeOf(g), good = D.goods[g];
+    return `<div class="mk-row ${tr.side}" data-good="${g}">
+      <div class="mk-pic">${Media.html("cargo", g, "icon", "mk-img", D.graphics.goods[g])}</div>
+      <div class="mk-name"><b>${esc(good.name)}</b>${good.contraband ? `<span class="tag">${te("tag.contraband")}</span>` : ""}</div>
+      <div class="mk-price"><b>${money(me.prices[g])}</b><small>${te("market.aboard", { n: tr.have.toLocaleString() })}</small></div>
+      <div class="mk-bar"><input type="range" class="mk-range" data-good="${g}" min="0" max="${tr.max}" step="1" value="${tr.tgt}"
+        style="${barStyle(tr)}" aria-label="${te("market.bar", { good: good.name })}" ${tr.max ? "" : "disabled"}></div>
+      <button type="button" class="mk-do ${tr.side}" data-act="trade" data-good="${g}" ${tr.side ? "" : "disabled"}>${tradeLabel(tr)}</button></div>`;
   }).join("");
-  return `<section class="card">${Media.html("port", me.port, "banner", "portart", D.graphics.ports[me.port])}
-    <h2>${te("market.title", { port: portName(me.port) })}</h2>
-    <p class="muted">${te("market.standing", { rep: me.rep[me.port], margin: pct(me.spread) })}</p>
+  return `<section class="card mk">
+    <div class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
+      <span class="muted" title="${te("market.standing", { rep: me.rep[me.port], margin: pct(me.spread) })}">${te("market.standing_short", { rep: me.rep[me.port], margin: pct(me.spread) })}</span>
+      <span class="mk-hold">${te("market.hold_short", { used: me.used, cap: me.capacity })}</span></div>
     ${banned ? `<p class="note bad">${te("market.banned")}</p>` : ""}
-    <table class="grid market"><thead><tr><th>${te("col.cargo")}</th><th class="n">${te("col.price")}</th><th class="n">${te("col.aboard")}</th><th>${te("col.quantity")}</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    <p class="muted">${te("market.hold", { used: me.used, cap: me.capacity })}</p></section>`;
+    <div class="mk-list">${rows}</div></section>`;
+}
+
+/* While a bar is dragged only its own row changes; the pane redraws when the finger lifts. */
+function dragRow(input) {
+  const g = input.dataset.good;
+  ui.tgt[g] = parseInt(input.value, 10) || 0;
+  const tr = tradeOf(g), row = input.closest(".mk-row"), b = row && row.querySelector(".mk-do");
+  input.setAttribute("style", barStyle(tr));
+  if (row) row.className = "mk-row " + tr.side;
+  if (b) { b.className = "mk-do " + tr.side; b.disabled = !tr.side; b.innerHTML = tradeLabel(tr); }
+}
+function dragEnd() {
+  if (!ui.dragging) return;
+  ui.dragging = false;
+  render();
 }
 
 /* ----------------------------------------------------------------- port -- */
@@ -303,30 +466,47 @@ function portTab() {
 }
 
 /* ---------------------------------------------------------------- fleet -- */
+function shipCard(s, i, yard) {
+  const me = S.me, spec = D.ships[s.type], p = Math.round(100 * s.hull / spec.hull);
+  const pips = Array.from({ length: spec.slots }, (_, k) => `<i class="${k < s.guns ? "on" : ""}"></i>`).join("");
+  const repair = s.repair
+    ? btn(te("fleet.repair", { cost: money(s.repair) }), "repair", `data-i="${i}"`, "slim")
+    : `<span class="fl-ok">${te("fleet.seaworthy")}</span>`;
+  return `<div class="fl-row">
+    <div class="fl-pic">${Media.html("ship", s.type, "card", "fl-img", D.graphics.ships[s.type], { slot: "fleet:" + s.name })}</div>
+    <div class="fl-name"><b>${esc(s.name)}</b><span class="muted">${te("fleet.ship_line", { type: spec.name, hold: spec.hold })}</span></div>
+    <div class="fl-stats">
+      <div class="fl-hull"><div class="hull"><i style="width:${p}%" class="${p < 35 ? "low" : ""}"></i></div><small>${te("fleet.hull_short", { hull: s.hull, max: spec.hull })}</small></div>
+      <div class="fl-guns"><span class="fl-pips">${pips}</span><small>${te("fleet.guns_short", { guns: s.guns, slots: spec.slots })}</small></div></div>
+    <div class="fl-do">${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${te("fleet.gun_tip", { price: money(D.gun_price) })}"`, "slim", s.guns >= spec.slots)}
+      ${repair}
+      ${yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "slim ghost", me.ships.length < 2) : ""}</div></div>`;
+}
+
+function yardRow(k) {
+  const me = S.me, s = D.ships[k];
+  const no = me.cash < s.price || me.ships.length >= D.max_fleet;
+  return `<div class="yd-row${no ? " dim" : ""}">
+    <div class="yd-pic">${Media.html("ship", k, "card", "yd-img", D.graphics.ships[k], { slot: "yard" })}</div>
+    <div class="yd-name"><b>${esc(s.name)}</b>${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}</div>
+    <div class="yd-n">${s.hold}</div><div class="yd-n yd-hull">${s.hull}</div><div class="yd-n">${s.slots}</div>
+    <div class="yd-n yd-price">${money(s.price)}</div>
+    <div class="yd-do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "slim primary", no)}</div></div>`;
+}
+
 function fleetTab() {
   const me = S.me, yard = D.ports[me.port].shipyard;
-  const ships = me.ships.map((s, i) => {
-    const spec = D.ships[s.type], p = Math.round(100 * s.hull / spec.hull);
-    return `<div class="ship">${Media.html("ship", s.type, "card", "shipart", D.graphics.ships[s.type], { slot: "fleet:" + s.name })}<div class="shiphead"><b>${esc(s.name)}</b><span class="muted">${te("fleet.ship_line", { type: spec.name, hold: spec.hold })}</span></div>
-      <div class="hull"><i style="width:${p}%" class="${p < 35 ? "low" : ""}"></i></div>
-      <p class="muted">${te("fleet.hull_line", { hull: s.hull, max: spec.hull, guns: s.guns, slots: spec.slots })}</p>
-      <div class="row">${btn(te("fleet.add_gun", { price: money(D.gun_price) }), "gun", `data-i="${i}"`, "", s.guns >= spec.slots)}
-        ${btn(s.repair ? te("fleet.repair", { cost: money(s.repair) }) : te("fleet.sound"), "repair", `data-i="${i}"`, "", !s.repair)}
-        ${yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "ghost", me.ships.length < 2) : ""}</div></div>`;
-  }).join("");
   const totalRepair = me.ships.reduce((n, s) => n + s.repair, 0);
-  const forSale = Object.keys(D.ships).map(k => {
-    const s = D.ships[k];
-    return `<tr><td>${Media.html("ship", k, "card", "yardart", D.graphics.ships[k], { slot: "yard" })}<b>${esc(s.name)}</b>${s.fast ? ` <span class="tag">${te("tag.fast")}</span>` : ""}</td><td class="n">${s.hold}</td><td class="n">${s.hull}</td>
-      <td class="n">${s.slots}</td><td class="n">${money(s.price)}</td>
-      <td class="do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "primary", me.cash < s.price || me.ships.length >= D.max_fleet)}</td></tr>`;
-  }).join("");
-  return `<section class="card"><h2>${te("fleet.title")}</h2>
-      <p class="muted">${te("fleet.info")}</p>
-      <div class="ships">${ships}</div>
-      ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "primary") : ""}</section>
-    <section class="card"><h2>${te("yard.title")}</h2>${yard
-      ? `<table class="grid"><thead><tr><th>${te("col.ship")}</th><th class="n">${te("col.hold")}</th><th class="n">${te("col.hull")}</th><th class="n">${te("col.guns")}</th><th class="n">${te("col.price")}</th><th></th></tr></thead><tbody>${forSale}</tbody></table>
+  const head = `<div class="yd-row yd-th"><div></div><div>${te("col.ship")}</div><div class="yd-n">${te("col.hold")}</div>
+    <div class="yd-n yd-hull">${te("col.hull")}</div><div class="yd-n">${te("col.guns")}</div><div class="yd-n">${te("col.price")}</div><div></div></div>`;
+  return `<section class="card fl">
+      <div class="mk-head"><h2>${te("fleet.title")}</h2>
+        <span class="muted" title="${te("fleet.info")}">${te("fleet.info_short")}</span>
+        <span class="mk-hold">${te("fleet.count", { n: me.ships.length, max: D.max_fleet })}</span>
+        ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "slim primary") : ""}</div>
+      <div class="fl-list">${me.ships.map((s, i) => shipCard(s, i, yard)).join("")}</div></section>
+    <section class="card yd"><h2>${te("yard.title")}</h2>${yard
+      ? `<div class="yd-list">${head}${Object.keys(D.ships).map(yardRow).join("")}</div>
          <p class="muted">${te("yard.limit", { n: D.max_fleet })}</p>`
       : `<p class="muted">${te("yard.none", { port: portName(me.port), yards: D.yards.join(", ") })}</p>`}</section>`;
 }
@@ -371,7 +551,8 @@ function ledgerTab() {
   return `<section class="card"><h2>${te("ledger.title")}</h2>
       <p class="muted">${te("ledger.info")}</p>
       <div class="scroll"><table class="grid book"><thead><tr><th>${te("col.port")}</th>${head}</tr></thead><tbody>${rows}</tbody></table></div></section>
-    <section class="card"><h2>${te("ledger.standings")}</h2>${standings()}</section>
+    <section class="card"><h2>${te("ledger.standings")}</h2>${standings()}
+      ${btn(te("st.open_hint"), "tally", "", "wide")}</section>
     <section class="card"><h2>${te("ledger.news")}</h2><ul class="log">${list(S.news, "ledger.no_news")}</ul></section>
     <section class="card"><h2>${te("ledger.log")}</h2><ul class="log">${list(me.log, "ledger.no_log")}</ul></section>
     ${me.host ? `<section class="card"><h2>${te("host.title")}</h2>` + btn(te("host.end_month"), "force", "", "") + newGameControl() + "</section>" : ""}`;
@@ -382,8 +563,16 @@ app.addEventListener("input", e => {
   const k = e.target.dataset.k;
   if (!k) return;
   ui.vals[k] = e.target.value;
-  if (k.startsWith("q_")) render();
 });
+
+/* The market's drag bars. */
+app.addEventListener("input", e => {
+  if (!e.target.classList || !e.target.classList.contains("mk-range")) return;
+  ui.dragging = true;
+  dragRow(e.target);
+});
+app.addEventListener("change", e => { if (e.target.classList && e.target.classList.contains("mk-range")) dragEnd(); });
+["pointerup", "pointercancel", "touchend"].forEach(ev => document.addEventListener(ev, () => setTimeout(dragEnd, 0)));
 
 app.addEventListener("keydown", e => {
   if (e.key !== "Enter" || !e.target.dataset.k) return;
@@ -391,9 +580,17 @@ app.addEventListener("keydown", e => {
   if (k === "name" || k === "firm") doJoin();
 });
 
+/* Tapping anywhere outside the captain's menu closes it. */
+document.addEventListener("click", e => {
+  if (ui.menu && !(e.target.closest && e.target.closest(".dk-me"))) { ui.menu = false; render(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && ui.menu) { ui.menu = false; render(); }
+});
+
 async function doJoin() {
   const res = await post("/api/join", { name: val("name"), firm: val("firm") });
-  if (res.voice) Voice.say([res.voice], { group: "msg", replace: "msg" });
+  if (res.voice) Voice.say([Object.assign({ text: res.ok ? "" : res.error }, res.voice)], { group: "msg", replace: "msg" });
   if (!res.ok) return toast(res.error, true);
   token = res.token;
   store("seatrader_token", token);
@@ -406,15 +603,25 @@ app.addEventListener("click", async e => {
   const d = el.dataset;
   switch (d.act) {
     case "join": return doJoin();
-    case "tab": ui.tab = d.tab; window.scrollTo(0, 0); return render();
+    case "tab": ui.tab = d.tab; ui.menu = false; return render();
+    case "menu": ui.menu = !ui.menu; return render();
+    case "speech": Voice.setMuted(!Voice.muted()); return render();
+    case "options": ui.menu = false; render(); return toast(t("deck.options_soon"));
+    case "tally": {
+      // The Tally Book opens in its own window so the deck never scrolls or loses its place.
+      const w = window.open("/stats", "seatrader_tally");
+      if (!w) location.href = "/stats";
+      return;
+    }
+    case "feed": ui.feed = d.f; return render();
     case "seen": ui.seenTurn = S.turn; Voice.drop("log"); return render();
     case "years": return act("settings", { years: +d.y });
     case "start": return act("start");
     case "fill": ui.vals[d.k] = d.v; return render();
-    case "buy": case "sell": {
-      const q = num("q_" + d.good);
-      if (!q) return toast(t("e.qty_first"), true);
-      if (await act(d.act, { good: d.good, qty: q })) { ui.vals["q_" + d.good] = ""; render(); }
+    case "trade": {
+      const tr = tradeOf(d.good);
+      if (!tr.side) return toast(t("e.qty_first"), true);
+      if (await act(tr.side, { good: d.good, qty: tr.n })) { delete ui.tgt[d.good]; render(); }
       return;
     }
     case "bank": case "loan": {
@@ -448,4 +655,4 @@ app.addEventListener("click", async e => {
   }
 });
 
-loadInfo().then(info => { D = info.data; VS = Voice.setup(info.voice); connect(); });
+loadInfo().then(info => { D = info.data; VS = Voice.setup(info.voice); Stage.setCast(VS.cast); connect(); });

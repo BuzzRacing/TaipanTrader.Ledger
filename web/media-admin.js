@@ -149,10 +149,12 @@
     return `<div class="ml-uploads">${M.uploads.map(u => `<div><span>${e(u.name)}</span><i style="width:${u.pct}%"></i><b>${u.err ? e(u.err) : u.pct >= 100 ? "filed" : u.pct + "%"}</b></div>`).join("")}</div>`;
   }
 
-  function defaultPrompt(kind, subject) {
+  function defaultPrompt(kind, subject, role) {
     if (kind === "persona" && CFG.characters[subject]) return CFG.characters[subject].portrait_prompt || "";
     const style = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
     const name = subjectName(kind, subject);
+    if (kind === "port" && role === "keeper") return `Waist-up portrait of a breathtakingly beautiful, sultry woman in her late twenties who runs a trading stall in the ${name} market in 1860, looking straight into the camera with a slow, knowing half-smile and direct eye contact, glossy black hair pinned with jade and gold, close-fitting embroidered oxblood silk jacket with a high collar and gold frogging, a little open at the throat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, ${style}`;
+    if (kind === "port" && role === "shipmaster") return `Waist-up portrait of a breathtakingly beautiful, sultry, dangerous woman in her early thirties, the ship master who rules the ${name} shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, glossy black hair pinned up with a jade comb and loose strands, fitted black lacquer naval coat with oxblood silk lining, brass buttons and gold braid, worn open at the throat, a brass spyglass in one gloved hand, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, ${style}`;
     if (kind === "port") return `The port of ${name} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, ${style}`;
     if (kind === "ship") return `A ${name} under full sail on the South China Sea, 1860s, detailed rigging and weathered hull, ${style}`;
     if (kind === "cargo") return `Still life of ${name} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, ${style}`;
@@ -509,6 +511,16 @@
     if (d.mlgenrole) {
       M.gen.roles = M.gen.roles.filter(r => r !== d.mlgenrole);
       if (el.checked) M.gen.roles.push(d.mlgenrole);
+      // A market keeper or ship master is a portrait of her, not a harbour view: swap the starting prompt, shape and roles.
+      const womanRoles = ["keeper", "shipmaster"];
+      if (womanRoles.includes(d.mlgenrole) && el.checked && (M.kind || "persona") === "port") {
+        const subject = M.gen.forKey.split(":")[1] || "";
+        const box = $("mlgenprompt"), now = (box && box.value) || M.gen.prompt;
+        const stock = [undefined].concat(womanRoles).some(r => now === defaultPrompt("port", subject, r));
+        if (!now.trim() || stock) M.gen.prompt = defaultPrompt("port", subject, d.mlgenrole);
+        M.gen.roles = [d.mlgenrole]; M.gen.aspect = "3:4";
+        return redraw();
+      }
       return;
     }
     if (d.mlrule && ev.type === "change") {

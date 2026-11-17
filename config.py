@@ -49,6 +49,8 @@ DEFAULTS = {
             "btn": "#efe2c2", "btn-border": "#c9b383", "tabs": "#ead9b1", "input": "#fffdf6",
             "sea": "#cfdcd3", "land": "#e9dcb8",
             "board-bg": "#1f1410", "board-panel": "#2c1d15", "board-ink": "#f1e4c3",
+            "deck-night": "#15100c", "deck-lacquer": "#2a1b14", "deck-oxblood": "#7b2428", "deck-brass": "#c9a34e",
+            "deck-jade": "#2f6b5a", "deck-ivory": "#f1e3c5", "deck-storm": "#385467", "deck-leather": "#6b452d",
         },
         "player_colors": ["#b3261e", "#2d4a8a", "#2f7d5b", "#c58a1b",
                           "#7a3b7d", "#1f7f8c", "#7a4a22", "#4f5d6b"],
@@ -59,6 +61,8 @@ DEFAULTS = {
         "web_fonts": "Uncial Antiqua | MedievalSharp | Alegreya:ital,wght@0,400;0,700;1,400;1,700 | Almendra SC",
         "font_size": 16,
         "radius": 8,
+        "ambient_seconds": 40,
+        "ambient_dim": 55,
         "custom_css": "",
     },
     "graphics": {
@@ -244,6 +248,13 @@ _COLOR_LABELS = [
     ("sea", "Chart: sea"), ("land", "Chart: land"), ("board-bg", "Harbor board: background"),
     ("board-panel", "Harbor board: panels"), ("board-ink", "Harbor board: text"),
 ]
+# The player screen ("the deck") uses the Art Bible palette rather than the parchment colours above.
+_DECK_LABELS = [
+    ("deck-night", "Night ink: deepest background"), ("deck-lacquer", "Lacquer brown: buttons and tiles"),
+    ("deck-oxblood", "Oxblood silk: main buttons and warnings"), ("deck-brass", "Antique brass: trim, headings, active tab"),
+    ("deck-jade", "Imperial jade: good news and gains"), ("deck-ivory", "Ivory linen: text"),
+    ("deck-storm", "Storm blue: sea and weather"), ("deck-leather", "Tobacco leather: warm accents"),
+]
 
 SECTIONS = [
     {"id": "brand", "title": "Brand", "intro": "The game's name and the names of its characters. "
@@ -264,6 +275,13 @@ SECTIONS = [
      "Saved changes reach every open screen at once.",
      "groups": [
          {"title": "Colours", "cols": 3, "fields": [F("theme.colors." + k, label, "color") for k, label in _COLOR_LABELS]},
+         {"title": "Player screen (the deck)", "cols": 3, "fields":
+             [F("theme.colors." + k, label, "color") for k, label in _DECK_LABELS] + [
+             F("theme.ambient_seconds", "Background change (seconds)", "int", "How long each background picture "
+               "stays before it slowly fades to the next. Pictures come from the Media Library: scenes in the "
+               "background role, then the port's night pictures.", min=10, max=600),
+             F("theme.ambient_dim", "Background darkness (%)", "int", "How much the background is darkened "
+               "behind the panels. Higher is easier to read.", min=0, max=90)]},
          {"title": "Player flag colours", "fields": [
              F("theme.player_colors", "Eight house colours", "colorlist", "Given to players in the order they join.", count=8)]},
          {"title": "Lettering and shape", "fields": [
@@ -910,6 +928,8 @@ def theme_css(cfg):
     lines.extend(font_vars(th))
     lines.append("  --base-size: {}px;".format(th["font_size"]))
     lines.append("  --radius: {}px;".format(th["radius"]))
+    lines.append("  --amb-seconds: {};".format(int(th.get("ambient_seconds", 40))))
+    lines.append("  --amb-dim: {};".format(round(int(th.get("ambient_dim", 55)) / 100, 2)))
     lines.append("}")
     for sel, slot in ((".masthead", "masthead_bg"), ("body.player", "page_bg"), ("body.board", "board_bg")):
         u = _css_url(gr.get(slot))
