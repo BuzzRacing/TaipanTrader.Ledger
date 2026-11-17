@@ -6768,56 +6768,6 @@
    "replaces": ""
   },
   {
-   "id": "m92a478a013",
-   "url": "/media/house/h_9baa8e/house-h_9baa8e-c427d4b2.png",
-   "type": "image",
-   "kind": "house",
-   "subject": "h_9baa8e",
-   "roles": [
-    "crest"
-   ],
-   "tags": [],
-   "nsfw": false,
-   "reviewed": true,
-   "enabled": true,
-   "primary": false,
-   "weight": 3,
-   "title": "",
-   "prompt": "A square heraldic emblem for a 19th-century China-trade shipping house, struck in polished gold and dark gunmetal. A New Zealand Silver Fern leaf at the centre, raised in high relief in burnished gold. A thin outer border of gold rope-work frames it, with small rugby balls in each corner and a fine riveted steel bevel. Deep engraved detail, brushed and mirror-polished gold with subtle patina in the recesses, warm rim light, isolated on a solid matte-black background, perfectly centred and symmetrical, square 1:1 format, crisp edges, icon-ready, photorealistic enamelled metal texture, 8k",
-   "seed": 240054459861611,
-   "width": 1024,
-   "height": 1024,
-   "bytes": 1834105,
-   "source": "generated",
-   "added": "2026-11-17 13:52",
-   "replaces": ""
-  },
-  {
-   "id": "m67d0e3b056",
-   "url": "/media/house/h_9baa8e/house-h_9baa8e-bc0f31fa.png",
-   "type": "image",
-   "kind": "house",
-   "subject": "h_9baa8e",
-   "roles": [
-    "crest"
-   ],
-   "tags": [],
-   "nsfw": false,
-   "reviewed": true,
-   "enabled": true,
-   "primary": false,
-   "weight": 3,
-   "title": "",
-   "prompt": "A square heraldic emblem for \"Silver Fern\", a New Zealand shipping house of the 1860s China trade. A gleaming metallic silver fern frond (Cyathea dealbata) arcs up the left side and curves over a three-masted clipper under full sail at the centre. The ship is raised in burnished gold relief, riding engraved stylised Pacific waves. The square plate is dark gunmetal, framed by a gold rope-work border with small gold anchors in each corner and a fine riveted steel bevel. The fern's frond leaflets show crisp silver-and-white sheen against the gold and black. Deep engraved detail, mirror-polished and brushed metal with subtle patina in the recesses, warm rim light, isolated on a solid matte-black background, perfectly centred, square 1:1 format, crisp edges, icon-ready, photorealistic enamelled metal texture, 8k",
-   "seed": 230492849931748,
-   "width": 1024,
-   "height": 1024,
-   "bytes": 2003236,
-   "source": "generated",
-   "added": "2026-11-17 13:53",
-   "replaces": ""
-  },
-  {
    "id": "ma10f1c70fb",
    "url": "/media/house/h_9baa8e/house-h_9baa8e-0009f9a6.png",
    "type": "image",

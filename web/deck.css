@@ -1433,6 +1433,8 @@ body.player .pt-transfer-action:not([data-side=""]) button:not(:disabled) { colo
 .pt-race-side .grid { font-size: .86rem; }
 .pt-race-side .grid th, .pt-race-side .grid td { padding: .25rem .3rem; }
 .pt-race-side .grid th:nth-child(4), .pt-race-side .grid td:nth-child(4) { display: none; }   /* ships: no room beside the art */
+/* The race under the port art: each House's crest sits large, on its own line above the House name. */
+.pt-race-side .grid td .crest { display: block; width: 3.75rem; height: 3.75rem; margin: 0 0 .3rem; }
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
   .deck[data-tab="port"] .dk-side { flex-direction: row; justify-content: center; align-items: stretch; }
   .deck[data-tab="port"] .dk-stage { width: auto; height: 100cqh; max-width: 55cqw; }
@@ -1520,11 +1522,18 @@ body.player .pt-mayor button.mp-give { min-height: 0; height: 2.35rem; padding: 
 @container pane (max-width: 420px) { .mp-boxes { grid-template-columns: minmax(0, 1fr); } }
 
 /* ================================================ HOUSE CREST & CAPTAIN PORTRAIT (17 Nov 2026) == */
-/* The top bar: the House's crest, square, in place of the colour chip. */
-.dk-house .crest.dk-crest { width: 3.3rem; height: 3.3rem; margin: 0; border-radius: calc(var(--radius) * .6);
-  box-shadow: 0 0 0 2px var(--house), 0 0 0 3px var(--edge-hi), 0 4px 12px rgba(0, 0, 0, .6); }
-@media (orientation: portrait), (max-aspect-ratio: 1/1) { .dk-house .crest.dk-crest { width: 2.6rem; height: 2.6rem; } }
-@media (orientation: landscape) and (max-height: 560px) { .dk-house .crest.dk-crest { width: 2.2rem; height: 2.2rem; } }
+/* The top bar: the House's crest, bare (no frame), as big as the bar allows. On wide screens the House block
+   stretches to the bar's full height (eating most of its padding) and the crest fills that height as a square;
+   contain: size stops the 1024px picture from pushing the bar taller before the stretch. When the bar wraps
+   (upright screens, short landscape phones) the crest takes a fixed size on its own row instead. */
+.dk-top .dk-house { align-self: stretch; margin-block: -.4rem; }
+.dk-house .crest.dk-crest { height: 100%; width: auto; aspect-ratio: 1; contain: size; margin: 0; }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .dk-top .dk-house { align-self: auto; margin-block: 0; }
+  .dk-house .crest.dk-crest { width: 3.4rem; height: 3.4rem; contain: none; } }
+@media (orientation: landscape) and (max-height: 560px) {
+  .dk-top .dk-house { align-self: auto; margin-block: 0; }
+  .dk-house .crest.dk-crest { width: 2.7rem; height: 2.7rem; contain: none; } }
 /* The captain at the foot of the rail, when the Captain has a portrait: the same square picture with the
    name in white across its foot as the tab pictures above it (it takes the rail's "face" rules). */
 .dk-nav .dk-me .dk-face.face { padding: .25rem; gap: 0; }

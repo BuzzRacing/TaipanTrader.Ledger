@@ -179,6 +179,8 @@ EN = {
     "n.ban": "The authorities in {port} have banned {contraband}. Ships are being searched.",
     "n.scarce": "{good} is scarce in {port} and merchants are paying dearly.",
     "n.glut": "A glut of {good_lower} in {port} has sent prices tumbling.",
+    "n.crash": "The bottom has fallen out of {good_lower} in {port}! Dealers are all but giving it away.",
+    "n.boom": "{good} has gone through the roof in {port}! Buyers will pay any price.",
     "n.slip_caught": "{name} of {firm} was caught trying to slip out of {port} without paying harbour dues.",
     "n.caught": "{name} of {firm} was caught landing {contraband} in {port}.",
     "n.wrecked": "{name} of {firm} lost the whole fleet at sea and was carried home to {home}.",

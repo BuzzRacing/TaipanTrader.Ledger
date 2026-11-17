@@ -1096,10 +1096,7 @@ function portGlance() {
 }
 
 function portRace() {
-  const me = S.me, ranked = S.players.slice().sort((a, b) => b.worth - a.worth);
-  const place = ranked.findIndex(p => p.id === me.id) + 1;
-  return `<p>${te("port.race.place", { place, of: ranked.length, rank: me.rank, months: S.turns_left })}</p>
-    ${standings()}${btn(te("st.open_hint"), "tally", "", "wide ghost")}`;
+  return `${standings()}${btn(te("st.open_hint"), "tally", "", "wide ghost")}`;
 }
 
 /* ---- Accounts */

@@ -142,7 +142,10 @@ DEFAULTS = {
                   "repair_noyard": 1.3, "repair_rep_discount": 0.2, "ship_rep": 2},
         "events": {"shock_chance": 0.35, "shock_mults": [0.4, 0.5, 2.0, 2.5, 3.0],
                    "shock_min_turns": 2, "shock_max_turns": 3, "ban_chance": 0.15,
-                   "ban_min_turns": 3, "ban_max_turns": 5, "ban_price_mult": 1.5},
+                   "ban_min_turns": 3, "ban_max_turns": 5, "ban_price_mult": 1.5,
+                   "windfall_chance": 0.12, "windfall_pair_chance": 0.1,
+                   "crash_min": 0.02, "crash_max": 0.12, "boom_min": 2.5, "boom_max": 10.0,
+                   "windfall_min_turns": 1, "windfall_max_turns": 2},
         "contraband": {"seize_chance": 0.03, "seize_banned": 0.55, "seize_rep_relief": 0.003,
                        "fine_per_unit": 300, "rep_penalty": 15},
         "weather": {"forecast_accuracy": 0.8, "storm_chance": [0.0, 0.04, 0.20, 0.60],
@@ -722,6 +725,17 @@ SECTIONS = [
              F("rules.events.ban_min_turns", "Ban lasts at least (months)", "int", min=1, max=60),
              F("rules.events.ban_max_turns", "Ban lasts at most (months)", "int", min=1, max=60),
              F("rules.events.ban_price_mult", "Contraband price multiplier under a ban", "num", min=0.1, max=20, step=0.05)]},
+         {"title": "Crashes and booms (lottery prices)", "fields": [
+             _pct("rules.events.windfall_chance", "Chance of a crash or a boom each month",
+                  "One cargo in one port goes far outside its usual price range. Crash or boom is a coin toss."),
+             _pct("rules.events.windfall_pair_chance", "Chance a crash and a boom land together",
+                  "When one happens, the chance the opposite one also happens that month, in another port."),
+             F("rules.events.crash_min", "Crash: lowest price (times normal)", "num", "0.02 = 2% of the normal price.", min=0.001, max=1, step=0.005),
+             F("rules.events.crash_max", "Crash: highest price (times normal)", "num", min=0.001, max=1, step=0.005),
+             F("rules.events.boom_min", "Boom: lowest price (times normal)", "num", min=1, max=100, step=0.5),
+             F("rules.events.boom_max", "Boom: highest price (times normal)", "num", min=1, max=100, step=0.5),
+             F("rules.events.windfall_min_turns", "Lasts at least (months)", "int", min=1, max=12),
+             F("rules.events.windfall_max_turns", "Lasts at most (months)", "int", min=1, max=12)]},
      ]},
 ]
 
@@ -981,6 +995,9 @@ def validate(raw):
                                ("bank", "mug_min", "mug_max", "Robbery"),
                                ("events", "shock_min_turns", "shock_max_turns", "Shortage length"),
                                ("events", "ban_min_turns", "ban_max_turns", "Ban length"),
+                               ("events", "crash_min", "crash_max", "Crash price"),
+                               ("events", "boom_min", "boom_max", "Boom price"),
+                               ("events", "windfall_min_turns", "windfall_max_turns", "Crash or boom length"),
                                ("weather", "risk_min", "risk_max", "Risk multiplier")):
         if cfg["rules"][grp][lo] > cfg["rules"][grp][hi]:
             errors.append("{}: 'least' is above 'most'".format(label))

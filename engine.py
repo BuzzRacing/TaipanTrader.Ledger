@@ -252,13 +252,13 @@ class Game:
             msg += " ({})".format(note)
         self._ev("snapshot", kind, msg, date=date_label(s["turn"]), phase=s["phase"], seed=s["seed"],
                  firms=firms, prices={port: {g: round(v, 2) for g, v in row.items()} for port, row in s["prices"].items()},
-                 weather=dict(s["weather"]), crackdown=dict(s["crackdown"]), ban_goods=copy.deepcopy(s.get("ban_goods", {})), shocks=copy.deepcopy(s["shocks"]),
+                 weather=dict(s["weather"]), crackdown=dict(s["crackdown"]), ban_goods=copy.deepcopy(s.get("ban_goods", {})), shocks=copy.deepcopy(s["shocks"]), windfalls=copy.deepcopy(s.get("windfalls", [])),
                  state=state)
 
     # ------------------------------------------------------------ setup --
     def _new_state(self):
         s = {"phase": "lobby", "turn": 0, "years": R["game"]["default_years"], "players": {}, "order": [],
-             "prices": {}, "shocks": [], "crackdown": {}, "ban_goods": {}, "weather": {}, "news": [],
+             "prices": {}, "shocks": [], "windfalls": [], "crackdown": {}, "ban_goods": {}, "weather": {}, "news": [],
              "next_id": 1, "tax_rates": {}}
         self.s = s
         s["tax_rates"] = {k: float(p.get("tax_rate", 0.0) or 0.0) for k, p in PORTS.items()}
@@ -299,9 +299,51 @@ class Game:
         for sh in self.s["shocks"]:
             if sh["port"] == port and sh["good"] == good:
                 t *= sh["mult"]
+        w = self._windfall(port, good)
+        if w:
+            t *= w["mult"]
         if port in self.s["crackdown"] and good in self.banned(port):
             t *= R["events"]["ban_price_mult"]
         return t
+
+    def _windfall(self, port, good):
+        """The crash or boom running on this cargo in this port, or None."""
+        for w in self.s.get("windfalls", ()):
+            if w["port"] == port and w["good"] == good:
+                return w
+        return None
+
+    def _roll_windfalls(self, news):
+        """Now and then the bottom falls out of one cargo in one port, or it goes through the roof:
+        a lottery win for whoever is standing there with the silver or the cargo. Usually one or
+        the other; rarely a crash and a boom land in the same month."""
+        ev, rng, s = R["events"], self.rng, self.s
+        if not self._chance(ev.get("windfall_chance", 0.0), "windfall", "A crash or a boom this month"):
+            return
+        kinds = [rng.choice(("crash", "boom"))]
+        if self._chance(ev.get("windfall_pair_chance", 0.0), "windfall_pair", "A crash and a boom in the same month"):
+            kinds.append("boom" if kinds[0] == "crash" else "crash")
+        used_ports = set(w["port"] for w in s["windfalls"])
+        for kind in kinds:
+            ports = [k for k in PORTS if k not in used_ports] or list(PORTS)
+            port, good = rng.choice(ports), rng.choice(list(GOODS))
+            used_ports.add(port)
+            lo, hi = (ev["crash_min"], ev["crash_max"]) if kind == "crash" else (ev["boom_min"], ev["boom_max"])
+            lo, hi = min(lo, hi), max(lo, hi)
+            mult = math.exp(rng.uniform(math.log(lo), math.log(hi)))      # spread evenly on a log scale
+            turns = rng.randint(min(ev["windfall_min_turns"], ev["windfall_max_turns"]),
+                                max(ev["windfall_min_turns"], ev["windfall_max_turns"]))
+            s["shocks"] = [sh for sh in s["shocks"] if not (sh["port"] == port and sh["good"] == good)]
+            s["windfalls"] = [w for w in s["windfalls"] if not (w["port"] == port and w["good"] == good)]
+            s["windfalls"].append({"port": port, "good": good, "kind": kind, "mult": round(mult, 4), "turns": turns})
+            before = s["prices"][port][good]
+            s["prices"][port][good] = max(1.0, self._target(port, good))
+            self._ev("market", "windfall", "{}: {} in {} x{:.3g} of normal for {} month(s) ({:,.0f} -> {:,.0f})".format(
+                "Crash" if kind == "crash" else "Boom", GOODS[good]["name"], PORTS[port]["name"], mult, turns,
+                before, s["prices"][port][good]), port=port, good=good, sort=kind, mult=round(mult, 4), turns=turns,
+                price=[round(before, 2), round(s["prices"][port][good], 2)])
+            news.append(tx("n.crash" if kind == "crash" else "n.boom", good=GOODS[good]["name"],
+                           good_lower=GOODS[good]["name"].lower(), port=PORTS[port]["name"]))
 
     def _roll_region(self, region, month):
         """Weather level 0-3 for a region in a given month (0 = January)."""
@@ -328,11 +370,13 @@ class Game:
         if s.get("phase") == "sea" and not s.get("sea"):
             s["phase"] = "port"
         s.setdefault("shocks", [])
+        s.setdefault("windfalls", [])
         s.setdefault("crackdown", {})
         s.setdefault("news", [])
         s["prices"] = {port: {g: (s["prices"].get(port, {}).get(g) or self._opening_safe(port, g)) for g in GOODS}
                        for port in PORTS}
         s["shocks"] = [sh for sh in s["shocks"] if sh["port"] in PORTS and sh["good"] in GOODS]
+        s["windfalls"] = [w for w in s["windfalls"] if w["port"] in PORTS and w["good"] in GOODS]
         s["crackdown"] = {k: v for k, v in s["crackdown"].items() if k in PORTS}
         extra = sometimes_contraband()
         s["ban_goods"] = {k: [g for g in v if g in extra] for k, v in (s.get("ban_goods") or {}).items()
@@ -2085,6 +2129,7 @@ class Game:
     def _move_markets(self, news):
         s, rng, ev, m = self.s, self.rng, R["events"], R["market"]
         s["shocks"] = [dict(sh, turns=sh["turns"] - 1) for sh in s["shocks"] if sh["turns"] > 1]
+        s["windfalls"] = [dict(w, turns=w["turns"] - 1) for w in s.get("windfalls", []) if w["turns"] > 1]
         for port in list(s["crackdown"]):
             s["crackdown"][port] -= 1
             if s["crackdown"][port] <= 0:
@@ -2107,6 +2152,7 @@ class Game:
                 s["shocks"][-1]["turns"]), port=port, good=good, mult=mult, turns=s["shocks"][-1]["turns"])
             news.append(tx("n.scarce" if mult > 1 else "n.glut", good=GOODS[good]["name"],
                            good_lower=GOODS[good]["name"].lower(), port=PORTS[port]["name"]))
+        self._roll_windfalls(news)
         if (contraband() or sometimes_contraband()) and self._chance(ev["ban_chance"], "ban", "A port bans contraband this month"):
             open_ports = [k for k in PORTS if not PORTS[k].get("no_ban") and k not in s["crackdown"]]
             if open_ports:
@@ -2124,7 +2170,10 @@ class Game:
                 price = s["prices"][port][g]
                 price += m["reversion"] * (self._target(port, g) - price)
                 price *= math.exp(rng.gauss(0, spec["vol"] * m["vol_mult"]))
-                s["prices"][port][g] = max(m["floor"] * base, min(m["ceiling"] * base, price))
+                if self._windfall(port, g):                 # a crash or boom runs past the usual limits
+                    s["prices"][port][g] = max(1.0, price)
+                else:
+                    s["prices"][port][g] = max(m["floor"] * base, min(m["ceiling"] * base, price))
         moves = sorted(((s["prices"][port][g] / before[port][g] - 1, port, g) for port in PORTS for g in GOODS
                         if before[port].get(g)), key=lambda t: -abs(t[0]))[:6]
         self._ev("market", "prices", "Markets moved. Biggest changes: " + "; ".join(
@@ -2807,7 +2856,8 @@ class Game:
                 "turns_left": max(0, s["years"] * 12 - s["turn"]), "players": players,
                 "prices": {port: {g: round(v, 1) for g, v in row.items()} for port, row in s["prices"].items()},
                 "weather": s["weather"], "crackdown": s["crackdown"], "ban_goods": s.get("ban_goods", {}),
-                "bans": {k: self.banned(k) for k in s["crackdown"]}, "shocks": s["shocks"], "news": s["news"]}
+                "bans": {k: self.banned(k) for k in s["crackdown"]}, "shocks": s["shocks"],
+                "windfalls": s.get("windfalls", []), "news": s["news"]}
 
 
 def static_data():
