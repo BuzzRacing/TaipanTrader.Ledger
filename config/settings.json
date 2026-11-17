@@ -78,7 +78,7 @@
    "tea": "/uploads/historical-cargo-tea.webp",
    "rice": "/uploads/historical-cargo-rice.webp",
    "general": "/uploads/historical-cargo-general.webp",
-   "gold": "/uploads/artbible-cargo-gold-423c064b.png"
+   "gold": "/media/cargo/gold/cargo-gold-c8820b67.png"
   },
   "ports": {
    "hongkong": "/uploads/historical-port-hongkong.webp",
@@ -89,7 +89,8 @@
    "bangkok": "/uploads/historical-port-bangkok.webp",
    "singapore": "/uploads/historical-port-singapore.webp",
    "batavia": "/uploads/historical-port-batavia.webp",
-   "calcutta": "/uploads/historical-port-calcutta.webp"
+   "calcutta": "/uploads/historical-port-calcutta.webp",
+   "foochow": "/media/port/foochow/port-foochow-0abef988.png"
   },
   "ships": {
    "junk": "/uploads/historical-ship-junk.webp",

@@ -7,7 +7,7 @@
 
   const M = {
     lib: null, loading: false, kind: "persona", subject: "", role: "", type: "", nsfw: "", review: false, q: "",
-    sel: new Set(), last: null, genOpen: false, rulesOpen: false, jobs: [], poll: null, uploads: [],
+    sel: new Set(), last: null, genOpen: false, rulesOpen: false, jobs: [], jobsOpen: (() => { try { return localStorage.getItem("ml.jobsOpen") === "1"; } catch (_) { return false; } })(), poll: null, uploads: [],
     gen: { roles: [], aspect: "3:4", count: 2, nsfw: "auto", prompt: "", tags: "", forKey: "" },
     rulesDraft: null, timers: {},
   };
@@ -108,7 +108,7 @@
   }
 
   function subjectCards() {
-    if (!M.kind || M.subject) return "";
+    if (!M.kind || M.subject || M.review) return "";
     const subs = subjectsFor(M.kind);
     if (!subs.length) return "";
     return `<div class="ml-subjects">${subs.map(([k, name]) => {
@@ -122,6 +122,13 @@
     }).join("")}</div>`;
   }
 
+  function reviewButton() {
+    // Toggle: show only items still waiting for review (in the current tab; on "Everything" it covers the whole library).
+    const n = items().filter(i => !i.reviewed && (!M.kind || i.kind === M.kind) && (!M.subject || i.subject === M.subject)).length;
+    return `<button type="button" data-mlreview="1" class="ml-review${M.review ? " on" : ""}${n ? " has" : ""}" title="${M.review ? "Show everything again" : "Show only items that still need review"}">` +
+      `${M.review ? "✓ " : ""}Need review <i>${n}</i></button>`;
+  }
+
   function toolbar() {
     const K = kinds()[M.kind];
     const subs = M.kind ? subjectsFor(M.kind) : [];
@@ -133,7 +140,7 @@
         `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n.split(":")[0])}</option>`).join("")}</select></label>` : ""}
       <label>Type<select data-mlf="type"><option value="">Pictures & video</option><option value="image"${M.type === "image" ? " selected" : ""}>Pictures</option><option value="video"${M.type === "video" ? " selected" : ""}>Video</option></select></label>
       <label>Rating<select data-mlf="nsfw"><option value="">All</option><option value="sfw"${M.nsfw === "sfw" ? " selected" : ""}>Family-friendly only</option><option value="nsfw"${M.nsfw === "nsfw" ? " selected" : ""}>NSFW only</option><option value="off"${M.nsfw === "off" ? " selected" : ""}>Switched off</option></select></label>
-      <label class="ml-check"><input type="checkbox" data-mlf="review"${M.review ? " checked" : ""}> Needs review</label>
+      ${reviewButton()}
       <label class="ml-grow">Search<input type="search" id="mlq" data-mlf="q" value="${e(M.q)}" placeholder="tag, title, prompt…"></label>
       <div class="ml-actions">
         <label class="ml-check" title="Tag what you upload next as NSFW"><input type="checkbox" data-mlf="upNsfw"${M.upNsfw ? " checked" : ""}> upload as NSFW</label>
@@ -195,11 +202,20 @@
       <div class="row"><button type="button" class="primary" data-mlgo="${e(kind)}|${e(subject)}">Paint ${M.gen.count} picture${M.gen.count == 1 ? "" : "s"}</button>
         <button type="button" class="link" data-mlgenreset="1">reset prompt</button>
         <span class="help">${running.length ? `${running.length} job${running.length === 1 ? "" : "s"} in the queue` : "The farm is idle."}</span></div>
-      ${M.jobs.length ? `<ul class="ml-jobs">${M.jobs.slice(0, 8).map(j => `<li class="${e(j.status)}">
+      ${jobList()}
+    </section>`;
+  }
+
+  function jobList() {
+    const active = j => ["waiting", "running", "cancelling"].includes(j.status);
+    const finished = M.jobs.filter(j => !active(j)).length;
+    const shown = (M.jobsOpen ? M.jobs : M.jobs.filter(active)).slice(0, 8);
+    const toggle = finished ? `<button type="button" class="link ml-jobs-toggle" data-mljobs="1">${M.jobsOpen ? "hide finished" : `show ${finished} finished`}</button>` : "";
+    const items = shown.length ? `<ul class="ml-jobs">${shown.map(j => `<li class="${e(j.status)}">
         <b>${e(subjectName(j.kind, j.subject))}</b> <span>${j.done}/${j.count} painted${j.failed ? `, ${j.failed} failed` : ""} · ${e(j.status)}</span>
         ${j.error ? `<small>${e(j.error)}</small>` : ""}
-        ${["waiting", "running"].includes(j.status) ? `<button type="button" class="link" data-mlcancel="${e(j.id)}">stop</button>` : ""}</li>`).join("")}</ul>` : ""}
-    </section>`;
+        ${["waiting", "running"].includes(j.status) ? `<button type="button" class="link" data-mlcancel="${e(j.id)}">stop</button>` : ""}</li>`).join("")}</ul>` : "";
+    return toggle + items;
   }
 
   function rulesPanel() {
@@ -304,11 +320,9 @@
     const c = M.lib.counts, list = filtered();
     const crumbs = M.subject ? `<p class="ml-crumb"><button type="button" class="link" data-mlsubject="">← All ${e(kinds()[M.kind].label.toLowerCase())}</button>
       <b>${e(subjectName(M.kind, M.subject))}</b></p>` : "";
-    return head("Media Library", "Every picture and video clip the game can show, filed by who or what it is of. Several pictures for one persona, port or ship " +
-        "are rotated or picked at random by the playback rules; NSFW items disappear from every screen while the game is family-friendly. " +
-        "Changes here are saved at once.", familySwitch()) +
+    return head("Media Library", "", familySwitch()) +
       `<div class="ml-stats"><span><b>${c.total}</b> items</span><span><b>${c.video}</b> video</span><span><b>${c.nsfw}</b> NSFW</span>
-        <span${c.review ? ' class="warn"' : ""}><b>${c.review}</b> need review</span><span><b>${fmtBytes(c.bytes)}</b> on disk</span>
+        ${c.review ? `<button type="button" class="link ml-stat-review" data-mlreviewall="1" title="Show every item that needs review"><b>${c.review}</b> need review</button>` : `<span><b>0</b> need review</span>`}<span><b>${fmtBytes(c.bytes)}</b> on disk</span>
         <span class="muted">Drop files into <code>web/media/&lt;kind&gt;/&lt;subject&gt;/</code> (a folder named <code>nsfw</code> tags them) and press Scan folders.</span></div>` +
       kindTabs() + toolbar() + uploadBar() + genPanel() + rulesPanel() + subjectCards() + crumbs + bulk() +
       `<div class="ml-body${M.sel.size === 1 ? " with-detail" : ""}${CFG.content.rating === "family" ? " ml-family" : ""}">
@@ -384,6 +398,8 @@
     const el = t.closest("[data-mlkind],[data-mlsubject],[data-mlitem],button");
     if (!el) return;
     const d = el.dataset;
+    if (d.mlreview) { M.review = !M.review; M.sel.clear(); return redraw(); }
+    if (d.mlreviewall) { M.review = true; M.kind = ""; M.subject = ""; M.role = ""; M.sel.clear(); M.gen.forKey = ""; return redraw(); }
     if (d.mlkind !== undefined) { M.kind = d.mlkind; M.subject = ""; M.role = ""; M.sel.clear(); M.gen.forKey = ""; return redraw(); }
     if (d.mlsubject !== undefined) { M.gen.forKey = ""; return goSubject(M.kind, d.mlsubject); }
     if (d.mlitem) {
@@ -412,6 +428,7 @@
       return load(true);
     }
     if (d.mlgen) { M.genOpen = !M.genOpen; if (M.genOpen && !M.kind) M.kind = "persona"; return redraw(); }
+    if (d.mljobs) { M.jobsOpen = !M.jobsOpen; try { localStorage.setItem("ml.jobsOpen", M.jobsOpen ? "1" : "0"); } catch (_) {} return redraw(); }
     if (d.mlrules) { M.rulesOpen = !M.rulesOpen; return redraw(); }
     if (d.mlscan) {
       const res = await api("media/scan", {});

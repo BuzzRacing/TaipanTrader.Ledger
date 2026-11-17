@@ -12,7 +12,8 @@ let reloading = false;
 const ui = { tab: "market", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
              spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false, meOpen: false,
              tally: false, tallyShown: false, tallyTurn: null,
-             bookView: "signals", bookGood: null, bookPort: null, bookMode: "buy", bookRoute: null };
+             bookView: "signals", bookGood: null, bookPort: null, bookMode: "buy", bookRoute: null,
+             portView: "arrival", portTurn: null, plRange: "voyage" };
 let VS = {};             // voice settings: who is in the cast, what this screen reads aloud
 const app = document.getElementById("app");
 
@@ -62,9 +63,9 @@ function connect() {
 /* Reads the month's log aloud while it is on screen, and any fresh news if this screen reads news. */
 function speak() {
   if (!S || !S.voice) return;
-  if (S.voice.log && document.querySelector(".modal .log") && ui.spokenTurn !== S.turn) {
+  if (S.voice.log && document.querySelector(".captains-log") && ui.spokenTurn !== S.turn) {
     ui.spokenTurn = S.turn;
-    Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
+    Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + S.turn + ":" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
   }
   const news = S.news || [], plans = S.voice.news || [];
   if (ui.newsSeen === null) { ui.newsSeen = new Set(news); return; }
@@ -74,11 +75,20 @@ function speak() {
   Customs.speak();
 }
 
-/* Underlines the log line being read. */
 function markSpeaking() {
+  const log = document.querySelector(".captains-log");
+  if (!log) return;
   const item = Voice.current();
-  document.querySelectorAll(".modal .log li").forEach((li, i) =>
-    li.classList.toggle("speaking", !!item && item.tag === "log:" + i));
+  const previous = log.querySelector(".cl-entry[aria-current]");
+  const active = item && item.group === "log"
+    ? Array.from(log.querySelectorAll(".cl-entry")).find(line => line.dataset.voiceTag === item.tag)
+    : null;
+  if (previous === active) return;
+  if (previous) previous.removeAttribute("aria-current");
+  if (active) {
+    active.setAttribute("aria-current", "true");
+    active.scrollIntoView({ block: "nearest" });
+  }
 }
 Voice.onChange(item => { markSpeaking(); Stage.talk(item); });
 
@@ -249,7 +259,7 @@ function deckArt(inGame) {
   if (!inGame) return;
   Stage.mount(document.getElementById("stageSlot"));
   // At the Port Authority's desk the stage shows the officer, her face changing with her mood.
-  const cx = Customs.isOpen() && !document.querySelector(".modal .log") ? Customs.stage() : null;
+  const cx = Customs.isOpen() && !document.querySelector(".captains-log") ? Customs.stage() : null;
   if (cx) {
     document.getElementById("deck").classList.add("woman");
     Stage.idle(cx.key, cx.html, cx.name, cx.note);
@@ -520,15 +530,27 @@ function meButton() {
 }
 
 function logModal() {
-  return `<div class="veil"><div class="modal">${Media.html("port", S.me.port, "arrival", "portart logart", "", { strict: true, video: true })}<p class="eyebrow">${te("log.eyebrow")}</p><h2>${esc(S.date)}</h2>
-    <ul class="log">${S.me.log.map((l, i) => {
-      // Name the reader at the start of each run of lines they read.
-      const plan = S.voice && S.voice.log, v = plan && plan[i], who = v && VS.cast && VS.cast[v.c];
-      const same = i > 0 && plan && plan[i - 1] && v && plan[i - 1].c === v.c;
-      const face = who && !same ? (Media.html("persona", v.c, "portrait", "whoface", who.portrait, { slot: "log" + i }) ) : "";
-      return "<li>" + (who && !same ? `<span class="who" style="color:${esc(who.color)}">${face}${esc(who.name)}</span>` : "") + esc(l) + "</li>";
-    }).join("")}</ul>
-    ${btn(te("log.ashore"), "seen", "", "primary wide")}</div></div>`;
+  const port = S.me.port;
+  const art = Media.html("port", port, "arrival", "cl-art-media", "", { strict: true, video: true })
+    || Media.html("port", port, "banner", "cl-art-media", ((D.graphics || {}).ports || {})[port], { strict: true });
+  const plan = (S.voice && S.voice.log) || [];
+  const entries = S.me.log.map((line, i) => {
+    const reader = plan[i] && plan[i].c;
+    const who = reader && (VS.cast || {})[reader];
+    const face = who && Media.html("persona", reader, "portrait", "cl-face", who.portrait, { strict: true, slot: "captains-log" });
+    return `<div class="cl-entry${face ? " has-face" : ""}" data-voice-tag="log:${S.turn}:${i}">
+      ${face ? `<span class="cl-portrait">${face}</span>` : ""}
+      <div><div class="cl-reader"><span><i aria-hidden="true">${DECK_ICONS.speech_on}</i>${te("log.reading")}</span>${who ? `<b>${esc(who.name)}</b>` : ""}</div>
+      <p>${esc(line)}</p></div></div>`;
+  }).join("");
+  return `<div class="veil cl-veil"><section class="modal captains-log${art ? " has-art" : ""}" role="dialog" aria-labelledby="cl-title cl-date">
+    ${art ? `<div class="cl-art" aria-hidden="true">${art}</div>` : ""}
+    <div class="cl-scroll"><div class="cl-page">
+      <header><p id="cl-title">${te("log.eyebrow")}</p><h2 id="cl-date">${esc(S.date)}</h2><p>${esc(portName(port))}</p></header>
+      <div class="cl-entries">${entries}</div>
+    </div></div>
+    <footer>${btn(te("log.ashore") + ' <span aria-hidden="true">&rarr;</span>', "seen", "", "primary")}</footer>
+  </section></div>`;
 }
 
 /* --------------------------------------------------------------- market -- */
@@ -721,23 +743,236 @@ function clearanceLedger() {
 /* ----------------------------------------------------------------- port -- */
 /* The Port tab opens with the house's news board: standings, port news and this month's log.
    They show in every port; the bank, loans, warehouse and agent below only at home. */
-function portBoard() {
-  const me = S.me;
-  const list = (items, empty) => items.map(n => "<li>" + esc(n) + "</li>").join("") || "<li>" + te(empty) + "</li>";
-  return `<section class="card"><h2>${te("ledger.standings")}</h2>${standings()}
-      ${btn(te("st.open_hint"), "tally", "", "wide")}</section>
-    <section class="card"><h2>${te("ledger.news")}</h2><ul class="log">${list(S.news, "ledger.no_news")}</ul></section>
-    <section class="card"><h2>${te("ledger.log")}</h2><ul class="log">${list(me.log, "ledger.no_log")}</ul></section>`;
+/* ----------------------------------------------------------------- port -- */
+/* The Port screen: where a house lands in a new port. A strip of five figures (the voyage's result,
+   net worth, what is owed, interest a month, standing here), then sub-tabs: Arrival (what happened,
+   what to do here, the port at a glance), Accounts (profit and loss, debts and dues), Log (the
+   captain's log, this voyage and earlier ones), News (from the ports, bans, next month's weather)
+   and, in Hong Kong only, Services (bank, moneylender, warehouse, protection).
+   The figures come from the account book the server keeps (me.books, engine.py _book). */
+const PL_GROUPS = [
+  ["trade", ["sales", "pa_sold", "cost"]],
+  ["port", ["dues", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
+  ["money", ["interest", "bank_interest"]],
+  ["perils", ["booty", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed"]],
+];
+const plTotal = lines => Object.values(lines || {}).reduce((a, b) => a + b, 0);
+const signed = n => (n > 0 ? "+" : "") + money(n);
+const tone = n => n > 0.5 ? "up" : n < -0.5 ? "down" : "";
+/* "1 month" / "3 months": a key with "_1" after it is used for exactly one. */
+const ten = (key, n, vars) => te(n === 1 && T[key + "_1"] != null ? key + "_1" : key, Object.assign({ n, months: n }, vars || {}));
+
+function portViews() {
+  return ["arrival", "accounts", "log", "news"].concat(S.me.port === D.home ? ["services"] : []);
 }
 
 function portTab() {
-  const me = S.me;
-  if (me.port !== D.home) {
-    return `<section class="card">${Media.html("port", me.port, "banner", "portart", D.graphics.ports[me.port])}<h2>${esc(portName(me.port))}</h2>
-      <p>${te("port.away")}</p>
-      <p class="muted">${te(D.ports[me.port].shipyard ? "port.away_here_yard" : "port.away_here")}</p></section>
-    ${portBoard()}`;
+  // A new month always opens on Arrival.
+  if (ui.portTurn !== S.turn) { ui.portTurn = S.turn; ui.portView = "arrival"; }
+  const views = portViews();
+  if (!views.includes(ui.portView)) ui.portView = "arrival";
+  const seg = `<div class="pt-tabs" role="tablist" aria-label="${te("port.views")}">${views.map(v =>
+    `<button type="button" role="tab" class="pt-tab${ui.portView === v ? " on" : ""}" data-act="port_view" data-v="${v}" aria-selected="${ui.portView === v}">${te("port.view." + v)}</button>`).join("")}</div>`;
+  const body = { arrival: portArrival, accounts: portAccounts, log: portLog, news: portNews, services: portServices }[ui.portView]();
+  return `<div class="pt">${portStrip()}${seg}<div class="pt-view pt-${ui.portView}">${body}</div></div>`;
+}
+
+function portStrip() {
+  const me = S.me, last = (me.books || {}).last;
+  const net = last ? plTotal(last.lines) : null;
+  const rate = D.loan_rate, rep = (me.rep || {})[me.port];
+  const cell = (label, value, cls, sub) => `<div class="pt-fig ${cls || ""}"><span>${label}</span><b>${value}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  return `<div class="pt-strip">
+    ${cell(te(last && !last.sailed ? "port.fig.month" : "port.fig.voyage"), net === null ? "—" : esc(signed(net)), tone(net))}
+    ${cell(te("port.fig.worth"), money(me.worth), "", esc(me.rank))}
+    ${cell(te("port.fig.owed"), money(me.debt), me.debt > 0 ? "down" : "")}
+    ${cell(te("port.fig.interest"), money(me.debt * rate), me.debt > 0 ? "down" : "", te("port.fig.interest_rate", { rate: pct(rate, 2) }))}
+    ${cell(te("port.fig.standing"), rep == null ? "—" : rep, "", te("port.fig.standing_in", { port: esc(portName(me.port)) }))}
+  </div>`;
+}
+
+/* ---- Arrival */
+function portArrival() {
+  const me = S.me, last = (me.books || {}).last;
+  let head;
+  if (!last) {
+    head = `<section class="card pt-land"><h2>${te("port.land.first", { port: esc(portName(me.port)) })}</h2>
+      <p>${te("port.land.first_note")}</p></section>`;
+  } else {
+    const net = plTotal(last.lines), key = last.wrecked ? "wrecked" : last.sailed ? "sailed" : "stayed";
+    const lead = (me.log || []).slice(0, 4).map(l => `<li>${esc(l)}</li>`).join("");
+    head = `<section class="card pt-land"><h2>${te("port.land." + key, { port: esc(portName(me.port)), from: esc(portName(last.from)) })}</h2>
+      <p class="pt-sum">${te("port.land.sum_" + (net >= 0 ? "up" : "down"), { date: esc(last.date), net: money(Math.abs(net)) })}</p>
+      ${lead ? `<ul class="log pt-lead">${lead}</ul>${(me.log || []).length > 4 ? btn(te("port.land.more"), "port_view", 'data-v="log"', "link") : ""}` : ""}</section>`;
   }
+  return `${head}
+    <section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>
+    <section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>
+    <section class="card pt-race"><h2>${te("port.race.title")}</h2>${portRace()}</section>`;
+}
+
+/* What is worth doing in this port, most useful first. Each item can jump to the tab that does it. */
+function portTodo() {
+  const me = S.me, items = [];
+  const go = (tab, label) => btn(label, "tab", `data-tab="${tab}"`, "pt-go");
+  if (me.ready) items.push(["ok", te(me.dest ? "port.todo.sailing" : "port.todo.staying", { port: esc(portName(me.dest || me.port)) }), go("chart", te("tab.chart"))]);
+  // Cargo that sells here for more than it cost.
+  const sells = Object.keys(me.cargo || {}).map(g => {
+    const q = me.cargo[g], paid = paidFor(g);
+    return paid === null ? null : { g, q, gain: quote(g, q, "sell") - paid * q };
+  }).filter(x => x && x.gain > 0).sort((a, b) => b.gain - a.gain).slice(0, 2);
+  sells.forEach(x => items.push(["up", te("port.todo.sell", { qty: x.q.toLocaleString(), good: D.goods[x.g].name, gain: money(x.gain) }), go("market", te("tab.market"))]));
+  const repair = (me.ships || []).reduce((n, s) => n + s.repair, 0);
+  if (repair) {
+    const low = Math.min(...me.ships.map(s => Math.round(100 * s.hull / D.ships[s.type].hull)));
+    items.push(["warn", te(D.ports[me.port].shipyard ? "port.todo.repair_yard" : "port.todo.repair", { hull: low, cost: money(repair) }), go("fleet", te("tab.fleet"))]);
+  }
+  const storms = Object.keys(S.weather || {}).filter(r => S.weather[r] >= 3);
+  if (storms.length) items.push(["warn", te("port.todo.typhoon", { seas: storms.map(r => (D.regions[r] || {}).name || r).join(", ") }), go("chart", te("tab.chart"))]);
+  const banned = (S.bans || {})[me.port] || [];
+  const aboard = banned.filter(g => me.cargo[g]);
+  if (aboard.length) items.push(["warn", te("port.todo.banned", { goods: aboard.map(g => D.goods[g].name).join(", ") }), ""]);
+  const home = me.port === D.home;
+  if (me.protect <= D.renew_at) items.push(["warn", ten(me.protect > 0 ? "port.todo.protect_low" : "port.todo.protect_none", me.protect),
+    home ? btn(te("port.view.services"), "port_view", 'data-v="services"', "pt-go") : ""]);
+  if (me.debt > 0) items.push(["down", te(home ? "port.todo.debt_home" : "port.todo.debt", { interest: money(me.debt * D.loan_rate) }),
+    home ? btn(te("port.view.services"), "port_view", 'data-v="services"', "pt-go") : btn(te("port.view.accounts"), "port_view", 'data-v="accounts"', "pt-go")]);
+  if (!me.used && !me.ready) items.push(["", te("port.todo.empty"), go("market", te("tab.market"))]);
+  if (!items.length) return `<p class="muted">${te("port.todo.none")}</p>`;
+  const icon = { up: "◆", warn: "⚠", down: "⚖", ok: "⚓", "": "•" };
+  return `<ul class="pt-list">${items.map(([k, text, act]) =>
+    `<li class="${k}"><i>${icon[k]}</i><span>${text}</span>${act}</li>`).join("")}</ul>`;
+}
+
+/* The port at a glance: what is cheap and dear, bans, the dealer's cut, dues, shipyard, the Port Authority, rivals. */
+function portGlance() {
+  const me = S.me, port = D.ports[me.port], mods = port.mods || {};
+  const goods = Object.keys(D.goods).filter(g => mods[g] != null);
+  const cheap = goods.filter(g => mods[g] < 1).sort((a, b) => mods[a] - mods[b]).slice(0, 3);
+  const dear = goods.filter(g => mods[g] > 1).sort((a, b) => mods[b] - mods[a]).slice(0, 3);
+  const chips = (list, cls) => list.length ? list.map(g => `<span class="pt-chip ${cls}">${esc(D.goods[g].name)}</span>`).join("") : `<span class="muted">—</span>`;
+  const bans = (S.bans || {})[me.port] || [];
+  const rivals = S.players.filter(p => p.port === me.port && p.id !== me.id);
+  const rate = Number(port.tax_rate) || 0;
+  const row = (label, value) => `<tr><td>${label}</td><td class="n">${value}</td></tr>`;
+  return `<table class="pt-table">
+    ${row(te("port.glance.cheap"), chips(cheap, "up"))}
+    ${row(te("port.glance.dear"), chips(dear, "down"))}
+    ${row(te("port.glance.bans"), bans.length ? chips(bans, "down") : te("port.glance.no_bans"))}
+    ${row(te("port.glance.cut", { rep: (me.rep || {})[me.port] }), pct(me.spread, 1) + "%")}
+    ${row(te("port.glance.dues"), "×" + (me.dues && me.dues.level != null ? me.dues.level : 1))}
+    ${row(te("port.glance.authority"), rate > 0 ? te("port.glance.authority_rate", { rate: pct(rate, 1) }) : te("port.glance.free"))}
+    ${row(te("port.glance.yard"), port.shipyard ? te("port.glance.yes") : te("port.glance.no_yard", { yards: esc(D.yards.join(", ")) }))}
+    ${row(te("port.glance.rivals"), rivals.length ? rivals.map(p => `<span class="pt-chip"><i class="chip" style="background:${COLORS[p.color % 8]}"></i>${esc(p.firm)}</span>`).join("") : te("port.glance.alone"))}
+  </table>`;
+}
+
+function portRace() {
+  const me = S.me, ranked = S.players.slice().sort((a, b) => b.worth - a.worth);
+  const place = ranked.findIndex(p => p.id === me.id) + 1;
+  return `<p>${te("port.race.place", { place, of: ranked.length, rank: me.rank, months: S.turns_left })}</p>
+    ${standings()}${btn(te("st.open_hint"), "tally", "", "wide ghost")}`;
+}
+
+/* ---- Accounts */
+function portAccounts() {
+  const me = S.me, bk = me.books || {};
+  const range = ui.plRange || "voyage";
+  const lines = range === "year" ? bk.year : range === "game" ? bk.game : (bk.last || {}).lines;
+  const seg = `<div class="pt-seg" role="group" aria-label="${te("port.pl.range")}">${["voyage", "year", "game"].map(r =>
+    `<button type="button" data-act="pl_range" data-v="${r}" aria-pressed="${range === r}">${te("port.pl.range_" + r)}</button>`).join("")}</div>`;
+  let table;
+  if (!lines || !Object.keys(lines).length) {
+    table = `<p class="muted">${te(range === "voyage" && !bk.last ? "port.pl.none_yet" : "port.pl.empty")}</p>`;
+  } else {
+    const rows = PL_GROUPS.map(([grp, keys]) => {
+      const here = keys.filter(k => Math.round(lines[k] || 0) !== 0);
+      if (!here.length) return "";
+      const sub = here.reduce((n, k) => n + lines[k], 0);
+      return `<tr class="pt-grp"><td colspan="2">${te("port.pl.grp_" + grp)}</td></tr>` +
+        here.map(k => `<tr><td>${te("port.pl." + k)}</td><td class="n ${tone(lines[k])}">${signed(lines[k])}</td></tr>`).join("") +
+        `<tr class="pt-sub"><td>${te("port.pl.sub_" + grp)}</td><td class="n ${tone(sub)}">${signed(sub)}</td></tr>`;
+    }).join("");
+    const total = plTotal(lines);
+    table = `<table class="pt-table pt-pl">${rows}<tr class="pt-total"><td>${te("port.pl.total_" + range)}</td><td class="n ${tone(total)}">${signed(total)}</td></tr></table>`;
+  }
+  const title = range === "voyage" && bk.last
+    ? te(bk.last.sailed ? "port.pl.title_voyage" : "port.pl.title_month", { from: esc(portName(bk.last.from)), to: esc(portName(bk.last.to)), date: esc(bk.last.date) })
+    : te("port.pl.title");
+  return `<section class="card pt-plcard"><header class="pt-cardhead"><h2>${title}</h2>${seg}</header>${table}
+      ${portUnrealised()}<p class="muted pt-fine">${te("port.pl.note")}</p></section>
+    <section class="card pt-owe"><h2>${te("port.owe.title")}</h2>${portOwe()}</section>`;
+}
+
+/* Cargo aboard and in store: what it would fetch here now against what it cost. Not counted until sold. */
+function portUnrealised() {
+  const me = S.me;
+  let worth = 0, paid = 0, n = 0;
+  Object.keys(me.cargo || {}).forEach(g => {
+    const p = paidFor(g);
+    if (p === null) return;
+    worth += quote(g, me.cargo[g], "sell");
+    paid += p * me.cargo[g];
+    n += me.cargo[g];
+  });
+  if (!n) return "";
+  return `<p class="pt-unreal">${th("port.pl.aboard", { n: n.toLocaleString(), worth: `<b>${money(worth)}</b>`, paid: money(paid),
+    gain: `<b class="${tone(worth - paid)}">${esc(signed(worth - paid))}</b>` })}</p>`;
+}
+
+function portOwe() {
+  const me = S.me, r = D.loan_rate, home = me.port === D.home;
+  const last = (me.books || {}).last, paid = last ? -(last.lines.interest || 0) : 0;
+  const row = (label, value, cls, note) => `<tr><td>${label}${note ? `<small>${note}</small>` : ""}</td><td class="n ${cls || ""}">${value}</td></tr>`;
+  const double = r > 0 ? Math.ceil(Math.log(2) / Math.log(1 + r)) : 0;
+  const bill = (me.dues || {}).total || 0;
+  let rows = "";
+  if (me.debt > 0) {
+    rows += row(`<b>${te("port.owe.lender")}</b>`, money(me.debt), "down", te("port.owe.lender_note", { rate: pct(r, 2) }));
+    if (paid > 0.5) rows += row(te("port.owe.paid"), money(paid), "down");
+    rows += row(te("port.owe.next"), money(me.debt * r), "down");
+    if (double) rows += row(te("port.owe.double"), ten("port.owe.months", double), "", te(home ? "port.owe.repay_here" : "port.owe.repay_home"));
+  } else {
+    rows += row(te("port.owe.lender"), te("port.owe.clear"), "up");
+  }
+  if (home) rows += row(te("port.owe.room"), money(me.loan_room));
+  rows += row(te("port.owe.dues", { port: esc(portName(me.port)) }), bill > 0 ? money(bill) : te("port.owe.nothing"), "", te("port.owe.dues_note"));
+  rows += row(te("port.owe.protect"), me.protect > 0 ? ten("port.owe.months", me.protect) : te("port.owe.no_protect"), me.protect <= D.renew_at ? "down" : "");
+  if (me.bank > 0) rows += row(te("port.owe.bank"), money(me.bank), "up", te("port.owe.bank_note", { rate: pct(D.bank_rate, 2), interest: money(me.bank * D.bank_rate) }));
+  return `<table class="pt-table pt-owetable">${rows}</table>
+    ${home ? btn(te("port.owe.to_services"), "port_view", 'data-v="services"', "pt-go") : ""}`;
+}
+
+/* ---- Log */
+function portLog() {
+  const me = S.me, bk = me.books || {};
+  const now = (me.log || []).length ? `<section class="card pt-logcard"><h2>${te("port.log.now", { date: esc(bk.last ? bk.last.date : S.date) })}</h2>
+      <ul class="log">${me.log.map(l => `<li>${esc(l)}</li>`).join("")}</ul>${btn(te("port.log.read"), "relog", "", "ghost")}</section>` : "";
+  const older = (bk.logbook || []).map(e => `<section class="card pt-logcard old"><h2>${esc(e.date)} <small>${te(e.from === e.to ? "port.log.at" : "port.log.route", { from: esc(portName(e.from)), to: esc(portName(e.to)) })}</small></h2>
+      <ul class="log">${(e.lines || []).map(l => `<li>${esc(l)}</li>`).join("")}</ul></section>`).join("");
+  return now + older || `<section class="card"><p class="muted">${te("ledger.no_log")}</p></section>`;
+}
+
+/* ---- News */
+function portNews() {
+  const news = (S.news || []).map(n => {
+    const at = n.indexOf(": ");
+    return at > 0 && at < 14 ? `<li><span class="pt-when">${esc(n.slice(0, at))}</span>${esc(n.slice(at + 2))}</li>` : `<li>${esc(n)}</li>`;
+  }).join("");
+  const bans = Object.keys(S.bans || {}).map(k => `<tr><td>${esc(portName(k))}</td><td class="n">${(S.bans[k] || []).map(g => `<span class="pt-chip down">${esc(D.goods[g] ? D.goods[g].name : g)}</span>`).join("")}</td></tr>`).join("");
+  const wx = Object.keys(D.regions || {}).map(r => {
+    const lv = (S.weather || {})[r] || 0;
+    return `<tr><td>${esc(D.regions[r].name || r)}</td><td class="n"><span class="pt-wx wx${lv}">${esc(D.weather[lv])}</span></td></tr>`;
+  }).join("");
+  return `<section class="card pt-newscard"><h2>${te("port.news.title")}</h2><ul class="log">${news || `<li class="muted">${te("ledger.no_news")}</li>`}</ul></section>
+    <section class="card"><h2>${te("port.news.bans")}</h2>${bans ? `<table class="pt-table">${bans}</table>` : `<p class="muted">${te("port.news.no_bans")}</p>`}</section>
+    <section class="card"><h2>${te("port.news.weather")}</h2><table class="pt-table">${wx}</table>
+      <p class="muted pt-fine">${te("port.news.weather_note", { right: pct(D.forecast_accuracy, 0) })}</p></section>`;
+}
+
+/* ---- Services (Hong Kong only): the bank, the moneylender, the warehouse and the protection agent. */
+function portServices() {
+  const me = S.me;
   const goods = Object.keys(D.goods).filter(g => (me.cargo[g] || 0) + (me.wh[g] || 0) > 0);
   const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
   const whRows = goods.length ? goods.map(g => `<tr><td><b>${esc(D.goods[g].name)}</b></td>
@@ -749,8 +984,7 @@ function portTab() {
     ? `<p>${te("agent.content", { months: me.protect })}</p>`
     : `<p>${me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none")}</p>
        ${btn(te("agent.pay", { cost: money(me.protect_cost) }), "protection", "", "primary")}`;
-  return `${portBoard()}
-    <section class="card"><h2>${te("bank.title")}</h2>
+  return `<section class="card"><h2>${te("bank.title")}</h2>
       <p class="muted">${te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) })}</p>
       <div class="row">${input("bank", t("ph.amount"))}${btn(te("btn.deposit"), "bank", 'data-op="deposit"', "primary")}${btn(te("btn.withdraw"), "bank", 'data-op="withdraw"')}
         ${btn(te("btn.all_silver"), "fill", `data-k="bank" data-v="${me.cash}"`, "link")}</div></section>
@@ -1126,6 +1360,9 @@ app.addEventListener("click", async e => {
     case "speech": Voice.setMuted(!Voice.muted()); return render();
     case "options": ui.meOpen = false; render(); return toast(t("deck.options_soon"));
     case "seen": ui.seenTurn = S.turn; Voice.drop("log"); return render();
+    case "relog": ui.seenTurn = null; ui.spokenTurn = null; return render();
+    case "port_view": ui.portView = d.v; return render();
+    case "pl_range": ui.plRange = d.v; return render();
     case "years": return act("settings", { years: +d.y });
     case "start": return act("start");
     case "fill": ui.vals[d.k] = d.v; return render();

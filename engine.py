@@ -336,6 +336,7 @@ class Game:
             tab = p.get("tab") if isinstance(p.get("tab"), dict) else {}
             p["tab"] = {k: float(tab.get(k, 0) or 0) for k in self._new_tab()}
             p["slip"] = bool(p.get("slip", False))
+            self._books(p)
             p.pop("declare", None)
             cu = p.get("customs")
             if not isinstance(cu, dict) or cu.get("port") != p["port"]:
@@ -405,6 +406,7 @@ class Game:
              "log": [tx("l.arrive", ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
              "known": {}, "wrecks": 0, "tab": self._new_tab(), "slip": False, "basis": {}, "customs": None}
         p["rep"][HOME] = float(st["home_rep"])
+        p["books"] = self._new_books(p)
         s["players"][pid] = p
         s["order"].append(pid)
         self._note_prices(p)
@@ -508,6 +510,83 @@ class Game:
     def _tally(self, p, key, amount):
         tab = p.setdefault("tab", self._new_tab())
         tab[key] = tab.get(key, 0.0) + max(0.0, float(amount))
+
+    # ----------------------------------------------------- account book --
+    # Each house keeps a profit and loss book (p["books"]) for the Port screen. "cur" fills up from one
+    # landing to the next: trades in port, the Mayor's dues, the voyage and the month's interest. When the
+    # month is resolved it is closed into "last", the statement shown on arrival; the Port Authority's
+    # tax on that arrival is added to "last" too. "year" and "game" add up every line.
+    # Ships and guns bought are not losses (the house still owns them), so they are left out.
+    BOOK_LOG = 12        # earlier captain's log entries kept for the Port screen
+
+    def _new_books(self, p):
+        return {"cur": {}, "last": None, "year": {}, "year_no": self.s["turn"] // 12, "game": {},
+                "start": {"turn": self.s["turn"], "port": p["port"], "worth": int(self.worth(p))}, "logbook": []}
+
+    def _books(self, p):
+        bk = p.get("books")
+        if not isinstance(bk, dict):
+            bk = p["books"] = self._new_books(p)
+        for k, v in (("cur", {}), ("year", {}), ("game", {}), ("logbook", [])):
+            if not isinstance(bk.get(k), type(v)):
+                bk[k] = v
+        bk.setdefault("last", None)
+        bk.setdefault("year_no", self.s["turn"] // 12)
+        if not isinstance(bk.get("start"), dict):
+            bk["start"] = {"turn": self.s["turn"], "port": p["port"], "worth": int(self.worth(p))}
+        return bk
+
+    def _book(self, p, key, amount, arrival=False):
+        """Write one amount (+ income, - cost) into the house's books. arrival=True puts it on the
+        statement of the landing just made (the Port Authority) instead of the one now filling up."""
+        amount = round(float(amount), 2)
+        if not amount:
+            return
+        bk = self._books(p)
+        year = self.s["turn"] // 12
+        if bk["year_no"] != year:
+            bk["year"], bk["year_no"] = {}, year
+        here = bk["last"]["lines"] if arrival and bk.get("last") else bk["cur"]
+        for t in (here, bk["year"], bk["game"]):
+            t[key] = round(t.get(key, 0.0) + amount, 2)
+
+    def _cost_of(self, p, goods):
+        """What a set of cargo {good: qty} cost the house, at its average price paid."""
+        basis = p.get("basis") or {}
+        return sum(float(basis.get(g, 0.0)) * q for g, q in goods.items() if q)
+
+    def _close_books(self, p, origin, sailed):
+        """End of the month: the filling statement becomes the arrival statement."""
+        bk, turn = self._books(p), self.s["turn"]
+        st = bk["start"]
+        worth = int(self.worth(p))
+        pending = self._customs_pending(p)
+        bk["last"] = {"lines": bk["cur"], "from": st.get("port") or origin, "to": p["port"], "turn": turn,
+                      "date": date_label(turn), "sailed": bool(sailed), "wrecked": "wreck" in bk["cur"],
+                      "worth": [st.get("worth") if st.get("worth") is not None else worth, worth], "open": pending,
+                      "log": list(p["log"])}
+        bk["cur"] = {}
+        # While the Port Authority's desk is open the new period's starting worth waits for her verdict.
+        bk["start"] = {"turn": turn + 1, "port": p["port"], "worth": None if pending else worth}
+        entry = {"date": date_label(turn), "from": origin, "to": p["port"], "lines": list(p["log"])}
+        bk["logbook"] = ([entry] + bk["logbook"])[:self.BOOK_LOG]
+
+    def _settle_books(self, p):
+        """The Port Authority is done with the house: finish the arrival statement's worth."""
+        bk = p.get("books")
+        if not isinstance(bk, dict) or not isinstance(bk.get("start"), dict) or bk["start"].get("worth") is not None:
+            return
+        worth = int(self.worth(p))
+        bk["start"]["worth"] = worth
+        if bk.get("last"):
+            bk["last"]["worth"][1] = worth
+            bk["last"]["open"] = False
+
+    def books_view(self, p):
+        """The account book for the Port screen."""
+        bk = self._books(p)
+        return {"last": bk["last"], "year": bk["year"], "game": bk["game"], "cur": bk["cur"],
+                "year_no": bk["year_no"], "logbook": bk["logbook"][1:]}
 
     def dues(self, p):
         """The mayor's bill if the house sailed now: {"lines": [...], "total": n}."""
@@ -682,6 +761,7 @@ class Game:
                 self._gain_rep(p, port, -c["bribe_rep"])
             else:
                 p["cash"] -= cost
+                self._book(p, "pa_bribe", -cost, arrival=True)
                 bribe_mult, bribe = 1 - c["bribe_cut"], {"cost": cost, "taken": True}
         box = int(cu.get("box", 0))
         out, tax_total, paid_in, fine_total, caught = [], 0, 0, 0, False
@@ -701,6 +781,8 @@ class Game:
                     p["cargo"][g] = p["cargo"].get(g, 0) - units
                     res.update(outcome="buyout" if units == q else "partial", units=units, paid=paid,
                                cost=round(float((p.get("basis") or {}).get(g, ln["unit"])), 4))
+                    self._book(p, "pa_sold", paid, arrival=True)
+                    self._book(p, "cost", -res["cost"] * units, arrival=True)
                     paid_in += paid
                     res["tax"] = int(math.ceil(rate * per * (q - units) - 1e-9))
                 else:
@@ -723,6 +805,8 @@ class Game:
             out.append(res)
         p["cargo"] = {k: v for k, v in p["cargo"].items() if v > 0}
         owed = self._collect(p, tax_total + fine_total)
+        self._book(p, "pa_tax", -tax_total, arrival=True)
+        self._book(p, "pa_fine", -fine_total, arrival=True)
         rep_change = 0.0
         value_total = sum(ln["value"] for ln in cu["lines"])
         if caught:
@@ -791,6 +875,10 @@ class Game:
         basis[g] = (basis.get(g, was) * held + was * res["units"]) / float(held + res["units"])
         p["cargo"][g] = p["cargo"].get(g, 0) + res["units"]
         res["back"], res["back_cost"] = True, cost
+        # The sale is undone; what she charged above her price is the cost of getting it back.
+        self._book(p, "pa_sold", -res["paid"], arrival=True)
+        self._book(p, "cost", was * res["units"], arrival=True)
+        self._book(p, "pa_premium", -(cost - res["paid"]), arrival=True)
         self._detail = {"good": g, "qty": res["units"], "cost": cost, "paid": res["paid"],
                         "note": "bought back {} {} for {} (she paid {})".format(res["units"], GOODS[g]["name"], money(cost), money(res["paid"]))}
         return tx("m.customs_buyback", goods=GOODS[g]["name"], cost=money(cost))
@@ -822,6 +910,7 @@ class Game:
             if p["port"] == port:
                 self._note_prices(p)
         p["customs"] = None
+        self._settle_books(p)
 
     def _settle_customs(self, p):
         """At the month's end: a declaration nobody made is made honestly; a verdict is closed."""
@@ -901,6 +990,7 @@ class Game:
         paid = int(min(total, max(0.0, p["cash"])))
         owed = total - paid
         p["cash"] -= paid
+        self._book(p, "dues", -total)
         if owed:
             p["debt"] += owed
             p["log"].append(tx("l.dues_short", port=PORTS[p["port"]]["name"], paid=money(paid), owed=money(owed)))
@@ -1073,6 +1163,8 @@ class Game:
         unit = p.setdefault("basis", {}).get(g, gain / float(q))      # unknown cost counts as no profit
         self._tally(p, "sales", gain)
         p["tab"]["profit"] = p["tab"].get("profit", 0.0) + (gain - unit * q)   # a loss offsets profit this visit
+        self._book(p, "sales", gain)
+        self._book(p, "cost", -unit * q)
         p["cargo"][g] -= q
         if not p["cargo"][g]:
             del p["cargo"][g]
@@ -1217,6 +1309,7 @@ class Game:
             raise GameError(tx("e.nothing_to_repair"))
         p["cash"] = max(0.0, p["cash"] - spent)
         self._tally(p, "repair", spent)
+        self._book(p, "repairs", -spent)
         self._detail = {"points": fixed, "cost": spent, "note": "{} hull points".format(fixed)}
         return tx("m.repaired", cost=money(spent))
 
@@ -1228,6 +1321,7 @@ class Game:
         if cost > p["cash"]:
             raise GameError(tx("e.protect_cost", cost=money(cost)))
         p["cash"] -= cost
+        self._book(p, "protection", -cost)
         p["protect"] = R["liyuen"]["protect_months"]
         return tx("m.protected", cost=money(cost), months=p["protect"])
 
@@ -1435,6 +1529,7 @@ class Game:
             p["log"] = []
             self._settle_customs(p)
         self._drift_tax_rates()          # the new month's rates, quoted to every ship that arrives
+        origins = {p["id"]: (p["port"], bool(p["ready"] and p["dest"])) for p in players}
         for p in players:
             if p["ready"] and p["dest"]:
                 self._depart(p, news)
@@ -1458,6 +1553,8 @@ class Game:
                     self._ev("finance", "collectors", "{}: debt {} is over {} times the loan limit {}; standing in {} "
                              "fell by {}".format(p["name"], money(p["debt"]), b["debt_warn_mult"],
                                                  money(self.loan_limit(p)), PORTS[HOME]["name"], b["debt_rep_penalty"]), p)
+            self._book(p, "bank_interest", p["bank"] - bank0)
+            self._book(p, "interest", -(p["debt"] - debt0))
             if bank0 > 0 or debt0 > 0:
                 self._ev("finance", "interest", "{}: bank interest +{} at {}, loan interest +{} at {}".format(
                     p["name"], money(p["bank"] - bank0), pct(b["bank_rate"]), money(p["debt"] - debt0), pct(loan_rate())),
@@ -1471,11 +1568,13 @@ class Game:
                     p["name"], money(b["mug_threshold"])), p):
                 lost = int(p["cash"] * rng.uniform(b["mug_min"], b["mug_max"]))
                 p["cash"] -= lost
+                self._book(p, "robbed", -lost)
                 p["log"].append(tx("l.robbed", lost=money(lost)))
                 self._ev("finance", "robbed", "{} was robbed of {}".format(p["name"], money(lost)), p, lost=lost)
 
         self._move_markets(news)
         for p in players:
+            self._close_books(p, *origins[p["id"]])
             self._tidy_basis(p)
         s["turn"] += 1
         self._roll_weather()
@@ -1629,6 +1728,8 @@ class Game:
             if self._chance(chance * MULT["seizure"], "seizure", "{}: customs search in {} ({} units of contraband, {}, standing {})".format(
                     who, PORTS[dest]["name"], held, "banned here" if banned else "no ban", int(round(p["rep"][dest]))), p):
                 fine = int(min(p["cash"], held * cb["fine_per_unit"]))
+                self._book(p, "seized", -self._cost_of(p, {g: p["cargo"].get(g, 0) for g in risky}))
+                self._book(p, "fines", -fine)
                 taken = {g: p["cargo"].pop(g) for g in risky if p["cargo"].get(g)}
                 what = names_of(list(taken))
                 p["cash"] -= fine
@@ -1676,6 +1777,7 @@ class Game:
                     booty = int(n * rng.randint(pi["booty_min"], pi["booty_max"])
                                 * (1 + self.s["turn"] / float(pi["booty_growth"])))
                     p["cash"] += booty
+                    self._book(p, "booty", booty)
                     log.append(tx("l.sank_all", n=n, rounds=rnd, s=s, booty=money(booty)))
                     self._ev("battle", "won", "{} sank all {} in {} round{} and took {} in booty".format(
                         who, n, rnd, s, money(booty)), p, rounds=rnd, booty=booty)
@@ -1707,6 +1809,7 @@ class Game:
                     who, pi["rounds"], n - len(pirates), n), p, sunk=n - len(pirates))
             else:
                 lost = {g: int(q * rng.uniform(pi["plunder_min"], pi["plunder_max"])) for g, q in p["cargo"].items()}
+                self._book(p, "plundered", -self._cost_of(p, lost))
                 for g, q in lost.items():
                     p["cargo"][g] -= q
                 p["cargo"] = {g: q for g, q in p["cargo"].items() if q > 0}
@@ -1721,6 +1824,9 @@ class Game:
 
     def _check_sunk(self, p, how):
         for sh in [sh for sh in p["ships"] if sh["hull"] <= 0]:
+            # What she would have fetched in good repair, less the wreck's own value (which is nothing).
+            self._book(p, "ships_lost", -SHIPS[sh["type"]]["price"] * R["fleet"]["ship_resale"]
+                       - sh["guns"] * R["fleet"]["gun_price"] * R["fleet"]["gun_resale"])
             p["ships"].remove(sh)
             p["log"].append(tx("l.ship_lost", ship=SHIPS[sh["type"]]["name"], name=sh["name"], how=how))
             self._ev("voyage", "ship_lost", "{} lost the {} {} ({} guns): {}".format(
@@ -1732,6 +1838,7 @@ class Game:
             gone = {}
             for g in sorted(p["cargo"], key=lambda k: GOODS[k]["base"]):
                 drop = min(over, p["cargo"][g])
+                self._book(p, "overboard", -self._cost_of(p, {g: drop}))
                 p["cargo"][g] -= drop
                 gone[g] = drop
                 over -= drop
@@ -1749,6 +1856,8 @@ class Game:
                  "back in {} with a {}".format(p["name"], self.used(p), money(lost), money(wk["debt"]), PORTS[HOME]["name"],
                                                SHIPS[wk["ship"]]["name"].lower()), p, lost=lost, debt=wk["debt"],
                  cargo=dict(p["cargo"]))
+        self._book(p, "wreck_cargo", -self._cost_of(p, p["cargo"]))
+        self._book(p, "wreck", -(lost + wk["debt"]))
         p["cargo"] = {}
         p["cash"] -= lost
         p["debt"] += wk["debt"]
@@ -1809,6 +1918,7 @@ class Game:
                 "spread": round(sp, 4),
                 "dues": self.dues(p), "slip": bool(p.get("slip")),
                 "customs": self.customs_view(p),
+                "books": self.books_view(p),
             }
         return out
 

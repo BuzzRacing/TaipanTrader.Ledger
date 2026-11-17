@@ -553,6 +553,7 @@ VOICE_DEFAULTS = {
     "model_id": "inworld-tts-2-flash",
     "temperature": 1.0,
     "read_log": True,
+    "read_routine_log": False,   # sailed / anchored / dues / customs paid: shown, not read
     "read_news_board": True,
     "read_news_players": False,
     "read_confirmations": True,

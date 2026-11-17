@@ -71,7 +71,7 @@ if __name__ == "__main__":
                 "url date margin rep buy sell used cap balance room hold_used hold type hull max guns slots "
                 "yards pct names turns ports how " + "a b buys dmg first last o off place players ran rank result sales sunk v visits when won " +
                 "total paid owed declared profit tax caught chance level from to after now cargo line goods value base "
-                "age distance gap").split()}), key
+                "age distance gap net seas of right interest").split()}), key
     # 4. a changed world plays to the end
     cfg, errors = config.validate(variant())
     assert not errors, errors

@@ -33,10 +33,11 @@ config/backups/
 config/voice_key.json
 cache/
 
-# Media library: video clips are too big for GitHub (copy web/media by hand when moving), removed items wait in _trash
-web/media/**/*.mp4
-web/media/**/*.webm
-web/media/**/*.mov
-web/media/**/*.m4v
-web/media/_trash/
+# Media library and artwork stay on this machine only (copy them by hand when moving to the Pi).
+# Images and video in web/media and web/uploads, plus the reference art folders, never go to GitHub.
+# web/assets (the header and banner art the screens need) is still uploaded.
+web/media/
+web/uploads/
+Artwork/
+Inspiration_Artwork/
 config/media.json.tmp

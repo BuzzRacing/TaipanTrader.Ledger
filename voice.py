@@ -398,6 +398,11 @@ def clear_cache():
 
 
 # -------------------------------------------------------------- matcher --
+# Captain's log lines that turn up on every voyage (or every month at anchor). They stay on the
+# screen, but are not read aloud unless voice.read_routine_log is on, so the log reads only the news.
+ROUTINE_LOG = frozenset({"l.sailed", "l.anchored", "l.anchor", "l.dues", "l.customs_paid"})
+
+
 class Matcher:
     """Finds the wording key that produced a line of game text, and the names filled into it."""
 
@@ -491,6 +496,8 @@ class Planner:
         key, fields = self.matcher.match(text)
         if kind == "log":
             if not v["read_log"]:
+                return None
+            if key in ROUTINE_LOG and not v.get("read_routine_log"):
                 return None
             cid = self._who(key, port) if key else cast.speaker_for(self.cfg, "l.?")
         elif kind == "news":

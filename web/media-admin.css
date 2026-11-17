@@ -34,6 +34,7 @@ label.ml-up input { display: none; }
 .ml-jobs { list-style: none; padding: 0; margin: .7rem 0 0; display: grid; gap: .25rem; font-size: .84rem; }
 .ml-jobs li { padding: .3rem .6rem; border-left: 3px solid var(--line); background: var(--panel-2); border-radius: 0 5px 5px 0; }
 .ml-jobs li.running { border-color: var(--brass); } .ml-jobs li.done { border-color: var(--green); } .ml-jobs li.failed { border-color: var(--red); }
+.ml-jobs-toggle { margin-top: .5rem; font-size: .84rem; }
 .ml-jobs li span { color: var(--muted); } .ml-jobs li small { display: block; color: #ff9d92; }
 
 .ml-rules-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 1rem; }
@@ -89,3 +90,12 @@ label.ml-up input { display: none; }
 /* While family-friendly is on, NSFW thumbnails are blurred here too (hover or select to look). */
 .ml-family .ml-tile.nsfw:not(:hover):not(.on) .ml-img { filter: blur(16px) saturate(.6); }
 .ml-family .ml-tile.nsfw .ml-art { overflow: hidden; }
+
+/* Need review filter */
+.ml-tools .ml-review { align-self: flex-end; }
+.ml-tools .ml-review i { font-style: normal; color: var(--muted); margin-left: .25rem; }
+.ml-tools .ml-review.has i { color: var(--brass); font-weight: 700; }
+.ml-tools .ml-review.on { border-color: var(--brass); background: #3a2a1b; color: var(--brass); }
+.ml-stats .ml-stat-review { padding: 0; border: 0; background: none; font-size: inherit; color: var(--muted); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.ml-stats .ml-stat-review b { color: var(--brass); }
+.ml-stats .ml-stat-review:hover { color: var(--brass); }

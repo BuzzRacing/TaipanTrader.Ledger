@@ -127,9 +127,15 @@ st = voice.key_status()
 check(st == {"has_key": True, "source": "admin", "tail": "MTIz"}, "key saved from Admin, Basic prefix stripped: {}".format(st))
 check(voice.PLAN.ready(), "planner ready with a key")
 
-log = [tx("l.typhoon"), tx("l.anchored", port="Manila")]
+log = [tx("l.typhoon"), tx("l.offcourse", port="Manila")]
 plan = voice.PLAN.lines(log, "log")
 check([p["c"] for p in plan] == ["bosun", "narrator"], "log plan speakers: {}".format(plan))
+routine = voice.PLAN.lines([tx("l.sailed", origin="Hong Kong", dest="Manila", weather=tx("l.sea.1")),
+                            tx("l.anchored", port="Manila"), tx("l.anchor", port="Manila")], "log")
+check(routine == [None, None, None], "routine log lines are shown but not read: {}".format(routine))
+cfg["voice"]["read_routine_log"] = True
+check(voice.PLAN.lines([tx("l.anchored", port="Manila")], "log")[0] is not None, "routine lines can be switched back on")
+cfg["voice"]["read_routine_log"] = False
 check(all(p["u"].startswith("/voice/") for p in plan), "log plan has audio links")
 check(not CALLS, "planning alone never calls Inworld")
 
