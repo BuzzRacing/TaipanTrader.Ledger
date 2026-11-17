@@ -1,0 +1,80 @@
+/* Admin > Captains (web/captains.js). Same family as the Cast cards. */
+#captains { --cp: var(--brass); }
+#captains .head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+#captains .row { display: flex; gap: .55rem; align-items: center; flex-wrap: wrap; margin-top: .55rem; }
+#captains .tag { display: inline-block; font-style: normal; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid var(--line); border-radius: 99px; padding: .08rem .55rem; color: var(--muted); margin-right: .25rem; }
+#captains .tag.pin { color: var(--brass); border-color: color-mix(in srgb, var(--brass) 50%, var(--line)); font-family: var(--mono); letter-spacing: .06em; }
+#captains .tag.live { color: var(--green); border-color: var(--green); }
+#captains .tag.win { color: var(--green); border-color: var(--green); }
+#captains .tag.loss { color: #ff9d92; border-color: #8f3a33; }
+#captains .tag.playing { color: var(--brass); }
+
+.cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.cp-card { position: relative; background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--cp); border-radius: 8px;
+  overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s, border-color .15s; }
+.cp-card:hover, .cp-card:focus-visible { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0,0,0,.45); border-color: var(--cp); outline: none; }
+.cp-card.retired { opacity: .55; }
+.cp-portrait { position: relative; aspect-ratio: 3 / 4; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--cp) 55%, #2a1d14) 0%, #120c08 78%); }
+.cp-portrait img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; }
+.cp-portrait span { font: 700 4rem var(--serif); color: rgba(241,230,204,.86); text-shadow: 0 4px 22px rgba(0,0,0,.6); }
+.cp-portrait small { position: absolute; bottom: 4.9rem; left: 0; right: 0; text-align: center; color: rgba(241,230,204,.5);
+  font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; }
+.cp-portrait.big { border-radius: 8px; border: 1px solid var(--line); }
+.cp-portrait.big small { bottom: 1rem; }
+.cp-card .cp-portrait::after { content: ""; position: absolute; inset: 55% 0 0; background: linear-gradient(transparent, rgba(10,7,5,.96)); }
+.cp-plate { position: relative; z-index: 1; margin-top: -4.2rem; padding: 0 .9rem .35rem; text-align: right; min-height: 3.9rem; }
+.cp-plate b { display: block; font: 700 1.25rem/1.1 var(--serif); text-transform: uppercase; color: #fff3da; text-shadow: 0 2px 10px #000; }
+.cp-plate span { display: block; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--cp); filter: brightness(1.45); margin-top: .15rem; }
+.cp-body { padding: .7rem .9rem .9rem; display: flex; flex-direction: column; gap: .5rem; flex: 1; }
+.cp-houses { display: grid; grid-template-columns: auto 1fr; gap: .35rem .5rem; align-items: center; font-size: .88rem; }
+.cp-crest { width: 1.9rem; height: 1.9rem; border-radius: 50%; overflow: hidden; display: inline-grid; place-items: center; flex: none;
+  background: color-mix(in srgb, var(--cp) 60%, #1a120c); border: 2px solid var(--cp); font: 700 .7rem var(--serif); color: #fff3da; vertical-align: middle; }
+.cp-crest img { width: 100%; height: 100%; object-fit: cover; }
+.cp-crest.big { width: 3rem; height: 3rem; font-size: 1rem; margin-right: .4rem; }
+.cp-wl { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 0 .9rem; }
+.cp-wl b { font: 700 1.1rem var(--serif); color: var(--ink); grid-row: 1; }
+.cp-wl small { grid-row: 2; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+.cp-detail { display: grid; grid-template-columns: minmax(200px, 280px) 1fr; gap: 1rem; align-items: start; }
+.cp-detail aside { position: sticky; top: calc(var(--top-height) + 1rem); display: flex; flex-direction: column; gap: .6rem; }
+@media (max-width: 860px) { .cp-detail { grid-template-columns: 1fr; } .cp-detail aside { position: static; max-width: 280px; } }
+.cp-house { border-left: 4px solid var(--cp); }
+.cp-house h3 { margin: 0; display: flex; align-items: center; font-size: 1.1rem; }
+.cp-house-cols { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.2fr); gap: 1.2rem; margin-top: .8rem; }
+@media (max-width: 980px) { .cp-house-cols { grid-template-columns: 1fr; } }
+
+.cp-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: .5rem; margin-bottom: .6rem; }
+.cp-gallery.house { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); }
+.cp-pic { position: relative; padding: 0; display: block; border: 2px solid var(--line); border-radius: 6px; overflow: hidden; background: #120c08; cursor: pointer; aspect-ratio: 3 / 4; }
+.cp-gallery.house .cp-pic { aspect-ratio: 1 / 1; }
+.cp-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cp-pic:hover { border-color: var(--brass); }
+.cp-pic.on { border-color: var(--brass); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brass) 40%, transparent); }
+.cp-pic.off { opacity: .45; }
+.cp-pic i { position: absolute; top: .2rem; right: .3rem; font-style: normal; color: var(--brass); text-shadow: 0 1px 4px #000; }
+.cp-pic u { position: absolute; bottom: .2rem; left: .25rem; text-decoration: none; font-size: .6rem; background: var(--red); color: #fff; padding: 0 .3rem; border-radius: 3px; }
+.cp-pic.wait { display: grid; place-items: center; cursor: default; border-style: dashed; }
+.cp-pic.wait i { position: static; width: 1.4rem; height: 1.4rem; border: 3px solid var(--line); border-top-color: var(--brass); border-radius: 50%; animation: cpspin 1s linear infinite; }
+@keyframes cpspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .cp-pic.wait i { animation: none; } }
+
+.cp-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .6rem; margin-bottom: .9rem; }
+.cp-stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: .5rem .65rem; }
+.cp-stat b { display: block; font: 700 1.25rem var(--serif); color: var(--ink); }
+.cp-stat small { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.cp-games { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.cp-games th, .cp-games td { padding: .35rem .5rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.cp-games th { color: var(--muted); font-weight: 600; font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; }
+.cp-games td.num { text-align: right; font-variant-numeric: tabular-nums; }
+#captains button.danger { background: var(--red); color: #fff; border-color: var(--red); }
+
+.cp-pick { all: unset; display: block; width: 100%; height: 100%; cursor: pointer; }
+.cp-tools { position: absolute; bottom: .2rem; right: .2rem; display: flex; gap: .2rem; opacity: 0; transition: opacity .15s; }
+.cp-pic:hover .cp-tools, .cp-pic:focus-within .cp-tools { opacity: 1; }
+.cp-tools button { min-height: 0; padding: .1rem .4rem; font-size: .8rem; line-height: 1.2; border-radius: 4px;
+  background: rgba(10,7,5,.85); color: var(--ink); border: 1px solid var(--line); cursor: pointer; }
+.cp-tools .cp-del:hover, .cp-tools .cp-del.armed { background: var(--red); border-color: var(--red); color: #fff; opacity: 1; }
+.cp-pic:has(.armed) .cp-tools { opacity: 1; }
+@media (hover: none) { .cp-tools { opacity: 1; } }

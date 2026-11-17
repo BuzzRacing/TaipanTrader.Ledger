@@ -41,3 +41,6 @@ web/uploads/
 Artwork/
 Inspiration_Artwork/
 config/media.json.tmp
+
+# Saved Captains (they hold the PINs)
+captains/

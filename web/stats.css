@@ -326,3 +326,9 @@ body.tally .chart .rwx { display: none; }
 /* Inside the player screen (/stats?embed=1): a little less padding, since the deck's frame is
    already around it. */
 body.tally.embed .tl { padding: .5rem; }
+
+/* House crests (17 Nov 2026): the House's crest from the Media Library where its colour chip was. */
+.tl-house .crest.tl-crest { width: 3.2rem; height: 3.2rem; margin: 0; border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--house), 0 0 0 3px var(--edge-hi), 0 4px 12px rgba(0, 0, 0, .6); }
+.rb .rn .crest { width: 1.35rem; height: 1.35rem; margin-right: .4rem; border-radius: 3px; }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) { .tl-house .crest.tl-crest { width: 2.6rem; height: 2.6rem; } }

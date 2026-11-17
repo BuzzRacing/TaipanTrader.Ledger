@@ -328,7 +328,7 @@ const Battle = (() => {
     $(".sf-tell").textContent = "";
     header("", "");
     showPicture("sighting", "pirates", "wait:" + S.turn);
-    const list = (S.sea || []).map(x => `<li style="--who:${COLORS[x.color % 8]}">
+    const list = (S.sea || []).map(x => `<li style="--who:${COLORS[x.color % 8]}">${Faces.of(x).crest ? houseMark(x, "sf-crest") : ""}
       <b>${te("battle.wait.line", { name: x.name, firm: x.firm, port: x.where })}</b>
       <span>${x.stage === "parley" ? te("battle.wait.parley", { n: x.n, enemy: x.enemy })
         : te("battle.wait.detail", { left: x.left, n: x.n, enemy: x.enemy, round: Math.min(x.round, x.rounds), rounds: x.rounds })}</span>

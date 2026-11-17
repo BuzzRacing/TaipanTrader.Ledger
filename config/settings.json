@@ -195,6 +195,9 @@
    "home_rep": 60,
    "where": "random"
   },
+  "captains": {
+   "typed": true
+  },
   "market": {
    "spread_base": 0.04,
    "spread_swing": 0.03,
@@ -365,6 +368,11 @@
    "greet_cold_below": 40.0,
    "greet_warm_from": 70.0
   },
+  "registrar": {
+   "enabled": true,
+   "stale_months": 2,
+   "held_first": true
+  },
   "customs": {
    "enabled": true,
    "home_free": true,
@@ -406,6 +414,7 @@
     "officer_batavia",
     "officer_calcutta",
     "officer_foochow",
+    "officer_hongkong",
     "officer_manila",
     "officer_nagasaki",
     "officer_saigon",
@@ -595,8 +604,8 @@
    "label_left": true,
    "dues": 1.0,
    "tax_rate": 0.02,
-   "officer": "taxlady",
-   "mood": 0.1
+   "officer": "officer_hongkong",
+   "mood": 0.15
   },
   "shanghai": {
    "mods": {
@@ -1168,27 +1177,27 @@
    "portrait_prompt": "An unmistakably adult woman (age 47), the Mayor of a treaty port behind a teak harbour-office desk, ledger and iron strongbox before her, gold chain of office over a fitted pirate frock coat and corset, harbour lanterns through the window behind, cool appraising smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   },
   "taxlady": {
-   "name": "The Tax Collector",
-   "title": "Collector of Revenue & Keeper of the Ledger",
+   "name": "Mrs. Evelyn Marlowe",
+   "title": "Registrar of the Merchant Houses",
    "brand_link": "",
    "age": 36,
-   "origin": "Each port's own",
+   "origin": "Portsmouth, England",
    "home_port": "hongkong",
    "color": "#3f6e6a",
    "portrait": "/uploads/portrait-taxlady-6bbeb4a0.png",
    "voice_id": "Seraphine",
    "speaking_rate": 1.0,
-   "delivery": "precise, amused and icy, a revenue collector who already knows the true figure before you lie",
-   "catchphrase": "I can count, Captain. Can you?",
-   "bio": "She walks the gangways with a tally book and a customs seal, and she remembers every price paid on her wharf this season. Most captains declare honestly. She speaks only to the ones who do not, and only after she has been through their books.",
-   "quirk": "Licks her pencil before writing down a fine, slowly, so you can watch.",
-   "vice": "Clean columns, sharp pencils, and captains who think a smile will balance a ledger.",
-   "secret": "She audits at random far more often than she admits; the fear is cheaper than the clerks.",
+   "delivery": "warm, teasing and conspiratorial; a widow who knows everyone's business and enjoys letting you in on a little of it",
+   "catchphrase": "Welcome home, Captain. It's all written down.",
+   "bio": "Evelyn kept her husband's harbour register long before the typhoon took him. Captain Henry Marlowe was Hong Kong's Harbour Master; nobody else could read his book, so they let his widow keep it. Now she keeps the register of every merchant house on the China Seas, and wherever a house calls home, she is waiting on the wharf when it comes back: with its papers stamped, and one price from another port that nobody else has heard yet.",
+   "quirk": "Pushes her spectacles up into her hair just before she says something she shouldn't.",
+   "vice": "Gossip, good brandy, and being the first to know.",
+   "secret": "The register has a second, private column: what every captain owes, and to whom.",
    "stats": {
-    "cunning": 9,
+    "cunning": 8,
     "nerve": 6,
-    "charm": 5,
-    "greed": 5
+    "charm": 9,
+    "greed": 4
    },
    "portrait_prompt": "An unmistakably adult woman (age 36), a treaty-port tax collector on a busy gangway with an open tally book, pencil and brass customs seal, strongbox at her feet, fitted dark revenue coat over a corset, spectacles pushed up into pinned hair, knowing half-smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   },
@@ -1416,6 +1425,31 @@
     "greed": 10
    },
    "portrait_prompt": "An unmistakably adult English woman (age 46), the ruthless Port Authority officer of Calcutta at a mahogany desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying overhead, a sweet venomous smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "officer_hongkong": {
+   "name": "Senhora Isabel Rebelo",
+   "title": "Collector of Victoria Harbour",
+   "brand_link": "",
+   "age": 33,
+   "origin": "Macau",
+   "home_port": "hongkong",
+   "color": "#8a3b4a",
+   "portrait": "/uploads/portrait-officer_hongkong-5f81cb49.png",
+   "voice_id": "Rocio",
+   "speaking_rate": 0.95,
+   "delivery": "low and honeyed, Portuguese-accented English; flirtatious and close, with a blade under every compliment",
+   "catchphrase": "I know every hiding place on a ship, Captain. I built half of them.",
+   "bio": "Isabel grew up on her father's lorchas, running opium and silver past the Macau forts. When the Rebelos were finally caught, the British offered his clever daughter a choice: a cell, or a desk on the Hong Kong wharves. She chose the desk, and every smuggler on the coast has regretted it since.",
+   "quirk": "Leans across the desk to read your manifest upside down while she smiles at you.",
+   "vice": "Port wine from home, fast boats, and captains who think they're cleverer than her.",
+   "secret": "Her father still runs boats out of Macau, and his cargo crosses her wharf untaxed.",
+   "stats": {
+    "cunning": 9,
+    "nerve": 8,
+    "charm": 8,
+    "greed": 6
+   },
+   "portrait_prompt": "An unmistakably adult Portuguese woman (age 33), the Port Authority officer of Hong Kong on a crowded Victoria Harbour wharf, a wine-red silk jacket open over a black lace corset, a gold crucifix and a dagger at her hip, leaning over a customs desk with a manifest upside down before her, lorchas and junks behind her, a slow dangerous smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   }
  },
  "voice": {

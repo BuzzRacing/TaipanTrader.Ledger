@@ -13,8 +13,8 @@
   };
   const $ = id => document.getElementById(id);
   const e = s => esc(s);
-  const KIND_ORDER = ["persona", "port", "ship", "cargo", "service", "scene", "brand", "reference", "other"];
-  const ASPECT_FOR = { persona: "3:4", port: "16:9", ship: "3:2", cargo: "1:1", service: "16:9", scene: "16:9", brand: "16:9", reference: "1:1", other: "1:1" };
+  const KIND_ORDER = ["persona", "captain", "house", "port", "ship", "cargo", "service", "scene", "brand", "reference", "other"];
+  const ASPECT_FOR = { persona: "3:4", captain: "3:4", house: "1:1", port: "16:9", ship: "3:2", cargo: "1:1", service: "16:9", scene: "16:9", brand: "16:9", reference: "1:1", other: "1:1" };
 
   /* --------------------------------------------------------- helpers -- */
   const kinds = () => (M.lib ? M.lib.kinds : {});
@@ -159,29 +159,33 @@
   // Starter prompts for the ten sea battle moments, one set per enemy (see SeaTrader Sea Battle).
   // Your fleet is always a small merchant trading fleet; the enemy changes.
   const BATTLE_ENEMY = {
-    seafight_pirates: "a pack of ragged South China Sea pirate junks with patched rust-brown battened sails, painted eyes on their bows, swivel guns and crowded decks of pirates",
-    seafight_lord: "the pirate queen's great war fleet of heavy black-lacquered war junks with blood-red battened sails, banners and pennants, gilded sterns, rows of bronze cannon, disciplined crews"
+    seafight_pirates: "a pack of ragged South China Sea pirate junks with patched rust-brown battened sails, painted eyes on their bows, swivel guns and crowded decks of fierce women pirates",
+    seafight_lord: "the pirate queen's great war fleet of heavy black-lacquered war junks with blood-red battened sails, banners and pennants, gilded sterns, rows of bronze cannon, disciplined crews of women warriors"
   };
   const BATTLE_MOMENTS = {
-    sighting: "Wide view from the quarterdeck of a merchant clipper: on the hazy horizon {enemy} appear and close in, the lookout pointing from the rigging, crew rushing to the guns, tense calm before battle",
-    broadside: "A merchant clipper fires a full broadside, a rippling line of cannon flashes and thick white powder smoke rolling over the water, gun crews heaving at the guns, {enemy} beyond the smoke, low dynamic angle",
-    enemy_hit: "One of {enemy} is struck and going down: shattered mast falling, sails torn and burning, hull listing into the sea, splinters and spray, the merchant fleet's guns still smoking in the foreground",
-    we_are_hit: "Enemy roundshot slams into the deck of a merchant ship: splintering rail, a torn sail, rigging snapping, sailors ducking and bracing, smoke and spray, {enemy} firing close alongside",
-    ship_lost: "A merchant ship of the trading fleet is lost: broken-backed, dismasted and on fire, sinking stern first into a dark sea, sailors in boats pulling away, {enemy} circling in the smoke, sombre mood",
-    boarding: "{enemy} grapple alongside a merchant ship and swarm aboard over the rail, cutlasses and boarding pikes raised, cargo chests and tea crates being hauled across, chaos and smoke, dramatic but not gory",
-    got_away: "A merchant clipper under every stitch of sail running clear before a fresh wind, wake foaming, {enemy} falling far behind in the haze, relief and triumph on deck, golden light breaking through cloud",
-    retreat: "A merchant ship breaking away from battle, crew heaving bales, chests and crates of cargo over the side to lighten her, crates floating in the wake, sails straining, {enemy} firing parting shots through the smoke",
-    victory: "After the battle the merchant fleet sails on battered but victorious, crews cheering in the rigging, the wreckage and smoke of {enemy} drifting on the water behind, warm sunset light",
-    defeat: "Total defeat at sea: the whole merchant fleet burning and sinking under a darkening sky, only wreckage, floating cargo and an empty lifeboat left, {enemy} triumphant in the smoke, grim and sombre"
+    sighting: "Wide view from the quarterdeck of a merchant clipper crewed by women: on the hazy horizon {enemy} appear and close in, a woman lookout pointing from the rigging, women sailors rushing to the guns, tense calm before battle",
+    broadside: "A merchant clipper fires a full broadside, a rippling line of cannon flashes and thick white powder smoke rolling over the water, women gun crews heaving at the guns, {enemy} beyond the smoke, low dynamic angle",
+    enemy_hit: "One of {enemy} is struck and going down: shattered mast falling, sails torn and burning, hull listing into the sea, splinters and spray, the merchant fleet's guns still smoking in the foreground with women gunners cheering",
+    we_are_hit: "Enemy roundshot slams into the deck of a merchant ship: splintering rail, a torn sail, rigging snapping, women sailors ducking and bracing, smoke and spray, {enemy} firing close alongside",
+    ship_lost: "A merchant ship of the trading fleet is lost: broken-backed, dismasted and on fire, sinking stern first into a dark sea, women sailors in boats pulling away, {enemy} circling in the smoke, sombre mood",
+    boarding: "{enemy} grapple alongside a merchant ship and the women pirates swarm aboard over the rail, cutlasses and boarding pikes raised, cargo chests and tea crates being hauled across, the merchant's women crew fighting back, chaos and smoke, dramatic but not gory",
+    got_away: "A merchant clipper under every stitch of sail running clear before a fresh wind, wake foaming, {enemy} falling far behind in the haze, relief and triumph among the women crew on deck, golden light breaking through cloud",
+    retreat: "A merchant ship breaking away from battle, her women crew heaving bales, chests and crates of cargo over the side to lighten her, crates floating in the wake, sails straining, {enemy} firing parting shots through the smoke",
+    victory: "After the battle the merchant fleet sails on battered but victorious, women crews cheering in the rigging, the wreckage and smoke of {enemy} drifting on the water behind, warm sunset light",
+    defeat: "Total defeat at sea: the whole merchant fleet burning and sinking under a darkening sky, only wreckage, floating cargo and an empty lifeboat left, {enemy} triumphant in the smoke with their women crews at the rails, grim and sombre"
   };
+  // Pirate Queen sandbox: every crew on both sides is women only (Anthony, 17 Nov 2026).
+  const BATTLE_WOMEN = "every sailor, gunner, officer and pirate in the picture is a woman, all-female crews of fierce sea-women with long braided or tied-back hair, women only";
   function battlePrompt(subject, role, style) {
     const enemy = BATTLE_ENEMY[subject];
     const moment = BATTLE_MOMENTS[role] || "A sea battle between a small merchant trading fleet and {enemy}, cannon smoke, spray and torn sails, wide cinematic view";
-    return `${moment.replace("{enemy}", enemy)}, 16:9 wide cinematic composition, ${style}`;
+    return `${moment.replace("{enemy}", enemy)}, ${BATTLE_WOMEN}, 16:9 wide cinematic composition, ${style}`;
   }
 
   function defaultPrompt(kind, subject, role) {
     if (kind === "persona" && CFG.characters[subject]) return CFG.characters[subject].portrait_prompt || "";
+    // Captains and Houses (Admin > Captains): their own prompt, or the template filled in.
+    if (kind === "captain" || kind === "house") return ((M.lib && M.lib.prompts && M.lib.prompts[kind]) || {})[subject] || "";
     const style = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
     const name = subjectName(kind, subject);
     if (kind === "scene" && BATTLE_ENEMY[subject]) return battlePrompt(subject, role, style);

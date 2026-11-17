@@ -398,8 +398,10 @@ class Game:
         return GOODS[good]["base"] * PORTS[port]["mods"].get(good, 1.0)
 
     # ---------------------------------------------------------- players --
-    def join(self, name, firm, present=(), via=None):
-        """Join the game, or take back your seat by name from a new device or address."""
+    def join(self, name, firm, present=(), via=None, captain=None):
+        """Join the game, or take back your seat by name from a new device or address.
+        captain is the saved Captain's id (captains.py) when the player came in with a profile and PIN;
+        a seat taken by a Captain can only be taken back by that Captain."""
         s = self.s
         raw_name, raw_firm = name, firm
         name = " ".join(str(name or "").split())[:20]
@@ -410,10 +412,14 @@ class Game:
             firm = tx("w.default_firm", name=name)[:28]
         for p in s["players"].values():
             if p["name"].lower() == name.lower():
+                if p.get("captain") and p["captain"] != captain:
+                    raise GameError(tx("e.captain_seat", name=p["name"]))
                 if p["id"] in present:
                     raise GameError(tx("e.elsewhere", name=p["name"]))
+                if captain and not p.get("captain"):
+                    p["captain"] = captain
                 self._ev("players", "seat_reclaim", "{} took their seat back ({})".format(p["name"], p["firm"]),
-                         p, via=via)
+                         p, via=via, captain=captain or p.get("captain"))
                 return p["token"]
         if s["phase"] == "ended":
             raise GameError(tx("e.ended"))
@@ -436,6 +442,8 @@ class Game:
              "log": [tx("l.arrive", home=PORTS[port]["name"], ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
              "known": {}, "wrecks": 0, "tab": self._new_tab(), "slip": False, "basis": {}, "customs": None,
              "gift_rep": {}}
+        if captain:
+            p["captain"] = captain
         p["rep"][port] = float(st["home_rep"])
         p["start_port"] = p["home"] = port
         p["books"] = self._new_books(p)
@@ -445,7 +453,8 @@ class Game:
         ship = p["ships"][0]
         self._ev("players", "seat_new", "{} joined as {} in {} with {} silver, {} debt and the {} {}".format(
             name, firm, PORTS[port]["name"], money(cash), money(st["debt"]), SHIPS[ship["type"]]["name"].lower(),
-            ship["name"]), p, do="join", start_port=port, name=str(raw_name or "")[:60], firm=str(raw_firm or "")[:60], via=via)
+            ship["name"]), p, do="join", start_port=port, name=str(raw_name or "")[:60], firm=str(raw_firm or "")[:60], via=via,
+            captain=captain)
         return p["token"]
 
     def _start_port(self):
@@ -817,19 +826,81 @@ class Game:
         status = "declare" if rate > 0 and lines else "welcome"
         cx = self._officer_ctx(p, port)
         box = int(c["strongbox"] * self.rng.uniform(1 - c["strongbox_swing"], 1 + c["strongbox_swing"])) if status == "declare" else 0
-        p["customs"] = {"port": port, "turn": self.s["turn"], "status": status, "officer": self.officer_of(port),
+        officer = "taxlady" if self.registrar_here(p, port) else self.officer_of(port)
+        p["customs"] = {"port": port, "turn": self.s["turn"], "status": status, "officer": officer,
                         "rate": round(rate, 4), "base": float(PORTS[port].get("tax_rate", 0.0) or 0.0),
                         "free": rate <= 0, "home_free": at_home, "lines": lines, "cx": cx, "box": box, "result": None}
         if status == "declare":
             p["customs"]["say"] = self._pa_greeting(p, p["customs"]["officer"])
+        elif officer == "taxlady" and port == home_of(p):
+            p["customs"]["say"] = self._draw(p, "l.registrar_home")   # her welcome home (None: the stock line)
+        tip = self._registrar_tip(p)
+        if tip:
+            p["customs"]["tip"] = tip
         self._ev("finance", "customs_open", "{}: the Port Authority of {} ({}) {}".format(
-            p["name"], PORTS[port]["name"], self.officer_of(port),
+            p["name"], PORTS[port]["name"], officer,
             "waves the house in (its home port, no tax)" if at_home else
             "waves the house in (free port)" if rate <= 0 else "has nothing to tax (empty hold)" if not lines else
             "asks for a declaration at {}: {}; strongbox {}, mood x{}".format(
                 pct(rate), ", ".join("{} {} worth {}".format(ln["qty"], GOODS[ln["good"]]["name"], money(ln["value"]))
                                      for ln in lines), money(box), cx["mood"])),
             p, port=port, rate=rate, lines=lines, cx=cx, box=box, status=status)
+
+    # ------------------------------------------------------ the Registrar --
+    # Mrs. Evelyn Marlowe (cast key "taxlady") keeps the register of every merchant house. She is
+    # found only in a captain's own home port: she meets the house on the wharf when it comes home
+    # (in place of that port's officer) and gives it one fresh price from her book: this month's
+    # price of one cargo in one other port, written into the Price Book and read aloud.
+    def registrar_here(self, p, port=None):
+        """True when this house is in its own home port, where the Registrar keeps its desk."""
+        r = R.get("registrar") or {}
+        return bool(r.get("enabled", True)) and (port or p["port"]) == home_of(p) and \
+            "taxlady" in (CFG.get("characters") or {})
+
+    def _registrar_tip(self, p):
+        """Pick, record and log this arrival's price tip, or None. She favours a cargo the house holds
+        and a port it has not seen for a while. Drawn from its own seed, never the game's dice, so
+        replays of old journals come out the same."""
+        r = R.get("registrar") or {}
+        here = p["port"]
+        if not self.registrar_here(p, here) or len(PORTS) < 2:
+            return None
+        turn, stale = self.s["turn"], max(0, int(r.get("stale_months", 2)))
+        known = p.get("known") or {}
+        tips = p.setdefault("tips", {})
+
+        def age(port, g):
+            seen = [known[port]["turn"]] if port in known else []
+            t = (tips.get(port) or {}).get(g)
+            if isinstance(t, dict):
+                seen.append(int(t.get("turn", -10 ** 6)))
+            return turn - max(seen) if seen else None
+
+        ports = [k for k in PORTS if k != here]
+        held = [g for g in GOODS if p["cargo"].get(g, 0) > 0] if r.get("held_first", True) else []
+        pool = []
+        for goods in ([held] if held else []) + [list(GOODS)]:
+            pool = [(port, g) for port in ports for g in goods if age(port, g) is None or age(port, g) >= stale]
+            if pool:
+                break
+        if not pool:                              # every price is fresh: the oldest one she has
+            oldest = max((age(port, g) or 0) for port in ports for g in (held or list(GOODS)))
+            pool = [(port, g) for port in ports for g in (held or list(GOODS)) if (age(port, g) or 0) == oldest]
+        pool.sort()
+        rng = random.Random("registrar:{}:{}:{}:{}".format(self.s.get("game_id", ""), p.get("name", ""), p.get("firm", ""), turn))
+        port, g = rng.choice(pool)
+        was = age(port, g)
+        price = int(round(self.s["prices"][port][g]))
+        tips.setdefault(port, {})[g] = {"turn": turn, "price": price}
+        key = self._draw(p, "l.registrar_tip") or "l.registrar_tip"
+        words = {"goods": GOODS[g]["name"], "where": PORTS[port]["name"], "price": money(price), "port": PORTS[here]["name"]}
+        p["log"].append(tx("l.registrar_logged", **words))
+        self._ev("market", "registrar_tip", "{}: the Registrar, home in {}, tipped {} at {} in {} (the house's last price for it: {})".format(
+            p["name"], PORTS[here]["name"], GOODS[g]["name"], money(price), PORTS[port]["name"],
+            "none" if was is None else "{} months old".format(was)),
+            p, port=here, where=port, good=g, price=price, was=was)
+        return {"good": g, "port": port, "price": price, "turn": turn, "key": key,
+                "text": tx(key, **words)}
 
     def sealed(self, p, g=None):
         """Cargo this house left sealed in bond at the Port Authority's desk in the port it is in:
@@ -1091,8 +1162,12 @@ class Game:
                 r["back_price"] = self.buyback_cost(r) if r["units"] and not r["back"] else 0
         name = PORTS[cu["port"]]["name"]
         out["home_free"] = bool(cu.get("home_free"))
+        out["tip"] = cu.get("tip")
         if out["home_free"]:
-            out["welcome"] = tx("l.customs_home", line=out["line"], port=name)
+            say = cu.get("say") if isinstance(cu.get("say"), str) else None
+            if not say or not str(TEXT.get(say, "")).strip():
+                say = "l.customs_home"
+            out["welcome"] = tx(say, line=out["line"], port=name)
         elif cu["free"]:
             out["welcome"] = tx("l.customs_free", line=out["line"], port=name)
         elif not cu["lines"]:
@@ -2700,6 +2775,7 @@ class Game:
                 "collectors": self.collectors(p),
                 "ready": p["ready"], "dest": p["dest"], "orders": p["orders"],
                 "log": p["log"], "known": p["known"],
+                "tips": p.get("tips") or {},                 # the Registrar's prices: {port: {good: {turn, price}}}
                 "prices": {g: round(v, 2) for g, v in s["prices"][port].items()},
                 "basis": {g: round(v, 2) for g, v in (p.get("basis") or {}).items()},   # average paid per unit
                 "spread": round(sp, 4),

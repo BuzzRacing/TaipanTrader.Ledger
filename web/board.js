@@ -62,8 +62,8 @@ function render() {
     const tone = battle ? "br-danger" : !lobby && !ended && p.present && p.ready ? "br-ready" : "";
     return `<li>
       <span class="br-place" aria-hidden="true">${lobby ? "" : index + 1}</span>
-      <div class="br-house" style="--house:${COLORS[p.color % COLORS.length]}">
-        <b>${esc(p.firm)}</b><span>${esc(p.name)} · ${esc(portName(p.port))}</span></div>
+      <div class="br-house${Faces.of(p).crest ? " has-crest" : ""}" style="--house:${COLORS[p.color % COLORS.length]}">
+        ${Faces.of(p).crest ? houseMark(p, "br-crest") : ""}<div><b>${esc(p.firm)}</b><span>${esc(p.name)} · ${esc(portName(p.port))}</span></div></div>
       <div class="br-result">${lobby ? "" : `<b>${esc(money(p.worth))}</b>`}<span class="${tone}">${status}</span></div>
     </li>`;
   }).join("")}</ol>` : `<p class="br-empty">${te("board.none")}</p>`);
@@ -146,6 +146,7 @@ quitBtn.addEventListener("click", quitBoard);
 document.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); quitBoard(); } });
 
 document.getElementById("board-controls").prepend(document.getElementById("voicebox"));
+Faces.onChange = () => render();   // House crests arrived or changed
 listen(null, state => {
   S = state;
   if (!D || state.cfg !== cfgSeen) return refreshInfo();

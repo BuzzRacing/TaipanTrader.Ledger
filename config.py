@@ -128,6 +128,7 @@ DEFAULTS = {
                  "lengths": [1, 2, 3, 5, 10], "default_years": 5, "grace_seconds": 25},
         "start": {"cash": 3500, "debt": 5000, "ship": "junk", "guns": 2, "rep": 50, "home_rep": 60,
                   "where": "random"},
+        "captains": {"typed": False},
         "market": {"spread_base": 0.04, "spread_swing": 0.03, "impact": 0.25, "floor": 0.25,
                    "ceiling": 4.5, "reversion": 0.3, "vol_mult": 1.0, "start_spread": 0.15,
                    "rep_per_value": 5000, "rep_trade_cap": 2.0, "worth_cargo": 0.9},
@@ -174,6 +175,10 @@ DEFAULTS = {
         "gift": {"enabled": True, "cap": 15, "appetite": 1500, "soft_from": 50, "min_gift": 100,
                  "max_x": 5, "step": 50, "gracious_at": 3, "warm_at": 7, "delighted_at": 11,
                  "greet_cold_below": 40, "greet_warm_from": 70},
+        # The Registrar (Mrs. Evelyn Marlowe, cast key "taxlady"), found only in a captain's own home port:
+        # she meets the house when it comes home and gives one fresh price from her register
+        # (engine.Game.registrar_here, _registrar_tip).
+        "registrar": {"enabled": True, "stale_months": 2, "held_first": True},
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
@@ -212,7 +217,7 @@ DEFAULTS = {
     },
     # mods = local price multipliers (below 1 = made here, above 1 = in demand).
     "ports": {
-        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "taxlady", "mood": 0.1,
+        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "officer_hongkong", "mood": 0.15,
                       "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
         "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15,
                       "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
@@ -383,6 +388,9 @@ SECTIONS = [
                "drawn afresh every game (ports are shared only when there are more players than ports). The port "
                "a player starts in is their home port: their bank, lender, warehouse and protection are there.",
                options=[["random", "A random port each, different every game"], ["home", "Everyone in the home port"]]),
+             F("rules.captains.typed", "Players may join without a saved Captain", "bool", "Off: everyone picks a "
+               "Captain from Admin > Captains (and types the PIN), or one of the two guest Captains. On: the join "
+               "screen also offers the old typed name and firm, with no career kept."),
              F("rules.game.max_players", "Most players", "int", min=1, max=8),
              F("rules.game.lengths", "Game lengths offered (years)", "numlist", "The host picks one in the lobby.", min=1, max=50, integer=True),
              F("rules.game.default_years", "Length chosen by default", "int", min=1, max=50),
@@ -512,6 +520,16 @@ SECTIONS = [
              _pct("rules.customs.max_rate", "Highest rate anywhere", "", 0, 1),
              _pct("rules.customs.max_declare", "Highest declaration allowed (share of true worth)",
                   "Above 100% is over-declaring: she never buys, you pay more tax, and your standing rises.", 1, 5)]},
+         {"title": "The Registrar (Mrs. Marlowe, at each captain's home port)", "fields": [
+             F("rules.registrar.enabled", "The Registrar meets each house in its home port with a price tip", "bool",
+               "On: a house coming home is met by the Registrar (cast key taxlady) instead of the port's officer, "
+               "and told this month's price of one cargo in one other port, written into its Price Book and read "
+               "aloud. Off: the home port's own officer waves it in, with no tip."),
+             F("rules.registrar.stale_months", "She tips a port not seen for at least (months)", "int",
+               "She picks a port whose price the house hasn't seen for this long, or never. If every price is "
+               "fresher than that, she gives the oldest one.", min=0, max=60),
+             F("rules.registrar.held_first", "She favours a cargo the house is carrying", "bool",
+               "Off: any cargo.")]},
          {"title": "Port Authority: her odds", "fields": [
              _pct("rules.customs.buy_base", "Chance she buys an honest line", "Times her greed, her mood, your standing and how much the port wants that cargo."),
              _pct("rules.customs.buy_k", "Buyout chance added by a 100% lie", "", 0, 5),

@@ -426,21 +426,64 @@ function masthead(sub) {
 function roster() {
   if (!S.players.length) return `<p class="muted">${te("join.none")}</p>`;
   return '<ul class="roster">' + S.players.map(p =>
-    `<li><i class="chip" style="background:${COLORS[p.color % 8]}"></i><b>${esc(p.firm)}</b> ` +
+    `<li>${houseMark(p)}<b>${esc(p.firm)}</b> ` +
     `<span class="muted">${esc(p.name)}${p.host ? " · " + te("w.host") : ""}${p.present ? "" : " · " + te("w.away")}</span></li>`).join("") + "</ul>";
 }
 
 const joinUrl = () => `<p class="muted center">${th("join.url", { url: "<b>" + esc(S.join_url) + "</b>" })}</p>`;
 
+/* Saved Captains (Admin > Captains): pick yours, type the PIN, choose the House. */
+let CAPS = null, capsAt = 0, capsLoading = false;
+async function loadCaptains() {
+  capsLoading = true;
+  try { const r = await (await fetch("/api/captains")).json(); if (r.ok) CAPS = r; }
+  catch (err) { if (!CAPS) CAPS = { captains: [], typed: true }; }
+  capsLoading = false; capsAt = Date.now();
+  if (S && !S.me) render();
+}
+const capInitials = n => String(n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+function capFace(c, big) {
+  return `<span class="cap-face${big ? " big" : ""}">${c.portrait ? `<img src="${esc(c.portrait)}" alt="">` : `<b>${esc(capInitials(c.name))}</b>`}</span>`;
+}
+function capCrest(h) {
+  return `<span class="cap-crest" style="--hc:${esc(h.color)}">${h.image ? `<img src="${esc(h.image)}" alt="">` : esc(capInitials(h.name))}</span>`;
+}
+function captainPicker() {
+  if (!CAPS) return `<p class="muted">…</p>`;
+  const list = CAPS.captains || [];
+  if (!list.length) return `<p class="muted">${te("join.captain_none")}</p>`;
+  const c = list.find(x => x.cid === ui.capSel);
+  if (!c) {
+    return `<p class="muted">${te("join.captain_help")}</p><div class="cap-grid">${list.map(x =>
+      `<button type="button" class="cap-tile${x.guest ? " guest" : ""}" data-act="cap_pick" data-cid="${esc(x.cid)}">${capFace(x)}
+        <b>${esc(x.name)}</b><small>${esc(x.guest ? t("join.guest") : x.title || "")}</small></button>`).join("")}</div>`;
+  }
+  const houses = c.houses || [];
+  if (!houses.some(h => h.hid === ui.capHouse)) ui.capHouse = houses[0] ? houses[0].hid : "";
+  const pin = c.guest ? `<p class="muted">${te("join.guest")}</p>`
+    : `<label>${te("join.pin")} <input id="in_pin" data-k="pin" type="password" inputmode="numeric" autocomplete="off"
+        maxlength="8" placeholder="${esc(t("join.pin_ph"))}" value="${esc(val("pin"))}"></label>`;
+  return `<div class="cap-chosen">${capFace(c, true)}<div><h3>${esc(c.name)}</h3><p class="muted">${esc(c.title || "")}
+      ${c.games ? " · " + te("join.games", { n: c.games }) : ""}</p>${pin}</div></div>
+    ${houses.length ? `<p class="cap-label">${te("join.house")}</p><div class="cap-houses">${houses.map(h =>
+      `<button type="button" class="cap-house${h.hid === ui.capHouse ? " on" : ""}" data-act="cap_house" data-hid="${esc(h.hid)}"
+        style="--hc:${esc(h.color)}">${capCrest(h)}<span><b>${esc(h.name)}</b>${h.motto ? `<small>${esc(h.motto)}</small>` : ""}</span></button>`).join("")}</div>` : ""}
+    ${btn(te("join.captain_button"), "cap_join", "", "primary wide")}
+    ${btn(te("join.change"), "cap_back", "", "link wide")}`;
+}
+
 function joinScreen() {
   const late = S.phase === "port" ? `<p class="note">${te("join.late")}</p>` : "";
   const over = S.phase === "ended" ? `<p class="note">${te("join.over")}</p>` : "";
-  return masthead(esc(D.brand.tagline)) + `<main class="narrow">
-    <section class="card"><h2>${te("join.title")}</h2>${late}${over}
+  if (!capsLoading && (!CAPS || Date.now() - capsAt > 20000)) loadCaptains();
+  const typed = !CAPS || CAPS.typed ? `<details class="card cap-typed"${CAPS && !(CAPS.captains || []).length ? " open" : ""}>
+      <summary>${te("join.typed")}</summary>
       <label>${te("join.name")} ${input("name", t("join.name_ph"), 'inputmode="text" maxlength="20"')}</label>
       <label>${te("join.firm")} ${input("firm", t("join.firm_ph"), 'inputmode="text" maxlength="28"')}</label>
-      ${btn(te("join.button"), "join", "", "primary wide")}
-    </section>
+      ${btn(te("join.button"), "join", "", "primary wide")}</details>` : "";
+  return masthead(esc(D.brand.tagline)) + `<main class="narrow cap-join">
+    <section class="card"><h2>${te("join.captain_title")}</h2>${late}${over}${captainPicker()}</section>
+    ${typed}
     <section class="card"><h2>${te("join.houses")}</h2>${roster()}</section>
     ${joinUrl()}</main>`;
 }
@@ -465,7 +508,7 @@ function lobbyScreen() {
 function standings() {
   const rows = S.players.slice().sort((a, b) => b.worth - a.worth).map((p, i) =>
     `<tr class="${p.id === S.me.id ? "me" : ""}"><td>${i + 1}</td>` +
-    `<td><i class="chip" style="background:${COLORS[p.color % 8]}"></i><span class="hname">${esc(p.firm)}</span><br><span class="muted">${esc(p.name)}</span> <span class="rankname">${esc(p.rank)}</span></td>` +
+    `<td>${houseMark(p)}<span class="hname">${esc(p.firm)}</span><br><span class="muted">${esc(p.name)}</span> <span class="rankname">${esc(p.rank)}</span></td>` +
     `<td>${esc(portName(p.port))}</td><td class="n">${p.ships}</td><td class="n">${money(p.worth)}</td></tr>`).join("");
   return `<table class="grid"><thead><tr><th></th><th>${te("col.house")}</th><th>${te("col.port")}</th><th class="n">${te("col.ships")}</th><th class="n">${te("col.worth")}</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -491,7 +534,7 @@ function topHtml() {
                  ["stat.worth", money(me.worth), "worth"], ["stat.hold", p.used + " / " + me.capacity, dir(p.used, me.used).trim()], ["stat.guns", guns()]]
     .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("") +
     standingPlaque((me.rep || {})[me.port]);
-  return `<div class="dk-house"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
+  return `<div class="dk-house${Faces.of(me).crest ? " has-crest" : ""}">${houseMark(me, "dk-crest")}
       <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
       <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
     ${portPlate()}
@@ -566,15 +609,17 @@ function gameScreen() {
   return { top, nav, pane, side, over: fighting ? "" : report || Customs.html() };
 }
 
-/* The captain button at the foot of the rail: the player's picture (S.me.portrait if the server ever
-   sends one), otherwise their initials on the house colour, with their name under it. Tapping it opens
+/* The captain button at the foot of the rail: the Captain's portrait from the Media Library, square and
+   as big as the tab pictures above it, with the name in white across its foot (the same "face" look as the
+   tabs). Without a portrait: their initials on the house colour, with their name under it. Tapping it opens
    a small fly-out beside it (above it in portrait) with Voices on/off and Options. Tapping outside it
    or pressing Escape closes it. */
 function meButton() {
   const me = S.me, open = !!ui.meOpen;
   const name = me.name || me.firm || "";
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
-  const face = me.portrait ? `<img src="${esc(me.portrait)}" alt="">` : `<em>${esc(initials)}</em>`;
+  const portrait = Faces.of(me).portrait;
+  const face = portrait ? `<img class="dk-tabimg" src="${esc(portrait)}" alt="">` : `<em>${esc(initials)}</em>`;
   let fly = "";
   if (open) {
     const on = Voice.enabled(), muted = Voice.muted();
@@ -586,7 +631,7 @@ function meButton() {
       `<button type="button" data-act="options" title="${te("deck.options_soon")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button></div>`;
   }
   return `<div class="dk-me${open ? " open" : ""}" style="--house:${COLORS[me.color % 8]}">${fly}` +
-    `<button type="button" class="dk-face" data-act="me" aria-haspopup="menu" aria-expanded="${open}" aria-label="${te("deck.me", { name })}" title="${te("deck.me", { name })}">` +
+    `<button type="button" class="dk-face${portrait ? " face" : ""}" data-act="me" aria-haspopup="menu" aria-expanded="${open}" aria-label="${te("deck.me", { name })}" title="${te("deck.me", { name })}">` +
     `${face}<span>${esc(name)}</span></button></div>`;
 }
 
@@ -1046,7 +1091,7 @@ function portGlance() {
     ${row(te("port.glance.dues"), "×" + (me.dues && me.dues.level != null ? me.dues.level : 1))}
     ${row(te("port.glance.authority"), me.home_free && me.port === myHome() ? te("port.glance.home_free") : rate > 0 ? te("port.glance.authority_rate", { rate: pct(rate, 1) }) : te("port.glance.free"))}
     ${row(te("port.glance.yard"), port.shipyard ? te("port.glance.yes") : te("port.glance.no_yard", { yards: esc(D.yards.join(", ")) }))}
-    ${row(te("port.glance.rivals"), rivals.length ? rivals.map(p => `<span class="pt-chip"><i class="chip" style="background:${COLORS[p.color % 8]}"></i>${esc(p.firm)}</span>`).join("") : te("port.glance.alone"))}
+    ${row(te("port.glance.rivals"), rivals.length ? rivals.map(p => `<span class="pt-chip">${houseMark(p)}${esc(p.firm)}</span>`).join("") : te("port.glance.alone"))}
   </table>`;
 }
 
@@ -1455,7 +1500,8 @@ function bookSignals(goods, ports, banner) {
     const width = Math.abs(gap) / scale * 50;
     const bars = `<span class="book-axis${known ? "" : " unknown"}" aria-hidden="true">${known ? `<span class="book-bar ${gap < 0 ? "lower" : "higher"}"
       data-book-port="${esc(p.key)}" style="left:${gap < 0 ? 50 - width : 50}%;width:${width}%;--strength:${(width / 50).toFixed(2)}"></span>` : ""}</span>`;
-    const when = p.here ? t("ledger.here") : known ? bookSeen(p.age) : t("ledger.unknown");
+    const when = p.here ? t("ledger.here") : !known ? t("ledger.unknown")
+      : p.tip && p.tip[g] != null ? t("ledger.tip") + " · " + bookSeen(p.tip[g]) : bookSeen(p.age);
     const ban = p.bans.includes(g) ? ` · ${te("ledger.banned")}` : "";
     return bookButton(`<span><b>${esc(portName(p.key))}</b><small class="${p.age >= 4 ? "book-old" : ""}">${esc(when)}${ban}</small></span>${bars}
       <strong>${known ? esc(bookPrice(p.price)) : "—"}</strong>`, "port", p.key, p === selected, `book-port${p.here ? " here" : ""}`);
@@ -1478,7 +1524,8 @@ function bookSignals(goods, ports, banner) {
       <div class="book-ports" role="group" aria-label="${te("ledger.port")}">${chart}</div>
       <div class="book-detail" aria-live="polite">
         <div><strong>${esc(name)} · ${esc(portName(selected.key))}</strong>
-          ${selected.here ? "" : `<small>${esc(riskLabel(me.port, selected.key))} · ${esc(Number.isFinite(selected.price) ? bookSeen(selected.age) : t("ledger.unknown"))}</small>`}</div>
+          ${selected.here ? "" : `<small>${esc(riskLabel(me.port, selected.key))} · ${esc(!Number.isFinite(selected.price) ? t("ledger.unknown")
+            : selected.tip && selected.tip[g] != null ? t("ledger.tip") + " · " + bookSeen(selected.tip[g]) : bookSeen(selected.age))}</small>`}</div>
         <p>${esc(detail)}</p>
       </div>
     </div>`;
@@ -1491,7 +1538,8 @@ function bookVoyages(goods, ports, banner) {
     .map(g => [g, quote(g, 1, buying ? "buy" : "sell")]));
   const options = ports.filter(p => !p.here && p.age !== null).flatMap(p => {
     const trades = Object.keys(local).filter(g => !p.bans.includes(g) && Number.isFinite(p.prices[g]) && p.prices[g] - local[g] >= .005)
-      .map(g => ({ g, price: p.prices[g], gap: p.prices[g] - local[g] }))
+      .map(g => ({ g, price: p.prices[g], gap: p.prices[g] - local[g], tipped: p.tip && p.tip[g] != null,
+                   age: p.tip && p.tip[g] != null ? p.tip[g] : p.age }))
       .sort((a, b) => b.gap - a.gap);
     return trades.length ? [{ ...p, ...trades[0] }] : [];
   }).sort((a, b) => (a.age >= 4) - (b.age >= 4) || b.gap - a.gap || a.age - b.age);
@@ -1503,7 +1551,7 @@ function bookVoyages(goods, ports, banner) {
   const summary = p => t("ledger.route_age", { port: portName(p.key), age: bookSeen(p.age), distance: riskLabel(me.port, p.key) });
   const gap = p => t(buying ? "ledger.buy_gap" : "ledger.sell_gap", { gap: bookPrice(p.gap) });
   const list = options.map(p => bookButton(`<strong>${esc(portName(p.key))} · ${esc(D.goods[p.g].name)}</strong>
-    <small>${esc(bookSeen(p.age))}</small><span class="book-gain">+${esc(bookPrice(p.gap))} / unit</span>`,
+    <small>${esc((p.tipped ? t("ledger.tip") + " · " : "") + bookSeen(p.age))}</small><span class="book-gain">+${esc(bookPrice(p.gap))} / unit</span>`,
     "route", p.key, p === route, "book-route")).join("");
   return `${banner}${mode}<div class="book-voyage">
     <div class="book-routes" role="group" aria-label="${te("ledger.routes")}">${list}</div>
@@ -1543,10 +1591,11 @@ function bookTable(goods, ports, banner) {
           tone = r > 0 ? (r >= .25 ? "good hot" : "good") : (r <= -.25 ? "poor hot" : "poor");
         }
       }
-      const tip = [label ? t("ledger." + label) : "", pct].filter(Boolean).join(" · ");
+      const tipped = !p.here && p.tip && p.tip[g] != null;
+      const tip = [tipped ? t("ledger.tip") + " · " + bookSeen(p.tip[g]) : "", label ? t("ledger." + label) : "", pct].filter(Boolean).join(" · ");
       const style = heat ? ` style="--heat:${(.22 + heat * .78).toFixed(2)}"` : "";
       const mark = tone === "blocked" ? '<i class="book-ban" aria-hidden="true">⊘</i>' : "";
-      return `<td class="${tone}"${style}${tip ? ` title="${esc(tip)}" aria-label="${esc((Number.isFinite(price) ? bookPrice(price) + " · " : "") + tip)}"` : ""}>${mark}${
+      return `<td class="${tone}${tipped ? " tipped" : ""}"${style}${tip ? ` title="${esc(tip)}" aria-label="${esc((Number.isFinite(price) ? bookPrice(price) + " · " : "") + tip)}"` : ""}>${mark}${
         Number.isFinite(price) ? esc(bookPrice(price)) : `<span aria-label="${te("ledger.unknown")}">—</span>`}</td>`;
     }).join("");
     return `<tr class="${p.here ? "here" : ""}"><th scope="row" title="${esc(seen)}"><b>${p.here ? "⚓ " : ""}${esc(portName(p.key))}</b>
@@ -1572,8 +1621,17 @@ function ledgerTab() {
   const ports = [me.port, ...Object.keys(D.ports).filter(k => k !== me.port)].map(key => {
     const here = key === me.port, known = me.known[key];
     const bans = S.bans?.[key] || [];
-    return { key, here, bans, prices: here ? me.prices : (known?.prices || {}),
-      age: here ? 0 : known ? Math.max(0, S.turn - known.turn) : null };
+    // The Registrar's tips (Hong Kong): a price she gave for one cargo, newer than the last visit,
+    // fills that cargo's square; tip[g] is its age in months.
+    const prices = here ? me.prices : Object.assign({}, known?.prices || {}), tip = {};
+    if (!here) Object.entries((me.tips || {})[key] || {}).forEach(([g, tp]) => {
+      if (tp && Number.isFinite(tp.price) && (!known || tp.turn >= known.turn)) {
+        prices[g] = tp.price; tip[g] = Math.max(0, S.turn - tp.turn);
+      }
+    });
+    const tipAges = Object.values(tip);
+    return { key, here, bans, prices, tip,
+      age: here ? 0 : known ? Math.max(0, S.turn - known.turn) : tipAges.length ? Math.min(...tipAges) : null };
   });
   // No banner: the view switch is a slim segmented bar so the page's height goes to the prices.
   const banner = `<div class="book-seg" role="group" aria-label="${te("ledger.view")}">
@@ -1648,7 +1706,18 @@ app.addEventListener("keydown", e => {
   if (e.key !== "Enter" || !e.target.dataset.k) return;
   const k = e.target.dataset.k;
   if (k === "name" || k === "firm") doJoin();
+  if (k === "pin") doJoinCaptain();
 });
+
+async function doJoinCaptain() {
+  const res = await post("/api/join", { captain: ui.capSel, pin: val("pin"), house: ui.capHouse });
+  if (res.voice) Voice.say([Object.assign({ text: res.ok ? "" : res.error }, res.voice)], { group: "msg", replace: "msg" });
+  if (!res.ok) return toast(res.error, true);
+  ui.vals.pin = "";
+  token = res.token;
+  store("seatrader_token", token);
+  connect();
+}
 
 async function doJoin() {
   const res = await post("/api/join", { name: val("name"), firm: val("firm") });
@@ -1665,6 +1734,11 @@ app.addEventListener("click", async e => {
   const d = el.dataset;
   switch (d.act) {
     case "join": return doJoin();
+    case "cap_pick": ui.capSel = d.cid; ui.capHouse = ""; ui.vals.pin = ""; render();
+      { const f = document.getElementById("in_pin"); if (f) f.focus(); } return;
+    case "cap_house": ui.capHouse = d.hid; return render();
+    case "cap_back": ui.capSel = ""; ui.vals.pin = ""; return render();
+    case "cap_join": return doJoinCaptain();
     case "tab": ui.tab = d.tab; ui.tally = false; return render();
     case "book_view": case "book_good": case "book_port": case "book_mode": case "book_route":
       return bookSelect(d.act.slice(5), d.value);
@@ -1789,4 +1863,5 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && ui.meOpen) { ui.meOpen = false; render(); }
 });
 
+Faces.onChange = () => render();   // Captain portraits and House crests arrived or changed
 loadInfo().then(info => { D = info.data; VS = Voice.setup(info.voice); Stage.setCast(VS.cast); connect(); });

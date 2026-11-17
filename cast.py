@@ -260,25 +260,29 @@ CHARACTERS = {
                            "and corset, harbour lanterns through the window behind, cool appraising smile, {style}",
     },
     "taxlady": {
-        "name": "The Tax Collector", "title": "Collector of Revenue & Keeper of the Ledger", "brand_link": "",
-        "age": 36, "origin": "Each port's own", "home_port": "hongkong", "color": "#3f6e6a", "portrait": "",
+        "name": "Mrs. Evelyn Marlowe", "title": "Registrar of the Merchant Houses", "brand_link": "",
+        "age": 36, "origin": "Portsmouth, England", "home_port": "hongkong", "color": "#3f6e6a", "portrait": "",
         "voice_id": "Olivia", "speaking_rate": 0.96,
-        "delivery": "precise, amused and icy, a revenue collector who already knows the true figure before you lie",
-        "catchphrase": "I can count, Captain. Can you?",
-        "bio": "She walks the gangways with a tally book and a customs seal, and she remembers every price "
-               "paid on her wharf this season. Most captains declare honestly. She speaks only to the ones "
-               "who do not, and only after she has been through their books.",
-        "quirk": "Licks her pencil before writing down a fine, slowly, so you can watch.",
-        "vice": "Clean columns, sharp pencils, and captains who think a smile will balance a ledger.",
-        "secret": "She audits at random far more often than she admits; the fear is cheaper than the clerks.",
-        "stats": {"cunning": 9, "nerve": 6, "charm": 5, "greed": 5},
-        "portrait_prompt": "An {adult} woman (age 36), a treaty-port tax collector on a busy gangway with an open "
-                           "tally book, pencil and brass customs seal, strongbox at her feet, fitted dark revenue coat "
-                           "over a corset, spectacles pushed up into pinned hair, knowing half-smile, {style}",
+        "delivery": "warm, teasing and conspiratorial; a widow who knows everyone's business and enjoys letting you in on a little of it",
+        "catchphrase": "Welcome home, Captain. It's all written down.",
+        "bio": "Evelyn kept her husband's harbour register long before the typhoon took him. Captain Henry Marlowe "
+               "was Hong Kong's Harbour Master; nobody else could read his book, so they let his widow keep it. Now "
+               "she keeps the register of every merchant house on the China Seas, and wherever a house calls home, "
+               "she is waiting on the wharf when it comes back: with its papers stamped, and one price from another "
+               "port that nobody else has heard yet.",
+        "quirk": "Pushes her spectacles up into her hair just before she says something she shouldn't.",
+        "vice": "Gossip, good brandy, and being the first to know.",
+        "secret": "The register has a second, private column: what every captain owes, and to whom.",
+        "stats": {"cunning": 8, "nerve": 6, "charm": 9, "greed": 4},
+        "portrait_prompt": "An {adult} English woman (age 36), the widowed Registrar of the Port of Hong Kong at a "
+                           "harbour-office desk on a foggy wharf, dark hair pinned up with spectacles pushed up into it, "
+                           "black coat over an oxblood corset, open ledger and a jade-topped pencil, conspiratorial "
+                           "half-smile as if about to share a secret, {style}",
     },
 }
 # The Port Authority officers, one for each taxed port (Admin > Ports > Port Authority officer).
-# Hong Kong is a free port; her desk is kept by the Tax Collector above.
+# Each captain's home port is kept by the Registrar, Mrs. Evelyn Marlowe (key "taxlady", above);
+# Hong Kong's desk for visiting houses is kept by Senhora Isabel Rebelo (officer_hongkong).
 _OFFICERS = {
     "officer_singapore": dict(
         name="Mrs. Eliza Thornbury", title="Customs Mistress of the Singapore Roads", age=44, origin="Bath, England",
@@ -422,6 +426,23 @@ _OFFICERS = {
                "desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, "
                "long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying "
                "overhead, a sweet venomous smile, {style}"),
+    # Hong Kong's desk for visiting houses (a captain whose home is Hong Kong meets the Registrar instead).
+    "officer_hongkong": dict(
+        name="Senhora Isabel Rebelo", title="Collector of Victoria Harbour", age=33, origin="Macau",
+        home_port="hongkong", color="#8a3b4a", voice_id="Rocio", speaking_rate=0.95,
+        delivery="low and honeyed, Portuguese-accented English; flirtatious and close, with a blade under every compliment",
+        catchphrase="I know every hiding place on a ship, Captain. I built half of them.",
+        bio="Isabel grew up on her father's lorchas, running opium and silver past the Macau forts. When the Rebelos "
+            "were finally caught, the British offered his clever daughter a choice: a cell, or a desk on the Hong Kong "
+            "wharves. She chose the desk, and every smuggler on the coast has regretted it since.",
+        quirk="Leans across the desk to read your manifest upside down while she smiles at you.",
+        vice="Port wine from home, fast boats, and captains who think they're cleverer than her.",
+        secret="Her father still runs boats out of Macau, and his cargo crosses her wharf untaxed.",
+        stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 6},
+        prompt="An {adult} Portuguese woman (age 33), the Port Authority officer of Hong Kong on a crowded Victoria "
+               "Harbour wharf, a wine-red silk jacket open over a black lace corset, a gold crucifix and a dagger at her "
+               "hip, leaning over a customs desk with a manifest upside down before her, lorchas and junks behind her, "
+               "a slow dangerous smile, {style}"),
 }
 for _cid, _o in _OFFICERS.items():
     _o["brand_link"], _o["portrait"] = "", ""
@@ -440,6 +461,8 @@ for _who, _keys in {
     # sail for ..." was heard after the voyage had already begun, over the sea battle or the captain's log.
     # The words still show on screen. Admin > Cast & Voices can hand them back to a reader.
     "": ["m.sail", "m.stay", "m.slip",
+         # The Registrar's log line is the receipt; she says the tip itself at the desk.
+         "l.registrar_logged"] + [
          # The Mayor's Parlour (decision 3): small thanks are text only; the log line is the receipt.
          "m.gift.cool", "m.gift.gracious", "l.gift"]
         + ["m.gift.{}.{}".format(t, i) for t in ("cool", "gracious") for i in range(10)],
@@ -474,6 +497,10 @@ for _who, _keys in {
     for _k in _keys:
         LINE_DEFAULTS[_k] = _who
 OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_DEFAULTS.items() if _w == "taxlady")
+# The Registrar's own lines (Mrs. Marlowe, at each captain's home port). Set after OFFICER_KEYS so they
+# are always hers, never handed to the officer of the port she is standing in.
+for _k in ["l.registrar_home.{}".format(i) for i in range(15)] + ["l.registrar_tip.{}".format(i) for i in range(10)]:
+    LINE_DEFAULTS[_k] = "taxlady"
 
 # Short spoken versions of lines with amounts in them. The screen still shows the
 # full wording; the voice says this instead, so a line sounds the same however
@@ -484,6 +511,7 @@ OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_D
 # Admin page gives it a spoken version of its own (cfg voice.say).
 SAY = {
     "l.slip_caught": "Slipping out of {port} in the dark, Captain? My watch never sleeps. You will pay double, and {port} will remember your name.",
+    "l.slip_away": "You slipped out of {port} at night. The harbour watch never saw you, and the Mayor's dues went unpaid.",
     "m.gift.warm": "Now that is how a captain calls on a lady. My clerks will be told your house is a friend of the city.",
     "m.gift.delighted": "Captain! Sit, sit, you will take a glass with me. Anyone who troubles your house in my harbour answers to me.",
     "l.customs_welcome": "{line} Declare your cargo, Captain. Truly, or not. I do so enjoy finding out.",
@@ -498,6 +526,17 @@ SAY = {
     "l.customs_welcome.27": "{line} And before you ask, no, my rate does not come down because you smile at me. Lying costs you double. Declare, Captain.",
     "l.customs_welcome.28": "Ah, Captain, at last. I've had nothing but rice junks and honest men all morning. {line} Do try to make this interesting.",
     "l.customs_welcome.29": "{line} You know the rule of this desk, Captain: you name your cargo's worth, and if your price is too modest, I buy at it. Name it wisely.",
+    # The Registrar's price tips, said without the price (the price stays on screen and in the Price Book).
+    "l.registrar_tip.0": "A little something from my register, Captain: {goods} is fetching a pretty price in {where} this month. You didn't hear it from me.",
+    "l.registrar_tip.1": "Lean in. A captain off the {where} run let slip what {goods} went for there this month. It's on your desk. Do with it what you will.",
+    "l.registrar_tip.2": "My book has this month's price for {goods} in {where}, Captain. My book is never wrong.",
+    "l.registrar_tip.3": "Between us, Captain: {goods}, in {where}. Fresh this month. The figure's on your papers. Now forget where you heard it.",
+    "l.registrar_tip.4": "The {where} manifests came in this morning. {goods}. I thought of you at once, Captain.",
+    "l.registrar_tip.5": "Spectacles up, Captain, I'm about to say something I shouldn't: what {goods} is selling for in {where} this month. It's written on your papers.",
+    "l.registrar_tip.6": "You'll want to know this, Captain. {goods} in {where}, as of this month. The price is on your desk. Don't tell the other houses.",
+    "l.registrar_tip.7": "A gift from the register, Captain, and it's worth more than brandy: this month's price for {goods} in {where}.",
+    "l.registrar_tip.8": "Everyone's talking about {where}, Captain, but only I know the figure for {goods}. I've written it down for you.",
+    "l.registrar_tip.9": "I keep a second column for my favourite captains, Captain. In it: {goods}, {where}, this month. The figure's on your papers.",
     "l.customs_paid": "Your papers are stamped, Captain. Welcome to {port}.",
     "l.customs_bought": "I bought your {goods} at your own price, Captain. You did say that was what it was worth.",
     "l.customs_caught": "I went through your hold, Captain. Every last corner. You paid in full, plus a fine, and {port} will talk.",

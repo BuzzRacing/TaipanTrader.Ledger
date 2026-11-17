@@ -968,6 +968,7 @@ body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; t
 .book-table { --heat-good: var(--book-jade); --heat-poor: var(--book-oxblood); }
 .book-table td.good { background: color-mix(in srgb, var(--heat-good) calc(var(--heat, .4) * 62%), var(--deck-night)); color: #effff5; }
 .book-table td.poor { background: color-mix(in srgb, var(--heat-poor) calc(var(--heat, .4) * 58%), var(--deck-night)); color: #fff0ec; }
+.book-table td.tipped { box-shadow: inset 0 -2px 0 var(--deck-jade); }  /* the Registrar's tip */
 .book-table td.hot { font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
 .book-table td.good.hot { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-good) 70%, #fff); }
 .book-table td.poor.hot { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-poor) 70%, #fff); }
@@ -1517,3 +1518,18 @@ body.player .pt-mayor button.mp-give { min-height: 0; height: 2.35rem; padding: 
   .pt-view.pt-arrival:has(> .pt-mayor) { grid-template-columns: minmax(0, 1fr); }
 }
 @container pane (max-width: 420px) { .mp-boxes { grid-template-columns: minmax(0, 1fr); } }
+
+/* ================================================ HOUSE CREST & CAPTAIN PORTRAIT (17 Nov 2026) == */
+/* The top bar: the House's crest, square, in place of the colour chip. */
+.dk-house .crest.dk-crest { width: 3.3rem; height: 3.3rem; margin: 0; border-radius: calc(var(--radius) * .6);
+  box-shadow: 0 0 0 2px var(--house), 0 0 0 3px var(--edge-hi), 0 4px 12px rgba(0, 0, 0, .6); }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) { .dk-house .crest.dk-crest { width: 2.6rem; height: 2.6rem; } }
+@media (orientation: landscape) and (max-height: 560px) { .dk-house .crest.dk-crest { width: 2.2rem; height: 2.2rem; } }
+/* The captain at the foot of the rail, when the Captain has a portrait: the same square picture with the
+   name in white across its foot as the tab pictures above it (it takes the rail's "face" rules). */
+.dk-nav .dk-me .dk-face.face { padding: .25rem; gap: 0; }
+.dk-nav .dk-face.face .dk-tabimg { width: var(--ti); height: var(--ti); border: 0; border-radius: calc(var(--radius) * .6);
+  object-position: 50% 18%; box-shadow: 0 0 0 1px var(--edge-hi), 0 3px 8px rgba(0, 0, 0, .6); }
+.dk-nav .dk-face.face span { max-width: none; color: #fff; }
+.dk-me.open .dk-face.face .dk-tabimg { box-shadow: 0 0 0 2px var(--brass-hi), 0 0 14px color-mix(in srgb, var(--deck-brass) 70%, transparent); }
+.dk-me.open .dk-face.face::after { background: transparent; }

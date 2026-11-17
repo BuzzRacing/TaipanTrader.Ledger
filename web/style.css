@@ -295,3 +295,43 @@ video.portart, video.shipart { background: #000; }
    weight, so these are set to 400 (faux bold is off). */
 .roster li > b, .hname,
 .chart .port .port-name { font-family: var(--title); font-weight: 400; }
+
+/* Join screen: saved Captains (Admin > Captains). */
+main.narrow.cap-join { max-width: 760px; }
+.cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: .7rem; margin-top: .6rem; }
+.cap-tile { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .55rem .4rem .7rem; min-height: 0;
+  background: var(--input); border: 1px solid var(--rule); border-radius: var(--radius); cursor: pointer; text-align: center; }
+.cap-tile:hover, .cap-tile:focus-visible { border-color: var(--gold); box-shadow: 0 4px 14px rgba(69,41,26,.18); }
+.cap-tile b { font-family: var(--serif); font-size: 1.02rem; color: var(--ink); line-height: 1.15; }
+.cap-tile small { color: var(--muted); font-size: .78rem; line-height: 1.2; }
+.cap-tile.guest { border-style: dashed; }
+.cap-face { width: 100%; aspect-ratio: 3 / 4; border-radius: 6px; overflow: hidden; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 35%, #6d4a2e 0%, #1f1410 80%); }
+.cap-face img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; }
+.cap-face b { font: 700 2.2rem var(--serif); color: var(--on-dark); }
+.cap-face.big { width: 120px; flex: none; }
+.cap-chosen { display: flex; gap: 1rem; align-items: flex-start; margin: .3rem 0 .8rem; }
+.cap-chosen h3 { font-family: var(--serif); font-size: 1.4rem; margin: 0 0 .2rem; }
+.cap-chosen label { display: block; margin-top: .6rem; }
+.cap-chosen input { font-size: 1.3rem; letter-spacing: .3em; max-width: 12rem; }
+.cap-label { font-weight: 600; margin: .4rem 0 .35rem; }
+.cap-houses { display: grid; gap: .45rem; margin-bottom: .8rem; }
+.cap-house { display: flex; align-items: center; gap: .65rem; text-align: left; padding: .45rem .6rem; min-height: 0;
+  background: var(--input); border: 2px solid var(--rule); border-radius: var(--radius); cursor: pointer; }
+.cap-house.on { border-color: var(--hc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--hc) 30%, transparent); }
+.cap-house b { display: block; font-family: var(--serif); }
+.cap-house small { color: var(--muted); font-style: italic; }
+.cap-crest { width: 2.6rem; height: 2.6rem; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center;
+  background: var(--hc); border: 2px solid var(--hc); color: #fff7ea; font: 700 .9rem var(--serif); }
+.cap-crest img { width: 100%; height: 100%; object-fit: cover; }
+.cap-typed summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+.cap-typed[open] summary { margin-bottom: .6rem; }
+@media (max-width: 520px) { .cap-face.big { width: 88px; } }
+
+/* ================================================ HOUSE CRESTS & CAPTAIN PORTRAITS (17 Nov 2026) == */
+/* A House's crest from the Media Library stands where its colour chip used to, framed in the house colour. */
+.crest { display: inline-block; flex: none; width: 1.6rem; height: 1.6rem; margin-right: .5rem; vertical-align: middle;
+  object-fit: cover; border-radius: 4px; background: #000;
+  box-shadow: 0 0 0 1.5px var(--house, var(--brass, #b08a4a)), 0 2px 6px rgba(0, 0, 0, .55); }
+.roster li .crest { width: 1.9rem; height: 1.9rem; }
+.pt-chip .crest { width: 1.1rem; height: 1.1rem; margin-right: .35rem; border-radius: 3px; }

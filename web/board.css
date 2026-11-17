@@ -234,3 +234,8 @@ body.board::before {
   .br-encounters { max-width: 100%; }
   body.board #speaking.card { width: min(65vw, 18rem); }
 }
+
+/* House crests on the standings (17 Nov 2026) */
+.br-house.has-crest { display: flex; align-items: center; gap: .6em; }
+.br-house.has-crest > div { min-width: 0; }
+.br-house .crest.br-crest { width: 2.7em; height: 2.7em; margin: 0; border-radius: 6px; }

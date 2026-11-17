@@ -35,6 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import artbible
+import captains
 import cast
 import config
 import engine
@@ -299,10 +300,21 @@ class Hub:
             _key, deadline, secs = self._deadline(pid, self.game.s["players"][pid], time.time())
             me["battle"]["secs_left"] = round(max(0.0, deadline - time.time()), 1)
             me["battle"]["secs_total"] = secs
+        # Saved Captains' portraits and their Houses' crests (Media Library), on every seat and on mine.
+        try:
+            faces = captains.faces(self.game.s["players"].values(), self.game.s.get("game_id"), engine.CFG)
+        except Exception:
+            faces = {}
+        for q in v.get("players") or []:
+            q.update(faces.get(q["id"], {"portrait": "", "crest": ""}))
+        if me.get("id"):
+            me.update(faces.get(me["id"], {"portrait": "", "crest": ""}))
         cu = me.get("customs")
         if cu and cu.get("welcome"):
-            # The Port Authority officer's greeting, read by the officer of that port.
-            v["voice"]["customs"] = voice.PLAN.lines([cu["welcome"]], "log", port=cu.get("port"))
+            # The Port Authority officer's greeting, read by the officer of that port. At a captain's home
+            # port the Registrar reads her welcome home and then her price tip (her own lines, cast.py).
+            said = [cu["welcome"]] + ([cu["tip"]["text"]] if (cu.get("tip") or {}).get("text") else [])
+            v["voice"]["customs"] = voice.PLAN.lines(said, "log", port=cu.get("port"))
         return v
 
     def reload_settings(self, langs_saved=()):
@@ -326,11 +338,20 @@ class Hub:
     def ticker(self):
         """Notices when a player drops out so the others are not left waiting."""
         seen = self.present()
+        last = time.time()
         while True:
             time.sleep(3)
             try:
                 with self.cond:
                     now = self.present()
+                    t = time.time()
+                    if self.game.s["phase"] in ("port", "sea"):
+                        gid = self.game.s.get("game_id")
+                        seated = [(self.game.s["players"][pid]["captain"], gid) for pid in now
+                                  if self.game.s["players"].get(pid, {}).get("captain")]
+                        if seated:
+                            captains.tick(seated, min(30.0, t - last))
+                    last = t
                     for pid in seen - now:
                         p = self.game.s["players"].get(pid)
                         if p:
@@ -348,6 +369,52 @@ class Hub:
 
 
 HUB = None
+
+
+def captain_career(c):
+    """A Captain's record: stats.py career over their linked games, plus wins/losses, time at the
+    screen and a line per House."""
+    links = captains.links(c)
+    cur = journal.current()
+    running = HUB.game.s["phase"] != "ended" if HUB else False
+    try:
+        data = stats.career(c["name"], running_gid=cur if running else None,
+                            running_pid=links.get(cur), links=links) or {}
+    except Exception:
+        crash("Working out a Captain's record failed", captain=c.get("cid"))
+        data = {}
+    by_gid = {g["gid"]: g for g in c.get("games", []) if g.get("gid")}
+    games = data.get("games") or []
+    tot = {"games": len(games), "wins": 0, "losses": 0, "unfinished": 0, "playing": 0, "seconds": 0,
+           "months": 0, "best": None}
+    houses = {}
+    for g in games:
+        link = by_gid.get(g["id"], {})
+        g["house"], g["hid"] = link.get("house") or g.get("firm"), link.get("hid", "")
+        g["seconds"] = int(link.get("seconds") or 0)
+        if g.get("running"):
+            g["outcome"] = "playing"
+        elif not g.get("ended"):
+            g["outcome"] = "unfinished"
+        elif g.get("place") == 1:
+            g["outcome"] = "win"
+        else:
+            g["outcome"] = "loss"
+        tot[{"playing": "playing", "unfinished": "unfinished", "win": "wins", "loss": "losses"}[g["outcome"]]] += 1
+        tot["seconds"] += g["seconds"]
+        tot["months"] += g.get("months") or 0
+        tot["best"] = g["worth"] if tot["best"] is None else max(tot["best"], g["worth"])
+        h = houses.setdefault(g["hid"] or g["house"], {"hid": g["hid"], "house": g["house"], "games": 0, "wins": 0,
+                                                        "losses": 0, "best": None, "seconds": 0})
+        h["games"] += 1
+        h["wins"] += g["outcome"] == "win"
+        h["losses"] += g["outcome"] == "loss"
+        h["seconds"] += g["seconds"]
+        h["best"] = g["worth"] if h["best"] is None else max(h["best"], g["worth"])
+    tot["seconds"] = max(tot["seconds"], sum(int(x.get("seconds") or 0) for x in c.get("games", [])))
+    data["summary"] = tot
+    data["houses"] = list(houses.values())
+    return data
 
 
 def crash(what, **data):
@@ -550,6 +617,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, config.fonts_css(engine.CFG, fonts.local_css()), "text/css; charset=utf-8")
         if path == "/theme.css":
             return self._send(200, config.theme_css(screen_cfg()), "text/css; charset=utf-8")
+        if path == "/api/captains":
+            cfg = engine.CFG
+            return self._send(200, {"ok": True, "captains": captains.public_list(cfg),
+                                    "typed": bool(engine.R.get("captains", {}).get("typed"))})
         if path == "/api/info":
             with HUB.cond:
                 cfg = engine.CFG
@@ -587,6 +658,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, dict(voicefloor.FLOOR.ask(self.client_address[0], body.get("id"),
                                                                  body.get("op"), once), ok=True))
             if path == "/api/join":
+                if body.get("captain"):
+                    return self._join_captain(body)
+                if not engine.R.get("captains", {}).get("typed"):
+                    raise GameError(engine.tx("e.captain_only"))
                 with HUB.cond:
                     try:
                         token = HUB.game.join(body.get("name"), body.get("firm"), HUB.present(), via=self._via())
@@ -633,6 +708,31 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": False, "error": str(e), "voice": said})
         self._send(404, {"ok": False, "error": "Not found"})
 
+    def _join_captain(self, body):
+        """Join (or take back a seat) as a saved Captain: PIN checked first, then the House chosen."""
+        try:
+            c, h = captains.verify(body.get("captain"), body.get("pin"), body.get("house"), self.client_address[0])
+        except captains.CaptainError as e:
+            journal.note("rejected", "join", "A Captain's PIN was refused: {}".format(e), via=self._via(),
+                         error=str(e))
+            raise GameError(str(e))
+        with HUB.cond:
+            try:
+                token = HUB.game.join(c["name"], h["name"], HUB.present(), via=self._via(), captain=c["cid"])
+            except GameError as e:
+                journal.note("rejected", "join", "Captain {} was refused a seat: {}".format(c["name"], e),
+                             via=self._via(), error=str(e))
+                raise
+            pid = HUB.game.pid_for_token(token)
+            seat = HUB.game.s["players"].get(pid)
+            if seat is not None and not seat.get("hid"):
+                seat["hid"] = h["hid"]   # the House this seat sails under (its crest is shown on the screens)
+            captains.link_game(c["cid"], HUB.game.s.get("game_id"), pid, h)
+            HUB.changed()
+        journal.log("INFO", "players", "Captain {} came aboard under the House {}".format(c["name"], h["name"]),
+                    **self._via())
+        return self._send(200, {"ok": True, "token": token})
+
     # ------------------------------------------------------------- stats --
     def _stats_get(self, query):
         """A player's statistics (stats.py). The seat token says who is asking. Without a
@@ -654,7 +754,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": False, "error": engine.tx("st.e_who"), "who": True,
                                         "players": stats.players_seen()})
             if scope == "career":
-                data = stats.career(name, running_gid=cur if running else None, running_pid=pid)
+                cap = captains.get(me["captain"]) if me and me.get("captain") else None
+                data = stats.career(name, running_gid=cur if running else None, running_pid=pid,
+                                    links=captains.links(cap) if cap else None)
                 return self._send(200, {"ok": True, "scope": "career", "name": name, "current": cur,
                                         "seated": bool(me), "career": data})
             gid = one("game") or cur or ""
@@ -732,6 +834,24 @@ class Handler(BaseHTTPRequestHandler):
                 v.update({"ok": True, "saves": list_saves(), "cfg": HUB.cfg_version, "join_url": HUB.join_url,
                           "uptime": int(time.time() - STARTED)})
                 return self._send(200, v)
+        if what == "captains":
+            pics = {}
+            for it in media.load(engine.CFG)["items"]:
+                if it["kind"] in ("captain", "house") and it["subject"] and it["type"] == "image":
+                    pics.setdefault(it["subject"], []).append(
+                        {"id": it["id"], "url": it["url"], "primary": it["primary"], "nsfw": it["nsfw"],
+                         "enabled": it["enabled"], "added": it.get("added", ""), "source": it["source"],
+                         "prompt": it.get("prompt", "")})
+            for v in pics.values():
+                v.sort(key=lambda i: i["added"], reverse=True)       # newest first, the chosen one on top
+                v.sort(key=lambda i: not i["primary"])
+            return self._send(200, {"ok": True, "captains": captains.admin_list(engine.CFG, captain_career),
+                                    "pictures": pics,
+                                    "prompts": captains.prompts(), "free_pin": captains.free_pin(),
+                                    "ports": {k: v.get("name", k) for k, v in engine.CFG.get("ports", {}).items()},
+                                    "seated": {q.get("captain"): q["id"] for q in HUB.game.s["players"].values()
+                                               if q.get("captain")},
+                                    "jobs": media.JOBS.list()})
         if what == "voice/status":
             return self._send(200, dict(self._cast_status(), ok=True))
         if what == "voice/voices":
@@ -794,8 +914,12 @@ class Handler(BaseHTTPRequestHandler):
 
         if what == "media/upload":
             return self._media_upload(query)
+        if what == "captains/upload":
+            return self._captain_upload(query)
 
         body = self._body(4 * 1024 * 1024)
+        if what.startswith("captains/"):
+            return self._captains_post(what[len("captains/"):], body)
         if what.startswith("media/"):
             return self._media_post(what[len("media/"):], body)
         if what == "imagegen/portrait":
@@ -979,6 +1103,57 @@ class Handler(BaseHTTPRequestHandler):
             it["url"], it["kind"], it["subject"] or "-", len(data)), **self._via())
         return self._send(200, {"ok": True, "item": it})
 
+    def _captains_post(self, what, body):
+        """Admin > Captains: save, delete, prompt templates, star a picture."""
+        try:
+            if what == "save":
+                c = captains.save_captain(body.get("captain"))
+                media._public_cache.clear()
+                journal.log("INFO", "admin", "Captain {} saved ({} House{})".format(
+                    c["name"], len(c["houses"]), "" if len(c["houses"]) == 1 else "s"), **self._via())
+                return self._send(200, {"ok": True, "cid": c["cid"], "msg": "{} saved.".format(c["name"])})
+            if what == "delete":
+                cid = str(body.get("cid") or "")
+                if any(q.get("captain") == cid for q in HUB.game.s["players"].values()) \
+                        and HUB.game.s["phase"] != "ended":
+                    return self._send(200, {"ok": False, "error": "That Captain is sailing in the game now. "
+                                            "Retire them instead, or wait until the game ends."})
+                c = captains.delete_captain(cid)
+                journal.log("INFO", "admin", "Captain {} deleted (PIN {})".format(c["name"], c["pin"]), **self._via())
+                return self._send(200, {"ok": True, "msg": "{} deleted. Their games stay in the Captain's "
+                                        "Report.".format(c["name"])})
+            if what == "prompts":
+                captains.set_prompts(body.get("prompts"))
+                return self._send(200, {"ok": True, "msg": "Prompt templates saved."})
+            if what == "pick":
+                iid = str(body.get("id") or "")
+                it = next((i for i in media.load(engine.CFG)["items"] if i["id"] == iid), None)
+                if not it or it["kind"] not in ("captain", "house"):
+                    return self._send(200, {"ok": False, "error": "Choose a Captain or House picture."})
+                role = "portrait" if it["kind"] == "captain" else "crest"
+                media.update([iid], {"primary": True, "enabled": True}, add_roles=[role])
+                return self._send(200, {"ok": True, "url": it["url"], "msg": "Picture chosen."})
+        except captains.CaptainError as e:
+            return self._send(200, {"ok": False, "error": str(e)})
+        self._send(404, {"ok": False, "error": "Not found"})
+
+    def _captain_upload(self, query):
+        """A picture of a Captain or House chosen from disk: filed in the Media Library and starred."""
+        kind = query.get("kind", [""])[0]
+        subject = query.get("subject", [""])[0]
+        if kind not in ("captain", "house") or not (captains.CID_RE.match(subject) or captains.HID_RE.match(subject)):
+            return self._send(200, {"ok": False, "error": "Save the Captain first, then add pictures."})
+        ext = os.path.splitext(os.path.basename(query.get("name", ["image.png"])[0]))[1].lower()
+        if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+            return self._send(200, {"ok": False, "error": "Use a PNG, JPG, WebP or GIF image."})
+        data = self._raw(MAX_UPLOAD)
+        if data is None:
+            return self._send(200, {"ok": False, "error": "The image is empty or larger than 8 MB."})
+        it = media.add_bytes(data, ext, kind, subject, ["portrait" if kind == "captain" else "crest"],
+                             source="upload", primary=True, reviewed=True)
+        journal.log("INFO", "admin", "Captains: uploaded {} for {}/{}".format(it["url"], kind, subject), **self._via())
+        return self._send(200, {"ok": True, "url": it["url"], "msg": "Picture added and chosen."})
+
     def _media_post(self, what, body):
         cfg = engine.CFG
         ids = [str(x) for x in body.get("ids") or [] if isinstance(x, str)][:2000]
@@ -988,7 +1163,7 @@ class Handler(BaseHTTPRequestHandler):
             n = media.update(ids, changes, lst("add_tags"), lst("remove_tags"), lst("add_roles"), lst("remove_roles"))
             return self._send(200, {"ok": True, "changed": n, "msg": "Saved."})
         if what == "delete":
-            in_use = [u for u, *_ in media._config_refs(cfg)]
+            in_use = [u for u, *_ in media._config_refs(cfg)]   # Captain and House pictures may go; the next is shown
             want = set(ids)
             urls = [i["url"] for i in media.load(cfg)["items"] if i.get("id") in want and i.get("url") not in in_use]
             n = media.remove(ids, in_use)

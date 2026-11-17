@@ -96,6 +96,12 @@ KINDS = {
                         ["got_away", "Sea battle: got clear of them"], ["retreat", "Sea battle: breaking away, cargo overboard"],
                         ["victory", "Sea battle: victory"], ["defeat", "Sea battle: the fleet is lost"]],
               "default_role": "event"},
+    "captain": {"label": "Captains", "one": "Captain", "subjects": "captains",
+                "roles": [["portrait", "Captain's portrait: join screen and Admin > Captains (the starred one is shown)"]],
+                "default_role": "portrait"},
+    "house": {"label": "Houses", "one": "House", "subjects": "houses",
+              "roles": [["crest", "House crest: join screen and Admin > Captains (the starred one is shown)"]],
+              "default_role": "crest"},
     "service": {"label": "Home Port Services", "one": "Service", "subjects": "services",
                 "roles": [["background", "Background on the Home Port Services card"]], "default_role": "background"},
     "brand": {"label": "Brand", "one": "Brand slot", "subjects": "brand",
@@ -116,6 +122,8 @@ BRAND_SLOTS = [["logo", "Logo"], ["favicon", "Browser tab icon"], ["masthead_bg"
 
 RULE_DEFAULTS = {
     "persona": {"mode": "random", "seconds": 7, "video_chance": 35},
+    "captain": {"mode": "fixed", "seconds": 30, "video_chance": 0},
+    "house": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "port": {"mode": "random", "seconds": 14, "video_chance": 0},
     "ship": {"mode": "random", "seconds": 14, "video_chance": 0},
     "cargo": {"mode": "fixed", "seconds": 20, "video_chance": 0},
@@ -396,7 +404,12 @@ def subjects(cfg):
         link = c.get("brand_link") or ""
         name = (cfg.get("brand") or {}).get(link) if link else ""
         chars.append([cid, name or c.get("name") or cid])
-    return {"persona": chars, "port": names("ports"), "ship": names("ships"), "cargo": names("goods"),
+    try:
+        import captains                       # saved Captains and their Houses (captains.py)
+        caps, houses = captains.media_subjects()
+    except Exception:
+        caps, houses = [], []
+    return {"persona": chars, "captain": caps, "house": houses, "port": names("ports"), "ship": names("ships"), "cargo": names("goods"),
             "service": [list(s) for s in SERVICES], "scene": [list(s) for s in SCENES], "brand": [list(s) for s in BRAND_SLOTS], "reference": [], "other": []}
 
 
@@ -915,7 +928,13 @@ def admin_view(cfg):
               "video": sum(1 for i in items if i["type"] == "video"),
               "review": sum(1 for i in items if not i["reviewed"]),
               "bytes": sum(i["bytes"] for i in items)}
+    try:
+        import captains                       # base prompts for Captains and Houses (Admin > Captains)
+        prompts = captains.base_prompts()
+    except Exception:
+        prompts = {"captain": {}, "house": {}}
     return {"items": items, "rules": lib["rules"], "options": lib["options"], "kinds": KINDS, "modes": MODES,
+            "prompts": prompts,
             "subjects": subjects(cfg), "in_use": sorted(in_use), "counts": counts, "family": family(cfg),
             "rule_defaults": RULE_DEFAULTS, "slots": slot_status(cfg)}
 

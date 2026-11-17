@@ -71,6 +71,46 @@ function brandHtml(D) {
   return `${esc(b.title_a)} <span>${esc(b.title_b)}</span>`;
 }
 
+/* Saved Captains' pictures for the seats at the table (Admin > Captains, Media Library): the Captain's
+   portrait and the House's crest. The server sends them on each seat as portrait / crest; an older
+   server that does not, gets them matched by the seat's name and House from /api/captains (seats taken
+   with a Captain's PIN carry the Captain's name and the House's name). Faces.onChange is called when
+   the pictures arrive or change, so a screen can draw itself again. */
+const Faces = (() => {
+  let list = null, at = 0, busy = false, sig = "";
+  const api = { onChange: null };
+  function refresh() {
+    if (busy || (list && Date.now() - at < 30000)) return;
+    busy = true;
+    fetch("/api/captains").then(r => r.json()).then(r => {
+      if (!r.ok) return;
+      list = r.captains || [];
+      const now = JSON.stringify(list.map(c => [c.name, c.portrait, (c.houses || []).map(h => [h.name, h.image])]));
+      if (now !== sig) { sig = now; if (api.onChange) api.onChange(); }
+    }).catch(() => { list = list || []; }).finally(() => { busy = false; at = Date.now(); });
+  }
+  const norm = (s, n) => String(s || "").split(/\s+/).filter(Boolean).join(" ").slice(0, n).toLowerCase();
+  /* {portrait, crest} for a seat ({name, firm, portrait?, crest?}); "" where there is none. */
+  api.of = p => {
+    p = p || {};
+    if (p.portrait !== undefined && p.crest !== undefined) return { portrait: p.portrait || "", crest: p.crest || "" };
+    refresh();
+    const c = list && list.find(x => norm(x.name, 20) === norm(p.name, 20));
+    const h = c && (c.houses || []).find(x => norm(x.name, 28) === norm(p.firm, 28));
+    return { portrait: (c && h && c.portrait) || "", crest: (h && h.image) || "" };
+  };
+  api.refresh = refresh;
+  return api;
+})();
+
+/* The House's mark beside its name: its crest from the Media Library, else the old colour chip. */
+function houseMark(p, cls) {
+  const col = COLORS[((p && p.color) || 0) % COLORS.length];
+  const u = Faces.of(p).crest;
+  return u ? `<img class="crest${cls ? " " + cls : ""}" src="${esc(u)}" alt="" style="--house:${col}">`
+    : `<i class="chip${cls ? " " + cls : ""}" style="background:${col}"></i>`;
+}
+
 function pic(url, cls) {
   return url ? `<img class="${cls}" src="${esc(url)}" alt="">` : "";
 }

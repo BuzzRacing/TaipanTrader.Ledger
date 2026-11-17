@@ -167,6 +167,18 @@ const Customs = (() => {
     </blockquote>`;
   }
 
+  /* The Registrar's price tip (Hong Kong): one fresh price from her register, under her greeting.
+     Text only; it is already written into the Price Book. */
+  function tipHtml(c) {
+    const tp = c.tip;
+    if (!tp || !D.goods[tp.good] || !D.ports[tp.port]) return "";
+    const words = { goods: D.goods[tp.good].name, where: portName(tp.port), price: money(tp.price) };
+    return `<aside class="cx-tip" aria-label="${te("customs.tip_head")}">
+      <span class="cx-tip-art" aria-hidden="true">${Media.html("cargo", tp.good, "icon", "cx-tip-img", (D.graphics.goods || {})[tp.good], { mode: "fixed" })}</span>
+      <div><p class="eyebrow">${te("customs.tip_head")}</p><p class="cx-tip-say">${esc(tp.text || "")}</p>
+      <small>${te("customs.tip_note", words)}</small></div></aside>`;
+  }
+
   function oddsBar(c, n) {
     if (c.view === "tell") return `<p class="cx-hidden">${te("customs.odds_hidden")}</p>`;
     const showNum = c.view === "exact";
@@ -214,6 +226,7 @@ const Customs = (() => {
     return `<div class="cx-body">
       ${head(c)}
       ${greeting(c)}
+      ${tipHtml(c)}
       <p class="cx-tell" data-cx="tell">${esc(tell(c, n))}</p>
       <div class="cx-lines">${n.lines.map(l => lineRow(c, l)).join("")}</div>
       <div class="cx-quick">${btn(te("customs.all_low"), "cx_all", 'data-p="90"', "ghost")}${btn(te("customs.all_honest"), "cx_all", 'data-p="100"', "ghost")}${btn(te("customs.all_over"), "cx_all", 'data-p="110"', "ghost")}</div>
@@ -265,7 +278,7 @@ const Customs = (() => {
 
   function welcomeHtml(c) {
     shownState = "welcome";
-    return `<div class="cx-body">${head(c)}${greeting(c)}</div>`;
+    return `<div class="cx-body">${head(c)}${greeting(c)}${tipHtml(c)}</div>`;
   }
 
   function html() {
@@ -385,14 +398,18 @@ const Customs = (() => {
   function speak() {
     const c = cu();
     if (!c || !S.voice || !S.voice.customs) return;
-    if (c.home_free) return;   // the house's own home port: she only waves you in, so nothing is read aloud
-    const plan = S.voice.customs[0];
-    if (plan && plan.u && warmed !== plan.u) { warmed = plan.u; fetch(plan.u).catch(() => {}); }
+    // The house's own home port: the port's officer only waves you in, so nothing is read aloud;
+    // but where the Registrar meets the house (officer "taxlady") she reads her welcome and her tip.
+    if (c.home_free && c.officer !== "taxlady") return;
+    const plans = S.voice.customs, plan = plans[0];
+    plans.forEach(pl => { if (pl && pl.u && !warmed.includes(pl.u)) { warmed += " " + pl.u; fetch(pl.u).catch(() => {}); } });
     if (!document.querySelector(".cx-desk")) return;
     if (ui.cxSpoken === key(c)) return;
     ui.cxSpoken = key(c);
-    if (plan) Voice.say([Object.assign({ text: c.welcome, tag: "customs:" + key(c) }, plan)],
-                        { group: "msg", replace: "msg", front: true });
+    const texts = [c.welcome, c.tip && c.tip.text];
+    const items = plans.map((pl, i) => pl && texts[i] ? Object.assign({ text: texts[i], tag: "customs:" + key(c) + (i ? ":tip" : "") }, pl) : null)
+      .filter(Boolean);
+    if (items.length) Voice.say(items, { group: "msg", replace: "msg", front: true });
   }
 
   function markSpeaking(item) {
@@ -400,6 +417,11 @@ const Customs = (() => {
     if (!greeting) return;
     if (item && item.tag === "customs:" + key(cu())) greeting.setAttribute("aria-current", "true");
     else greeting.removeAttribute("aria-current");
+    const tip = document.querySelector(".cx-desk .cx-tip");
+    if (tip) {
+      if (item && item.tag === "customs:" + key(cu()) + ":tip") tip.setAttribute("aria-current", "true");
+      else tip.removeAttribute("aria-current");
+    }
   }
 
   return { html, live, keep, click, speak, stage, markSpeaking, isOpen: () => !!(cu() && !S.me.ready) };

@@ -665,11 +665,12 @@ def _voyage(gid, pid, running, meta, game):
 
 
 # --------------------------------------------------------------- career --
-def career(name, running_gid=None, running_pid=None):
+def career(name, running_gid=None, running_pid=None, links=None):
     """Every recorded game in which a player of this name sat. The running game
-    counts with fair-play rules and only for the player holding that seat."""
+    counts with fair-play rules and only for the player holding that seat.
+    links ({game id: seat id}, from a saved Captain) picks the games by Captain instead of by name."""
     want = (name or "").strip().lower()
-    if not want:
+    if not want and links is None:
         return None
     games, cargo, ports, records = [], {}, {}, {}
     heat = {}
@@ -679,7 +680,7 @@ def career(name, running_gid=None, running_pid=None):
     score_sum = score_n = 0
     for m in journal.games():
         gid = m.get("id")
-        pid = find_pid(gid, name)
+        pid = links.get(gid) if links is not None else find_pid(gid, name)
         if not pid:
             continue
         running = gid == running_gid

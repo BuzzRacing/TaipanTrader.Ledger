@@ -253,7 +253,7 @@ def main():
     voice.PLAN.configure(cfg, engine.TEXT)
     chars = cfg["characters"]
     officers = sorted({info.get("officer") for info in PORTS.values() if info.get("officer") in chars} - {"taxlady"})
-    assert len(officers) == 9, officers
+    assert len(officers) == 10, officers
     g = Game(seed=11)
     g.join("Ann", "")
     g.admin("start", {})

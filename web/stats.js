@@ -17,6 +17,7 @@ const tip = document.getElementById("tip");
 const ui = { scope: store("tally_scope") || "voyage", tab: store("tally_tab") || "fortune", game: null, name: null,
              good: null, tables: {}, raceAt: null, raceTimer: null, mapTimer: null, lastJson: {} };
 let V = null;                         // voyage answer
+Faces.onChange = () => { if (V || C) render(false); };   // House crests arrived or changed
 let C = null;                         // career answer
 const EMBED = new URLSearchParams(location.search).has("embed");   // inside the player screen
 if (EMBED) document.body.classList.add("embed");
@@ -27,6 +28,12 @@ const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: r
    separation pass, all >= 3:1 on the panel colour). A house keeps its slot by its seat colour. */
 const SER = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c", "#9085e9", "#e66767"];
 const ser = i => SER[((i % 8) + 8) % 8];
+/* A House's mark: its crest from the Media Library (common.js Faces), else the seat-colour chip. */
+function houseIco(h, cls, name) {
+  const u = Faces.of({ name: h.name || name, firm: h.firm, portrait: h.portrait, crest: h.crest }).crest;
+  return u ? `<img class="crest${cls ? " " + cls : ""}" src="${esc(u)}" alt="" style="--house:${ser(h.color)}">`
+    : `<i class="chip" style="background:${ser(h.color)}"></i>`;
+}
 const SINGLE = "#d6b25e";             // a lone series: brass
 const POS = [57, 135, 229], NEG = [230, 103, 103], MID = [52, 47, 42];      // diverging poles and neutral
 const SEQ0 = [44, 35, 26], SEQ1 = [236, 200, 110];                          // sequential: dark -> brass
@@ -157,7 +164,7 @@ function render(animate) {
   const games = gameOptions();
   app.innerHTML = `<div class="tl" data-scope="${scope}" data-tab="${ui.tab}">
     <header class="tl-top">
-      <div class="tl-house">${vs ? `<i class="chip" style="background:${ser(who.color)}"></i>` : icon("rank", "big")}
+      <div class="tl-house">${vs ? houseIco(who, "tl-crest", name) : icon("rank", "big")}
         <div><p class="eyebrow">${te("st.title")}</p>${head}</div></div>
       <div class="tl-scope seg" role="tablist">
         ${btn(te("st.voyage"), "scope", `data-s="voyage" ${V ? "" : "disabled"}`, scope === "voyage" ? "on" : "")}
@@ -632,7 +639,7 @@ function headToHead(v) {
   const head = [te("col.house"), te("st.k.worth"), te("st.peak")].concat(full ? [te("st.k.realised"), te("st.k.score"), te("st.k.trades_h"), te("st.k.battles"), te("st.t.wrecks"), te("st.best_cargo")] : []);
   const rows = all.map((h, i) => {
     const k = h.kpis;
-    const base = [`${i + 1}. <i class="chip" style="background:${ser(h.color)}"></i><b>${esc(h.firm)}</b> <span class="muted">${esc(h.name)}</span> <span class="rankname">${esc(k.rank)}</span>`,
+    const base = [`${i + 1}. ${houseIco(h, "", V && V.name)}<b>${esc(h.firm)}</b> <span class="muted">${esc(h.name)}</span> <span class="rankname">${esc(k.rank)}</span>`,
       money(k.worth), money(k.peak)];
     return full ? base.concat([signed(k.realised), k.score == null ? "–" : k.score, k.trades, k.won + "/" + k.battles, k.wrecks,
       k.best_cargo ? esc(goodName(k.best_cargo)) : "–"]) : base;
@@ -728,7 +735,7 @@ function raceBars(id, houses, me, animate) {
   node.innerHTML = `<div class="race" style="height:${houses.length * 2.6}rem">${values.map(x => {
     const rank = order.indexOf(x);
     return `<div class="rb${x.h.id === me.id ? " me" : ""}" style="transform:translateY(${rank * 2.6}rem)">
-      <span class="rn"><i class="chip" style="background:${ser(x.h.color)}"></i>${esc(x.h.firm)}</span>
+      <span class="rn">${houseIco(x.h, "", V && V.name)}${esc(x.h.firm)}</span>
       <span class="rt2"><i style="width:${Math.max(1, Math.abs(x.v) / max * 100)}%;background:${ser(x.h.color)};${x.v < 0 ? "opacity:.45" : ""}"></i></span>
       <b>${short(x.v)}</b></div>`;
   }).join("")}</div>

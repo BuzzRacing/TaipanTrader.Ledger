@@ -187,3 +187,8 @@ body.seafighting #app { visibility: hidden; }
   #seafight, .sf-result, .sf-cap.in, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
   .sf-pic, .sf-junks i, .sf-hull i { transition: none; }
 }
+
+/* House crests on the waiting list (17 Nov 2026) */
+.sf-wait li .crest.sf-crest { float: left; width: 2.6rem; height: 2.6rem; margin: .05rem .7rem 0 0; border-radius: 6px;
+  box-shadow: 0 0 0 1.5px var(--who, var(--deck-brass)), 0 2px 6px rgba(0, 0, 0, .55); }
+.sf-wait li::after { content: ""; display: block; clear: both; }
