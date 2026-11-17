@@ -262,6 +262,7 @@ function render() {
   }
   deckArt(inGame);
   markSpeaking();
+  if (typeof Battle !== "undefined") Battle.sync();
 }
 
 /* The living background and the stage's picture between lines. */
@@ -479,9 +480,12 @@ function endScreen() {
 function topHtml() {
   const me = S.me, p = pending();
   const dir = (to, from) => to > from ? " up" : to < from ? " dn" : "";
-  const stats = [["stat.silver", money(p.cash), "silver" + dir(p.cash, me.cash)], ["stat.bank", money(me.bank)], ["stat.debt", money(me.debt), me.debt > 0 ? "bad" : ""],
+  // The debt clock: months until the moneylender's collectors next call, if nothing changes.
+  const due = (me.collectors || {}).calls_in;
+  const stats = [["stat.silver", money(p.cash), "silver" + dir(p.cash, me.cash)], ["stat.bank", money(me.bank)],
+                 ["stat.debt", money(me.debt), (me.debt > 0 ? "bad" : "") + (due ? " due" : "") + (due === 1 ? " due-now" : ""), due ? ten("stat.debt_due", due) : ""],
                  ["stat.worth", money(me.worth), "worth"], ["stat.hold", p.used + " / " + me.capacity, dir(p.used, me.used).trim()], ["stat.guns", guns()]]
-    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b></div>`).join("");
+    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("");
   return `<div class="dk-house"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
       <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
       <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
@@ -507,8 +511,10 @@ function pending() {
 function gameScreen() {
   const me = S.me;
   if (ui.seenTurn === null) ui.seenTurn = me.log.length && S.turn > 0 ? -1 : S.turn;
-  const report = ui.seenTurn !== S.turn && me.log.length ? logModal() : "";
-  if (ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
+  // A fight at sea comes before everything: the log and the Port Authority wait until it is over (battle.js).
+  const fighting = typeof Battle !== "undefined" && Battle.busy();
+  const report = !fighting && ui.seenTurn !== S.turn && me.log.length ? logModal() : "";
+  if (!fighting && ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
   const top = topHtml();
   const nav = ["port", "market", "ledger", "fleet", "chart"].map(k =>
@@ -523,7 +529,7 @@ function gameScreen() {
   const side = ui.tab === "market" ? dealerCard() : ui.tab === "chart" ? clearanceLedger()
     : ui.tab === "port" ? `<section class="card pt-race pt-race-side"><h2>${te("port.race.title")}</h2>${portRace()}</section>` : "";
   // The Port Authority's desk comes first in a new port (after the month's log is read).
-  return { top, nav, pane, side, over: report || Customs.html() };
+  return { top, nav, pane, side, over: fighting ? "" : report || Customs.html() };
 }
 
 /* The captain button at the foot of the rail: the player's picture (S.me.portrait if the server ever
@@ -775,7 +781,7 @@ const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
   ["port", ["dues", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
   ["money", ["interest", "bank_interest"]],
-  ["perils", ["booty", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed"]],
+  ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed"]],
 ];
 const plTotal = lines => Object.values(lines || {}).reduce((a, b) => a + b, 0);
 const signed = n => (n > 0 ? "+" : "") + money(n);
@@ -857,6 +863,9 @@ function portTodo() {
     home ? btn(te("port.view.services"), "port_view", 'data-v="services"', "pt-go") : ""]);
   if (me.debt > 0) items.push(["down", te(home ? "port.todo.debt_home" : "port.todo.debt", { interest: money(me.debt * D.loan_rate) }),
     home ? btn(te("port.view.services"), "port_view", 'data-v="services"', "pt-go") : btn(te("port.view.accounts"), "port_view", 'data-v="accounts"', "pt-go")]);
+  const coll = me.collectors;
+  if (coll && coll.calls_in) items.push([coll.calls_in === 1 ? "down" : "warn", ten("port.todo.collectors", coll.calls_in, { amount: money(coll.to_clear) }),
+    btn(te("port.view.accounts"), "port_view", 'data-v="accounts"', "pt-go")]);
   if (!me.used && !me.ready) items.push(["", te("port.todo.empty"), go("market", te("tab.market"))]);
   if (!items.length) return `<p class="muted">${te("port.todo.none")}</p>`;
   const icon = { up: "◆", warn: "⚠", down: "⚖", ok: "⚓", "": "•" };
@@ -881,7 +890,7 @@ function portGlance() {
     ${row(te("port.glance.bans"), bans.length ? chips(bans, "down") : te("port.glance.no_bans"))}
     ${row(te("port.glance.cut", { rep: (me.rep || {})[me.port] }), pct(me.spread, 1) + "%")}
     ${row(te("port.glance.dues"), "×" + (me.dues && me.dues.level != null ? me.dues.level : 1))}
-    ${row(te("port.glance.authority"), rate > 0 ? te("port.glance.authority_rate", { rate: pct(rate, 1) }) : te("port.glance.free"))}
+    ${row(te("port.glance.authority"), me.home_free && me.port === myHome() ? te("port.glance.home_free") : rate > 0 ? te("port.glance.authority_rate", { rate: pct(rate, 1) }) : te("port.glance.free"))}
     ${row(te("port.glance.yard"), port.shipyard ? te("port.glance.yes") : te("port.glance.no_yard", { yards: esc(D.yards.join(", ")) }))}
     ${row(te("port.glance.rivals"), rivals.length ? rivals.map(p => `<span class="pt-chip"><i class="chip" style="background:${COLORS[p.color % 8]}"></i>${esc(p.firm)}</span>`).join("") : te("port.glance.alone"))}
   </table>`;
@@ -952,6 +961,13 @@ function portOwe() {
     if (paid > 0.5) rows += row(te("port.owe.paid"), money(paid), "down");
     rows += row(te("port.owe.next"), money(me.debt * r), "down");
     if (double) rows += row(te("port.owe.double"), ten("port.owe.months", double), "", te(home ? "port.owe.repay_here" : "port.owe.repay_home"));
+    const c = me.collectors;
+    if (c) {
+      rows += row(te("port.owe.line"), money(c.line), c.over ? "down" : "", ten("port.owe.line_note", c.every, { months: c.grace }));
+      rows += c.calls_in
+        ? row(`<b>${te("port.owe.call")}</b>`, ten("port.owe.call_in", c.calls_in), "down", te("port.owe.call_note", { rep: c.penalty, amount: money(c.to_clear) }))
+        : row(te("port.owe.call"), te("port.owe.call_none"), "up", te("port.owe.call_none_note"));
+    }
   } else {
     rows += row(te("port.owe.lender"), te("port.owe.clear"), "up");
   }

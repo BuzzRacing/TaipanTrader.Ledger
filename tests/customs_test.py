@@ -25,6 +25,7 @@ def arrive(seed, dest, cargo=(("tea", 30), ("general", 25))):
         g.act("p1", {"type": "buy", "good": good, "qty": q}, present=["p1"])
     g.act("p1", {"type": "sail", "dest": dest, "orders": "run"}, present=["p1"])
     assert g.maybe_advance({"p1"})
+    g.fight_out({"p1"})   # captains at their screens fight their battles
     return g, p
 
 
@@ -112,6 +113,49 @@ def main():
         for k, port in PORTS.items():
             r, base = g.tax_rate(k), port["tax_rate"]
             assert (r == 0) if base == 0 else abs(r - base) <= engine.R["customs"]["range"] + 1e-9, (k, r)
+
+    # 5b. A house pays no cargo tax in its own home port, whatever that port charges others;
+    #     everywhere else it pays as usual, and the Admin switch turns the favour off.
+    def land(game, pid, port):
+        q = game.s["players"][pid]
+        q["port"], q["cargo"], q["customs"] = port, {"tea": 20}, None
+        game._open_customs(q)
+        return q["customs"], game.view(pid, [pid])["me"]
+
+    engine.configure(config.defaults())               # random starts
+    homes = set()
+    for seed in range(30):
+        g = Game(seed=seed)
+        g.join("Ann", "")
+        g.admin("start", {})
+        p = g.s["players"]["p1"]
+        home = p["home"]
+        homes.add(home)
+        cu, me = land(g, "p1", home)
+        assert cu["status"] == "welcome" and cu["free"] and cu["home_free"] and cu["rate"] == 0, (home, cu)
+        assert me["home_free"] and me["customs"]["home_free"] and PORTS[home]["name"] in me["customs"]["welcome"]
+        assert g.tax_rate_for(p, home) == 0
+        for away in PORTS:
+            if away == home:
+                continue
+            cu, me = land(g, "p1", away)
+            assert not cu["home_free"] and cu["rate"] == g.tax_rate(away) == g.tax_rate_for(p, away)
+            assert cu["status"] == ("declare" if PORTS[away]["tax_rate"] > 0 else "welcome")
+    assert len(homes) > 5 and homes - {"hongkong"}, homes
+    off = config.defaults()
+    off["rules"]["customs"]["home_free"] = False
+    assert not config.validate(off)[1]
+    engine.configure(off)
+    for seed in range(30):
+        g = Game(seed=seed)
+        g.join("Ann", "")
+        g.admin("start", {})
+        p = g.s["players"]["p1"]
+        cu, me = land(g, "p1", p["home"])
+        assert not cu["home_free"] and not me["home_free"] and cu["rate"] == g.tax_rate(p["home"])
+    back = config.defaults()
+    back["rules"]["start"]["where"] = "home"
+    engine.configure(back)
 
     # 6. Her lines are read by the officer of the port the house is in.
     cfg = config.defaults()

@@ -91,6 +91,7 @@ def configure(cfg=None, text=None):
     REGIONS.update({k: dict(v) for k, v in cfg["regions"].items()})
     R.clear()
     R.update(cfg["rules"])
+    R["battle"] = dict(BATTLE_DEFAULTS, **(cfg["rules"].get("battle") or {}))   # settings saved before the sea battle
     HOME = R["game"]["home"]
     MULT.clear()
     MULT.update(cfg["difficulty"]["presets"][cfg["difficulty"]["level"]])
@@ -152,11 +153,16 @@ def pct(x):
     return "{:g}%".format(round(x * 100, 2))
 
 
+# The sea battle played on screen (rules.battle). Used whole when the settings predate it.
+BATTLE_DEFAULTS = {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
+                   "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
+                   "round_secs": 20, "first_extra": 10, "voice_grace": 6}
+
 # Which heading of the captain's report each player action belongs under.
 ACTION_CAT = {"buy": "trade", "sell": "trade", "warehouse": "trade",
               "bank": "finance", "loan": "finance", "protection": "finance",
               "buy_ship": "fleet", "sell_ship": "fleet", "buy_gun": "fleet", "repair": "fleet",
-              "sail": "orders", "unsail": "orders",
+              "sail": "orders", "unsail": "orders", "sea": "orders",
               "customs_declare": "finance", "customs_buyback": "finance", "customs_done": "finance",
               "settings": "host", "start": "host", "force": "host"}
 
@@ -166,6 +172,7 @@ class Game:
         self.on_event = None      # set by the server: called with one dict per event
         self._hold = None         # events queued while an action is being applied
         self._detail = None       # extra facts an action handler wants in its event
+        self._say_from, self._said = 0, 0   # which of the bosun's lines comes next (see _frame)
         if seed is None:
             seed = secrets.randbits(62)
         self.rng = random.Random(seed)
@@ -316,6 +323,8 @@ class Game:
         """Make a saved or running game fit the current settings (ports, cargoes
         or ship types may have been added or removed in the Admin page)."""
         s = self.s
+        if s.get("phase") == "sea" and not s.get("sea"):
+            s["phase"] = "port"
         s.setdefault("shocks", [])
         s.setdefault("crackdown", {})
         s.setdefault("news", [])
@@ -498,6 +507,38 @@ class Game:
         assets = p["cash"] + p["bank"] + sum(self.ship_value(sh) for sh in p["ships"])
         return b["loan_base"] + b["loan_per_rep"] * p["rep"][home_of(p)] + b["loan_asset_share"] * max(assets, 0)
 
+    def collectors_line(self, p):
+        """The debt the collectors tolerate. It is built like the loan limit but leaves out silver and
+        bank, so every dollar repaid brings the debt closer to the line (counting silver, paying it
+        over to the lender lowered the line faster than the debt)."""
+        b = R["bank"]
+        ships = sum(self.ship_value(sh) for sh in p["ships"])
+        return b["debt_warn_mult"] * (b["loan_base"] + b["loan_per_rep"] * p["rep"][home_of(p)]
+                                      + b["loan_asset_share"] * max(ships, 0))
+
+    def collectors(self, p):
+        """The debt clock shown on the player screen: the line the collectors watch, and how many
+        month-ends until they next call if nothing changes (1 = the end of this month). None when
+        there is no debt. Mirrors the count kept in resolve()."""
+        b = R["bank"]
+        if p["debt"] <= 0:
+            return None
+        line = self.collectors_line(p)
+        grace = max(0, int(b.get("debt_grace_months", 0)))
+        every = max(1, int(b.get("debt_call_every", 1)))
+        calls_in = None
+        # Repaid now, this much leaves the debt on the line after this month's interest.
+        to_clear = min(p["debt"], max(0.0, p["debt"] - line / (1 + loan_rate())))
+        if p["debt"] * (1 + loan_rate()) > line:
+            n = int(p.get("debt_over", 0)) + 1      # the count at the end of this month
+            calls_in = 1
+            while not (n > grace and (n - grace - 1) % every == 0):
+                n += 1
+                calls_in += 1
+        return {"line": int(line), "over": p["debt"] > line, "months_over": int(p.get("debt_over", 0)),
+                "calls_in": calls_in, "penalty": b["debt_rep_penalty"], "grace": grace, "every": every,
+                "to_clear": int(math.ceil(to_clear)) if calls_in else 0}
+
     def repair_rate(self, p, sh):
         f = R["fleet"]
         rate = f["repair_base"] + SHIPS[sh["type"]]["price"] / float(f["repair_price_div"])
@@ -561,6 +602,8 @@ class Game:
         amount = round(float(amount), 2)
         if not amount:
             return
+        if p.get("battle") is not None:
+            p["battle"]["net"] = round(p["battle"].get("net", 0.0) + amount, 2)
         bk = self._books(p)
         year = self.s["turn"] // 12
         if bk["year_no"] != year:
@@ -656,6 +699,15 @@ class Game:
             return 0.0
         return float((self.s.get("tax_rates") or {}).get(port, base))
 
+    def home_free(self, p, port):
+        """True when this port is the house's own home port and homes are tax-free
+        (Pirates & Customs > A house pays no cargo tax in its own home port)."""
+        return bool(R["customs"].get("home_free", True)) and port == home_of(p)
+
+    def tax_rate_for(self, p, port):
+        """The rate this house is charged in a port: nothing at home, the port's rate elsewhere."""
+        return 0.0 if self.home_free(p, port) else self.tax_rate(port)
+
     def _drift_tax_rates(self):
         """Every port's rate wanders a little each month, staying near its base."""
         c, rates = R["customs"], self.s.setdefault("tax_rates", {})
@@ -721,7 +773,8 @@ class Game:
         if not c["enabled"]:
             p["customs"] = None
             return
-        rate = self.tax_rate(port)
+        rate = self.tax_rate_for(p, port)
+        at_home = self.home_free(p, port)
         mids = self.s["prices"][port]
         lines = []
         for g in sorted(p["cargo"], key=lambda k: -p["cargo"][k] * mids[k]):
@@ -736,9 +789,10 @@ class Game:
         box = int(c["strongbox"] * self.rng.uniform(1 - c["strongbox_swing"], 1 + c["strongbox_swing"])) if status == "declare" else 0
         p["customs"] = {"port": port, "turn": self.s["turn"], "status": status, "officer": self.officer_of(port),
                         "rate": round(rate, 4), "base": float(PORTS[port].get("tax_rate", 0.0) or 0.0),
-                        "free": rate <= 0, "lines": lines, "cx": cx, "box": box, "result": None}
+                        "free": rate <= 0, "home_free": at_home, "lines": lines, "cx": cx, "box": box, "result": None}
         self._ev("finance", "customs_open", "{}: the Port Authority of {} ({}) {}".format(
             p["name"], PORTS[port]["name"], self.officer_of(port),
+            "waves the house in (its home port, no tax)" if at_home else
             "waves the house in (free port)" if rate <= 0 else "has nothing to tax (empty hold)" if not lines else
             "asks for a declaration at {}: {}; strongbox {}, mood x{}".format(
                 pct(rate), ", ".join("{} {} worth {}".format(ln["qty"], GOODS[ln["good"]]["name"], money(ln["value"]))
@@ -972,7 +1026,10 @@ class Game:
             for r in out["result"]["lines"]:
                 r["back_price"] = self.buyback_cost(r) if r["units"] and not r["back"] else 0
         name = PORTS[cu["port"]]["name"]
-        if cu["free"]:
+        out["home_free"] = bool(cu.get("home_free"))
+        if out["home_free"]:
+            out["welcome"] = tx("l.customs_home", line=out["line"], port=name)
+        elif cu["free"]:
             out["welcome"] = tx("l.customs_free", line=out["line"], port=name)
         elif not cu["lines"]:
             out["welcome"] = tx("l.customs_empty", port=name)
@@ -1098,11 +1155,18 @@ class Game:
                 raise GameError(tx("e.host_start"))
             return self._start()
         if kind == "force":
-            if not is_host or s["phase"] != "port":
+            if not is_host or s["phase"] not in ("port", "sea"):
                 raise GameError(tx("e.host_force"))
-            self.resolve("host")
+            if s["phase"] == "sea":
+                self._sea_force()            # every open fight is finished on standing orders
+            else:
+                self.resolve("host", present)
             return tx("m.forced")
 
+        if s["phase"] == "sea":
+            if kind != "sea":
+                raise GameError(tx("e.at_sea"))
+            return self._act_sea(p, a)
         if s["phase"] != "port":
             raise GameError(tx("e.not_running"))
         if kind == "unsail":
@@ -1433,10 +1497,15 @@ class Game:
                 raise GameError("Nobody has joined yet.")
             return self._start()
         if op == "force":
+            if s["phase"] == "sea":
+                self._sea_force()
+                return "Every fight was finished on standing orders and the turn ended."
             if s["phase"] != "port":
                 raise GameError("The game is not in progress.")
-            self.resolve("admin")
+            self.resolve("admin", a.get("present") if isinstance(a.get("present"), list) else None)
             return "Turn ended."
+        if s["phase"] == "sea" and op in ("finish", "kick", "adjust", "years"):
+            self._sea_force()                # finish the month before the game is changed under it
         if op == "years":
             s["years"] = int(number("years", 1, 100))
             if s["phase"] == "ended" and s["turn"] < s["years"] * 12:
@@ -1514,7 +1583,13 @@ class Game:
         return False
 
     def resolve(self, cause="all_ready", present=None):
+        """Turn the month. Voyages are sailed first; a house that meets pirates while its captain is
+        at a screen fights on that screen, and the month waits "at sea" (nobody lands) until every
+        fight is over. Then _resolve_finish does the rest."""
         s, rng = self.s, self.rng
+        if s.get("sea"):                     # already at sea: finish the open fights on standing orders
+            self._sea_force()
+            return
         news = []
         label = date_label(s["turn"])
         b = R["bank"]
@@ -1524,7 +1599,7 @@ class Game:
                             "present": None if present is None else q["id"] in present}
                   for q in (s["players"][i] for i in s["order"])}
         self._ev("turn", "turn_resolve", "Resolving {} ({})".format(label, why), do="resolve", cause=cause,
-                 date=label, orders=orders)
+                 date=label, orders=orders, present=None if present is None else sorted(present))
         # The forecast is only sometimes wrong.
         actual = dict(s["weather"])
         wx = [tx("wx.{}".format(i)) for i in range(4)]
@@ -1546,20 +1621,61 @@ class Game:
         news.extend(s.pop("pending_news", None) or [])
         for p in players:
             p["log"] = []
+            p.pop("fights", None)
             self._settle_customs(p)
         self._drift_tax_rates()          # the new month's rates, quoted to every ship that arrives
-        origins = {p["id"]: (p["port"], bool(p["ready"] and p["dest"])) for p in players}
+        origins = {p["id"]: [p["port"], bool(p["ready"] and p["dest"])] for p in players}
+        s["sea"] = {"cause": cause, "label": label, "actual": actual, "news": news, "origins": origins,
+                    "order": [p["id"] for p in players], "present": None if present is None else sorted(present)}
         for p in players:
             if p["ready"] and p["dest"]:
                 self._depart(p, news)
-                self._voyage(p, actual, news)
+                p["voy"] = {"stage": 0, "origin": p["port"], "dest": p["dest"]}
+                self._voyage_step(p)
             else:
                 p["log"].append(tx("l.anchor", port=PORTS[p["port"]]["name"]))
                 self._ev("voyage", "anchor", "{} stayed at anchor in {}{}".format(
                     p["name"], PORTS[p["port"]]["name"], "" if p["ready"] else " (gave no orders)"), p,
                     port=p["port"], gave_orders=p["ready"])
             p["ready"], p["dest"], p["slip"] = False, None, False
+        self._sea_check()
 
+    def _sea_check(self):
+        """Still at sea while any house is in a fight; otherwise the month is finished."""
+        s = self.s
+        if not s.get("sea"):
+            return
+        fighting = [p for p in s["players"].values() if p.get("battle") is not None]
+        if fighting:
+            if s["phase"] == "port":
+                s["phase"] = "sea"
+                self._ev("turn", "at_sea", "The month waits at sea: {} in a fight".format(
+                    ", ".join(p["name"] for p in fighting)), fighting=[p["id"] for p in fighting])
+            return
+        self._resolve_finish()
+
+    def _sea_force(self):
+        """Finish every open fight on standing orders (the host or the admin ended the month)."""
+        s = self.s
+        if not s.get("sea"):
+            return
+        for pid in s["sea"]["order"]:
+            p = s["players"].get(pid)
+            if p is not None and p.get("battle") is not None:
+                p["battle"]["auto"] = True
+                self._voyage_step(p)
+        self._sea_check()
+
+    def _resolve_finish(self):
+        s, rng = self.s, self.rng
+        sea = s.pop("sea")
+        if s["phase"] == "sea":
+            s["phase"] = "port"
+        news, label, origins, b = sea["news"], sea["label"], sea["origins"], R["bank"]
+        players = [s["players"][pid] for pid in sea["order"] if pid in s["players"]]
+        for p in players:
+            p.pop("voy", None)
+            p.pop("battle", None)
         for p in players:
             bank0, debt0 = p["bank"], p["debt"]
             if p["bank"] > 0:
@@ -1568,23 +1684,24 @@ class Game:
                 p["debt"] *= 1 + loan_rate()
                 # Collectors: a grace period after debt first passes the line, then a call every few months.
                 # "debt_over" counts the months in a row spent over the line (old saves start at 0).
-                if p["debt"] > self.loan_limit(p) * b["debt_warn_mult"]:
+                if p["debt"] > self.collectors_line(p):
                     p["debt_over"] = int(p.get("debt_over", 0)) + 1
                     grace = max(0, int(b.get("debt_grace_months", 0)))
                     every = max(1, int(b.get("debt_call_every", 1)))
                     if p["debt_over"] > grace and (p["debt_over"] - grace - 1) % every == 0:
                         self._gain_rep(p, home_of(p), -b["debt_rep_penalty"])
                         p["log"].append(tx("l.collectors", home=PORTS[home_of(p)]["name"]))
-                        self._ev("finance", "collectors", "{}: debt {} is over {} times the loan limit {} (month {} over "
+                        self._ev("finance", "collectors", "{}: debt {} is over the collectors' line {} (month {} over "
                                  "the line; grace {}, then every {}); standing in {} fell by {}".format(
-                                     p["name"], money(p["debt"]), b["debt_warn_mult"], money(self.loan_limit(p)),
+                                     p["name"], money(p["debt"]), money(self.collectors_line(p)),
                                      p["debt_over"], grace, every, PORTS[home_of(p)]["name"], b["debt_rep_penalty"]), p)
                     elif p["debt_over"] == 1:
                         # First month over the line: a warning only, no standing lost.
-                        p["log"].append(tx("l.collectors_warn", months=grace, s="" if grace == 1 else "s"))
-                        self._ev("finance", "collectors_warn", "{}: debt {} is over {} times the loan limit {}; warned, "
+                        p["log"].append(tx("l.collectors_warn", months=grace, s="" if grace == 1 else "s",
+                                           home=PORTS[home_of(p)]["name"]))
+                        self._ev("finance", "collectors_warn", "{}: debt {} is over the collectors' line {}; warned, "
                                  "no penalty. The collectors first call after {} month(s) of grace".format(
-                                     p["name"], money(p["debt"]), b["debt_warn_mult"], money(self.loan_limit(p)), grace), p)
+                                     p["name"], money(p["debt"]), money(self.collectors_line(p)), grace), p)
                 else:
                     p["debt_over"] = 0
             self._book(p, "bank_interest", p["bank"] - bank0)
@@ -1687,174 +1804,494 @@ class Game:
                      "to": round(s["prices"][port][g], 2)} for ch, port, g in moves])
 
     # ---------------------------------------------------------- voyages --
-    def _voyage(self, p, actual, news):
-        rng, log = self.rng, p["log"]
-        w, pi, ly, cb = R["weather"], R["pirates"], R["liyuen"], R["contraband"]
-        origin, dest = p["port"], p["dest"]
-        risk = max(w["risk_min"], min(w["risk_max"], distance(origin, dest) / float(w["risk_div"])))
-        level = max(actual[PORTS[origin]["region"]], actual[PORTS[dest]["region"]])
-        log.append(tx("l.sailed", origin=PORTS[origin]["name"], dest=PORTS[dest]["name"],
-                      weather=tx("l.sea.{}".format(level))))
-        who = p["name"]
-        self._ev("voyage", "sailed", "{} sailed {} -> {}: {} ship{}, {} guns, hold {}/{}, orders {}, sea {}, "
-                 "distance risk x{:.2f}{}".format(
-                     who, PORTS[origin]["name"], PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
-                     self.guns(p), self.used(p), self.capacity(p), p["orders"], tx("wx.{}".format(level)), risk,
-                     ", protected for {} more months".format(p["protect"]) if p["protect"] > 0 else ", no protection"),
-                 p, origin=origin, dest=dest, sea=level, risk=round(risk, 4), orders=p["orders"], protect=p["protect"],
-                 cargo=dict(p["cargo"]), cash=int(p["cash"]),
-                 ships=[{"type": sh["type"], "name": sh["name"], "hull": sh["hull"], "guns": sh["guns"]} for sh in p["ships"]])
-
-        storm = w["storm_chance"][level] * min(risk, 1.4) * MULT["storms"]
-        if self._chance(storm, "storm", "{}: caught in a {}".format(who, "typhoon" if level == 3 else "storm"), p):
-            lo, hi = (w["typhoon_dmg_min"], w["typhoon_dmg_max"]) if level == 3 else (w["storm_dmg_min"], w["storm_dmg_max"])
-            hits = []
-            for sh in p["ships"]:
-                hit = rng.randint(lo, hi)
-                took = int(hit * w["fast_dmg_mult"]) if SHIPS[sh["type"]]["fast"] else hit
-                sh["hull"] -= took
-                hits.append({"name": sh["name"], "damage": took, "hull": sh["hull"]})
-            log.append(tx("l.typhoon" if level == 3 else "l.storm"))
-            self._ev("voyage", "storm_damage", "{}: {} damage ({}-{} per ship): {}".format(
-                who, "typhoon" if level == 3 else "storm", lo, hi,
-                ", ".join("{} -{} (hull {})".format(h["name"], h["damage"], h["hull"]) for h in hits)), p, hits=hits)
-            self._check_sunk(p, tx("l.how_foundered"))
-            others = [k for k in PORTS if k not in (origin, dest)]
-            if p["ships"] and level == 3 and others and self._chance(w["offcourse"], "offcourse",
-                                                                    "{}: blown off course".format(who), p):
-                dest = rng.choice(others)
-                log.append(tx("l.offcourse", port=PORTS[dest]["name"]))
-                self._ev("voyage", "offcourse", "{} was blown off course to {}".format(who, PORTS[dest]["name"]), p, dest=dest)
-
-        if p["ships"] and self._chance(pi["chance"] * risk * MULT["pirates"], "pirates",
-                                       "{}: pirate attack".format(who), p):
-            top = max(pi["fleet_min"], pi["fleet_base"] + self.capacity(p) // pi["fleet_per_hold"])
-            n = int(rng.randint(pi["fleet_min"], top) * risk)
-            n = max(1, min(n, pi["fleet_max"]))
-            if p["protect"] > 0 and self._chance(ly["protect_save"], "protection",
-                                                 "{}: {}'s fleet drives off {} pirate junks".format(who, TOKENS["pirate"], n), p):
-                log.append(tx("l.driven_off", n=n))
-            else:
-                self._battle(p, n, tx("w.pirate_junks"), pi["hit"], (pi["dmg_min"], pi["dmg_max"]))
-
-        if p["ships"] and p["protect"] <= 0 and self._chance(ly["chance"] * risk * MULT["pirates"], "pirate_lord",
-                                                              "{}: found by {}'s fleet (no protection)".format(who, TOKENS["pirate"]), p):
-            n = min(ly["fleet_max"], ly["fleet_base"] + self.capacity(p) // ly["fleet_per_hold"])
-            log.append(tx("l.lord_found"))
-            self._battle(p, n, tx("w.war_junks"), ly["hit"], (ly["dmg_min"], ly["dmg_max"]))
-
-        if not p["ships"]:
-            self._shipwreck(p, news)
+    def _voyage_step(self, p):
+        """Sail a voyage as far as it will go: to the end, or until a fight needs the captain.
+        Stages: 0 put to sea (storms), 1 pirates, 2 the pirate lord's fleet, 3 landfall."""
+        v = p.get("voy")
+        if not v:
             return
+        rng, log = self.rng, p["log"]
+        sea = self.s["sea"]
+        actual, news = sea["actual"], sea["news"]
+        w, pi, ly, cb = R["weather"], R["pirates"], R["liyuen"], R["contraband"]
+        who = p["name"]
+        while True:
+            if p.get("battle") is not None:
+                if self._battle_live(p):
+                    return                      # the captain is choosing; the month waits
+                self._battle_step(p, "auto")
+                continue
+            origin, dest = v["origin"], v["dest"]
+            if v["stage"] == 0:
+                v["stage"] = 1
+                risk = max(w["risk_min"], min(w["risk_max"], distance(origin, dest) / float(w["risk_div"])))
+                level = max(actual[PORTS[origin]["region"]], actual[PORTS[dest]["region"]])
+                v["risk"], v["level"] = risk, level
+                log.append(tx("l.sailed", origin=PORTS[origin]["name"], dest=PORTS[dest]["name"],
+                              weather=tx("l.sea.{}".format(level))))
+                self._ev("voyage", "sailed", "{} sailed {} -> {}: {} ship{}, {} guns, hold {}/{}, orders {}, sea {}, "
+                         "distance risk x{:.2f}{}".format(
+                             who, PORTS[origin]["name"], PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
+                             self.guns(p), self.used(p), self.capacity(p), p["orders"], tx("wx.{}".format(level)), risk,
+                             ", protected for {} more months".format(p["protect"]) if p["protect"] > 0 else ", no protection"),
+                         p, origin=origin, dest=dest, sea=level, risk=round(risk, 4), orders=p["orders"], protect=p["protect"],
+                         cargo=dict(p["cargo"]), cash=int(p["cash"]),
+                         ships=[{"type": sh["type"], "name": sh["name"], "hull": sh["hull"], "guns": sh["guns"]} for sh in p["ships"]])
 
-        p["port"] = dest
-        p["tab"] = self._new_tab()
-        log.append(tx("l.anchored", port=PORTS[dest]["name"]))
-        self._ev("voyage", "arrived", "{} anchored in {}: {} ship{}, hull {}, hold {}/{}, silver {}".format(
-            who, PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
-            "/".join(str(sh["hull"]) for sh in p["ships"]), self.used(p), self.capacity(p), money(p["cash"])),
-            p, port=dest, cargo=dict(p["cargo"]), cash=int(p["cash"]))
-        risky = self.at_risk(dest)
-        held = sum(p["cargo"].get(g, 0) for g in risky)
-        if held:
-            banned = dest in self.s["crackdown"]
-            chance = (cb["seize_banned"] - cb["seize_rep_relief"] * p["rep"][dest]) if banned else cb["seize_chance"]
-            if self._chance(chance * MULT["seizure"], "seizure", "{}: customs search in {} ({} units of contraband, {}, standing {})".format(
-                    who, PORTS[dest]["name"], held, "banned here" if banned else "no ban", int(round(p["rep"][dest]))), p):
-                fine = int(min(p["cash"], held * cb["fine_per_unit"]))
-                self._book(p, "seized", -self._cost_of(p, {g: p["cargo"].get(g, 0) for g in risky}))
-                self._book(p, "fines", -fine)
-                taken = {g: p["cargo"].pop(g) for g in risky if p["cargo"].get(g)}
-                what = names_of(list(taken))
-                p["cash"] -= fine
-                self._gain_rep(p, dest, -cb["rep_penalty"])
-                log.append(tx("l.seized", qty=held, fine=money(fine), contraband=what.lower(), Contraband=what))
-                news.append(tx("n.caught", name=p["name"], firm=p["firm"], port=PORTS[dest]["name"],
-                               contraband=what.lower(), Contraband=what))
-                self._ev("voyage", "seized", "{}: customs in {} seized {} units of {} and fined {}; standing -{}".format(
-                    who, PORTS[dest]["name"], held, what, money(fine), cb["rep_penalty"]), p, qty=held, fine=fine,
-                    port=dest, goods=taken)
-        self._open_customs(p)
+                storm = w["storm_chance"][level] * min(risk, 1.4) * MULT["storms"]
+                if self._chance(storm, "storm", "{}: caught in a {}".format(who, "typhoon" if level == 3 else "storm"), p):
+                    lo, hi = (w["typhoon_dmg_min"], w["typhoon_dmg_max"]) if level == 3 else (w["storm_dmg_min"], w["storm_dmg_max"])
+                    hits = []
+                    for sh in p["ships"]:
+                        hit = rng.randint(lo, hi)
+                        took = int(hit * w["fast_dmg_mult"]) if SHIPS[sh["type"]]["fast"] else hit
+                        sh["hull"] -= took
+                        hits.append({"name": sh["name"], "damage": took, "hull": sh["hull"]})
+                    log.append(tx("l.typhoon" if level == 3 else "l.storm"))
+                    self._ev("voyage", "storm_damage", "{}: {} damage ({}-{} per ship): {}".format(
+                        who, "typhoon" if level == 3 else "storm", lo, hi,
+                        ", ".join("{} -{} (hull {})".format(h["name"], h["damage"], h["hull"]) for h in hits)), p, hits=hits)
+                    self._check_sunk(p, tx("l.how_foundered"))
+                    others = [k for k in PORTS if k not in (origin, dest)]
+                    if p["ships"] and level == 3 and others and self._chance(w["offcourse"], "offcourse",
+                                                                            "{}: blown off course".format(who), p):
+                        dest = v["dest"] = rng.choice(others)
+                        log.append(tx("l.offcourse", port=PORTS[dest]["name"]))
+                        self._ev("voyage", "offcourse", "{} was blown off course to {}".format(who, PORTS[dest]["name"]), p, dest=dest)
+            elif v["stage"] == 1:
+                v["stage"] = 2
+                risk = v["risk"]
+                if p["ships"] and self._chance(pi["chance"] * risk * MULT["pirates"], "pirates",
+                                               "{}: pirate attack".format(who), p):
+                    top = max(pi["fleet_min"], pi["fleet_base"] + self.capacity(p) // pi["fleet_per_hold"])
+                    n = int(rng.randint(pi["fleet_min"], top) * risk)
+                    n = max(1, min(n, pi["fleet_max"]))
+                    if p["protect"] > 0 and self._chance(ly["protect_save"], "protection",
+                                                         "{}: {}'s fleet drives off {} pirate junks".format(who, TOKENS["pirate"], n), p):
+                        log.append(tx("l.driven_off", n=n))
+                    else:
+                        self._battle_open(p, n, "pirates")
+            elif v["stage"] == 2:
+                v["stage"] = 3
+                risk = v["risk"]
+                if p["ships"] and p["protect"] <= 0 and self._chance(ly["chance"] * risk * MULT["pirates"], "pirate_lord",
+                                                                      "{}: found by {}'s fleet (no protection)".format(who, TOKENS["pirate"]), p):
+                    n = min(ly["fleet_max"], ly["fleet_base"] + self.capacity(p) // ly["fleet_per_hold"])
+                    log.append(tx("l.lord_found"))
+                    self._battle_open(p, n, "lord")
+            else:
+                p.pop("voy", None)
+                if not p["ships"]:
+                    self._shipwreck(p, news)
+                    return
+                p["port"] = dest
+                p["tab"] = self._new_tab()
+                log.append(tx("l.anchored", port=PORTS[dest]["name"]))
+                self._ev("voyage", "arrived", "{} anchored in {}: {} ship{}, hull {}, hold {}/{}, silver {}".format(
+                    who, PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
+                    "/".join(str(sh["hull"]) for sh in p["ships"]), self.used(p), self.capacity(p), money(p["cash"])),
+                    p, port=dest, cargo=dict(p["cargo"]), cash=int(p["cash"]))
+                risky = self.at_risk(dest)
+                held = sum(p["cargo"].get(g, 0) for g in risky)
+                if held:
+                    banned = dest in self.s["crackdown"]
+                    chance = (cb["seize_banned"] - cb["seize_rep_relief"] * p["rep"][dest]) if banned else cb["seize_chance"]
+                    if self._chance(chance * MULT["seizure"], "seizure", "{}: customs search in {} ({} units of contraband, {}, standing {})".format(
+                            who, PORTS[dest]["name"], held, "banned here" if banned else "no ban", int(round(p["rep"][dest]))), p):
+                        fine = int(min(p["cash"], held * cb["fine_per_unit"]))
+                        self._book(p, "seized", -self._cost_of(p, {g: p["cargo"].get(g, 0) for g in risky}))
+                        self._book(p, "fines", -fine)
+                        taken = {g: p["cargo"].pop(g) for g in risky if p["cargo"].get(g)}
+                        what = names_of(list(taken))
+                        p["cash"] -= fine
+                        self._gain_rep(p, dest, -cb["rep_penalty"])
+                        log.append(tx("l.seized", qty=held, fine=money(fine), contraband=what.lower(), Contraband=what))
+                        news.append(tx("n.caught", name=p["name"], firm=p["firm"], port=PORTS[dest]["name"],
+                                       contraband=what.lower(), Contraband=what))
+                        self._ev("voyage", "seized", "{}: customs in {} seized {} units of {} and fined {}; standing -{}".format(
+                            who, PORTS[dest]["name"], held, what, money(fine), cb["rep_penalty"]), p, qty=held, fine=fine,
+                            port=dest, goods=taken)
+                self._open_customs(p)
+                return
 
-    def _battle(self, p, n, label, hit, dmg):
-        rng, log, pi = self.rng, p["log"], R["pirates"]
+    # ------------------------------------------------------- sea battles --
+    # A fight is a small state on the house (p["battle"]) played one step at a time. A captain at a
+    # screen chooses each round (fight, run, retreat; or pays the pirates' price before the first
+    # shot); a house with nobody at the helm plays every round on its standing orders, exactly as
+    # battles were always settled. A fight played on screen rolls its own dice from its own seed,
+    # so it comes out the same whatever else is going on around it.
+    SEA_CHOICES = ("fight", "run", "retreat", "pay", "auto", "skip")
+
+    def _battle_live(self, p):
+        """Is this fight being played by its captain (rather than on standing orders)?"""
+        b = p.get("battle")
+        return bool(b) and b.get("seed") is not None and not b.get("auto")
+
+    def _frame(self, moment, cap, say=None, **kw):
+        """One picture-and-caption of a fight. say: the pool of spoken lines to draw from."""
+        f = {"moment": moment, "cap": tx("battle.cap." + cap, **kw)}
+        if say:
+            count = 0
+            while "battle.say.{}.{}".format(say, count) in TEXT:
+                count += 1
+            if count:
+                self._said = getattr(self, "_said", 0) + 1
+                f["say"] = tx("battle.say.{}.{}".format(say, (self._say_from + self._said) % count))
+        return f
+
+    def _battle_open(self, p, n, kind):
+        rng, log, pi, bt = self.rng, p["log"], R["pirates"], R["battle"]
+        src = pi if kind == "pirates" else R["liyuen"]
+        label = tx("w.pirate_junks" if kind == "pirates" else "w.war_junks")
+        hit, dmg = src["hit"], [src["dmg_min"], src["dmg_max"]]
+        sea = self.s.get("sea") or {}
+        live = bool(bt["interactive"] and sea.get("present") is not None and p["id"] in sea["present"])
         orders = p["orders"]
-        if orders == "fight" and self.guns(p) == 0:
+        noguns = orders == "fight" and self.guns(p) == 0
+        if noguns:
             orders = "run"
+        dest = (p.get("voy") or {}).get("dest")
+        b = {"kind": kind, "label": label, "n": n, "hp": [pi["hp"]] * n, "hit": hit, "dmg": dmg,
+             "round": 0, "step": 0, "stage": "fight", "orders": orders, "runs": 0, "seed": None, "auto": not live,
+             "fast": all(SHIPS[sh["type"]]["fast"] for sh in p["ships"]),
+             "hull0": sum(sh["hull"] for sh in p["ships"]),
+             "ships0": [{"name": sh["name"], "type": sh["type"], "hull": sh["hull"]} for sh in p["ships"]],
+             "cargo0": dict(p["cargo"]), "net": 0.0, "booty": 0, "paid": 0, "price": 0, "dest": dest, "beat": None}
+        if live:
+            b["seed"] = rng.getrandbits(48)
+            own = random.Random("{}:open".format(b["seed"]))
+            b["dump"] = round(own.uniform(bt["retreat_min"], bt["retreat_max"]), 4)
+            if kind == "pirates" and bt["parley"]:
+                value = sum(q * GOODS[g]["base"] for g, q in p["cargo"].items() if g in GOODS)
+                b["price"] = int(max(1, n * bt["parley_per_junk"] + bt["parley_cargo"] * value))
+                b["stage"] = "parley"
+            log.append(tx("l.attack_met", n=n, enemy=label))
+        elif noguns:
             log.append(tx("l.attack_noguns", n=n, enemy=label))
         else:
             log.append(tx("l.attack", n=n, enemy=label, orders=tx("w.fight" if orders == "fight" else "w.run")))
-        pirates = [pi["hp"]] * n
-        fast = all(SHIPS[sh["type"]]["fast"] for sh in p["ships"])
-        hull_before = sum(sh["hull"] for sh in p["ships"])
+        p["battle"] = b
+        self._say_from, self._said = (b["seed"] or 0) % 9973, 0
         who = p["name"]
         self._ev("battle", "battle", "{} attacked by {} {}: orders {}{}, {} guns, hull {}; enemy hits {} per junk per "
-                 "round for {}-{}".format(who, n, label, orders, " (no guns, so running)" if orders != p["orders"] else "",
-                                          self.guns(p), "/".join(str(sh["hull"]) for sh in p["ships"]), pct(hit), dmg[0], dmg[1]),
-                 p, enemy=label, count=n, orders=orders, guns=self.guns(p), hit=hit, dmg=list(dmg))
-        for rnd in range(1, pi["rounds"] + 1):
-            s = "" if rnd == 1 else "s"
-            if orders == "fight":
-                shots = hits = 0
-                for _ in range(self.guns(p)):
-                    if pirates:
-                        shots += 1
-                    if pirates and rng.random() < pi["gun_hit"]:
-                        hits += 1
-                        pirates[-1] -= 1
-                        if pirates[-1] <= 0:
-                            pirates.pop()
-                self._ev("battle", "round", "{} round {}: {} shots at {} each, {} hit, {} of {} enemy left".format(
-                    who, rnd, shots, pct(pi["gun_hit"]), hits, len(pirates), n), p, round=rnd, shots=shots, hits=hits,
-                    enemy_left=len(pirates))
-                if not pirates:
-                    booty = int(n * rng.randint(pi["booty_min"], pi["booty_max"])
-                                * (1 + self.s["turn"] / float(pi["booty_growth"])))
-                    p["cash"] += booty
-                    self._book(p, "booty", booty)
-                    log.append(tx("l.sank_all", n=n, rounds=rnd, s=s, booty=money(booty)))
-                    self._ev("battle", "won", "{} sank all {} in {} round{} and took {} in booty".format(
-                        who, n, rnd, s, money(booty)), p, rounds=rnd, booty=booty)
-                    break
-            elif self._chance(pi["run_base"] + (pi["run_fast"] if fast else 0) + pi["run_round"] * rnd, "escape",
-                              "{} round {}: outrun them{}".format(who, rnd, " (every ship is fast)" if fast else ""), p, round=rnd):
-                log.append(tx("l.outran", rounds=rnd, s=s))
-                pirates = []
+                 "round for {}-{}{}".format(who, n, label, orders, " (no guns, so running)" if orders != p["orders"] else "",
+                                            self.guns(p), "/".join(str(sh["hull"]) for sh in p["ships"]), pct(hit), dmg[0], dmg[1],
+                                            "; fought on screen" + ("; they ask {} to let the fleet pass".format(money(b["price"]))
+                                                                    if b["price"] else "") if live else ""),
+                 p, enemy=label, count=n, orders=orders, guns=self.guns(p), hit=hit, dmg=list(dmg),
+                 **({"live": True, "parley": b["price"]} if live else {}))
+        where = PORTS[dest]["name"] if dest in PORTS else ""
+        frames = [self._frame("sighting", "sighting", "sighting", n=n, enemy=label, port=where)]
+        if b["stage"] == "parley":
+            frames.append(self._frame("sighting", "parley", "parley", price=money(b["price"])))
+        b["beat"] = {"id": 0, "frames": frames}
+
+    def _battle_step(self, p, choice):
+        """Play one step of a fight: one round, or the answer to the pirates' price."""
+        b = p["battle"]
+        keep = self.rng
+        if b["seed"] is not None:
+            self.rng = random.Random("{}:{}".format(b["seed"], b["step"]))
+        try:
+            self._battle_round(p, b, choice)
+        finally:
+            self.rng = keep
+        b["step"] += 1
+
+    def _retreat_dump(self, p, b):
+        """What goes over the side to break away: a share of the hold, cheapest cargo first."""
+        over = int(self.used(p) * b.get("dump", 0.0))
+        gone = {}
+        for g in sorted(p["cargo"], key=lambda k: GOODS[k]["base"]):
+            if over <= 0:
                 break
+            drop = min(over, p["cargo"][g])
+            if drop > 0:
+                gone[g] = drop
+                over -= drop
+        return gone
+
+    def _battle_round(self, p, b, choice):
+        rng, log, pi, bt = self.rng, p["log"], R["pirates"], R["battle"]
+        who, n, pirates, hit, dmg = p["name"], b["n"], b["hp"], b["hit"], b["dmg"]
+        frames = []
+        self._say_from, self._said = (b["seed"] or 0) % 9973 + b["step"] * 5, 0
+        if choice == "auto":
+            choice = b["orders"]
+        if b["stage"] == "parley":
+            if choice == "pay":
+                price = b["price"]
+                p["cash"] -= price
+                self._book(p, "parley", -price)
+                b["paid"] = price
+                log.append(tx("l.parley_paid", n=n, enemy=b["label"], cost=money(price)))
+                self._ev("battle", "paid", "{} paid {} {} {} to pass".format(who, n, b["label"], money(price)), p, price=price)
+                frames.append(self._frame("got_away", "paid", "paid", price=money(price)))
+                return self._battle_close(p, b, "paid", frames)
+            b["stage"] = "fight"
+            self._ev("battle", "parley_refused", "{} refused to pay {}".format(who, money(b["price"])), p, price=b["price"])
+        rnd = b["round"] + 1
+        s = "" if rnd == 1 else "s"
+
+        if choice == "retreat":
+            gone = self._retreat_dump(p, b)
+            if gone:
+                self._book(p, "overboard", -self._cost_of(p, gone))
+                for g, q in gone.items():
+                    p["cargo"][g] -= q
+                p["cargo"] = {g: q for g, q in p["cargo"].items() if q > 0}
             taken_round = []
-            for _ in pirates:
+            for _ in pirates:                                   # every junk afloat fires as the fleet turns away
                 if p["ships"] and rng.random() < hit:
                     target = rng.choice(p["ships"])
                     points = rng.randint(*dmg)
                     target["hull"] -= points
                     taken_round.append({"name": target["name"], "damage": points, "hull": target["hull"]})
-            if pirates:
-                self._ev("battle", "enemy_fire", "{} round {}: {} enemy fired, {} hit{}".format(
-                    who, rnd, len(pirates), len(taken_round), ": " + ", ".join(
-                        "{} -{} (hull {})".format(h["name"], h["damage"], h["hull"]) for h in taken_round) if taken_round else ""),
-                    p, round=rnd, enemy=len(pirates), hits=taken_round)
+            if p["ships"] and all(sh["hull"] <= 0 for sh in p["ships"]):
+                last = max(p["ships"], key=lambda sh: sh["hull"])   # a retreat never takes the last ship
+                last["hull"] = max(1, min(int(bt["retreat_floor"]), SHIPS[last["type"]]["hull"]))
+            qty = sum(gone.values())
+            log.append(tx("l.retreated", qty=qty))
+            self._ev("battle", "retreat", "{} round {}: broke away from {} of {} {}; {} units over the side ({}); {} parting "
+                     "shots, {} hit{}".format(who, rnd, len(pirates), n, b["label"], qty,
+                                              ", ".join("{} {}".format(q, GOODS[g]["name"]) for g, q in gone.items()) or "nothing",
+                                              len(pirates), len(taken_round), ": " + ", ".join(
+                                                  "{} -{} (hull {})".format(h["name"], h["damage"], h["hull"]) for h in taken_round)
+                                              if taken_round else ""),
+                     p, round=rnd, lost=gone, hits=taken_round, enemy_left=len(pirates))
+            names = [sh["name"] for sh in p["ships"]]
             self._check_sunk(p, tx("l.how_sunk"))
-            if not p["ships"]:
-                return
+            b["round"] = rnd
+            frames.append(self._frame("retreat", "retreat", "retreat", qty=qty))
+            self._hit_frames(p, b, frames, taken_round, names, say=False)
+            return self._battle_close(p, b, "retreated", frames)
+
+        if choice == "fight":
+            shots = hits = 0
+            left0 = len(pirates)
+            for _ in range(self.guns(p)):
+                if pirates:
+                    shots += 1
+                if pirates and rng.random() < pi["gun_hit"]:
+                    hits += 1
+                    pirates[-1] -= 1
+                    if pirates[-1] <= 0:
+                        pirates.pop()
+            self._ev("battle", "round", "{} round {}: {} shots at {} each, {} hit, {} of {} enemy left".format(
+                who, rnd, shots, pct(pi["gun_hit"]), hits, len(pirates), n), p, round=rnd, shots=shots, hits=hits,
+                enemy_left=len(pirates))
+            sunk = left0 - len(pirates)
+            if not pirates:
+                booty = int(n * rng.randint(pi["booty_min"], pi["booty_max"])
+                            * (1 + self.s["turn"] / float(pi["booty_growth"])))
+                p["cash"] += booty
+                self._book(p, "booty", booty)
+                b["booty"] = booty
+                log.append(tx("l.sank_all", n=n, rounds=rnd, s=s, booty=money(booty)))
+                self._ev("battle", "won", "{} sank all {} in {} round{} and took {} in booty".format(
+                    who, n, rnd, s, money(booty)), p, rounds=rnd, booty=booty)
+                b["round"] = rnd
+                frames.append(self._frame("victory", "victory", "victory", n=n, booty=money(booty)))
+                return self._battle_close(p, b, "won", frames)
+            if sunk:
+                frames.append(self._frame("enemy_hit", "sunk", "enemy_hit", sunk=sunk, left=len(pirates), n=n))
+            elif hits:
+                frames.append(self._frame("broadside", "broadside", "broadside", hits=hits, shots=shots, left=len(pirates), n=n))
+            else:
+                frames.append(self._frame("broadside", "miss" if shots else "noguns", "miss", left=len(pirates), n=n))
+        elif self._chance(pi["run_base"] + (pi["run_fast"] if b["fast"] else 0) + pi["run_round"] * rnd, "escape",
+                          "{} round {}: outrun them{}".format(who, rnd, " (every ship is fast)" if b["fast"] else ""), p, round=rnd):
+            log.append(tx("l.outran", rounds=rnd, s=s))
+            b["round"] = rnd
+            frames.append(self._frame("got_away", "got_away", "got_away"))
+            return self._battle_close(p, b, "away", frames)
         else:
-            if orders == "fight":
+            b["runs"] += 1
+            frames.append(self._frame("sighting", "run_fail", "run_fail", left=len(pirates)))
+        taken_round = []
+        for _ in pirates:
+            if p["ships"] and rng.random() < hit:
+                target = rng.choice(p["ships"])
+                points = rng.randint(*dmg)
+                target["hull"] -= points
+                taken_round.append({"name": target["name"], "damage": points, "hull": target["hull"]})
+        if pirates:
+            self._ev("battle", "enemy_fire", "{} round {}: {} enemy fired, {} hit{}".format(
+                who, rnd, len(pirates), len(taken_round), ": " + ", ".join(
+                    "{} -{} (hull {})".format(h["name"], h["damage"], h["hull"]) for h in taken_round) if taken_round else ""),
+                p, round=rnd, enemy=len(pirates), hits=taken_round)
+        names = [sh["name"] for sh in p["ships"]]
+        self._check_sunk(p, tx("l.how_sunk"))
+        b["round"] = rnd
+        self._hit_frames(p, b, frames, taken_round, names)
+        if not p["ships"]:
+            frames.append(self._frame("defeat", "defeat", "defeat"))
+            return self._battle_close(p, b, "wrecked", frames)
+        if rnd >= pi["rounds"]:
+            if b["runs"] == 0:
                 log.append(tx("l.long_fight", n=n - len(pirates)))
                 self._ev("battle", "broke_off", "{}: enemy broke off after {} rounds; {} of {} sunk".format(
                     who, pi["rounds"], n - len(pirates), n), p, sunk=n - len(pirates))
-            else:
-                lost = {g: int(q * rng.uniform(pi["plunder_min"], pi["plunder_max"])) for g, q in p["cargo"].items()}
-                self._book(p, "plundered", -self._cost_of(p, lost))
-                for g, q in lost.items():
-                    p["cargo"][g] -= q
-                p["cargo"] = {g: q for g, q in p["cargo"].items() if q > 0}
-                log.append(tx("l.plundered", qty=sum(lost.values())))
-                self._ev("battle", "plundered", "{} could not get away in {} rounds and was plundered of {} units: {}".format(
-                    who, pi["rounds"], sum(lost.values()),
-                    ", ".join("{} {}".format(q, GOODS[g]["name"]) for g, q in lost.items() if q) or "nothing"),
-                    p, lost={g: q for g, q in lost.items() if q})
-        taken = hull_before - sum(sh["hull"] for sh in p["ships"])
+                frames.append(self._frame("got_away", "broke_off", "broke_off", sunk=n - len(pirates), n=n))
+                return self._battle_close(p, b, "broke_off", frames)
+            # Every round spent running and failing lets them close: the cargo they carry off is in
+            # proportion (all of it when the fleet only ever ran, as before).
+            share = b["runs"] / float(rnd)
+            lost = {g: int(q * rng.uniform(pi["plunder_min"], pi["plunder_max"]) * share) for g, q in p["cargo"].items()}
+            self._book(p, "plundered", -self._cost_of(p, lost))
+            for g, q in lost.items():
+                p["cargo"][g] -= q
+            p["cargo"] = {g: q for g, q in p["cargo"].items() if q > 0}
+            log.append(tx("l.plundered", qty=sum(lost.values())))
+            self._ev("battle", "plundered", "{} could not get away in {} rounds and was plundered of {} units: {}".format(
+                who, pi["rounds"], sum(lost.values()),
+                ", ".join("{} {}".format(q, GOODS[g]["name"]) for g, q in lost.items() if q) or "nothing"),
+                p, lost={g: q for g, q in lost.items() if q})
+            frames.append(self._frame("boarding", "plundered", "plundered", qty=sum(lost.values())))
+            return self._battle_close(p, b, "plundered", frames)
+        b["beat"] = {"id": b["step"] + 1, "frames": frames}
+
+    def _hit_frames(self, p, b, frames, taken_round, names, say=True):
+        """Pictures for the enemy's fire: the damage, then any ship that went down."""
+        if taken_round:
+            frames.append(self._frame("we_are_hit", "we_are_hit", "we_are_hit" if say else None,
+                                      points=sum(h["damage"] for h in taken_round), n=len(taken_round)))
+        afloat = {sh["name"] for sh in p["ships"]}
+        for sh in b["ships0"]:
+            if sh["name"] in names and sh["name"] not in afloat:
+                frames.append(self._frame("ship_lost", "ship_lost", "ship_lost",
+                                          ship=SHIPS[sh["type"]]["name"] if sh["type"] in SHIPS else sh["type"], name=sh["name"]))
+
+    def _battle_close(self, p, b, outcome, frames):
+        """The fight is over: the damage line for the log, and the reckoning for the screen."""
+        taken = b["hull0"] - sum(sh["hull"] for sh in p["ships"])
         if taken > 0 and p["ships"]:
-            log.append(tx("l.damage", points=taken))
+            p["log"].append(tx("l.damage", points=taken))
+        if b["seed"] is not None:
+            now = {sh["name"]: sh for sh in p["ships"]}
+            ships = [{"name": sh["name"], "type": sh["type"], "hull0": sh["hull"],
+                      "hull1": now[sh["name"]]["hull"] if sh["name"] in now else 0,
+                      "max": SHIPS[sh["type"]]["hull"] if sh["type"] in SHIPS else sh["hull"],
+                      "lost": sh["name"] not in now} for sh in b["ships0"]]
+            lost = {g: q - p["cargo"].get(g, 0) for g, q in b["cargo0"].items() if q - p["cargo"].get(g, 0) > 0}
+            cargo = [{"good": g, "qty": q, "cost": int(round(self._cost_of(p, {g: q})))} for g, q in lost.items()]
+            dest = b.get("dest")
+            if outcome != "wrecked" and self.s.get("sea"):       # a shipwreck makes its own headline
+                self.s["sea"]["news"].append(tx("n.fight_" + outcome, name=p["name"], firm=p["firm"], n=b["n"], enemy=b["label"],
+                                                port=PORTS[dest]["name"] if dest in PORTS else ""))
+            p.setdefault("fights", []).append({
+                "id": "{}:{}-{}".format(self.s.get("game_id", ""), self.s["turn"], len(p.get("fights") or [])), "outcome": outcome, "kind": b["kind"],
+                "enemy": b["label"], "n": b["n"], "sunk": b["n"] - len(b["hp"]),
+                "rounds": b["round"], "ships": ships, "cargo": cargo, "booty": b["booty"], "paid": b["paid"],
+                "net": int(round(b.get("net", 0.0))), "where": PORTS[dest]["name"] if dest in PORTS else "",
+                "beat": {"id": b["step"] + 1, "frames": frames}})
+        p.pop("battle", None)
+
+    def _act_sea(self, p, a):
+        """A captain's choice in a fight: pay, fight, run, retreat; auto (this round on standing
+        orders: the round timer ran out) or skip (the rest of the fight on standing orders)."""
+        b = p.get("battle")
+        if b is None:
+            raise GameError(tx("e.no_battle"))
+        choice = str(a.get("choice"))
+        if choice not in self.SEA_CHOICES:
+            raise GameError(tx("e.unknown_action"))
+        if choice == "pay":
+            if b["stage"] != "parley":
+                raise GameError(tx("e.no_parley"))
+            if p["cash"] < b["price"]:
+                raise GameError(tx("e.parley_cost", cost=money(b["price"]), cash=money(p["cash"])))
+        if choice == "fight" and self.guns(p) == 0:
+            raise GameError(tx("e.no_guns"))
+        rnd, left = b["round"] + 1, len(b["hp"])
+        if choice == "skip":
+            b["auto"] = True
+        else:
+            self._battle_step(p, choice)
+        self._voyage_step(p)                 # sails on: to port, to the next fight, or (skip) through this one
+        fights = p.get("fights") or []
+        note = "round {}, {} of {} {} afloat: {}".format(rnd, left, b["n"], b["label"], choice)
+        if p.get("battle") is not b and fights:
+            note += "; " + fights[-1]["outcome"]
+        self._detail = {"choice": choice, "round": rnd, "note": note}
+        self._sea_check()
+        return tx("battle.ack." + ("skip" if choice == "skip" else "auto" if choice == "auto" else choice))
+
+    def fight_out(self, present=(), pick=None):
+        """Play every open fight to its end, as a captain at a screen would (for bots and tests).
+        pick(view) names each choice; without it the choices are drawn from the fight's own seed."""
+        steps = 0
+        while self.s["phase"] == "sea":
+            for pid in list(self.s["order"]):
+                p = self.s["players"].get(pid)
+                if p is None or p.get("battle") is None:
+                    continue
+                b, v = p["battle"], self.battle_view(p)
+                if pick is not None:
+                    choice = pick(v)
+                else:
+                    own = random.Random("{}:bot:{}".format(b["seed"], b["step"]))
+                    choice = own.choice(["run", "retreat"] + (["fight"] * 4 if v["can_fight"] else [])
+                                        + (["pay"] if v["can_pay"] else []))
+                self.act(pid, {"type": "sea", "choice": choice}, present)
+                steps += 1
+        return steps
+
+    def battle_view(self, p):
+        """What the battle screen shows a captain in a fight (None when there is none)."""
+        b = p.get("battle")
+        if b is None or b.get("seed") is None:
+            return None
+        pi = R["pirates"]
+        view = MULT.get("battle_view") or MULT.get("customs_view", "bar")
+        left, guns = len(b["hp"]), self.guns(p)
+        hull = sum(max(0, sh["hull"]) for sh in p["ships"])
+        rnd = b["round"] + 1
+        run = max(0.0, min(1.0, pi["run_base"] + (pi["run_fast"] if b["fast"] else 0) + pi["run_round"] * rnd))
+        avg = (b["dmg"][0] + b["dmg"][1]) / 2.0
+        per_round = left * b["hit"] * avg                       # hull the enemy takes off the fleet each round
+        to_sink = (sum(b["hp"]) / (guns * pi["gun_hit"])) if guns and pi["gun_hit"] > 0 else 99.0
+        rounds_left = max(1, pi["rounds"] - b["round"])
+        danger = per_round * min(to_sink, rounds_left) / max(1.0, hull)
+
+        def mood(x, calm, worried):
+            return "calm" if x < calm else "worried" if x < worried else "grim"
+        moods = {"fight": mood(danger, 0.25, 0.6) if guns else "grim",
+                 "run": mood(1 - run, 0.4, 0.6),
+                 "retreat": mood(per_round / max(1.0, hull), 0.15, 0.4)}
+        overall = moods["fight"] if guns else moods["run"]      # her manner speaks to standing and fighting, or to getting away
+        tells = 0
+        while "battle.tell.{}.{}".format(overall, tells) in TEXT:
+            tells += 1
+        gone = self._retreat_dump(p, b)
+        dest = b.get("dest")
+        out = {"kind": b["kind"], "enemy": b["label"], "n": b["n"], "left": left, "round": rnd, "rounds": pi["rounds"],
+               "stage": b["stage"], "orders": b["orders"], "guns": guns, "can_fight": guns > 0, "step": b["step"],
+               "where": PORTS[dest]["name"] if dest in PORTS else "", "view": view, "moods": moods, "mood": overall,
+               "tell": tx("battle.tell.{}.{}".format(overall, (b["seed"] + b["step"]) % tells)) if tells else "",
+               "price": b["price"] if b["stage"] == "parley" else 0,
+               "can_pay": b["stage"] == "parley" and p["cash"] >= b["price"],
+               "dump": gone, "dump_qty": sum(gone.values()), "beat": b["beat"], "hull": hull,
+               "auto": bool(b.get("auto"))}
+        if view in ("exact", "bar"):
+            out["odds"] = {"run": round(run, 3), "hit": round(b["hit"], 3), "gun_hit": round(pi["gun_hit"], 3),
+                           "retreat": [0, int(round(min(per_round, hull))), int(min(left * b["dmg"][1], hull))],
+                           "enemy_round": int(round(per_round)), "danger": round(min(1.0, danger), 3)}
+        return out
+
+    def sea_view(self):
+        """Who is in a fight right now, for the harbor board and the houses that are waiting."""
+        out = []
+        for p in (self.s["players"][i] for i in self.s["order"]):
+            b = p.get("battle")
+            if b is None:
+                continue
+            dest = b.get("dest")
+            out.append({"id": p["id"], "name": p["name"], "firm": p["firm"], "color": p["color"], "kind": b["kind"],
+                        "enemy": b["label"], "n": b["n"], "left": len(b["hp"]), "round": b["round"] + 1,
+                        "rounds": R["pirates"]["rounds"], "stage": b["stage"],
+                        "where": PORTS[dest]["name"] if dest in PORTS else ""})
+        return out
 
     def _check_sunk(self, p, how):
         for sh in [sh for sh in p["ships"] if sh["hull"] <= 0]:
@@ -1923,6 +2360,7 @@ class Game:
             "weather": s["weather"], "crackdown": sorted(s["crackdown"]),
             "bans": {k: self.banned(k) for k in sorted(s["crackdown"])},
             "waiting": [q["name"] for q in standings if q["present"] and not q["ready"]],
+            "sea": self.sea_view() if s["phase"] == "sea" else [],
             "me": None,
         }
         p = s["players"].get(pid)
@@ -1933,6 +2371,7 @@ class Game:
             out["me"] = {
                 "id": p["id"], "name": p["name"], "firm": p["firm"], "color": p["color"],
                 "host": p["id"] == host, "port": port, "home": home_of(p),
+                "home_free": self.home_free(p, home_of(p)),
                 "cash": int(p["cash"]), "bank": int(p["bank"]), "debt": int(math.ceil(p["debt"])),
                 "worth": worth, "rank": rank_for(worth),
                 "cargo": p["cargo"], "wh": p["wh"], "wh_cap": R["fleet"]["warehouse_cap"],
@@ -1945,6 +2384,7 @@ class Game:
                 "rep": {k: int(round(v)) for k, v in p["rep"].items()},
                 "protect": p["protect"], "protect_cost": self.protection_cost(p),
                 "loan_room": max(0, int(self.loan_limit(p) - p["debt"])),
+                "collectors": self.collectors(p),
                 "ready": p["ready"], "dest": p["dest"], "orders": p["orders"],
                 "log": p["log"], "known": p["known"],
                 "prices": {g: round(v, 2) for g, v in s["prices"][port].items()},
@@ -1952,6 +2392,7 @@ class Game:
                 "spread": round(sp, 4),
                 "dues": self.dues(p), "slip": bool(p.get("slip")),
                 "customs": self.customs_view(p),
+                "battle": self.battle_view(p), "fights": p.get("fights") or [],
                 "books": self.books_view(p),
             }
         return out

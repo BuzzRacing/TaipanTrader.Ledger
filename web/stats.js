@@ -623,7 +623,7 @@ function battleList(me) {
   if (!me.battles.length) return `<p class="muted empty">${te("st.no_battles")}</p>`;
   return `<ul class="blist">${me.battles.slice().reverse().map(b => `<li class="r-${b.result}">${icon(b.result === "won" ? "rank" : b.result === "plundered" ? "robbed" : "battle")}
     <div><b>${th("st.b.title", { n: b.count, enemy: esc(b.enemy || "") })}</b><small>${esc(b.date)}${b.route ? " · " + esc(portName(b.route[0])) + " → " + esc(portName(b.route[1])) : ""} · ${th("st.b.orders", { o: esc(b.orders || "") })}</small></div>
-    <span>${te("st.b." + b.result)}<small>${b.booty ? "+" + money(b.booty) : b.plundered ? "-" + money(b.plundered) : te("st.b.rounds", { n: b.rounds, sunk: b.sunk })}</small></span></li>`).join("")}</ul>`;
+    <span>${te("st.b." + b.result)}<small>${b.booty ? "+" + money(b.booty) : b.plundered ? "-" + money(b.plundered) : b.paid ? "-" + money(b.paid) : b.overboard ? "-" + money(b.overboard) : te("st.b.rounds", { n: b.rounds, sunk: b.sunk })}</small></span></li>`).join("")}</ul>`;
 }
 
 function headToHead(v) {

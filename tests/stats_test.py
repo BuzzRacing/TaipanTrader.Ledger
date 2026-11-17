@@ -55,6 +55,7 @@ def play(seed, years=2, stop_at=None, names=("Anthony", "Ada", "Bao", "Cy")):
         for pid, bot in bots.items():
             bot(game, pid, bot_rng)
         assert game.maybe_advance(set(order))
+        game.fight_out(set(order))   # captains at their screens fight their battles
         check(game)
     journal.close_game("test finished")
     return gid, game

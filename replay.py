@@ -135,7 +135,9 @@ def replay(gid, turn=None, start=None):
                 game.admin(e["op"], dict(e.get("a") or {}, op=e["op"]))
             elif do == "resolve":
                 if e.get("cause") == "all_ready":
-                    game.resolve("all_ready")
+                    # Who was at a screen decides which fights were played by hand (their choices
+                    # follow as actions) and which on standing orders.
+                    game.resolve("all_ready", e.get("present"))
             elif do == "settings":
                 if _load_settings(gid, e.get("cfg")):
                     cfg_hash = e.get("cfg")

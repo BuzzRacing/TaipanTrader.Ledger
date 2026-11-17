@@ -129,7 +129,7 @@ const Customs = (() => {
       const move = Math.abs(diff) < 0.05 ? te("customs.rate_base") : te(diff > 0 ? "customs.rate_up" : "customs.rate_down", { base: pct(c.base) + "%" });
       rate = `<div class="cx-rate${diff > 0.05 ? " up" : diff < -0.05 ? " dn" : ""}"><small>${te("customs.rate")}</small><b>${pct(c.rate)}%</b><em>${move}</em></div>`;
     } else {
-      rate = `<div class="cx-rate free"><b>${te("customs.free")}</b></div>`;
+      rate = `<div class="cx-rate free"><b>${te(c.home_free ? "port.glance.home_free" : "customs.free")}</b></div>`;
     }
     return `<header class="cx-head"><div><p class="eyebrow">${te("customs.authority", { port })}</p>
       <h2 id="cx-title">${esc(c.name)}</h2><p class="cx-title">${esc(c.title)}</p></div>${rate}</header>`;

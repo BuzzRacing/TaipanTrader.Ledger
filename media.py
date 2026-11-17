@@ -87,7 +87,14 @@ KINDS = {
     "cargo": {"label": "Cargo", "one": "Cargo", "subjects": "goods",
               "roles": [["icon", "Beside the cargo in the market"]], "default_role": "icon"},
     "scene": {"label": "Scenes", "one": "Scene", "subjects": "scenes",
-              "roles": [["background", "Full-screen or panel background"], ["event", "Shown with the event"]],
+              "roles": [["background", "Full-screen or panel background"], ["event", "Shown with the event"],
+                        # The ten moments of a sea battle (file them under "Sea battle: pirate junks" or
+                        # "Sea battle: war junks"; a picture with no role fits every moment of its enemy).
+                        ["sighting", "Sea battle: the enemy sighted"], ["broadside", "Sea battle: your guns fire"],
+                        ["enemy_hit", "Sea battle: an enemy junk goes down"], ["we_are_hit", "Sea battle: your ships are hit"],
+                        ["ship_lost", "Sea battle: one of your ships is lost"], ["boarding", "Sea battle: boarded and plundered"],
+                        ["got_away", "Sea battle: got clear of them"], ["retreat", "Sea battle: breaking away, cargo overboard"],
+                        ["victory", "Sea battle: victory"], ["defeat", "Sea battle: the fleet is lost"]],
               "default_role": "event"},
     "brand": {"label": "Brand", "one": "Brand slot", "subjects": "brand",
               "roles": [["main", "The main artwork slot"]], "default_role": "main"},
@@ -97,6 +104,7 @@ KINDS = {
 }
 SCENES = [["title", "Title & lobby"], ["loading", "Loading / holding screen"], ["storm", "Storm"],
           ["typhoon", "Typhoon"], ["battle", "Sea battle"], ["pirates", "Pirates sighted"],
+          ["seafight_pirates", "Sea battle: pirate junks"], ["seafight_lord", "Sea battle: war junks"],
           ["wreck", "Shipwreck"], ["seizure", "Customs seizure"], ["robbery", "Robbery"],
           ["victory", "Game over / winner"], ["voyage", "At sea"], ["market", "Trading"]]
 BRAND_SLOTS = [["logo", "Logo"], ["favicon", "Browser tab icon"], ["masthead_bg", "Title banner background"],

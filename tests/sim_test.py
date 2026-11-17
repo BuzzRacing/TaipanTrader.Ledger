@@ -142,6 +142,7 @@ def play(seed, years=5):
         for pid, bot in bots.items():
             bot(game, pid, rng)
         assert game.maybe_advance(set(game.s["order"])), "turn did not advance"
+        game.fight_out(set(game.s["order"]))   # captains at their screens fight their battles
         assert game.s["turn"] == turn + 1
         check(game)
         game = Game(state=json.loads(json.dumps(game.s)), seed=seed * 1000 + turn)  # save/load round trip

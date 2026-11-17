@@ -368,6 +368,18 @@ def _walk(events, ps):
                 elif typ == "broke_off":
                     b["result"], b["sunk"] = "broke_off", e.get("sunk", b["sunk"])
                     h.perils["broke_off"] += 1
+                elif typ == "retreat":
+                    v = h.lose(e.get("lost"), "overflow", turn)
+                    b["result"], b["sunk"] = "retreated", b["count"] - e.get("enemy_left", b["count"])
+                    b["damage"] += sum(x.get("damage", 0) for x in e.get("hits") or ())
+                    b["overboard"] = int(round(v))
+                    h.perils["retreated"] = h.perils.get("retreated", 0) + 1
+                    h.perils["cargo_lost_value"] += v
+                    h.line("cargo_lost", -v)
+                elif typ == "paid":
+                    b["result"], b["paid"] = "paid", int(e.get("price") or 0)
+                    h.perils["paid_off"] = h.perils.get("paid_off", 0) + 1
+                    h.line("parley", -b["paid"])
                 elif typ == "plundered":
                     v = h.lose(e.get("lost"), "plunder", turn)
                     b["result"], b["plundered"] = "plundered", int(round(v))

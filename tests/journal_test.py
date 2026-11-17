@@ -67,6 +67,7 @@ def play(seed, years=2):
                 assert [c[0] for c in changes] == ["rules.bank.loan_rate", "rules.pirates.chance"], changes
                 game.reconcile()
         assert game.maybe_advance(set(order)), "turn did not advance"
+        game.fight_out(set(order))   # captains at their screens fight their battles
         check(game)
     journal.close_game("test finished")
     return gid

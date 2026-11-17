@@ -435,7 +435,7 @@ for _who, _keys in {
     "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.robbed", "l.sailed", "l.offcourse", "l.anchored",
                  "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.sail", "m.stay", "m.unsail", "m.forced", "m.years"],
     "bosun": ["l.typhoon", "l.storm", "l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
-              "l.long_fight", "l.plundered", "l.damage"],
+              "l.long_fight", "l.plundered", "l.damage", "l.attack_met", "l.retreated", "l.parley_paid"],
     "lender": ["m.borrowed", "m.repaid", "e.no_more_loans", "e.nothing_to_repay"],
     "pirate": ["l.lord_found"],
     "agent": ["l.protect_lapsed", "m.protected", "e.protect_content", "e.protect_cost"],
@@ -450,7 +450,7 @@ for _who, _keys in {
     "mayor": ["l.slip_caught"],
     # The Port Authority: every line is read by the officer of the port the house is in
     # (voice.Planner, OFFICER_KEYS); "taxlady" is her stand-in when a line has no port.
-    "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_empty", "l.customs_paid", "l.customs_bought",
+    "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_home", "l.customs_empty", "l.customs_paid", "l.customs_bought",
                 "l.customs_caught", "m.customs_clean", "m.customs_over", "m.customs_bought", "m.customs_caught",
                 "m.customs_bribe_refused", "m.customs_buyback", "e.customs_first", "e.customs_bribe_cost",
                 "e.customs_nothing_back"],
@@ -508,6 +508,9 @@ SAY = {
     "l.seized": "Customs officers searched the fleet, seized your {contraband} and fined you.",
     "l.attack": "You were attacked. Your orders were to {orders}.",
     "l.attack_noguns": "You were attacked. With no guns aboard, you could only run.",
+    "l.attack_met": "You were attacked at sea.",
+    "l.retreated": "You broke away under fire, and cargo went over the side to do it.",
+    "l.parley_paid": "You paid the pirates to let the fleet pass.",
     "l.sank_all": "You sank every one of them and took their booty.",
     "l.outran": "You outran them under fire.",
     "l.long_fight": "After a long fight you sank several of them and the rest broke off.",
@@ -516,10 +519,18 @@ SAY = {
     "l.wrecked": "Your last ship went down. A passing clipper pulled you from the sea and landed you in {home}. "
                  "Cargo and silver were lost. {lender} has advanced you a battered {ship}, adding to your debt.",
     "n.start_many": "The trading houses open for business.",
+    "n.fight_won": "{name} of {firm} has sunk a pirate fleet off {port}.",
+    "n.fight_away": "{name} of {firm} has outrun pirates off {port}.",
+    "n.fight_retreated": "{name} of {firm} broke away from pirates off {port}, with cargo over the side.",
+    "n.fight_paid": "{name} of {firm} paid pirates off {port} to pass.",
+    "n.fight_plundered": "{name} of {firm} was boarded and plundered off {port}.",
+    "n.fight_broke_off": "{name} of {firm} fought off pirates off {port}.",
     "n.game_over": "The game is over. {name} of {firm} is {winner}.",
 }
 # The same, for lines whose family-friendly wording differs.
 SAY_FAMILY = {
+    "n.fight_won": "{name} of {firm} has driven off a pirate fleet off {port}.",
+    "n.fight_plundered": "{name} of {firm} was caught by pirates off {port} and lost cargo.",
     "m.customs_caught": "Caught, Captain. I went through your hold. You'll pay the full tax and a fine on top.",
     "m.customs_over": "So generous, Captain. I remember captains who overpay.",
     "l.robbed": "A pickpocket made off with your silver in the market. Silver is safer in the bank.",

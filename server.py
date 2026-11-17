@@ -192,6 +192,75 @@ class Hub:
         self.cfg_version = 1  # goes up whenever settings change; screens then reload them
         self.conns = {}       # player id -> open stream count
         self.last_seen = {}   # player id -> time the last stream closed
+        self.clock = {}       # player id -> (which step of which fight, deadline, seconds given)
+
+    # ------------------------------------------------- the sea battle's clock --
+    def _deadline(self, pid, p, now):
+        """When this captain's time to choose runs out. A new step of a fight starts a new clock."""
+        b = p["battle"]
+        key = (self.game.s.get("game_id"), self.game.s["turn"], len(p.get("fights") or []), b["step"])
+        cur = self.clock.get(pid)
+        if not cur or cur[0] != key:
+            bt = engine.R["battle"]
+            # The first round gets extra time for the sighting; a second fight in one voyage gets it
+            # twice, because the captain is still reading the first one's reckoning.
+            secs = bt["round_secs"] + bt["voice_grace"] + (
+                bt["first_extra"] * (2 if p.get("fights") else 1) if b["step"] == 0 else 0)
+            cur = self.clock[pid] = (key, now + secs, secs)
+        return cur
+
+    def battle_tick(self):
+        """Call with the lock held. When a captain's clock runs out the round is played on standing
+        orders; if that captain has no screen connected, the rest of the fight is. True if anything moved."""
+        g = self.game
+        if g.s["phase"] != "sea":
+            self.clock.clear()
+            return False
+        now, here, moved = time.time(), self.present(), False
+        for pid in list(g.s["order"]):
+            p = g.s["players"].get(pid)
+            if g.s["phase"] != "sea":
+                break
+            if not p or p.get("battle") is None:
+                self.clock.pop(pid, None)
+                continue
+            if now < self._deadline(pid, p, now)[1]:
+                continue
+            try:
+                g.act(pid, {"type": "sea", "choice": "auto" if pid in here else "skip"}, here)
+                moved = True
+            except GameError:
+                self.clock.pop(pid, None)
+        return moved
+
+    def sea_watch(self):
+        """Keeps the fights moving: runs the round clocks while the month waits at sea."""
+        while True:
+            time.sleep(0.5)
+            try:
+                with self.cond:
+                    if self.battle_tick():
+                        self.save()
+                        self.version += 1
+                        self.cond.notify_all()
+            except Exception:                       # never let the watcher die; write it down instead
+                crash("The sea battle clock hit an error")
+
+    def _battle_voice(self, me):
+        """Who reads each picture of a fight aloud (the bosun, unless the Admin page gave the attack
+        lines to someone else), with a link to the audio. Keyed "now" for the fight in progress and
+        by fight id for the ones already over."""
+        plan = voice.PLAN
+        if not plan.ready() or not plan.cfg["voice"]["read_log"]:
+            return None
+        cid = cast.speaker_for(plan.cfg, "l.attack")
+        if not cid:
+            return None
+        clips = lambda beat: [plan._clip(f["say"], cid) if f.get("say") else None for f in (beat or {}).get("frames", [])]
+        out = {f["id"]: clips(f.get("beat")) for f in me.get("fights") or []}
+        if me.get("battle"):
+            out["now"] = clips(me["battle"].get("beat"))
+        return out
 
     def present(self):
         now = time.time()
@@ -224,6 +293,12 @@ class Hub:
         me = v.get("me") or {}
         v["voice"] = {"log": voice.PLAN.lines(me.get("log"), "log", port=me.get("port")),
                       "news": voice.PLAN.lines(v.get("news"), "news", 14)}
+        if me.get("battle") or me.get("fights"):
+            v["voice"]["battle"] = self._battle_voice(me)
+        if me.get("battle"):
+            _key, deadline, secs = self._deadline(pid, self.game.s["players"][pid], time.time())
+            me["battle"]["secs_left"] = round(max(0.0, deadline - time.time()), 1)
+            me["battle"]["secs_total"] = secs
         cu = me.get("customs")
         if cu and cu.get("welcome"):
             # The Port Authority officer's greeting, read by the officer of that port.
@@ -244,6 +319,7 @@ class Hub:
         self.game = game
         self.conns = {}
         self.last_seen = {}
+        self.clock = {}
         journal.open_game(game, reason, *settings_now(), kind=kind)
         self.changed()
 
@@ -870,6 +946,8 @@ class Handler(BaseHTTPRequestHandler):
                     archive_save()
                     HUB.replace_game(game, "restored from the save {}".format(name))
                     return self._send(200, {"ok": True, "msg": "Save restored. Players rejoin on the devices they used."})
+                if op == "force":
+                    body["present"] = sorted(HUB.present())   # captains at a screen fight their own battles
                 msg = HUB.game.admin(op, body)
                 HUB.changed()
             return self._send(200, {"ok": True, "msg": msg})
@@ -1249,6 +1327,7 @@ def main():
         sys.exit(1)
     httpd.daemon_threads = True
     threading.Thread(target=HUB.ticker, daemon=True).start()
+    threading.Thread(target=HUB.sea_watch, daemon=True).start()
     print("")
     print("  Crimson Ledger is running.")
     print("  This computer:   http://localhost:{}".format(args.port))

@@ -46,6 +46,7 @@ def play(seed, years=2):
         for pid, bot in bots.items():
             bot(g, pid, rng)
         assert g.maybe_advance(set(g.s["order"]))
+        g.fight_out(set(g.s["order"]))   # captains at their screens fight their battles
         months += 1
         for pid, p in g.s["players"].items():
             bk = p["books"]

@@ -107,11 +107,11 @@ DEFAULTS = {
         "level": "normal",
         "presets": {
             "easy":   {"name": "Calm waters", "pirates": 0.6, "storms": 0.6, "interest": 0.75,
-                       "start_cash": 1.5, "seizure": 0.6, "customs_view": "exact"},
+                       "start_cash": 1.5, "seizure": 0.6, "customs_view": "exact", "battle_view": "exact"},
             "normal": {"name": "Trade winds", "pirates": 1.0, "storms": 1.0, "interest": 1.0,
-                       "start_cash": 1.0, "seizure": 1.0, "customs_view": "bar"},
+                       "start_cash": 1.0, "seizure": 1.0, "customs_view": "bar", "battle_view": "bar"},
             "hard":   {"name": "Typhoon season", "pirates": 1.4, "storms": 1.3, "interest": 1.25,
-                       "start_cash": 0.7, "seizure": 1.5, "customs_view": "tell"},
+                       "start_cash": 0.7, "seizure": 1.5, "customs_view": "tell", "battle_view": "tell"},
         },
     },
     "ranks": [
@@ -156,6 +156,11 @@ DEFAULTS = {
                    "hit": 0.40, "dmg_min": 8, "dmg_max": 20, "protect_months": 8,
                    "protect_save": 0.5, "cost_share": 0.06, "cost_min": 500, "renew_at": 2},
         "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 60},
+        # The sea battle played on screen (engine.Game, "sea battles"). A captain at a screen chooses
+        # each round; the month waits at sea until every fight is over.
+        "battle": {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
+                   "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
+                   "round_secs": 20, "first_extra": 10, "voice_grace": 6},
         # The mayor's harbour dues, paid on leaving port (engine.Game.dues).
         "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
                  "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2,
@@ -163,7 +168,7 @@ DEFAULTS = {
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
-        "customs": {"enabled": True, "drift": 0.01, "range": 0.025, "min_rate": 0.0, "max_rate": 0.5,
+        "customs": {"enabled": True, "home_free": True, "drift": 0.005, "range": 0.0125, "min_rate": 0.0, "max_rate": 0.5,
                     "buy_base": 0.005, "buy_k": 0.5, "buy_exp": 1.8, "buy_cap": 0.9,
                     "audit_base": 0.01, "audit_k": 0.22, "audit_cap": 0.9,
                     "appetite_power": 1.0, "greed_weight": 0.08, "cunning_weight": 0.08, "rep_audit": 0.5,
@@ -200,23 +205,23 @@ DEFAULTS = {
     "ports": {
         "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.0, "officer": "taxlady", "mood": 0.1,
                       "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
-        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.06, "officer": "officer_shanghai", "mood": 0.15,
+        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15,
                       "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
-        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.05, "officer": "officer_nagasaki", "mood": 0.1,
+        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.025, "officer": "officer_nagasaki", "mood": 0.1,
                       "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}},
-        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.03, "officer": "officer_manila", "mood": 0.15,
+        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.015, "officer": "officer_manila", "mood": 0.15,
                       "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}},
-        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.05, "officer": "officer_foochow", "mood": 0.15,
+        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.025, "officer": "officer_foochow", "mood": 0.15,
                       "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}},
-        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.04, "officer": "officer_saigon", "mood": 0.5,
+        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.02, "officer": "officer_saigon", "mood": 0.5,
                       "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}},
-        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.06, "officer": "officer_bangkok", "mood": 0.12,
+        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.03, "officer": "officer_bangkok", "mood": 0.12,
                       "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}},
-        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.02, "officer": "officer_singapore", "mood": 0.1,
+        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.01, "officer": "officer_singapore", "mood": 0.1,
                       "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}},
-        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.07, "officer": "officer_batavia", "mood": 0.1,
+        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.035, "officer": "officer_batavia", "mood": 0.1,
                       "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}},
-        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.09, "officer": "officer_calcutta", "mood": 0.2,
+        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2,
                       "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}},
     },
     # hold = cargo units; hull = damage it can take; slots = guns it can mount.
@@ -348,7 +353,11 @@ SECTIONS = [
                       C("customs_view", "Port Authority odds shown", "select",
                         "What a captain sees while declaring cargo: the exact chances, a coloured bar without numbers, "
                         "or only the officer's face and manner.", default="bar",
-                        options=[["exact", "Exact percentages"], ["bar", "Bar and her tell"], ["tell", "Her tell only"]])]},
+                        options=[["exact", "Exact percentages"], ["bar", "Bar and her tell"], ["tell", "Her tell only"]]),
+                      C("battle_view", "Sea battle odds shown", "select",
+                        "What a captain sees on the battle buttons: the exact chances, a coloured bar without numbers, "
+                        "or only the bosun's manner.", default="bar",
+                        options=[["exact", "Exact chances"], ["bar", "Bar and her manner"], ["tell", "Her manner only"]])]},
          {"path": "ranks", "title": "Player ranks", "kind": "list",
           "help": "A player holds the highest rank whose net worth they have reached.",
           "columns": [C("worth", "Net worth from", "int", min=-10**12, max=10**12),
@@ -408,7 +417,9 @@ SECTIONS = [
              F("rules.bank.loan_base", "Loan limit: base", "int", min=0, max=10**9),
              F("rules.bank.loan_per_rep", "Loan limit: per point of home standing", "int", min=0, max=10**7),
              _pct("rules.bank.loan_asset_share", "Loan limit: share of silver, bank and ships", "", 0, 5),
-             F("rules.bank.debt_warn_mult", "Collectors call when debt passes (x limit)", "num", min=1, max=100, step=0.1),
+             F("rules.bank.debt_warn_mult", "Collectors call when debt passes (x limit)", "num",
+               "The limit here is the loan limit without silver or bank: base, home standing and the share of "
+               "ship value. Repaying always brings the debt closer to this line.", min=1, max=100, step=0.1),
              F("rules.bank.debt_grace_months", "Grace period before the first call (months)", "int",
                "Months in a row over the line before the collectors first call.", min=0, max=120),
              F("rules.bank.debt_call_every", "Then they call every (months)", "int", min=1, max=120),
@@ -446,6 +457,8 @@ SECTIONS = [
          {"title": "Port Authority: the rate (each port's base rate and officer are in Ports)", "fields": [
              F("rules.customs.enabled", "Declare cargo on arrival", "bool",
                "Off: ships come and go without seeing the Port Authority."),
+             F("rules.customs.home_free", "A house pays no cargo tax in its own home port", "bool",
+               "Each player's home port (where they started) waves them in free, whatever its rate for others."),
              _pct("rules.customs.drift", "Most the rate moves in a month", "", 0, 0.5),
              _pct("rules.customs.range", "Most the rate strays from the port's base rate", "", 0, 0.5),
              _pct("rules.customs.min_rate", "Lowest rate anywhere", "", 0, 1),
@@ -590,6 +603,23 @@ SECTIONS = [
              _pct("rules.pirates.run_base", "Chance to outrun per round"),
              _pct("rules.pirates.run_fast", "Bonus if every ship is fast"),
              _pct("rules.pirates.run_round", "Bonus added each round")]},
+         {"title": "Sea battle on screen", "fields": [
+             F("rules.battle.interactive", "Captains fight their battles on screen", "bool",
+               "On: a house that is attacked while its captain is at a screen fights round by round, and nobody lands "
+               "until every fight is over. Off: every fight is settled at once from standing orders, as before."),
+             F("rules.battle.round_secs", "Seconds to choose each round", "int",
+               "When the time runs out the round is played on the captain's standing orders.", min=5, max=600),
+             F("rules.battle.first_extra", "Extra seconds on the first round", "int", min=0, max=600),
+             F("rules.battle.voice_grace", "Seconds allowed for the bosun's line", "int",
+               "Added to every round so the clock does not run while she is speaking.", min=0, max=60),
+             F("rules.battle.parley", "Pirates name a price to let the fleet pass", "bool",
+               "Before the first shot. The pirate queen's fleet never does."),
+             F("rules.battle.parley_per_junk", "Their price: silver per junk", "int", min=0, max=10**7),
+             _pct("rules.battle.parley_cargo", "Their price: share of the cargo's usual value"),
+             _pct("rules.battle.retreat_min", "Retreat: cargo thrown overboard, least"),
+             _pct("rules.battle.retreat_max", "Retreat: cargo thrown overboard, most"),
+             F("rules.battle.retreat_floor", "Retreat: hull left on the last ship", "int",
+               "A retreat never sinks the last ship; she limps in with this much hull.", min=1, max=1000)]},
          {"title": "The pirate queen", "fields": [
              _pct("rules.liyuen.chance", "Chance her fleet finds an unprotected player"),
              F("rules.liyuen.fleet_base", "War junks: base", "int", min=1, max=1000),
@@ -873,6 +903,7 @@ def validate(raw):
                                ("pirates", "booty_min", "booty_max", "Booty"),
                                ("pirates", "plunder_min", "plunder_max", "Plunder"),
                                ("liyuen", "dmg_min", "dmg_max", "Pirate queen damage"),
+                               ("battle", "retreat_min", "retreat_max", "Retreat cargo"),
                                ("bank", "mug_min", "mug_max", "Robbery"),
                                ("events", "shock_min_turns", "shock_max_turns", "Shortage length"),
                                ("events", "ban_min_turns", "ban_max_turns", "Ban length"),

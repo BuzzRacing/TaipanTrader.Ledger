@@ -26,6 +26,10 @@ function render() {
   let headline;
   if (lobby) headline = te("board.join");
   else if (ended) headline = ranked.length ? te("board.winner", { name: ranked[0].name }) : te("board.over");
+  else if (S.phase === "sea" && (S.sea || []).length) {
+    // Houses fighting at sea: nobody lands until every fight is over.
+    headline = S.sea.map(x => `<span style="display:block">${te("battle.board", { name: x.name, port: x.where, left: x.left, n: x.n, enemy: x.enemy })}</span>`).join("");
+  }
   else headline = S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("board.at_sea");
   const sub = lobby ? te("board.length", { years: S.years }) : ended ? te("board.final") : te("board.months_left", { months: S.turns_left });
 

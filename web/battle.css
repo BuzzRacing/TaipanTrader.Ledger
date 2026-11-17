@@ -1,0 +1,189 @@
+/* SeaTrader: the sea battle (battle.js). One layer over the deck; it never scrolls.
+   Landscape (iPad first): top strip, the enemy line, the caption, then the fleet beside the
+   buttons. Upright screens stack the fleet over the buttons. Colours are the deck's own. */
+
+#seafight { position: fixed; inset: 0; z-index: 30; overflow: hidden; color: var(--deck-ivory);
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: clamp(.3rem, 1.2vh, .8rem);
+  padding: max(.7rem, env(safe-area-inset-top)) max(.9rem, env(safe-area-inset-right)) max(.8rem, env(safe-area-inset-bottom)) max(.9rem, env(safe-area-inset-left));
+  background: var(--deck-night); font-family: var(--sans); animation: sfIn .7s ease-out both; }
+#seafight[hidden] { display: none; }
+@keyframes sfIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ------------------------------------------------------------------ the sea -- */
+.sf-bg, .sf-sea, .sf-pic, .sf-shade { position: absolute; inset: 0; }
+.sf-bg { z-index: 0; overflow: hidden; }
+.sf-sea { background:
+  radial-gradient(120% 60% at 50% 108%, color-mix(in srgb, var(--deck-storm) 85%, #000) 0, transparent 70%),
+  radial-gradient(60% 40% at 78% 18%, color-mix(in srgb, var(--deck-brass) 28%, transparent), transparent 70%),
+  linear-gradient(180deg, color-mix(in srgb, var(--deck-storm) 55%, var(--deck-night)) 0, var(--deck-night) 46%, color-mix(in srgb, var(--deck-storm) 60%, #000) 100%); }
+.sf-sea::after { content: ""; position: absolute; left: -10%; right: -10%; bottom: 0; height: 46%; opacity: .5;
+  background: repeating-radial-gradient(ellipse at 50% 140%, transparent 0 22px, color-mix(in srgb, var(--deck-ivory) 9%, transparent) 23px 25px);
+  animation: sfSwell 9s ease-in-out infinite alternate; }
+@keyframes sfSwell { from { transform: translateX(-2%) scaleY(1); } to { transform: translateX(2%) scaleY(1.06); } }
+.sf-pic { opacity: 0; transition: opacity 1.1s ease-in-out; }
+.sf-pic.on { opacity: 1; }
+.sf-pic > img, .sf-pic > video { width: 100%; height: 100%; object-fit: cover; display: block; animation: sfDrift 14s ease-out both; }
+@keyframes sfDrift { from { transform: scale(1.08); } to { transform: scale(1); } }
+.sf-shade { background:
+  linear-gradient(180deg, color-mix(in srgb, var(--deck-night) 78%, transparent) 0, transparent 26%, transparent 46%, color-mix(in srgb, var(--deck-night) 90%, transparent) 78%, var(--deck-night) 100%); }
+#seafight[data-moment="we_are_hit"] .sf-shade, #seafight[data-moment="ship_lost"] .sf-shade, #seafight[data-moment="defeat"] .sf-shade,
+#seafight[data-moment="boarding"] .sf-shade { box-shadow: inset 0 0 9rem color-mix(in srgb, var(--deck-oxblood) 80%, transparent); }
+#seafight[data-moment="victory"] .sf-shade, #seafight[data-moment="enemy_hit"] .sf-shade { box-shadow: inset 0 0 9rem color-mix(in srgb, var(--deck-brass) 45%, transparent); }
+#seafight[data-moment="got_away"] .sf-shade, #seafight[data-moment="retreat"] .sf-shade { box-shadow: inset 0 0 9rem color-mix(in srgb, var(--deck-jade) 60%, transparent); }
+#seafight > :not(.sf-bg) { position: relative; z-index: 1; }
+
+/* ---------------------------------------------------------------- top strip -- */
+.sf-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem; min-height: 2.6rem; }
+.sf-where small { display: block; color: var(--brass-hi); font: 1.05rem var(--special); }
+.sf-where b { font: 400 clamp(1.2rem, 2.6vw, 1.7rem)/1.1 var(--serif); }
+.sf-round { justify-self: center; padding: .25rem .9rem; border: 1px solid var(--edge-hi); border-radius: 99px; font: 1rem var(--special);
+  color: var(--brass-hi); background: var(--glass); }
+.sf-round:empty { visibility: hidden; }
+.sf-clock { justify-self: end; text-align: right; min-width: 11rem; }
+.sf-clock[hidden] { display: block; visibility: hidden; }
+.sf-clock span { display: block; font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sf-clock i { display: block; height: 6px; margin-top: .25rem; border-radius: 3px; background: color-mix(in srgb, var(--deck-ivory) 16%, transparent); overflow: hidden; }
+.sf-clock i b { display: block; height: 100%; width: 100%; background: var(--deck-brass); transition: width .25s linear; }
+.sf-clock.late span { color: var(--blood-hi); }
+.sf-clock.late i b { background: var(--blood-hi); }
+
+/* ------------------------------------------------------------ the enemy line -- */
+.sf-enemy { text-align: center; }
+.sf-junks { --j: clamp(1.6rem, 4.2vw, 2.7rem); display: flex; flex-wrap: wrap; justify-content: center; gap: .15rem .3rem; max-height: calc(var(--j) * 2 + .4rem); overflow: hidden; }
+.sf-junks.small { --j: clamp(1.15rem, 2.9vw, 1.9rem); max-height: calc(var(--j) * 3 + .6rem); }
+.sf-junks.tiny { --j: clamp(.9rem, 2vw, 1.35rem); max-height: calc(var(--j) * 4 + .8rem); }
+.sf-junks i { width: var(--j); height: var(--j); display: block; transition: opacity .8s, transform .8s, filter .8s; }
+.sf-junks svg { width: 100%; height: 100%; fill: color-mix(in srgb, var(--deck-oxblood) 70%, #000); stroke: var(--blood-hi); stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .6)); }
+.sf-junks i.down { opacity: .22; transform: translateY(22%) rotate(14deg); filter: grayscale(1); }
+.sf-enemy p { margin: .2rem 0 0; font-size: .95rem; color: var(--muted); text-shadow: 0 1px 3px #000; }
+
+/* ---------------------------------------------------------------- the caption -- */
+.sf-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; min-height: 0; text-align: center; padding: 0 4vw; cursor: pointer; }
+.sf-cap { margin: 0; max-width: 22ch; font: 400 clamp(1.9rem, 5.6vw, 4.2rem)/1.08 var(--serif); color: #fff6e3;
+  text-shadow: 0 2px 4px #000, 0 0 2.2rem rgba(0, 0, 0, .85); text-wrap: balance; }
+.sf-cap.in { animation: sfCap .5s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes sfCap { from { opacity: 0; transform: translateY(.6rem) scale(.97); } to { opacity: 1; transform: none; } }
+.sf-cap:empty { display: none; }
+.sf-tell { margin: 0; max-width: 46ch; font: italic 1.1rem/1.3 var(--sans); color: var(--brass-hi); text-shadow: 0 1px 3px #000; min-height: 1.4em; }
+.sf-who { display: flex; align-items: center; gap: .6rem; padding: .3rem .9rem .3rem .3rem; border: 1px solid var(--who, var(--deck-brass)); border-radius: 99px;
+  background: var(--glass); text-align: left; }
+.sf-who[hidden] { display: none; }
+.sf-who .sf-face { width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover; object-position: 50% 18%; border: 2px solid var(--who, var(--deck-brass)); }
+.sf-who b { display: block; font: 1rem/1.1 var(--serif); }
+.sf-who span { display: block; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* ---------------------------------------------------- the fleet and the buttons -- */
+.sf-foot { display: grid; grid-template-columns: minmax(13rem, 1fr) minmax(0, 2.6fr); gap: clamp(.6rem, 2vw, 1.4rem); align-items: end; }
+.sf-foot[hidden] { display: none; }
+.sf-fleet { padding: .55rem .7rem; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass); min-width: 0; }
+.sf-fleet h3, .sf-card h3 { margin: 0 0 .3rem; font: 400 .95rem var(--special); color: var(--brass-hi); }
+.sf-fleet ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .22rem; }
+.sf-fleet li { display: grid; grid-template-columns: minmax(0, 1fr) 4.5rem auto; column-gap: .45rem; align-items: center; font-size: .85rem; }
+.sf-fleet li b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sf-fleet li small { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .72rem; }
+.sf-hull { display: block; height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--deck-ivory) 14%, transparent); overflow: hidden; }
+.sf-hull i { display: block; height: 100%; background: var(--jade-hi); transition: width .7s ease-out; }
+.sf-fleet li.low .sf-hull i { background: var(--blood-hi); }
+.sf-pips { grid-column: 1 / -1; display: flex; gap: 3px; margin-bottom: .1rem; }
+.sf-pips i { width: 9px; height: 5px; border-radius: 2px; background: color-mix(in srgb, var(--deck-ivory) 16%, transparent); }
+.sf-pips i.on { background: var(--deck-brass); }
+.sf-stake { margin: .4rem 0 0; padding-top: .35rem; border-top: 1px solid var(--edge); font-size: .85rem; }
+.sf-stake small { display: block; color: var(--muted); font-size: .7rem; }
+
+.sf-btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(.4rem, 1.2vw, .8rem); }
+.sf-btns.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#seafight .sf-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-height: clamp(4.6rem, 14vh, 6.6rem);
+  padding: .5rem .6rem; border-radius: calc(var(--radius) * 1.3); border: 2px solid var(--edge-hi); color: var(--deck-ivory); cursor: pointer;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--deck-lacquer) 92%, #fff 0%), var(--deck-night)); box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+  font-family: var(--sans); text-align: center; transition: transform .12s, border-color .12s, opacity .2s; }
+#seafight .sf-btn b { font: 400 clamp(1.15rem, 2.4vw, 1.6rem)/1.1 var(--serif); }
+#seafight .sf-btn span { font-size: .85rem; color: var(--muted); line-height: 1.2; }
+#seafight .sf-btn span small { display: block; font-size: .72rem; opacity: .85; }
+#seafight .sf-btn:hover:not(:disabled), #seafight .sf-btn:focus-visible { transform: translateY(-2px); border-color: var(--brass-hi); outline: none; }
+#seafight .sf-btn:active:not(:disabled) { transform: translateY(1px); }
+#seafight .sf-btn:disabled { opacity: .45; cursor: default; }
+#seafight .sf-btn.fight { border-color: color-mix(in srgb, var(--deck-oxblood) 80%, var(--deck-brass)); background: linear-gradient(180deg, color-mix(in srgb, var(--deck-oxblood) 70%, var(--deck-night)), var(--deck-night)); }
+#seafight .sf-btn.run { border-color: color-mix(in srgb, var(--deck-storm) 70%, var(--deck-ivory)); background: linear-gradient(180deg, color-mix(in srgb, var(--deck-storm) 70%, var(--deck-night)), var(--deck-night)); }
+#seafight .sf-btn.retreat { border-color: color-mix(in srgb, var(--deck-jade) 70%, var(--deck-ivory)); background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 65%, var(--deck-night)), var(--deck-night)); }
+#seafight .sf-btn.pay { border-color: var(--deck-brass); background: linear-gradient(180deg, color-mix(in srgb, var(--deck-brass) 38%, var(--deck-night)), var(--deck-night)); }
+.sf-risk { display: block; width: 78%; height: 6px; margin-top: .25rem; border-radius: 3px; overflow: hidden;
+  background: linear-gradient(90deg, var(--jade-hi), var(--deck-brass) 55%, var(--blood-hi)); position: relative; }
+.sf-risk i { position: absolute; top: 0; bottom: 0; left: 0; background: transparent; border-right: 3px solid #fff; box-shadow: 2px 0 0 #000; }
+.sf-skip { margin: .4rem 0 0; display: flex; justify-content: space-between; align-items: center; gap: 1rem; font-size: .82rem; color: var(--muted); }
+#seafight .sf-link { background: none; border: 0; box-shadow: none; border-radius: 0; min-height: 0; padding: .2rem .1rem; color: var(--brass-hi); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+#seafight .sf-link:disabled { opacity: .4; cursor: default; }
+
+/* ----------------------------------------------------------------- waiting -- */
+.sf-wait { grid-row: 2 / 5; align-self: center; justify-self: center; width: min(40rem, 100%); padding: clamp(1rem, 3vw, 1.8rem);
+  border: 1px solid var(--edge-hi); border-radius: calc(var(--radius) * 1.4); background: color-mix(in srgb, var(--deck-night) 82%, transparent); text-align: center; }
+.sf-wait[hidden] { display: none; }
+.sf-wait h2 { font: 400 clamp(1.8rem, 4vw, 2.6rem) var(--serif); color: var(--brass-hi); margin: 0; }
+.sf-lead { margin: .2rem 0 1rem; color: var(--muted); }
+.sf-wait ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; text-align: left; }
+.sf-wait li { padding: .55rem .8rem; border-left: 5px solid var(--who, var(--deck-brass)); border-radius: 0 var(--radius) var(--radius) 0; background: var(--glass-2); }
+.sf-wait li b { display: block; font: 400 1.15rem var(--serif); }
+.sf-wait li span { display: block; font-size: .88rem; color: var(--muted); }
+.sf-wait li.none { border-left-color: transparent; text-align: center; color: var(--muted); }
+.sf-wbar { display: block; height: 5px; margin-top: .35rem; border-radius: 3px; background: color-mix(in srgb, var(--deck-ivory) 14%, transparent); overflow: hidden; }
+.sf-wbar i { display: block; height: 100%; background: var(--blood-hi); transition: width .8s; }
+#seafight[data-mode="wait"] .sf-mid { display: none; }
+
+/* --------------------------------------------------------------- reckoning -- */
+.sf-result { position: absolute !important; inset: 0; z-index: 3 !important; display: grid; place-items: center; padding: clamp(.6rem, 3vw, 2rem);
+  background: color-mix(in srgb, var(--deck-night) 55%, transparent); animation: sfIn .5s ease-out both; }
+.sf-result[hidden] { display: none; }
+.sf-card { width: min(42rem, 100%); max-height: 100%; display: flex; flex-direction: column; gap: .7rem; padding: clamp(.9rem, 2.6vw, 1.6rem); overflow: hidden;
+  border: 1px solid var(--edge-hi); border-radius: calc(var(--radius) * 1.5); background: color-mix(in srgb, var(--deck-night) 92%, transparent);
+  box-shadow: 0 1.4rem 4rem rgba(0, 0, 0, .7); }
+.sf-card header { text-align: center; border-bottom: 1px solid var(--edge-hi); padding-bottom: .55rem; }
+.sf-card .eyebrow { margin: 0; color: var(--muted); font: .95rem var(--special); letter-spacing: normal; text-transform: none; }
+.sf-card h2 { margin: .1rem 0 0; font: 400 clamp(2.1rem, 6vw, 3.4rem)/1.05 var(--serif); color: var(--brass-hi); }
+.sf-card.o-won h2, .sf-card.o-away h2, .sf-card.o-broke_off h2 { color: var(--jade-hi); }
+.sf-card.o-plundered h2, .sf-card.o-wrecked h2 { color: var(--blood-hi); }
+.sf-rows { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+.sf-rows > div { flex: 1 1 7rem; padding: .35rem .6rem; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass-2); text-align: center; }
+.sf-rows small, .sf-net span { display: block; font-size: .72rem; color: var(--muted); }
+.sf-rows b { font: 400 1.35rem var(--serif); font-variant-numeric: tabular-nums; }
+.sf-rows .up b, .sf-net.up b { color: var(--jade-hi); } .sf-rows .dn b, .sf-net.dn b { color: var(--blood-hi); }
+.sf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.sf-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; font-size: .92rem; }
+.sf-rships li { display: flex; justify-content: space-between; gap: .6rem; }
+.sf-rships li span { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sf-rships li.hit span { color: var(--brass-hi); } .sf-rships li.lost span, .sf-rships li.lost b { color: var(--blood-hi); }
+.sf-rcargo li.none { color: var(--muted); }
+.sf-net { margin: 0; display: flex; justify-content: space-between; align-items: baseline; padding: .45rem .7rem; border: 1px solid var(--edge-hi); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--deck-brass) 9%, transparent); }
+.sf-net span { font-size: .9rem; }
+.sf-net b { font: 400 1.7rem var(--serif); font-variant-numeric: tabular-nums; }
+.sf-note { margin: 0; min-height: 1.2em; font-size: .85rem; color: var(--muted); text-align: center; }
+.sf-card footer { display: flex; justify-content: center; }
+.sf-card footer button { font-size: 1.15rem; padding: .6rem 1.6rem; }
+
+/* While the fight is up the deck underneath is out of reach (and out of the tab order). */
+body.seafighting #app { visibility: hidden; }
+
+/* ------------------------------------------------------------ upright and small -- */
+@media (orientation: portrait) {
+  .sf-top { grid-template-columns: 1fr auto; }
+  .sf-round { grid-column: 1 / -1; grid-row: 2; }
+  .sf-foot { grid-template-columns: 1fr; }
+  .sf-fleet ul { grid-template-columns: 1fr 1fr; column-gap: .9rem; }
+  .sf-btns.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sf-cols { grid-template-columns: 1fr; }
+}
+@media (max-height: 560px) {
+  #seafight { gap: .25rem; padding-top: .4rem; padding-bottom: .4rem; }
+  .sf-cap { font-size: clamp(1.4rem, 6vh, 2.4rem); }
+  .sf-tell { font-size: .9rem; }
+  .sf-fleet { padding: .35rem .5rem; }
+  .sf-fleet h3, .sf-pips, .sf-enemy p { display: none; }
+  #seafight .sf-btn { min-height: 3.4rem; }
+  .sf-junks { --j: 1.3rem; }
+  .sf-card { gap: .4rem; padding: .7rem; }
+  .sf-card h2 { font-size: 1.8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #seafight, .sf-result, .sf-cap.in, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
+  .sf-pic, .sf-junks i, .sf-hull i { transition: none; }
+}
