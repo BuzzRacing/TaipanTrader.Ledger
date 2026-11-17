@@ -42,10 +42,29 @@ const Chart = (() => {
   ];
 
   /* opts: data (static), players, weather, crackdown, here (port key), dest (port key),
-           clickable (bool), mine (player id) */
+           clickable (bool), mine (player id), focusRoute (bool: frame a selected route on narrow screens) */
   function svg(o) {
     const D = o.data, out = [];
-    out.push('<svg class="chart" viewBox="0 0 1000 600" role="img" aria-label="' + te("chart.aria") + '">');
+    let viewBox = "0 0 1000 600", focused = false;
+    if (o.focusRoute && o.here && o.dest && o.here !== o.dest &&
+        typeof window !== "undefined" && window.matchMedia("(max-width: 600px)").matches) {
+      const a = D.ports[o.here], b = D.ports[o.dest], pad = 70;
+      let width = Math.abs(b.x - a.x) + pad * 2, height = Math.abs(b.y - a.y) + pad * 2;
+      if (width / height < 5 / 3) width = height * 5 / 3; else height = width * 3 / 5;
+      width = Math.min(1000, Math.max(420, width));
+      height = Math.min(600, Math.max(252, height));
+      const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+      const x = Math.max(0, Math.min(1000 - width, cx - width / 2));
+      const y = Math.max(0, Math.min(600 - height, cy - height / 2));
+      viewBox = `${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)}`;
+      focused = true;
+    }
+    out.push(`<svg class="chart${focused ? " route-focused" : ""}" viewBox="${viewBox}" role="img" aria-label="${te("chart.aria")}">`);
+    out.push('<defs>' +
+      '<marker id="route-arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">' +
+      '<path d="M1 1 L10 6 L1 11 Z"/></marker>' +
+      '<filter id="chart-shadow" x="-40%" y="-40%" width="180%" height="180%">' +
+      '<feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".38"/></filter></defs>');
     out.push('<rect class="sea" x="-1000" y="-600" width="3000" height="1800"/>');
     for (let lon = 60; lon <= 160; lon += 5) {
       const x = px(lon, 0)[0];
@@ -71,13 +90,30 @@ const Chart = (() => {
       const reg = D.regions[r];
       const [x, y] = px(reg.label_lon, reg.label_lat);
       const lvl = o.weather && o.weather[r] != null ? o.weather[r] : 0;
-      out.push(`<g class="region"><text class="rname" x="${x}" y="${y}" text-anchor="middle">${esc(reg.name)}</text>` +
+      const width = Math.max(132, Math.min(210, reg.name.length * 9 + 24));
+      out.push(`<g class="region wxt${lvl}"><rect class="region-bg" x="${x - width / 2}" y="${+y - 18}" width="${width}" height="42" rx="8"/>` +
+        `<text class="rname" x="${x}" y="${y}" text-anchor="middle">${esc(reg.name)}</text>` +
         `<text class="rwx wxt${lvl}" x="${x}" y="${+y + 17}" text-anchor="middle">${esc(D.weather[lvl])}</text></g>`);
     }
-    // planned route
+    // Planned route. The forecast is the same worse-of-origin-and-destination value used by the engine.
     if (o.here && o.dest && o.here !== o.dest) {
       const a = D.ports[o.here], b = D.ports[o.dest];
-      out.push(`<line class="route" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`);
+      const level = Math.max((o.weather && o.weather[a.region]) || 0, (o.weather && o.weather[b.region]) || 0);
+      const dx = b.x - a.x, dy = b.y - a.y, distance = Math.hypot(dx, dy) || 1;
+      const inset = 22, x1 = a.x + dx / distance * inset, y1 = a.y + dy / distance * inset;
+      const x2 = b.x - dx / distance * inset, y2 = b.y - dy / distance * inset;
+      out.push(`<g class="planned-route wx${level}"><title>${te("chart.route_forecast", { weather: D.weather[level] })}</title>` +
+        `<line class="route-halo" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>` +
+        `<line class="route" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#route-arrow)"/>`);
+      if (level >= 2) {
+        const mx = a.x + dx * .55, my = a.y + dy * .55;
+        out.push(`<g class="route-alert wxt${level}" transform="translate(${mx.toFixed(1)} ${my.toFixed(1)})" filter="url(#chart-shadow)">` +
+          '<rect x="-73" y="-25" width="146" height="50" rx="10"/>' +
+          '<path class="alert-icon" d="M-58 9 L-47 -12 L-36 9 Z M-47 -5 V2 M-47 6 V7"/>' +
+          `<text class="alert-kicker" x="-27" y="-5">${te("chart.route_warning")}</text>` +
+          `<text class="alert-weather" x="-27" y="13">${esc(D.weather[level])}</text></g>`);
+      }
+      out.push('</g>');
     }
     // ports
     for (const k in D.ports) {
@@ -87,13 +123,26 @@ const Chart = (() => {
       if (k === o.dest) cls.push("dest");
       if (o.crackdown && o.crackdown.includes(k)) cls.push("ban");
       if (o.clickable && k !== o.here) cls.push("click");
-      const dx = p.label_left ? -12 : 12;
+      const labelW = Math.max(82, Math.min(158, p.name.length * 10.5 + 24));
+      const labelH = k === o.here || k === o.dest ? 46 : 34;
+      const labelX = p.label_left ? p.x - labelW - 19 : p.x + 19;
+      const labelY = p.y - labelH / 2;
+      const textX = p.label_left ? p.x - 31 : p.x + 31;
+      const anchor = p.label_left ? "end" : "start";
       const act = o.clickable && k !== o.here ? ` data-act="dest" data-port="${k}"` : "";
       out.push(`<g class="${cls.join(" ")}"${act}>` +
-        `<circle class="hit" cx="${p.x}" cy="${p.y}" r="26"/>` +
-        `<circle class="ring" cx="${p.x}" cy="${p.y}" r="11"/>` +
-        `<circle class="dot" cx="${p.x}" cy="${p.y}" r="5.5"/>` +
-        `<text x="${p.x + dx}" y="${p.y + 5}" text-anchor="${dx < 0 ? "end" : "start"}">${esc(p.name)}</text></g>`);
+        `<line class="label-leader" x1="${p.x}" y1="${p.y}" x2="${p.label_left ? p.x - 19 : p.x + 19}" y2="${p.y}"/>` +
+        `<rect class="label-bg" x="${labelX}" y="${labelY}" width="${labelW}" height="${labelH}" rx="8"/>` +
+        `<circle class="hit" cx="${p.x}" cy="${p.y}" r="30"/>` +
+        `<circle class="pulse" cx="${p.x}" cy="${p.y}" r="19"/>` +
+        `<circle class="ring" cx="${p.x}" cy="${p.y}" r="14"/>` +
+        `<circle class="dot" cx="${p.x}" cy="${p.y}" r="8"/>` +
+        (k === o.here ? `<g class="current-flag" transform="translate(${p.x - 3} ${p.y - 18})">` +
+          '<line x1="0" y1="0" x2="0" y2="-31"/><path d="M0 -31 L29 -25 L0 -17 Z"/></g>' : '') +
+        `<text class="port-name" x="${textX}" y="${k === o.here || k === o.dest ? p.y - 2 : p.y + 6}" text-anchor="${anchor}">${esc(p.name)}</text>` +
+        (k === o.here ? `<text class="port-status" x="${textX}" y="${p.y + 14}" text-anchor="${anchor}">${te("chart.current")}</text>` :
+          k === o.dest ? `<text class="port-status" x="${textX}" y="${p.y + 14}" text-anchor="${anchor}">${te("chart.destination")}</text>` : '') +
+        `</g>`);
     }
     // house flags
     const at = {};
@@ -102,10 +151,10 @@ const Chart = (() => {
       const p = D.ports[k];
       if (!p) continue;
       at[k].forEach((pl, i) => {
-        const x = p.x - 4 + (i % 4) * 15 - (Math.min(at[k].length, 4) - 1) * 7.5, y = p.y - 16 - Math.floor(i / 4) * 20;
+        const x = p.x - 4 + (i % 4) * 17 - (Math.min(at[k].length, 4) - 1) * 8.5, y = p.y - 22 - Math.floor(i / 4) * 23;
         out.push(`<g class="flag${pl.id === o.mine ? " mine" : ""}${pl.ready ? " ready" : ""}">` +
-          `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - 17}"/>` +
-          `<path d="M${x} ${y - 17} l12 4 l-12 4z" fill="${COLORS[pl.color % 8]}"/>` +
+          `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - 21}"/>` +
+          `<path d="M${x} ${y - 21} l15 5 l-15 5z" fill="${COLORS[pl.color % 8]}"/>` +
           `<title>${esc(pl.firm)}</title></g>`);
       });
     }

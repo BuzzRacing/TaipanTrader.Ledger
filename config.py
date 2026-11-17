@@ -164,6 +164,8 @@ DEFAULTS = {
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
     "goods": {
         "opium":     {"name": "Opium", "family_name": "Fireworks", "base": 4200, "vol": 0.16, "depth": 60, "contraband": True, "ban_odds": 0.0},
+        # Gold is legal, but a port's ban sometimes covers bullion too (ban_odds).
+        "gold":      {"name": "Gold", "family_name": "", "base": 2400, "vol": 0.05, "depth": 90, "contraband": False, "ban_odds": 0.5},
         "silk":      {"name": "Silk", "family_name": "", "base": 520, "vol": 0.10, "depth": 160, "contraband": False, "ban_odds": 0.0},
         "porcelain": {"name": "Porcelain", "family_name": "", "base": 230, "vol": 0.08, "depth": 250, "contraband": False, "ban_odds": 0.0},
         "arms":      {"name": "Arms", "family_name": "Ironware", "base": 160, "vol": 0.10, "depth": 250, "contraband": False, "ban_odds": 0.0},
@@ -171,8 +173,6 @@ DEFAULTS = {
         "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 500, "contraband": False, "ban_odds": 0.0},
         "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 1200, "contraband": False, "ban_odds": 0.0},
         "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 1200, "contraband": False, "ban_odds": 0.0},
-        # Gold is legal, but a port's ban sometimes covers bullion too (ban_odds).
-        "gold":      {"name": "Gold", "family_name": "", "base": 2400, "vol": 0.05, "depth": 90, "contraband": False, "ban_odds": 0.5},
     },
     "regions": {
         "north":  {"name": "Yellow Sea & Japan", "typhoon": 0.02, "squalls": 0.20, "label_lon": 126, "label_lat": 29,

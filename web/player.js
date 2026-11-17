@@ -272,6 +272,7 @@ const STAGE_WOMEN = {
 /* Stage titles until the server is restarted with the current strings.py. */
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {},
   { "ledger.taxlady": "Tax collector of {port}, keeper of the ledger", "chart.mayor": "Mayor of {port}",
+    "chart.current": "CURRENT PORT", "chart.destination": "DESTINATION", "chart.route_warning": "ROUTE WARNING", "chart.route_forecast": "Route forecast: {weather}",
     "deck.me": "Captain {name}: voices and options", "deck.speech": "Voices", "deck.speech_on": "Voices are on",
     "deck.speech_off": "Voices are off", "deck.speech_none": "Voices are turned off for this game",
     "deck.options": "Options", "deck.options_soon": "Options are not built yet.",
@@ -279,6 +280,11 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "ledger.key_lo": "cheapest seen", "ledger.key_hi": "dearest seen",
     "ledger.tip_lo": "Cheapest {cargo} you have seen", "ledger.tip_hi": "Dearest {cargo} you have seen",
     "dealer.title": "Dealer's margin", "dealer.margin": "{margin}%", "dealer.standing": "Standing", "dealer.standing_tip": "Your standing here: {rep} of 100",
+    "clearance.title": "Outward clearance", "clearance.authority": "Port authority of {port}", "clearance.harbour": "A · Harbour account", "clearance.tax": "B · Cargo declaration", "clearance.subtotal": "Harbour dues subtotal", "clearance.declared": "Profit declared", "clearance.total": "Amount payable", "clearance.after": "Silver after filing: {amount}", "clearance.short": "Short by {amount}; the balance becomes debt.", "clearance.anchor": "Filed when the fleet sails · nothing is due while at anchor", "clearance.slip": "Night departure selected · caught: {caught}",
+    "market.paid": "paid {paid} avg", "market.paid_tip": "You paid {paid} a unit on average for the {good} you hold, aboard and ashore. Selling one here now brings {price}.",
+    "market.pl_up": "+{profit}", "market.pl_down": "−{profit}",
+    "market.pl_tip_up": "Profit of {profit} on this sale, against the {paid} a unit you paid on average.",
+    "market.pl_tip_down": "Loss of {profit} on this sale, against the {paid} a unit you paid on average.",
     "dealer.pay": "You pay", "dealer.get": "You get", "dealer.units": "{n} units", "dealer.cut": "Dealer's cut",
     "dealer.cut_sub": "{margin}% margin", "sail.risk_title": "Routes ranked by voyage risk",
     "sail.risk_note": "Forecast conditions and distance, easiest to hardest", "sail.easiest": "Easiest",
@@ -472,8 +478,8 @@ function gameScreen() {
     `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
     `<i class="dk-gap"></i>` + meButton();
   const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
-  // The tax on cargo now sits with the Mayor on Set sail, under her harbour dues; the Ledger has no side column.
-  const side = ui.tab === "market" ? dealerCard() : ui.tab === "chart" ? duesCard() + taxCard() : "";
+  // The Mayor's side column is one outward-clearance document: harbour charges and the cargo declaration.
+  const side = ui.tab === "market" ? dealerCard() : ui.tab === "chart" ? clearanceLedger() : "";
   return { top, nav, pane, side, over: report };
 }
 
@@ -542,9 +548,32 @@ function barStyle(tr) {
 function tradeButton(g, tr) {
   if (!tr.side) return `<button type="button" class="mk-go" data-act="trade" data-good="${g}" disabled>
     <b>${tr.max ? te("market.drag") : te("market.no_room")}</b></button>`;
-  return `<button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}">
+  const total = quote(g, tr.qty, tr.side), pl = tr.side === "sell" ? profitOf(g, tr.qty, total) : null;
+  const plTag = pl === null ? "" : `<em class="mk-pl ${pl >= 0 ? "up" : "down"}">${te(pl >= 0 ? "market.pl_up" : "market.pl_down", { profit: money(Math.abs(pl)) })}</em>`;
+  const tip = pl === null ? "" : ` title="${te(pl >= 0 ? "market.pl_tip_up" : "market.pl_tip_down", { profit: money(Math.abs(pl)), paid: money(paidFor(g)) })}"`;
+  return `<button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}"${tip}>
     <b>${te(tr.side === "buy" ? "btn.buy" : "btn.sell")} ${tr.qty.toLocaleString()}</b>
-    <small>${money(quote(g, tr.qty, tr.side))}</small></button>`;
+    <small>${money(total)}</small>${plTag}</button>`;
+}
+
+/* What the house paid for a cargo on average (engine p["basis"], hold and warehouse together), or
+   null when the server has no record. Profit on a sale is the silver it brings less that average
+   times the units, the same sum the Tax collector uses. Unknown cost shows nothing. */
+function paidFor(g) {
+  const b = S.me.basis && S.me.basis[g];
+  return b > 0 ? b : null;
+}
+function profitOf(g, qty, total) {
+  const paid = paidFor(g);
+  return paid === null ? null : Math.round(total - paid * qty);
+}
+
+/* "paid 412 avg" under the price, jade when one unit sold here now beats it, oxblood when it does not. */
+function paidHtml(g) {
+  const paid = paidFor(g), have = (S.me.cargo[g] || 0) + ((S.me.wh || {})[g] || 0);
+  if (paid === null || !have) return "";
+  const one = quote(g, 1, "sell");
+  return `<span class="mk-paid ${one >= paid ? "up" : "down"}" title="${te("market.paid_tip", { paid: money(paid), good: esc(D.goods[g].name), price: money(one) })}">${te("market.paid", { paid: money(paid) })}</span>`;
 }
 
 /* "12 aboard", or "12 → 40 aboard" while a trade is lined up. */
@@ -554,24 +583,14 @@ function haveHtml(tr) {
 
 function marketRow(g) {
   const me = S.me, good = D.goods[g], tr = tradeOf(g);
-  const bannedHere = ((S.bans || {})[me.port] || []).includes(g);
-  const tag = good.contraband ? ` <span class="tag">${te("tag.contraband")}</span>`
-    : bannedHere ? ` <span class="tag bad">${te("tag.ban")}</span>` : "";
+  const tag = good.contraband ? ` <span class="tag">${te("tag.contraband")}</span>` : "";
   return `<tr data-good="${g}" class="${tr.side}">
     <td class="mk-ico">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
     <td class="mk-name"><b>${esc(good.name)}</b>${tag}</td>
-    <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span></td>
+    <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${paidHtml(g)}</td>
     <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
       value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"></td>
     <td class="mk-do">${tradeButton(g, tr)}</td></tr>`;
-}
-
-/* {contraband}/{Contraband} for the cargo banned in one port, e.g. "Opium & Gold". */
-function bannedWords(port) {
-  const names = ((S.bans || {})[port] || []).map(g => D.goods[g] ? D.goods[g].name : g);
-  if (!names.length) return {};
-  const joined = names.join(" & ");
-  return { Contraband: joined, contraband: joined.toLowerCase() };
 }
 
 function marketTab() {
@@ -581,7 +600,7 @@ function marketTab() {
   return `<section class="card mk" style="--n:${Object.keys(D.goods).length}">
     <header class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
       <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span></header>
-    ${banned ? `<p class="note bad">${te("market.banned", bannedWords(me.port))}</p>` : ""}
+    ${banned ? `<p class="note bad">${te("market.banned")}</p>` : ""}
     <table class="mk-table"><thead><tr><th colspan="2">${te("col.cargo")}</th><th class="n">${te("col.price")} · ${te("col.aboard")}</th><th class="mk-scale"><span>${te("btn.sell")}</span><span>${te("btn.buy")}</span></th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></section>`;
 }
@@ -644,16 +663,13 @@ function standingBar(rep) {
     <span>${te("dealer.standing")}</span><div class="dl-heat" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${r}" aria-label="${te("dealer.standing_tip", { rep: r })}"><i></i></div><b>${r}</b></div>`;
 }
 
-/* The mayor's bill, shown in the side column under her picture while the Set sail tab is open.
-   The server works it out (engine Game.dues) from what the house did in this port this visit:
-   anchorage, tonnage, and a share of repairs, ships and guns, bank and loan money, and warehouse
-   use. Cargo trading is not on it. It is paid out of silver as the fleet sails; a shortfall goes
-   on the debt. Staying at anchor costs nothing. */
-function duesCard() {
+/* One compact outward-clearance form under the Mayor: the harbour schedule, cargo declaration,
+   and the amount the current declaration would submit. */
+function clearanceLedger() {
   const me = S.me, bill = me && me.dues;
   if (!me) return "";
-  if (!bill) return `<section class="dl-card du-card"><header><span>${te("dues.title")}</span><b>…</b></header>
-    <p class="du-foot">${te("dues.restart")}</p></section>`;   // server still running the code from before the dues
+  if (!bill) return `<section class="cl-card"><header class="cl-head"><span>${te("clearance.authority", { port: esc(portName(me.port)) })}</span>
+    <h3>${te("clearance.title")}</h3></header><p class="cl-note">${te("dues.restart")}</p></section>`;
   const share = r => pct(r) + "%";
   const per = r => money(r);
   const subs = {
@@ -666,26 +682,39 @@ function duesCard() {
     wh: ln => te("dues.wh_sub", { n: ln.basis.toLocaleString(), rate: per(ln.rate) }),
     standing: ln => te(ln.amount < 0 ? "dues.standing_off_sub" : "dues.standing_on_sub", { n: ln.basis, rate: share(ln.rate) }),
   };
-  // Standing in this port changes the bill (engine Game.dues): a courtesy below the line, or a displeasure surcharge.
   const label = ln => ln.key === "standing" ? te(ln.amount < 0 ? "dues.standing_off" : "dues.standing_on") : te("dues." + ln.key);
   const amt = ln => ln.amount < 0 ? "−" + money(-ln.amount) : money(ln.amount);
-  const cls = ln => ln.key === "standing" ? (ln.amount < 0 ? " du-off" : " du-on") : "";
-  const rows = bill.lines.map(ln => `<div class="dl-row du-line${cls(ln)}"><span>${label(ln)}<small>${subs[ln.key] ? subs[ln.key](ln) : ""}</small></span><b>${amt(ln)}</b></div>`).join("");
-  const after = me.cash - bill.total, owed = Math.max(0, -after);
-  // Each port's Mayor charges at her own level (Admin > Ports > Harbour dues level); the amounts already include it.
+  const cls = ln => ln.key === "standing" ? (ln.amount < 0 ? " credit" : " surcharge") : "";
+  const rows = bill.lines.map(ln => `<div class="cl-row${cls(ln)}"><span><b>${label(ln)}</b><small>${subs[ln.key] ? subs[ln.key](ln) : ""}</small></span><strong>${amt(ln)}</strong></div>`).join("");
   const level = bill.level == null ? 1 : bill.level;
   const levelKey = level < 0.95 ? "dues.level_lo" : level > 1.05 ? "dues.level_hi" : "dues.level";
-  const levelLine = `<br><span class="du-level ${level < 0.95 ? "lo" : level > 1.05 ? "hi" : ""}">${te(levelKey, { port: esc(portName(me.port)), level: +level.toFixed(2) })}</span>`;
+  const levelLine = `<span class="cl-rate ${level < 0.95 ? "credit" : level > 1.05 ? "surcharge" : ""}">${te(levelKey, { port: esc(portName(me.port)), level: +level.toFixed(2) })}</span>`;
+  const t = me.tax || { sales: 0, profit: 0, due: 0, rate: 0 };
+  const f = me.ready ? me.declare : (ui.vals.declare == null ? 1 : ui.vals.declare / 100);
+  const n = me.tax ? taxNumbers(f) : { tax: 0, declared: 0, hidden: 0, chance: 0, caught: 0, rep: 0 };
+  const total = bill.total + n.tax, after = me.cash - total, owed = Math.max(0, -after);
   const slipping = me.ready ? !!me.slip : !!ui.slip;
   const caughtCost = money(Math.ceil(bill.total * ((D.dues_rules || {}).slip_mult || 2)));
-  if (slipping && bill.total) return `<section class="dl-card du-card du-slipping">
-    <header><span>${te("dues.title")}</span><b>${money(bill.total)}</b></header>
-    <p class="du-sub">${te("dues.slipping", { caught: caughtCost })}${levelLine}</p>${rows}</section>`;
-  const foot = `<p class="du-foot">${te("dues.after", { from: money(me.cash), to: money(Math.max(0, after)) })}` +
-    `${owed ? `<br><b class="du-short">${te("dues.short", { owed: money(owed) })}</b>` : ""}<br>${te("dues.stay")}</p>`;
-  return `<section class="dl-card du-card">
-    <header><span>${te("dues.title")}</span><b>${money(bill.total)}</b></header>
-    <p class="du-sub">${te(me.ready && me.dest ? "dues.paid_on_leave" : "dues.due")}${levelLine}</p>${rows}${foot}</section>`;
+  const profit = t.profit ? money(t.profit) : "—";
+  const declared = t.profit ? money(n.declared) : "—";
+  const status = slipping && bill.total
+    ? te("clearance.slip", { caught: caughtCost })
+    : n.hidden ? te("tax.risk", { chance: n.chance, caught: money(n.caught), rep: n.rep }) : te("tax.honest");
+  return `<section class="cl-card${slipping && bill.total ? " slipping" : ""}${n.hidden ? " hiding" : ""}">
+    <header class="cl-head"><span>${te("clearance.authority", { port: esc(portName(me.port)) })}</span><h3>${te("clearance.title")}</h3>
+      <div class="cl-pay"><small>${te("clearance.total")}</small><b data-cl="total">${money(total)}</b></div></header>
+    <div class="cl-meta"><span>${te(me.ready && me.dest ? "dues.paid_on_leave" : "dues.due")}</span>${levelLine}</div>
+    <div class="cl-section"><h4>${te("clearance.harbour")}</h4>${rows}
+      <div class="cl-row subtotal"><span>${te("clearance.subtotal")}</span><strong>${money(bill.total)}</strong></div></div>
+    <div class="cl-section cl-tax"><h4>${te("clearance.tax")}</h4><div class="cl-boxes">
+      <span><small>${te("tax.sales")}</small><b>${t.sales ? money(t.sales) : "—"}</b></span>
+      <span><small>${te(t.sales && !t.profit ? "tax.loss_line" : "tax.profit_line")}</small><b>${profit}</b></span>
+      <span><small>${te("clearance.declared")}</small><b data-cl="declared">${declared}</b></span>
+      <span><small>${te("tax.pay", { tax: "" }).trim()} · ${pct(t.rate)}%</small><b data-cl="tax">${money(n.tax)}</b></span>
+    </div></div>
+    <footer class="cl-foot"><p class="cl-status" data-cl="status">${status}</p>
+      <p><b data-cl="after">${te("clearance.after", { amount: money(Math.max(0, after)) })}</b><em data-cl="short">${owed ? te("clearance.short", { amount: money(owed) }) : ""}</em></p>
+      <small>${te("clearance.anchor")}</small></footer></section>`;
 }
 
 /* ----------------------------------------------------------------- port -- */
@@ -827,7 +856,7 @@ function chartTab() {
       <div class="sail-guide sail-guide-top"><span><b>${te("sail.risk_title")}</b><small>${te("sail.risk_note")}</small></span>
         <span class="heat-key"><small>${te("sail.easiest")}</small><i></i><small>${te("sail.hardest")}</small></span></div>
       <div class="dests">${list}</div>
-      <div class="sail-map">${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id })}</div></section>
+      <div class="sail-map">${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id, focusRoute: true })}</div></section>
     <section class="card"><h2>${te("orders.title")}</h2>
       <div class="seg">${btn(te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
       <p class="muted">${me.protect > 0 ? te("orders.protected", { months: me.protect }) : te("orders.unprotected")}</p>
@@ -884,25 +913,6 @@ function taxDeclare() {
       <b class="tx-tax" data-tx="tax">${x.tax}</b></div>
     <p class="muted tx-risk${n.hidden ? " bad" : ""}" data-tx="risk">${me.ready ? te("tax.given", { pct: Math.round(f * 100) }) + " " : ""}${x.risk}</p>`;
 }
-/* The tax on cargo, read-only, under the Mayor's harbour dues while the Set sail tab is open: what has
-   been sold here this visit, the profit (or loss) so far, and the tax if declared honestly. The declaring
-   itself is done in the sailing orders on the same tab (taxDeclare). */
-function taxCard() {
-  const me = S.me, t = me && me.tax;
-  if (!t) return "";
-  const loss = t.sales && !t.profit;
-  const row = (label, v, cls, sub) => `<div class="dl-row ${cls || ""}"><span>${label}${sub ? `<small>${sub}</small>` : ""}</span><b>${v}</b></div>`;
-  const rows = t.sales
-    ? row(te("tax.sales"), money(t.sales)) +
-      (loss ? row(te("tax.loss_line"), "—", "du-off") : row(te("tax.profit_line"), money(t.profit), "get", te("tax.profit_sub"))) +
-      row(te("tax.honest_line"), money(t.due), "pay", te("tax.honest_sub", { rate: pct(t.rate) }))
-    : "";
-  return `<section class="dl-card tx-card">
-    <header><span>${te("tax.card")}</span><b>${money(t.due)}</b></header>
-    <p class="du-sub">${te("tax.card_sub")}</p>${rows}
-    <p class="du-foot">${t.due ? "" : te("tax.nothing") + "<br>"}${te("tax.where")}</p></section>`;
-}
-
 /* While the declare slider moves, only its numbers are rewritten (the pane is held still). */
 function taxLive(el) {
   const n = taxNumbers(el.value / 100), x = taxText(n), box = el.closest(".dk-pane") || app;
@@ -911,6 +921,19 @@ function taxLive(el) {
   ["pct", "amt", "tax", "risk"].forEach(k => { const o = box.querySelector('[data-tx="' + k + '"]'); if (o) o.innerHTML = x[k]; });
   const risk = box.querySelector('[data-tx="risk"]');
   if (risk) risk.classList.toggle("bad", !!n.hidden);
+  const ledger = app.querySelector(".cl-card");
+  if (ledger) {
+    const total = (S.me.dues ? S.me.dues.total : 0) + n.tax;
+    const after = S.me.cash - total, owed = Math.max(0, -after);
+    const set = (k, value) => { const out = ledger.querySelector('[data-cl="' + k + '"]'); if (out) out.textContent = value; };
+    ledger.classList.toggle("hiding", !!n.hidden);
+    set("declared", S.me.tax.profit ? money(n.declared) : "—");
+    set("tax", money(n.tax));
+    set("total", money(total));
+    set("status", x.risk);
+    set("after", te("clearance.after", { amount: money(Math.max(0, after)) }));
+    set("short", owed ? te("clearance.short", { amount: money(owed) }) : "");
+  }
 }
 
 /* --------------------------------------------------------------- ledger -- */
@@ -946,7 +969,7 @@ function ledgerTab() {
       : goods.map(g => {
           const v = priceAt(k, g), b = best[g];
           const mark = b && b.lo === k ? "lo" : b && b.hi === k ? "hi" : "";
-          const barred = ((S.bans || {})[k] || []).includes(g) ? " barred" : "";
+          const barred = D.goods[g].contraband && S.crackdown.includes(k) ? " barred" : "";
           const tip = mark ? ` title="${esc(te(mark === "lo" ? "ledger.tip_lo" : "ledger.tip_hi", { cargo: D.goods[g].name }))}"` : "";
           return `<td class="pb-p ${mark}${barred}"${tip}>${v != null ? `<b>${v.toLocaleString()}</b>` : "·"}</td>`;
         }).join("");

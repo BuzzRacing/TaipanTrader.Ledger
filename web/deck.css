@@ -225,7 +225,23 @@ body.player input::placeholder { color: color-mix(in srgb, var(--deck-ivory) 35%
 /* ----------------------------------------------------------- set sail routes -- */
 .sail-guide { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin: .85rem 0 .65rem; }
 .sail-guide.sail-guide-top { margin-top: 0; }
-.sail-map { margin-top: .9rem; }
+.sail-map { margin-top: .9rem; padding: .45rem; border: 1px solid var(--edge); border-radius: calc(var(--radius) * 1.35);
+  background: color-mix(in srgb, var(--deck-night) 72%, transparent); box-shadow: inset 0 0 30px rgba(0, 0, 0, .32); }
+.sail-map .chart { border-radius: var(--radius); }
+body.player .sail-map .chart .port .label-bg { fill: color-mix(in srgb, var(--deck-night) 88%, transparent); stroke: color-mix(in srgb, var(--deck-brass) 55%, transparent); }
+body.player .sail-map .chart .port .port-name { fill: #fff5df; }
+body.player .sail-map .chart .port .port-status { fill: color-mix(in srgb, var(--deck-ivory) 68%, var(--deck-brass)); }
+body.player .sail-map .chart .port.here .label-bg { fill: color-mix(in srgb, var(--deck-brass) 28%, var(--deck-night)); stroke: var(--brass-hi); }
+body.player .sail-map .chart .port.dest .label-bg { fill: color-mix(in srgb, var(--deck-oxblood) 34%, var(--deck-night)); stroke: var(--blood-hi); }
+body.player .sail-map .chart .port.dest .port-status { fill: #ffc1b3; }
+body.player .sail-map .chart .port .ring { fill: var(--deck-night); }
+body.player .sail-map .chart .port.here .ring { fill: var(--deck-brass); }
+body.player .sail-map .chart .port.dest .ring { fill: var(--deck-oxblood); }
+body.player .sail-map .chart .port .label-leader { stroke: color-mix(in srgb, var(--deck-ivory) 45%, var(--deck-night)); }
+body.player .sail-map .chart .region-bg { fill: color-mix(in srgb, var(--deck-night) 78%, transparent); stroke: color-mix(in srgb, var(--deck-jade) 60%, var(--deck-ivory)); }
+body.player .sail-map .chart .region.wxt2 .region-bg { fill: color-mix(in srgb, #70491f 80%, var(--deck-night)); stroke: #e0ac55; }
+body.player .sail-map .chart .region.wxt3 .region-bg { fill: color-mix(in srgb, var(--deck-oxblood) 72%, var(--deck-night)); stroke: var(--blood-hi); }
+body.player .sail-map .chart .rname { fill: color-mix(in srgb, var(--deck-ivory) 78%, var(--deck-jade)); }
 .sail-guide > span:first-child b { display: block; font: 400 1.08rem/1.15 var(--serif); color: var(--brass-hi); }
 .sail-guide > span:first-child small { display: block; margin-top: .12rem; color: var(--muted); font-size: .76rem; }
 .heat-key { display: flex; align-items: center; gap: .35rem; flex: none; color: var(--muted); }
@@ -274,6 +290,7 @@ body.player button.dest.sail-card.on, body.player button.dest.sail-card.on:hover
   .sail-guide { align-items: start; }
   .heat-key { display: none; }
   .dest-art { height: 6.2rem; }
+  .sail-map { padding: .25rem; }
 }
 
 /* ---------------------------------------------------------------- side: stage, log, helm -- */
@@ -837,23 +854,61 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
   .deck[data-tab="market"] .dk-dyn { width: auto; flex: 1 1 0; max-width: 22rem; overflow: auto; }
 }
 
-/* ------------------------------------------------- the mayor's harbour dues under her picture -- */
-/* player.js duesCard(): shown in the side column under the stage while the Set sail tab is open.
-   Same glass card as the dealer's; the bill is taller, so the stage gives up more room. */
+/* ------------------------------------------------ outward clearance under the Mayor -- */
 .deck[data-tab="chart"] .dk-side { gap: clamp(.45rem, .9vw, .85rem); }
-.deck[data-tab="chart"] .dk-dyn { display: block; flex: 0 1 auto; min-height: 0; overflow: auto; width: min(100cqw, 100cqh - 16rem); }
-.deck[data-tab="chart"] .dk-stage { flex: none; width: min(100cqw, 100cqh - 16rem - clamp(.45rem, .9vw, .85rem)); }
-.du-card .dl-row b { color: color-mix(in srgb, var(--blood-hi) 85%, var(--deck-ivory)); }
-.du-card .du-short { color: var(--blood-hi); }
-.du-sub { margin: .15rem 0 .35rem; font-size: .8rem; color: var(--muted); }
-.du-level { color: var(--brass-hi); }
-.du-level.lo { color: var(--jade-hi); }
-.du-card .du-off b { color: var(--jade-hi); }
-.du-card .du-on b { color: var(--blood-hi); }
+.deck[data-tab="chart"] .dk-dyn { display: block; flex: 0 1 auto; min-height: 0; overflow: auto; width: min(100cqw, 100cqh - 18.5rem); }
+.deck[data-tab="chart"] .dk-stage { flex: none; width: min(100cqw, 100cqh - 18.5rem - clamp(.45rem, .9vw, .85rem)); }
+
+.cl-card { --paper: #ead9b2; --paper-hi: #f5e9ce; --ink: #241b14; --ink-soft: #6c5a44; --form-rule: rgba(85, 61, 34, .3);
+  position: relative; overflow: hidden; padding: .55rem .65rem .5rem .95rem; color: var(--ink);
+  background: linear-gradient(100deg, rgba(120, 72, 36, .12), transparent 10%),
+    repeating-linear-gradient(0deg, transparent 0 1.34rem, rgba(94, 67, 38, .07) 1.36rem),
+    linear-gradient(135deg, var(--paper-hi), var(--paper));
+  border: 1px solid #b4935d; border-radius: 3px;
+  box-shadow: 0 18px 34px -22px #000, inset 0 0 26px rgba(101, 67, 30, .11); }
+.cl-card::before { content: ""; position: absolute; top: 0; bottom: 0; left: .62rem; width: 1px; background: rgba(116, 45, 37, .38); }
+.cl-head { position: relative; min-height: 2.7rem; padding: 0 6.4rem .35rem 0; border-bottom: 2px double rgba(53, 36, 20, .55); }
+.cl-head > span { display: block; font: 700 .58rem/1.1 var(--special); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-head h3 { margin: .08rem 0 0; font: 700 1.18rem/1 var(--serif); letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
+.cl-pay { position: absolute; top: 0; right: 0; text-align: right; }
+.cl-pay small { display: block; font: 700 .55rem/1 var(--special); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-pay b { display: block; margin-top: .2rem; font: 800 1.3rem/1 var(--sans); font-variant-numeric: tabular-nums; color: #6f2e28; }
+.cl-meta { display: flex; align-items: center; justify-content: space-between; gap: .45rem; padding: .26rem 0 .2rem;
+  font: 700 .57rem/1.15 var(--special); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-rate { overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.cl-rate.credit, .cl-row.credit strong { color: #286349; }
+.cl-rate.surcharge, .cl-row.surcharge strong { color: #7b3029; }
+.cl-section { margin-top: .22rem; }
+.cl-section h4 { margin: 0; padding: .22rem .35rem; font: 800 .62rem/1 var(--special); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--paper-hi); background: rgba(51, 38, 26, .86); }
+.cl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .45rem; min-height: 1.2rem;
+  padding: .12rem .24rem; border-bottom: 1px dotted var(--form-rule); }
+.cl-row > span { min-width: 0; display: flex; align-items: baseline; gap: .3rem; overflow: hidden; font: 700 .7rem/1.1 var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+.cl-row span b { overflow: hidden; font: inherit; text-overflow: ellipsis; white-space: nowrap; }
+.cl-row small { overflow: hidden; font: .56rem/1.1 var(--sans); color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+.cl-row strong { font: 800 .74rem/1 var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cl-row.subtotal { min-height: 1.35rem; border-bottom: 0; border-top: 1px solid rgba(53, 36, 20, .65); }
+.cl-row.subtotal span, .cl-row.subtotal strong { font-weight: 900; color: var(--ink); }
+.cl-boxes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: solid var(--form-rule); border-width: 0 1px 1px 0; }
+.cl-boxes > span { min-width: 0; padding: .25rem .3rem .22rem; border: solid var(--form-rule); border-width: 1px 0 0 1px; }
+.cl-boxes small { display: block; overflow: hidden; font: 700 .52rem/1.05 var(--special); letter-spacing: .03em; text-transform: uppercase;
+  color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+.cl-boxes b { display: block; margin-top: .14rem; overflow: hidden; font: 800 .74rem/1 var(--sans); font-variant-numeric: tabular-nums;
+  color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
+.cl-foot { position: relative; margin-top: .28rem; padding-top: .25rem; border-top: 2px double rgba(53, 36, 20, .55); }
+.cl-foot p { margin: 0; font-size: .62rem; line-height: 1.22; }
+.cl-foot p + p { display: flex; justify-content: space-between; gap: .4rem; margin-top: .18rem; }
+.cl-foot p > b { font-weight: 800; }
+.cl-foot em { font-style: normal; font-weight: 800; color: #7b3029; }
+.cl-foot em:empty { display: none; }
+.cl-foot > small { display: block; margin-top: .18rem; font: 700 .52rem/1.1 var(--special); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+.cl-status { padding: .22rem .34rem; border: 1px solid rgba(39, 92, 66, .45); background: rgba(39, 92, 66, .08); color: #285d45; }
+.cl-card.hiding .cl-status, .cl-card.slipping .cl-status { border-color: rgba(123, 48, 41, .5); background: rgba(123, 48, 41, .08); color: #7b3029; }
+.cl-card.slipping .cl-pay b { text-decoration: line-through; text-decoration-thickness: 2px; }
+.cl-note { margin: .55rem 0 0; font-size: .72rem; color: var(--ink-soft); }
+
 .du-choice-h { margin-top: .9rem; }
 .du-slipnote { color: color-mix(in srgb, var(--blood-hi) 70%, var(--deck-ivory)); }
-.du-card.du-slipping { border-color: color-mix(in srgb, var(--blood-hi) 60%, var(--edge)); }
-.du-card.du-slipping header b { text-decoration: line-through; text-decoration-color: var(--blood-hi); }
 /* tax collector's declaration slider (Set sail orders card) */
 .tx-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .8rem; margin: .3rem 0 .2rem; }
 .tx-range { width: 100%; accent-color: var(--jade-hi); }
@@ -863,12 +918,11 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
 .tx-out small { color: var(--muted); font-size: .78rem; }
 .tx-tax { font: 700 1.1rem/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--brass-hi); white-space: nowrap; }
 .tx-risk.bad { color: color-mix(in srgb, var(--blood-hi) 75%, var(--deck-ivory)); }
-.du-level.hi { color: color-mix(in srgb, var(--blood-hi) 85%, var(--deck-ivory)); }
-.du-foot { margin: 0; padding-top: .3rem; border-top: 1px solid var(--rule); font-size: .82rem; line-height: 1.35; color: var(--muted); }
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
   .deck[data-tab="chart"] .dk-side { flex-direction: row; justify-content: center; align-items: stretch; }
   .deck[data-tab="chart"] .dk-stage { width: auto; height: 100cqh; max-width: 55cqw; }
-  .deck[data-tab="chart"] .dk-dyn { width: auto; flex: 1 1 0; max-width: 22rem; overflow: auto; }
+  .deck[data-tab="chart"] .dk-dyn { width: auto; flex: 1 1 0; max-width: 24rem; overflow: auto; }
+  .cl-boxes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Ledger (the price book): no stage and no side card. The side column is hidden and the pane takes its
@@ -876,8 +930,6 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
    dues on Set sail (player.js taxCard()). */
 .deck[data-tab="ledger"] { grid-template-areas: "top top top" "nav main main"; }
 .deck[data-tab="ledger"] .dk-side { display: none; }
-.tx-card .dl-row.pay b { color: var(--brass-hi); }
-.deck[data-tab="chart"] .dk-dyn { display: flex; flex-direction: column; gap: clamp(.45rem, .9vw, .85rem); }
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
   .deck[data-tab="ledger"] { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "top" "main" "nav"; }
 }
@@ -897,3 +949,12 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
 .pb-ptext .tag { align-self: flex-start; width: max-content; }
 .pb-meta { overflow: hidden; text-overflow: ellipsis; }
 .pb-table th.pb-corner { width: 13.5rem; }
+
+/* MARKET: what was paid, and profit or loss on a planned sale (16 Nov 2026, 10:05 pm) */
+.mk-paid { display: block; margin-top: .1rem; font-size: .68rem; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mk-paid.up { color: var(--jade-hi); }
+.mk-paid.down { color: var(--blood-hi); }
+body.player button.mk-go em.mk-pl { display: block; margin-top: .08rem; padding: .05rem .35rem; border-radius: .3rem;
+  font: 800 .72rem/1.05 var(--sans); font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
+body.player button.mk-go em.mk-pl.up { color: #eafff6; background: color-mix(in srgb, var(--deck-jade) 85%, #000); box-shadow: inset 0 0 0 1px var(--jade-hi); }
+body.player button.mk-go em.mk-pl.down { color: #ffd9cf; background: rgba(0, 0, 0, .45); box-shadow: inset 0 0 0 1px var(--blood-hi); }

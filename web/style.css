@@ -151,24 +151,55 @@ button.on .wx3 { color: #ffa497; }
 .chart .rose circle { fill: none; stroke: #9db3a8; stroke-width: 1.5; }
 .chart .rose path { fill: #9db3a8; }
 .chart .rose text { font: 700 14px var(--serif); fill: #7c958a; }
-.chart .rname { font: italic 15px var(--serif); fill: #5f7b70; letter-spacing: .06em; }
-.chart .rwx { font: 700 14px var(--sans); }
+.chart .region-bg { fill: rgba(224, 237, 229, .74); stroke: rgba(95, 123, 112, .55); stroke-width: 1.5; }
+.chart .region.wxt2 .region-bg { fill: rgba(255, 239, 199, .88); stroke: #b47b24; stroke-width: 2; }
+.chart .region.wxt3 .region-bg { fill: rgba(255, 218, 205, .9); stroke: var(--vermilion); stroke-width: 2; }
+.chart .rname { font: italic 15px var(--serif); fill: #3d5c51; letter-spacing: .06em; }
+.chart .rwx { font: 800 14px var(--sans); }
 .chart .wxt0, .chart .wxt1 { fill: var(--jade); }
 .chart .wxt2 { fill: #a5670d; }
 .chart .wxt3 { fill: var(--vermilion); }
-.chart .route { stroke: var(--vermilion); stroke-width: 3; stroke-dasharray: 9 7; stroke-linecap: round; }
+.chart .planned-route .route-halo { stroke: rgba(25, 20, 14, .7); stroke-width: 11; stroke-linecap: round; }
+.chart .planned-route .route { stroke: var(--gold); stroke-width: 5; stroke-dasharray: 2 13; stroke-linecap: round; }
+.chart .planned-route marker path { fill: var(--gold); stroke: var(--ink); stroke-width: 1; }
+.chart .planned-route.wx2 .route, .chart .planned-route.wx3 .route { stroke: #d47b26; }
+.chart .planned-route.wx2 marker path, .chart .planned-route.wx3 marker path { fill: #d47b26; }
+.chart .planned-route.wx3 .route { stroke: var(--vermilion); }
+.chart .planned-route.wx3 marker path { fill: var(--vermilion); }
+.chart .route-alert rect { fill: #3c2a1d; stroke: #e2a84d; stroke-width: 2; }
+.chart .route-alert.wxt3 rect { fill: #4f1d1c; stroke: #ff9a8c; }
+.chart .route-alert .alert-icon { fill: none; stroke: #f2c46b; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.chart .route-alert.wxt3 .alert-icon { stroke: #ffb0a4; }
+.chart .route-alert text { text-anchor: start; fill: #fff8e8; stroke: none; }
+.chart .route-alert .alert-kicker { font: 800 10px var(--sans); letter-spacing: .12em; }
+.chart .route-alert .alert-weather { font: 800 17px var(--serif); }
 .chart .port .hit { fill: transparent; }
-.chart .port .ring { fill: none; stroke: none; }
-.chart .port .dot { fill: var(--teak); stroke: #fbf6e9; stroke-width: 2; }
-.chart .port text { font: 700 17px var(--serif); fill: var(--ink); paint-order: stroke; stroke: #f3ead0; stroke-width: 4px; stroke-linejoin: round; }
-.chart .port.here .ring { stroke: var(--teak); stroke-width: 2.5; }
-.chart .port.dest .ring { stroke: var(--vermilion); stroke-width: 3; }
-.chart .port.dest .dot { fill: var(--vermilion); }
-.chart .port.ban text { fill: var(--vermilion); }
+.chart .port .label-leader { stroke: #7b6848; stroke-width: 2; }
+.chart .port .label-bg { fill: rgba(255, 251, 240, .9); stroke: #aa9567; stroke-width: 1.5; filter: url(#chart-shadow); }
+.chart .port .pulse { fill: none; stroke: none; }
+.chart .port .ring { fill: rgba(255, 251, 240, .82); stroke: #6f5b3e; stroke-width: 2.5; }
+.chart .port .dot { fill: var(--teak); stroke: #fffaf0; stroke-width: 3; }
+.chart .port .port-name { font: 800 18px var(--serif); fill: var(--ink); letter-spacing: .01em; }
+.chart .port .port-status { font: 800 9px var(--sans); fill: #6b5b43; letter-spacing: .14em; }
+.chart .port.here .label-bg { fill: rgba(245, 227, 187, .96); stroke: var(--gold); stroke-width: 2.5; }
+.chart .port.here .pulse { stroke: var(--gold); stroke-width: 4; opacity: .45; }
+.chart .port.here .ring { fill: var(--gold); stroke: #fff3c6; stroke-width: 3.5; }
+.chart .port.here .dot { fill: #362417; stroke-width: 3; }
+.chart .port.dest .label-bg { fill: rgba(255, 244, 226, .97); stroke: var(--vermilion); stroke-width: 2.5; }
+.chart .port.dest .pulse { stroke: var(--vermilion); stroke-width: 5; opacity: .42; }
+.chart .port.dest .ring { fill: var(--vermilion); stroke: #fff3e5; stroke-width: 3.5; }
+.chart .port.dest .dot { fill: #fff4de; stroke: var(--vermilion); }
+.chart .port.dest .port-status { fill: var(--vermilion); }
+.chart .port.ban .port-name { fill: var(--vermilion); }
+.chart .port .current-flag line { stroke: #362417; stroke-width: 3; }
+.chart .port .current-flag path { fill: var(--gold); stroke: #362417; stroke-width: 2; }
 .chart .port.click { cursor: pointer; }
-.chart .port.click:hover .ring { stroke: var(--gold); stroke-width: 2.5; }
-.chart .flag line { stroke: var(--ink); stroke-width: 1.6; }
-.chart .flag path { stroke: #2a2118; stroke-width: .8; }
+.chart .port.click:hover .label-bg { stroke: var(--gold); stroke-width: 3; }
+.chart .port.click:hover .pulse { stroke: var(--gold); stroke-width: 4; opacity: .5; }
+.chart .flag { filter: url(#chart-shadow); }
+.chart .flag line { stroke: var(--ink); stroke-width: 2.2; }
+.chart .flag path { stroke: #2a2118; stroke-width: 1.2; }
+.chart .flag.mine path { stroke: #fff4cf; stroke-width: 2; }
 
 /* modal and toast */
 .veil { position: fixed; inset: 0; z-index: 20; background: rgba(42, 33, 24, .62); display: flex; align-items: center;

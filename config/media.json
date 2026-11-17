@@ -2006,6 +2006,289 @@
    "source": "generated",
    "added": "2026-11-16 20:29",
    "replaces": ""
+  },
+  {
+   "id": "md6723def4b",
+   "url": "/uploads/artbible-cargo-gold-e57d0720.png",
+   "type": "image",
+   "kind": "reference",
+   "subject": "cargo_gold",
+   "roles": [
+    "reference"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "A single historically plausible gold trade-goods arrangement on a lacquer-black surface: tactile material, antique brass merchant token for scale, three-quarter product view, soft directional lantern light, square composition, clean silhouette, no person, no label, readable at 30 pixels. romanticized cinematic historical realism set in the China Seas in 1860, private-release adult power fantasy with erotic after-hours glamour, humid salt haze, natural skin, believable anatomy, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, ivory and storm blue, premium tabletop-game key art, richly textured, dramatic but plausible lighting",
+   "seed": 246116977120802,
+   "width": 1024,
+   "height": 1024,
+   "bytes": 1457947,
+   "source": "generated",
+   "added": "2026-11-16 22:54",
+   "replaces": ""
+  },
+  {
+   "id": "m423fe0ba61",
+   "url": "/uploads/artbible-cargo-gold-423c064b.png",
+   "type": "image",
+   "kind": "cargo",
+   "subject": "gold",
+   "roles": [
+    "icon"
+   ],
+   "tags": [
+    "graphics"
+   ],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": true,
+   "weight": 3,
+   "title": "",
+   "prompt": "A single historically plausible gold trade-goods arrangement on a lacquer-black surface: tactile material, antique brass merchant token for scale, three-quarter product view, soft directional lantern light, square composition, clean silhouette, no person, no label, readable at 30 pixels. romanticized cinematic historical realism set in the China Seas in 1860, private-release adult power fantasy with erotic after-hours glamour, humid salt haze, natural skin, believable anatomy, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, ivory and storm blue, premium tabletop-game key art, richly textured, dramatic but plausible lighting",
+   "seed": 143294397699388,
+   "width": 1024,
+   "height": 1024,
+   "bytes": 1630459,
+   "source": "generated",
+   "added": "2026-11-16 22:54",
+   "replaces": ""
+  },
+  {
+   "id": "m71a2468748",
+   "url": "/media/port/hongkong/port-hongkong-b0ea7a5d.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "hongkong",
+   "roles": [
+    "keeper"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her late twenties who runs a trading stall in the Hong Kong market in 1860, looking straight into the camera with a slow, knowing half-smile and direct eye contact, glossy black hair pinned with jade and gold, close-fitting embroidered oxblood silk jacket with a high collar and gold frogging, a little open at the throat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 42543330402144,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2282196,
+   "source": "generated",
+   "added": "2026-11-16 22:57",
+   "replaces": ""
+  },
+  {
+   "id": "m81e3cc3e18",
+   "url": "/media/port/hongkong/port-hongkong-64d669b2.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "hongkong",
+   "roles": [
+    "mayor"
+   ],
+   "tags": [
+    "breast exposed"
+   ],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her mid-thirties, a former pirate queen who is now the lady mayor of Hong Kong in 1860 and keeps the town's ledger and collects its taxes, seated at a heavy teak desk and looking straight into the camera with a sly, appraising, amused half-smile, as if she already knows what you owe her, direct eye contact, glossy black hair swept up with a gold pin and one loose curl, a gold hoop earring, a fitted oxblood silk brocade bodice under a black lacquer pirate captain's coat with gold braid, worn open at the throat and shoulders, a gold mayor's chain of office across her chest, a quill in one ringed hand, an open leather-bound ledger, a brass strongbox spilling silver dollars, tax seals and a cutlass hung on the wall behind her, warm candle and lantern glow, harbour window haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 242932737004741,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2213104,
+   "source": "generated",
+   "added": "2026-11-16 22:59",
+   "replaces": ""
+  },
+  {
+   "id": "mf81b3c9dcc",
+   "url": "/media/port/hongkong/port-hongkong-13eb4edf.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "hongkong",
+   "roles": [
+    "taxlady"
+   ],
+   "tags": [
+    "naked"
+   ],
+   "nsfw": true,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her early thirties, the tax collector who works the Hong Kong waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless smile and one raised eyebrow, direct eye contact, glossy black hair in a low braid wound with an oxblood silk ribbon, a fitted black lacquer waistcoat over a loose ivory silk blouse slipping off one shoulder, a jade customs seal on a cord at her throat, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 207709285744060,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2319471,
+   "source": "generated",
+   "added": "2026-11-16 23:00",
+   "replaces": ""
+  },
+  {
+   "id": "m1771606538",
+   "url": "/media/port/hongkong/port-hongkong-53699607.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "hongkong",
+   "roles": [
+    "shipmaster"
+   ],
+   "tags": [
+    "naked"
+   ],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry, dangerous woman in her early thirties, the ship master who rules the Hong Kong shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, glossy black hair pinned up with a jade comb and loose strands, fitted black lacquer naval coat with oxblood silk lining, brass buttons and gold braid, worn open at the throat, a brass spyglass in one gloved hand, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 265612938804550,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2195863,
+   "source": "generated",
+   "added": "2026-11-16 23:01",
+   "replaces": ""
+  },
+  {
+   "id": "m4946f2fc30",
+   "url": "/media/port/foochow/port-foochow-964f9e22.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "foochow",
+   "roles": [
+    "banner"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": true,
+   "weight": 3,
+   "title": "",
+   "prompt": "The port of Foochow in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 231612560640889,
+   "width": 1360,
+   "height": 768,
+   "bytes": 2069858,
+   "source": "generated",
+   "added": "2026-11-16 23:02",
+   "replaces": ""
+  },
+  {
+   "id": "mdf80ee81bd",
+   "url": "/media/port/foochow/port-foochow-232af2ec.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "foochow",
+   "roles": [
+    "arrival"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her late twenties who runs a trading stall in the Foochow market in 1860, looking straight into the camera with a slow, knowing half-smile and direct eye contact, glossy black hair pinned with jade and gold, close-fitting embroidered oxblood silk jacket with a high collar and gold frogging, a little open at the throat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 258013002147547,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2314146,
+   "source": "generated",
+   "added": "2026-11-16 23:02",
+   "replaces": ""
+  },
+  {
+   "id": "m766e4571c9",
+   "url": "/media/port/foochow/port-foochow-16bca1f6.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "foochow",
+   "roles": [
+    "taxlady"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her early thirties, the tax collector who works the Foochow waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless smile and one raised eyebrow, direct eye contact, glossy black hair in a low braid wound with an oxblood silk ribbon, a fitted black lacquer waistcoat over a loose ivory silk blouse slipping off one shoulder, a jade customs seal on a cord at her throat, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 231846974905945,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2270614,
+   "source": "generated",
+   "added": "2026-11-16 23:04",
+   "replaces": ""
+  },
+  {
+   "id": "mf87265a583",
+   "url": "/media/port/foochow/port-foochow-b94e2a8e.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "foochow",
+   "roles": [
+    "mayor"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her mid-thirties, a former pirate queen who is now the lady mayor of Foochow in 1860 and keeps the town's ledger and collects its taxes, seated at a heavy teak desk and looking straight into the camera with a sly, appraising, amused half-smile, as if she already knows what you owe her, direct eye contact, glossy black hair swept up with a gold pin and one loose curl, a gold hoop earring, a fitted oxblood silk brocade bodice under a black lacquer pirate captain's coat with gold braid, worn open at the throat and shoulders, a gold mayor's chain of office across her chest, a quill in one ringed hand, an open leather-bound ledger, a brass strongbox spilling silver dollars, tax seals and a cutlass hung on the wall behind her, warm candle and lantern glow, harbour window haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 157036570072274,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2210637,
+   "source": "generated",
+   "added": "2026-11-16 23:04",
+   "replaces": ""
+  },
+  {
+   "id": "m500cb35705",
+   "url": "/media/port/foochow/port-foochow-64ada4df.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "foochow",
+   "roles": [
+    "keeper"
+   ],
+   "tags": [],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "Waist-up portrait of a breathtakingly beautiful, sultry woman in her late twenties who runs a trading stall in the Foochow market in 1860, looking straight into the camera with a slow, knowing half-smile and direct eye contact, glossy black hair pinned with jade and gold, close-fitting embroidered oxblood silk jacket with a high collar and gold frogging, a little open at the throat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text",
+   "seed": 113479381976663,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2206163,
+   "source": "generated",
+   "added": "2026-11-16 23:04",
+   "replaces": ""
   }
  ],
  "rules": {
@@ -2514,6 +2797,22 @@
    "bytes": 0,
    "mtime": 0,
    "history": []
+  },
+  "cargo:gold": {
+   "url": "/uploads/artbible-cargo-gold-423c064b.png",
+   "item": "m423fe0ba61",
+   "since": "2026-11-16 23:01",
+   "bytes": 1630459,
+   "mtime": 1794898472,
+   "history": [
+    {
+     "at": "2026-11-16 23:01",
+     "from": "",
+     "to": "/uploads/artbible-cargo-gold-423c064b.png",
+     "item": "m423fe0ba61",
+     "how": "generated"
+    }
+   ]
   }
  }
 }

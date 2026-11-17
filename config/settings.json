@@ -77,7 +77,8 @@
    "spices": "/uploads/historical-cargo-spices.webp",
    "tea": "/uploads/historical-cargo-tea.webp",
    "rice": "/uploads/historical-cargo-rice.webp",
-   "general": "/uploads/historical-cargo-general.webp"
+   "general": "/uploads/historical-cargo-general.webp",
+   "gold": "/uploads/artbible-cargo-gold-423c064b.png"
   },
   "ports": {
    "hongkong": "/uploads/historical-port-hongkong.webp",
@@ -336,6 +337,15 @@
    "contraband": true,
    "ban_odds": 0.0
   },
+  "gold": {
+   "name": "Gold",
+   "family_name": "",
+   "base": 2400.0,
+   "vol": 0.05,
+   "depth": 90,
+   "contraband": false,
+   "ban_odds": 0.5
+  },
   "silk": {
    "name": "Silk",
    "family_name": "",
@@ -398,15 +408,6 @@
    "depth": 1200,
    "contraband": false,
    "ban_odds": 0.0
-  },
-  "gold": {
-   "name": "Gold",
-   "family_name": "",
-   "base": 2400.0,
-   "vol": 0.05,
-   "depth": 90,
-   "contraband": false,
-   "ban_odds": 0.5
   }
  },
  "regions": {
