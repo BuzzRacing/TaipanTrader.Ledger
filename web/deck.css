@@ -400,13 +400,13 @@ body.ingame #speaking { display: none !important; }
   background: color-mix(in srgb, var(--deck-night) 88%, transparent);
   font: 1.1rem/1.3 var(--sans);
 }
-.cl-entry[aria-current] {
+.cl-entry[aria-current], .cx-say[aria-current] {
   background: color-mix(in srgb, var(--brass-hi) 77%, #ffe6ad); color: #25170d;
   border-inline-start-color: #946127; padding-block: .6rem;
 }
-.cl-entry[aria-current].has-face { display: grid; grid-template-columns: 3.75rem minmax(0, 1fr); align-items: center; gap: .7rem; }
+.cl-entry[aria-current].has-face, .cx-say[aria-current].has-face { display: grid; grid-template-columns: 3.75rem minmax(0, 1fr); align-items: center; gap: .7rem; }
 .cl-reader, .cl-portrait { display: none; }
-.cl-entry[aria-current] .cl-reader, .cl-entry[aria-current] .cl-portrait { display: block; }
+:is(.cl-entry, .cx-say)[aria-current] :is(.cl-reader, .cl-portrait) { display: block; }
 .cl-reader span {
   display: flex; align-items: center; gap: .35rem;
   font: 700 .68rem/1.4 system-ui, sans-serif; text-transform: uppercase; letter-spacing: .07em;
@@ -420,11 +420,11 @@ body.ingame #speaking { display: none !important; }
   display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 12%;
   transform: scale(1.6); transform-origin: center 20%;
 }
-.captains-log footer {
+:is(.captains-log, .cx-desk) footer {
   display: flex; justify-content: flex-end; flex: none;
   padding: .9rem var(--cl-pad) var(--cl-pad);
 }
-.captains-log footer button { min-height: 44px; }
+:is(.captains-log, .cx-desk) footer button { min-height: 44px; }
 .captains-log footer button span { margin-inline-start: .35rem; }
 @media (max-width: 600px) {
   .captains-log.has-art .cl-page { width: auto; }
@@ -434,7 +434,7 @@ body.ingame #speaking { display: none !important; }
   .cl-art::after { background: linear-gradient(to top, var(--deck-night), transparent 76%); }
 }
 @media (orientation: portrait) {
-  .dk-over:has(.cl-veil) { grid-row: side-start / main-end; }
+  .dk-over:has(:is(.cl-veil, .cx-veil)) { grid-row: side-start / main-end; }
 }
 @keyframes veilIn { from { opacity: 0; } }
 
@@ -803,7 +803,12 @@ body.player .yd-ico .gicon, .yd-ico .yd-img, .yd-ico img, .yd-ico video { displa
 }
 
 /* ===================================================== PRICE BOOK (Ledger) === */
-.deck .book { display: grid; gap: .55rem; padding-top: .55rem; }
+.deck .book {
+  --book-jade: color-mix(in srgb, var(--deck-jade) 50%, var(--jade-hi));
+  --book-oxblood: color-mix(in srgb, var(--deck-oxblood) 46%, var(--blood-hi));
+  display: grid; gap: .75rem; padding: clamp(.65rem, 1.45vw, 1.1rem);
+  background: linear-gradient(145deg, var(--deck-lacquer), var(--deck-night) 65%);
+}
 .book-old { color: var(--brass-hi); }
 .book-controls { display: flex; flex-wrap: wrap; gap: .45rem; }
 body.player .book button {
@@ -815,43 +820,96 @@ body.player .book button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--deck-lacquer) 83%, var(--deck-brass));
   border-color: var(--brass-hi);
 }
-body.player .book button.book-cargo { min-height: 0; display: flex; align-items: center; gap: .5rem; padding: .25rem .6rem .25rem .25rem; text-align: left; }
-.book-cargo-art { width: 2.2rem; height: 2.2rem; object-fit: cover; flex: none; border-radius: 3px; }
+.book-cargo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.4rem), 1fr)); gap: .45rem; }
+body.player .book button.book-cargo { min-width: 0; padding: 0; border-radius: 5px; }
+body.player .book button.book-cargo[aria-pressed="true"] { box-shadow: 0 0 0 1px var(--brass-hi); }
+.book-cargo-tile {
+  display: grid; position: relative; isolation: isolate; align-content: end; aspect-ratio: 1.32;
+  width: 100%; min-height: 4.75rem; overflow: hidden; border-radius: 4px; background: var(--deck-lacquer);
+}
+.book-cargo-tile::before {
+  content: ""; position: absolute; z-index: -1; inset: 25% 0 0;
+  background: linear-gradient(transparent, #100a06f5);
+}
+.book-cargo-art { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.book-cargo-name {
+  color: #fff; padding: .15rem .36rem .3rem; text-align: right; font-weight: 700; line-height: 1.05;
+  overflow-wrap: anywhere; text-shadow: 0 1px 3px #000;
+}
+.book-cargo-count {
+  position: absolute; inset: .24rem .24rem auto auto; min-width: 1.4rem; padding: .16rem .26rem;
+  border-radius: 3px; background: #17100def; color: #fff; border: 1px solid var(--edge-hi);
+  font: 700 .78rem/1 Consolas, monospace; text-align: center;
+}
+.book-cargo[aria-pressed="true"] .book-cargo-count { background: var(--brass-hi); color: var(--deck-night); }
+.book-cargo-quantity { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .book small { display: block; color: var(--muted); font-size: .86em; line-height: 1.2; }
 .book small.book-old { color: var(--brass-hi); }
 .book-detail { background: var(--deck-lacquer); padding: .75rem 1rem; border-inline-start: 2px solid var(--deck-brass); overflow-wrap: anywhere; }
-.book-detail p, .book-note { margin: .25rem 0 0; }
+.book-detail p { margin: .25rem 0 0; }
 .book-detail h3 { margin: 0 0 .35rem; font: 400 clamp(1.2rem, 2.15vw, 1.8rem)/1.15 var(--serif); }
-.book-note { color: var(--muted); }
-.book-key { display: grid; grid-template-columns: 1fr auto 1fr; gap: .45rem; align-items: center; color: var(--muted); font-size: .9em; }
-.book-key span:nth-child(2) { text-align: center; color: var(--brass-hi); }
-.book-key span:last-child { text-align: right; }
-.book-ports, .book-routes { display: grid; gap: .32rem; align-content: start; }
-body.player .book button.book-port {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(2.3rem, 1.3fr) minmax(6ch, .52fr);
-  gap: .65rem; align-items: center; text-align: left; width: 100%;
+.book-comparison {
+  --book-columns: minmax(0, 1fr) minmax(6rem, 2.5fr) minmax(6ch, .5fr);
+  --book-row-gap: clamp(.35rem, 1.1vw, .85rem);
+  border: 1px solid var(--edge-hi); border-radius: var(--radius); background: var(--deck-night);
 }
+.book-key, body.player .book button.book-port {
+  display: grid; grid-template-columns: var(--book-columns); gap: var(--book-row-gap);
+  align-items: center; padding: .45rem clamp(.45rem, 1.3vw, .9rem); text-align: left;
+}
+.book-key { color: var(--brass-hi); font-size: .9rem; border-radius: var(--radius) var(--radius) 0 0; background: var(--deck-lacquer); }
+.book-key b { color: var(--deck-ivory); white-space: nowrap; }
+.book-key-axis { display: flex; justify-content: space-between; gap: .3rem; }
+.book-key-axis span:first-child { color: var(--jade-hi); }
+.book-key-axis span:last-child { color: var(--blood-hi); }
+.book-ports, .book-routes { display: grid; align-content: start; }
+body.player .book button.book-port, body.player .book button.book-route {
+  width: 100%; border: 0; border-radius: 0; border-top: 1px solid var(--rule); background: transparent; box-shadow: none;
+}
+body.player .book button:is(.book-port, .book-route):is(:hover, [aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--deck-lacquer) 80%, var(--deck-brass));
+}
+body.player .book button:is(.book-port, .book-route)[aria-pressed="true"] { box-shadow: inset 3px 0 var(--brass-hi); }
+.book-comparison .book-detail {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 1rem;
+  border: 0; border-top: 1px solid var(--edge-hi); border-radius: 0 0 var(--radius) var(--radius); padding: .55rem .85rem;
+}
+.book-comparison .book-detail p { margin: 0; }
 .book-port b { font: 400 1.03rem/1.15 var(--serif); }
+.book-port > span:first-child, .book-key > span:first-child { overflow-wrap: anywhere; }
 .book-port.here b { color: var(--brass-hi); }
 .book-port strong, .book-quotes b { font-family: Consolas, monospace; font-variant-numeric: tabular-nums; }
 .book-port strong { text-align: right; overflow-wrap: anywhere; }
-.book-axis { position: relative; height: .75rem; background: var(--deck-night); border-radius: 3px; }
+.book-axis {
+  position: relative; height: .78rem; border-radius: 3px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--book-jade) 26%, var(--deck-night)) 50%,
+    color-mix(in srgb, var(--book-oxblood) 26%, var(--deck-night)) 50%);
+}
+.book-axis.unknown { opacity: .38; }
 .book-axis::after { content: ""; position: absolute; inset: -2px auto -2px 50%; width: 1px; background: var(--brass-hi); }
-.book-bar { position: absolute; inset-block: 1px; border-radius: 2px; background: var(--jade-hi); }
-.book-bar.lower { background: color-mix(in srgb, var(--deck-storm) 65%, var(--deck-ivory)); }
-.book-voyage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: .9rem; align-items: start; }
+.book-bar {
+  position: absolute; inset-block: 1px; border-radius: 2px;
+  --heat-tip: color-mix(in srgb, var(--heat-light) calc(32% + var(--strength) * 68%), var(--heat-base));
+}
+.book-bar.lower { --heat-light: var(--jade-hi); --heat-base: var(--book-jade); background: linear-gradient(90deg, var(--heat-tip), var(--heat-base)); }
+.book-bar.higher { --heat-light: var(--blood-hi); --heat-base: var(--book-oxblood); background: linear-gradient(90deg, var(--heat-base), var(--heat-tip)); }
+.book-voyage {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); align-items: start;
+  border: 1px solid var(--edge-hi); border-radius: var(--radius); background: var(--deck-night); overflow: hidden;
+}
+.book-routes .book-route:first-child { border-top: 0; }
 body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; text-align: left; }
+.book-plan-head { display: grid; grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr); align-items: center; gap: .7rem; }
 .book-gain { color: var(--jade-hi); }
-.book-course { height: 2px; margin: .85rem .2rem; background: var(--deck-brass); transform-origin: left; }
-.book-quotes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.book-quotes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .7rem; padding-top: .65rem; border-top: 1px solid var(--rule); }
 .book-quotes b { display: block; font-size: 1.2rem; }
 .book-plan .book-toggle { margin-top: .7rem; }
 .book-table-scroll { overflow: auto; max-height: min(40rem, 70dvh); border: 1px solid var(--edge); border-radius: var(--radius); }
 .book-table-scroll:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
 .book-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .book-table :is(th, td) { padding: .22rem .45rem; border-bottom: 1px solid var(--rule); line-height: 1.15; }
-.book-table thead th { position: sticky; top: 0; z-index: 2; min-width: 4.6rem; padding: .18rem; background: var(--deck-lacquer); vertical-align: bottom; }
-.book-table th:first-child { position: sticky; left: 0; min-width: clamp(6.5rem, 18vw, 9rem); text-align: left; border-right: 1px solid var(--edge); }
+.book-table thead th { position: sticky; top: 0; z-index: 2; min-width: 6rem; padding: .18rem; background: var(--deck-lacquer); vertical-align: bottom; }
+.book-table th:first-child { position: sticky; left: 0; width: 9rem; min-width: clamp(6.5rem, 18vw, 9rem); text-align: left; border-right: 1px solid var(--edge); }
 .book-table thead th:first-child { z-index: 3; padding: .2rem .45rem; font: 400 .72rem/1 var(--special); letter-spacing: .08em; text-transform: uppercase; color: var(--brass-hi); }
 .book-table tbody th { z-index: 1; background: var(--deck-night); white-space: nowrap; }
 .book-table tbody th b { font: 400 .92rem/1.1 var(--serif); }
@@ -861,7 +919,7 @@ body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; t
 .book-table tr.here th { background: var(--deck-lacquer); color: var(--brass-hi); border-left: 2px solid var(--deck-brass); }
 .book-table tr.here td.base { color: var(--brass-hi); font-weight: 700; }
 /* Heat map: --heat (0.22–1) set per cell from the price gap vs. buying here. */
-.book-table { --heat-good: #2fbf71; --heat-poor: #d8343d; }
+.book-table { --heat-good: var(--book-jade); --heat-poor: var(--book-oxblood); }
 .book-table td.good { background: color-mix(in srgb, var(--heat-good) calc(var(--heat, .4) * 62%), var(--deck-night)); color: #effff5; }
 .book-table td.poor { background: color-mix(in srgb, var(--heat-poor) calc(var(--heat, .4) * 58%), var(--deck-night)); color: #fff0ec; }
 .book-table td.hot { font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
@@ -870,18 +928,13 @@ body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; t
 .book-table td.blocked { color: var(--muted); background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(255, 255, 255, .04) 5px 10px), var(--deck-night); }
 .book-ban { font-style: normal; color: var(--blood-hi); margin-right: .3rem; }
 .book-table tbody tr:hover :is(td, th) { filter: brightness(1.18); }
-.book-table-tile { position: relative; overflow: hidden; height: clamp(2.3rem, 4vw, 2.9rem); border-radius: 3px; background: var(--deck-night); }
-.book-table-tile .book-table-art { display: block; width: 100%; height: 100%; object-fit: cover; }
-.book-table-name { position: absolute; inset: auto 0 0; color: white; padding: .5rem .15rem .12rem; font-size: .72rem; line-height: 1;
-  background: linear-gradient(transparent, rgba(0, 0, 0, .9)); font-weight: 800; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.book-table-count { position: absolute; top: .15rem; right: .15rem; min-width: 1.1rem; padding: .05rem .22rem;
-  border-radius: 3px; background: var(--brass-hi); color: var(--deck-night); font: 700 .7rem/1.1 Consolas, monospace; }
+.book-table .book-cargo-tile { aspect-ratio: auto; height: clamp(4.75rem, 8vw, 7rem); }
 /* One-line heat legend; the long caveat lives in its tooltip. */
 .book-heat-key { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .45rem; font: 400 .74rem/1 var(--special); letter-spacing: .05em; color: var(--muted); cursor: help; }
 .book-heat-key .k { width: 1.5rem; height: .6rem; border-radius: 2px; --heat: .45; }
 .book-heat-key .k.hot { --heat: 1; }
-.book-heat-key .k.good { background: color-mix(in srgb, #2fbf71 calc(var(--heat) * 62%), var(--deck-night)); }
-.book-heat-key .k.poor { background: color-mix(in srgb, #d8343d calc(var(--heat) * 58%), var(--deck-night)); }
+.book-heat-key .k.good { background: color-mix(in srgb, var(--book-jade) calc(var(--heat) * 62%), var(--deck-night)); }
+.book-heat-key .k.poor { background: color-mix(in srgb, var(--book-oxblood) calc(var(--heat) * 58%), var(--deck-night)); }
 .book-heat-key .k + span { margin-right: .35rem; }
 .book-heat-info { color: var(--brass-hi); margin-left: auto; }
 
@@ -890,7 +943,7 @@ body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; t
   border-radius: 999px; background: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .15)); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .55); }
 body.player .book .book-seg button { min-height: 0; height: 1.75rem; padding: 0 .95rem; border: 0; border-radius: 999px; background: transparent; box-shadow: none;
   color: var(--brass-hi); font: 400 .8rem/1 var(--special); letter-spacing: .07em; white-space: nowrap; }
-body.player .book .book-seg button:hover:not(:disabled) { background: rgba(201, 163, 78, .14); }
+body.player .book .book-seg button:not([aria-pressed="true"]):hover:not(:disabled) { background: rgba(201, 163, 78, .14); }
 body.player .book .book-seg button[aria-pressed="true"] { color: var(--deck-night); text-shadow: none;
   background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass) 60%, color-mix(in srgb, var(--deck-brass) 75%, #000));
   box-shadow: 0 1px 4px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 245, 210, .6); }
@@ -910,7 +963,15 @@ body.player .host-bar button.ghost { border-color: color-mix(in srgb, var(--deck
 @media (max-width: 640px) {
   .book-voyage { grid-template-columns: 1fr; }
   .book-plan { grid-row: 1; }
-  body.player .book button.book-port { gap: .4rem; }
+  body.player .book .book-seg button { padding-inline: .45rem; white-space: normal; }
+}
+@media (max-width: 520px) {
+  .book-cargo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .book-comparison { --book-columns: minmax(0, 1fr) auto; --book-row-gap: .28rem; }
+  .book-key-axis, .book-port .book-axis { grid-column: 1 / -1; grid-row: 2; }
+  .book-key-axis { font-size: .82rem; }
+  .book-port strong { grid-column: 2; grid-row: 1; }
+  .book-port small { display: inline; margin-inline-start: .35rem; }
 }
 
 /* ------------------------------------------------- the dealer's card under the market keeper -- */
@@ -1091,7 +1152,7 @@ body.player .pt-tabs button.pt-tab.on { color: var(--deck-ivory); border-color: 
 
 .pt-view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; align-items: start; }
 .pt-view > .card { margin: 0; }
-.pt-arrival .pt-land, .pt-arrival .pt-race, .pt-log .card, .pt-services .card { grid-column: 1 / -1; }
+.pt-arrival .pt-land, .pt-log .card, .pt-services .card { grid-column: 1 / -1; }
 .pt-news .pt-newscard { grid-row: span 2; }
 .pt-sum { font: 600 1.05rem/1.35 var(--sans); margin: 0 0 .35rem; }
 .pt-lead { margin: .2rem 0 .3rem; color: var(--muted); }
@@ -1145,6 +1206,23 @@ body.player .pt-seg button[aria-pressed="true"] { color: var(--deck-night); back
 .pt-wx.wx2 { color: var(--brass-hi); }
 .pt-wx.wx3 { color: var(--blood-hi); }
 .pt-race .grid { margin-bottom: .5rem; }
+
+/* The race card lives in the side column under the port art (player.js gameScreen()). The stage gives
+   up 15rem of height for it; with many houses the card scrolls inside its own box. */
+.deck[data-tab="port"] .dk-side { gap: clamp(.45rem, .9vw, .85rem); }
+.deck[data-tab="port"] .dk-dyn { display: block; flex: 0 1 auto; min-height: 0; overflow: auto; width: min(100cqw, 100cqh - 15rem); }
+.deck[data-tab="port"] .dk-stage { flex: none; width: min(100cqw, 100cqh - 15rem - clamp(.45rem, .9vw, .85rem)); }
+.pt-race-side { margin: 0; padding: .55rem .75rem .65rem; }
+.pt-race-side h2 { margin-bottom: .3rem; }
+.pt-race-side > p { margin: 0 0 .35rem; font-size: .88rem; }
+.pt-race-side .grid { font-size: .86rem; }
+.pt-race-side .grid th, .pt-race-side .grid td { padding: .25rem .3rem; }
+.pt-race-side .grid th:nth-child(4), .pt-race-side .grid td:nth-child(4) { display: none; }   /* ships: no room beside the art */
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .deck[data-tab="port"] .dk-side { flex-direction: row; justify-content: center; align-items: stretch; }
+  .deck[data-tab="port"] .dk-stage { width: auto; height: 100cqh; max-width: 55cqw; }
+  .deck[data-tab="port"] .dk-dyn { width: auto; flex: 1 1 0; max-width: 24rem; overflow: auto; }
+}
 
 @container pane (max-width: 720px) {
   .pt-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }

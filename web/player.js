@@ -76,9 +76,10 @@ function speak() {
 }
 
 function markSpeaking() {
+  const item = Voice.current();
+  Customs.markSpeaking(item);
   const log = document.querySelector(".captains-log");
   if (!log) return;
-  const item = Voice.current();
   const previous = log.querySelector(".cl-entry[aria-current]");
   const active = item && item.group === "log"
     ? Array.from(log.querySelectorAll(".cl-entry")).find(line => line.dataset.voiceTag === item.tag)
@@ -500,7 +501,9 @@ function gameScreen() {
     `<i class="dk-gap"></i>` + meButton();
   const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
   // The Mayor's side column is one outward-clearance document: harbour charges and the cargo declaration.
-  const side = ui.tab === "market" ? dealerCard() : ui.tab === "chart" ? clearanceLedger() : "";
+  // On the Port tab the race standings sit in the side column under the port art.
+  const side = ui.tab === "market" ? dealerCard() : ui.tab === "chart" ? clearanceLedger()
+    : ui.tab === "port" ? `<section class="card pt-race pt-race-side"><h2>${te("port.race.title")}</h2>${portRace()}</section>` : "";
   // The Port Authority's desk comes first in a new port (after the month's log is read).
   return { top, nav, pane, side, over: report || Customs.html() };
 }
@@ -807,8 +810,7 @@ function portArrival() {
   }
   return `${head}
     <section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>
-    <section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>
-    <section class="card pt-race"><h2>${te("port.race.title")}</h2>${portRace()}</section>`;
+    <section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>`;
 }
 
 /* What is worth doing in this port, most useful first. Each item can jump to the tab that does it. */
@@ -1130,23 +1132,25 @@ function bookButton(label, action, value, selected, cls = "") {
   return `<button type="button" class="${cls}" data-act="book_${action}" data-value="${esc(value)}" aria-pressed="${selected}">${label}</button>`;
 }
 
+function bookCargoTile(g) {
+  const art = Media.html("cargo", g, "icon", "book-cargo-art", (D.graphics.goods || {})[g], { mode: "fixed" });
+  const aboard = S.me.cargo[g] || 0;
+  return `<span class="book-cargo-tile">${art}<span class="book-cargo-name">${esc(D.goods[g].name)}</span>
+    <span class="book-cargo-count" aria-hidden="true">${aboard.toLocaleString()}</span><span class="book-cargo-quantity">${te("ledger.aboard", { n: aboard })}</span></span>`;
+}
+
 function bookSignals(goods, ports, banner) {
   const me = S.me, g = goods.includes(ui.bookGood) ? ui.bookGood : goods[0];
   const local = me.prices[g], name = D.goods[g].name, home = portName(me.port);
   const rows = ports.map(p => ({ ...p, price: p.prices[g] }));
   const selected = rows.find(p => p.key === ui.bookPort) || rows.find(p => !p.here && Number.isFinite(p.price)) || rows[0];
   const scale = Math.max(1, ...rows.filter(p => Number.isFinite(p.price) && Number.isFinite(local)).map(p => Math.abs(p.price - local)));
-  const cargo = goods.map(key => {
-    const art = Media.html("cargo", key, "icon", "book-cargo-art", D.graphics.goods[key]);
-    const aboard = me.cargo[key] || 0;
-    return bookButton(`${art}<span>${esc(D.goods[key].name)}${aboard ? `<small>${te("ledger.aboard", { n: aboard })}</small>` : ""}</span>`,
-      "good", key, key === g, "book-cargo");
-  }).join("");
+  const cargo = goods.map(key => bookButton(bookCargoTile(key), "good", key, key === g, "book-cargo")).join("");
   const chart = rows.map(p => {
     const known = Number.isFinite(p.price), gap = known && Number.isFinite(local) ? p.price - local : 0;
     const width = Math.abs(gap) / scale * 50;
-    const bars = known ? `<span class="book-axis" aria-hidden="true"><span class="book-bar ${gap < 0 ? "lower" : ""}"
-      data-book-port="${esc(p.key)}" style="left:${gap < 0 ? 50 - width : 50}%;width:${width}%"></span></span>` : '<span aria-hidden="true"></span>';
+    const bars = `<span class="book-axis${known ? "" : " unknown"}" aria-hidden="true">${known ? `<span class="book-bar ${gap < 0 ? "lower" : "higher"}"
+      data-book-port="${esc(p.key)}" style="left:${gap < 0 ? 50 - width : 50}%;width:${width}%;--strength:${(width / 50).toFixed(2)}"></span>` : ""}</span>`;
     const when = p.here ? t("ledger.here") : known ? bookSeen(p.age) : t("ledger.unknown");
     const ban = p.bans.includes(g) ? ` · ${te("ledger.banned")}` : "";
     return bookButton(`<span><b>${esc(portName(p.key))}</b><small class="${p.age >= 4 ? "book-old" : ""}">${esc(when)}${ban}</small></span>${bars}
@@ -1161,15 +1165,19 @@ function bookSignals(goods, ports, banner) {
   else if (Math.abs(gap) < .005) detail = t("ledger.equal", { port: home });
   else detail = t(gap < 0 ? "ledger.lower" : "ledger.higher", { gap: bookPrice(Math.abs(gap)) });
   return `${banner}
-    <div class="book-controls" role="group" aria-label="${te("ledger.cargo")}">${cargo}</div>
-    <div class="book-detail" aria-live="polite">
-      <strong>${esc(name)} · ${esc(portName(selected.key))}</strong>
-      ${selected.here ? "" : `<small>${esc(riskLabel(me.port, selected.key))} · ${esc(Number.isFinite(selected.price) ? bookSeen(selected.age) : t("ledger.unknown"))}</small>`}
-      <p>${esc(detail)}</p>
-    </div>
-    <div class="book-key"><span>${te("ledger.cheaper")}</span><span>${esc(home)} · ${Number.isFinite(local) ? esc(bookPrice(local)) : "—"}</span><span>${te("ledger.dearer")}</span></div>
-    <div class="book-ports" role="group" aria-label="${te("ledger.port")}">${chart}</div>
-    <p class="book-note">${te("ledger.signal_note")} ${te("ledger.note")}</p>`;
+    <div class="book-cargo-grid" role="group" aria-label="${te("ledger.cargo")}">${cargo}</div>
+    <div class="book-comparison">
+      <div class="book-key">
+        <span>${esc(home)} <b>${Number.isFinite(local) ? esc(bookPrice(local)) : "—"}</b></span>
+        <span class="book-key-axis"><span>${te("ledger.cheaper")}</span><span>${te("ledger.dearer")}</span></span>
+      </div>
+      <div class="book-ports" role="group" aria-label="${te("ledger.port")}">${chart}</div>
+      <div class="book-detail" aria-live="polite">
+        <div><strong>${esc(name)} · ${esc(portName(selected.key))}</strong>
+          ${selected.here ? "" : `<small>${esc(riskLabel(me.port, selected.key))} · ${esc(Number.isFinite(selected.price) ? bookSeen(selected.age) : t("ledger.unknown"))}</small>`}</div>
+        <p>${esc(detail)}</p>
+      </div>
+    </div>`;
 }
 
 function bookVoyages(goods, ports, banner) {
@@ -1196,14 +1204,13 @@ function bookVoyages(goods, ports, banner) {
   return `${banner}${mode}<div class="book-voyage">
     <div class="book-routes" role="group" aria-label="${te("ledger.routes")}">${list}</div>
     <section class="book-detail book-plan">
-      <div aria-live="polite"><h3>${te(buying ? "ledger.buy_route" : "ledger.sell_route", { cargo: D.goods[route.g].name, port: portName(route.key) })}</h3>
-      <small>${esc(summary(route))}${buying ? "" : ` · ${te("ledger.aboard", { n: me.cargo[route.g] })}`}</small>
-      <div class="book-course" aria-hidden="true"></div>
+      <div aria-live="polite"><div class="book-plan-head">${bookCargoTile(route.g)}<div><h3>${te(buying ? "ledger.buy_route" : "ledger.sell_route", { cargo: D.goods[route.g].name, port: portName(route.key) })}</h3>
+      <small>${esc(summary(route))}</small></div></div>
       <div class="book-quotes"><div><small>${te(buying ? "ledger.buy_here" : "ledger.sell_here")}</small><b>${esc(bookPrice(local[route.g]))}</b></div>
       <div><small>${te("ledger.seen_bid")}</small><b>${esc(bookPrice(route.price))}</b></div></div>
       <p class="book-gain">+${esc(gap(route))}</p></div>
       ${btn(te("ledger.open_chart"), "book_chart", `data-value="${esc(route.key)}"`, "book-toggle", me.ready)}
-    </section></div><p class="book-note">${te("ledger.note")}</p>`;
+    </section></div>`;
 }
 
 function bookTable(goods, ports, banner) {
@@ -1213,13 +1220,7 @@ function bookTable(goods, ports, banner) {
   const me = S.me;
   const buyCosts = Object.fromEntries(goods.filter(g => Number.isFinite(me.prices[g]))
     .map(g => [g, quote(g, 1, "buy")]));
-  const headings = goods.map(g => {
-    const art = Media.html("cargo", g, "icon", "book-table-art", D.graphics.goods[g]);
-    const aboard = me.cargo[g] || 0;
-    const name = g === "general" && D.goods[g].name === "General Cargo" ? t("ledger.general") : D.goods[g].name;
-    return `<th scope="col"><div class="book-table-tile">${art}<span class="book-table-name">${esc(name)}</span>
-      ${aboard ? `<span class="book-table-count" aria-label="${te("ledger.aboard", { n: aboard })}">${esc(aboard)}</span>` : ""}</div></th>`;
-  }).join("");
+  const headings = goods.map(g => `<th scope="col">${bookCargoTile(g)}</th>`).join("");
   const rows = ports.map(p => {
     const seen = p.here ? t("ledger.here") : bookSeen(p.age);
     const cells = goods.map(g => {
@@ -1305,9 +1306,6 @@ function bookSelect(action, value) {
     const from = prior.get(bar.dataset.bookPort);
     if (from) bar.animate([from, { left: bar.style.left, width: bar.style.width }], { duration: 440, easing: "ease-out" });
   });
-  if (motion && (action === "route" || action === "mode")) {
-    app.querySelector(".book-course")?.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: 530, easing: "ease-out" });
-  }
 }
 
 /* --------------------------------------------------------------- events -- */

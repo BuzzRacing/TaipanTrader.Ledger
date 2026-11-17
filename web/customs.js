@@ -132,7 +132,15 @@ const Customs = (() => {
       rate = `<div class="cx-rate free"><b>${te("customs.free")}</b></div>`;
     }
     return `<header class="cx-head"><div><p class="eyebrow">${te("customs.authority", { port })}</p>
-      <h2>${esc(c.name)}</h2><p class="cx-title">${esc(c.title)}</p></div>${rate}</header>`;
+      <h2 id="cx-title">${esc(c.name)}</h2><p class="cx-title">${esc(c.title)}</p></div>${rate}</header>`;
+  }
+
+  function greeting(c) {
+    const portrait = Media.html("persona", c.officer, "portrait", "cl-face", ((VS.cast || {})[c.officer] || {}).portrait, { strict: true });
+    return `<blockquote class="cx-say${portrait ? " has-face" : ""}">
+      ${portrait ? `<span class="cl-portrait">${portrait}</span>` : ""}
+      <div><div class="cl-reader"><span><i aria-hidden="true">${DECK_ICONS.speech_on}</i>${te("log.reading")}</span><b>${esc(c.name)}</b></div>${esc(c.welcome)}</div>
+    </blockquote>`;
   }
 
   function oddsBar(c, n) {
@@ -171,7 +179,7 @@ const Customs = (() => {
     const short = Math.max(0, n.total - S.me.cash);
     return `<div class="cx-body">
       ${head(c)}
-      <blockquote class="cx-say">${esc(c.welcome)}</blockquote>
+      ${greeting(c)}
       <p class="cx-tell" data-cx="tell">${esc(tell(c, n))}</p>
       <div class="cx-lines">${n.lines.map(l => lineRow(c, l)).join("")}</div>
       <div class="cx-quick">${btn(te("customs.all_low"), "cx_all", 'data-p="90"', "ghost")}${btn(te("customs.all_honest"), "cx_all", 'data-p="100"', "ghost")}${btn(te("customs.all_over"), "cx_all", 'data-p="110"', "ghost")}</div>
@@ -186,7 +194,6 @@ const Customs = (() => {
       <label class="cx-bribe${n.bribe ? " on" : ""}"><input type="checkbox" data-act="cx_bribe" ${n.bribe ? "checked" : ""}>
         <span><b data-cx="bribe">${te("customs.bribe", { cost: money(n.bribeCost) })}</b><small>${te("customs.bribe_note")}</small></span></label>
       <p class="cx-short" data-cx="short">${short ? te("customs.debt", { amount: money(short) }) : ""}</p>
-      ${btn(te("customs.declare_btn"), "cx_declare", "", "primary wide")}
     </div>`;
   }
 
@@ -218,14 +225,12 @@ const Customs = (() => {
         ${res.paid ? `<span class="b"><small>${te("customs.she_paid")}</small><b>${money(res.paid)}</b></span>` : ""}${rep}
       </div>
       ${res.owed ? `<p class="cx-short">${te("customs.debt", { amount: money(res.owed) })}</p>` : ""}
-      ${btn(te("customs.continue"), "cx_done", "", "primary wide")}
     </div>`;
   }
 
   function welcomeHtml(c) {
     shownState = "welcome";
-    return `<div class="cx-body">${head(c)}<blockquote class="cx-say">${esc(c.welcome)}</blockquote>
-      ${btn(te("customs.welcome_btn"), "cx_done", "", "primary wide")}</div>`;
+    return `<div class="cx-body">${head(c)}${greeting(c)}</div>`;
   }
 
   function html() {
@@ -237,9 +242,11 @@ const Customs = (() => {
       ui.cxBribe = false; ui.cxTell = null; ui.cxSpoken = null;
     }
     const body = c.status === "declare" ? declareHtml(c) : c.status === "verdict" ? verdictHtml(c) : welcomeHtml(c);
-    const state = c.status === "declare" ? shownState : c.status === "verdict" ? shownState : "welcome";
-    // Her picture is on the stage in the right-hand column (stage(), called from player.js deckArt).
-    return `<div class="veil cx-veil"><div class="modal cx-desk ${c.status}" data-state="${state}">${body}</div></div>`;
+    const label = c.status === "declare" ? "customs.declare_btn" : c.status === "verdict" ? "customs.continue" : "customs.welcome_btn";
+    return `<div class="veil cx-veil"><section class="modal cx-desk ${c.status}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}">
+      <div class="cl-art cx-art" aria-hidden="true">${face(c, shownState, "cl-art-media")}</div>
+      ${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary")}</footer>
+    </section></div>`;
   }
 
   /* While a slider moves: rewrite the numbers, the odds, her tell and (if her mood changed) her face. */
@@ -267,6 +274,7 @@ const Customs = (() => {
     if (n.state !== was) {
       shownState = n.state;
       box.dataset.state = n.state;
+      box.querySelector(".cx-art").innerHTML = face(c, n.state, "cl-art-media");
       showOnStage();
     }
   }
@@ -314,8 +322,15 @@ const Customs = (() => {
     if (ui.cxSpoken === key(c)) return;
     ui.cxSpoken = key(c);
     const plan = S.voice.customs[0];
-    if (plan) Voice.say([Object.assign({ text: c.welcome }, plan)], { group: "msg", replace: "msg" });
+    if (plan) Voice.say([Object.assign({ text: c.welcome, tag: "customs:" + key(c) }, plan)], { group: "msg", replace: "msg" });
   }
 
-  return { html, live, click, speak, stage, isOpen: () => !!(cu() && !S.me.ready) };
+  function markSpeaking(item) {
+    const greeting = document.querySelector(".cx-desk .cx-say");
+    if (!greeting) return;
+    if (item && item.tag === "customs:" + key(cu())) greeting.setAttribute("aria-current", "true");
+    else greeting.removeAttribute("aria-current");
+  }
+
+  return { html, live, click, speak, stage, markSpeaking, isOpen: () => !!(cu() && !S.me.ready) };
 })();
