@@ -20,7 +20,8 @@ const Voice = (() => {
 
   let cast = {}, enabled = false, muted = store("seatrader_mute") === "1";
   let queue = [], cur = null, asking = false, blocked = false, onChange = () => {};
-  let seq = 0, floorOk = true, retryTimer = null, holding = false;
+  let seq = 0, floorOk = true, floorRetryAt = 0, retryTimer = null, holding = false;
+  const FLOOR_RETRY_MS = 20000;   // an older server had no turn-taking: ask again after this (it may have restarted)
 
   // One audio element for the whole page: two lines cannot play through it at once, and
   // tablets that need a tap before sound only need it once for this element.
@@ -63,22 +64,23 @@ const Voice = (() => {
 
   /* ---- the turn, shared with the other screens through the server ---- */
   async function floor(op, item) {
-    if (!floorOk) return { granted: true };
+    if (!floorOk && Date.now() < floorRetryAt) return { granted: true };
     const body = { id: SID, op };
     if (item) { body.clip = clipId(item.u); body.once = item.group === "news"; }
     try {
       const r = await fetch("/api/voice/floor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (r.status === 404) { floorOk = false; return { granted: true }; }   // an older server: just this screen's queue
+      if (r.status === 404) { floorOk = false; floorRetryAt = Date.now() + FLOOR_RETRY_MS; return { granted: true }; }   // an older server
+      floorOk = true;
       const j = await r.json();
       return j && typeof j.granted === "boolean" ? j : { granted: true };
     } catch (e) {
       return { granted: true };          // server unreachable: never hold the lines back
     }
   }
-  function freeFloor() { holding = false; if (floorOk) floor("free"); }
+  function freeFloor() { holding = false; floor("free"); }
   function clipId(u) { const m = /\/voice\/([^/?#]+)\.mp3/.exec(String(u || "")); return m ? m[1] : String(u || ""); }
   window.addEventListener("pagehide", () => {
-    if (!floorOk || !navigator.sendBeacon) return;
+    if (!navigator.sendBeacon) return;
     try { navigator.sendBeacon("/api/voice/floor", JSON.stringify({ id: SID, op: "free" })); } catch (e) { /* closing anyway */ }
   });
 
