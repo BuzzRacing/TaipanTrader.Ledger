@@ -142,6 +142,29 @@ function riskLabel(a, b) {
   return t(d < 260 ? "chart.short" : d < 480 ? "chart.long" : "chart.far");
 }
 
+function sailIcon(kind) {
+  const paths = {
+    calm: '<path d="M3 13c2-2 4-2 6 0s4 2 6 0 4-2 6 0M5 17c2-1.7 4-1.7 6 0s4 1.7 6 0"/>',
+    fair: '<circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/>',
+    squalls: '<path d="M6 15a4 4 0 0 1 .7-7.9A5.5 5.5 0 0 1 17.4 9 3.2 3.2 0 0 1 18 15H6Z"/><path d="m8 18-1 2M13 18l-1 2M18 18l-1 2"/>',
+    typhoon: '<path d="M20 7.5c-2.8-3.6-8.7-4.4-12.4-1.7C4.2 8.3 3.5 13 5.8 16.1c2 2.8 6 3.5 8.7 1.4 2.4-1.8 2.9-5.3 1.1-7.6-1.5-2-4.4-2.4-6.3-.9-1.6 1.2-1.9 3.6-.7 5.1"/>',
+    distance: '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2.1 4.9-4.9 2.1 2.1-4.9 4.9-2.1Z"/>',
+    intel: '<path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.4"/>',
+    standing: '<path d="M12 2.5 20 6v5.8c0 4.7-3.2 7.7-8 9.7-4.8-2-8-5-8-9.7V6l8-3.5Z"/><path d="m9 12 2 2 4-4"/>',
+  };
+  return `<svg class="dest-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[kind] || paths.distance}</svg>`;
+}
+
+function voyageRisk(a, b, level) {
+  const r = D.voyage_risk || { risk_min: .6, risk_max: 1.8, risk_div: 350,
+    storm_chance: [0, .04, .2, .6], pirate_chance: .18, lord_chance: .06, protect_save: .5 };
+  const distance = Math.max(r.risk_min, Math.min(r.risk_max, Chart.distance(D, a, b) / r.risk_div));
+  const storm = (r.storm_chance[level] || 0) * Math.min(distance, 1.4);
+  const pirate = r.pirate_chance * distance * (S.me.protect > 0 ? 1 - r.protect_save : 1);
+  const lord = S.me.protect > 0 ? 0 : r.lord_chance * distance;
+  return Math.min(.99, 1 - (1 - storm) * (1 - pirate) * (1 - lord));
+}
+
 function newGameControl() {
   if (!S.me.host) return "";
   return ui.confirmNew
@@ -255,9 +278,22 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "ledger.here": "you are here", "ledger.blank": "No prices yet. Visit to fill this page.",
     "ledger.key_lo": "cheapest seen", "ledger.key_hi": "dearest seen",
     "ledger.tip_lo": "Cheapest {cargo} you have seen", "ledger.tip_hi": "Dearest {cargo} you have seen",
-    "dealer.title": "Dealer's margin", "dealer.margin": "{margin}%", "dealer.standing": "Your standing here: {rep} of 100",
+    "dealer.title": "Dealer's margin", "dealer.margin": "{margin}%", "dealer.standing": "Standing", "dealer.standing_tip": "Your standing here: {rep} of 100",
     "dealer.pay": "You pay", "dealer.get": "You get", "dealer.units": "{n} units", "dealer.cut": "Dealer's cut",
-    "dealer.cut_sub": "{margin}% margin", "dealer.hint": "Drag a bar to see what you will pay. On {example} of goods the dealer takes {margin}%." });
+    "dealer.cut_sub": "{margin}% margin", "sail.risk_title": "Routes ranked by voyage risk",
+    "sail.risk_note": "Forecast conditions and distance, easiest to hardest", "sail.easiest": "Easiest",
+    "sail.hardest": "Hardest", "sail.route": "Route", "sail.weather": "Weather", "sail.distance": "Distance",
+    "sail.intel": "Intel", "sail.standing": "Standing", "sail.forecast_risk": "forecast risk",
+    "dues.title": "Harbour dues", "dues.due": "Due when you sail", "dues.paid_on_leave": "Paid as you leave",
+    "dues.after": "Silver {from} → {to} after dues", "dues.short": "You are {owed} short. It will go on your debt.",
+    "dues.stay": "Nothing is due if you stay at anchor.", "dues.restart": "The Mayor's bill shows once the SeaTrader server is restarted.",
+    "dues.anchorage": "Anchorage", "dues.anchorage_sub": "{n} ship(s) × {rate}",
+    "dues.tonnage": "Tonnage", "dues.tonnage_sub": "{n} hold × {rate} per 100",
+    "dues.repair": "Shipyard levy", "dues.repair_sub": "{rate} of {n} repairs",
+    "dues.yard": "Shipwright and chandler", "dues.yard_sub": "{rate} of {n} ships and guns",
+    "dues.bank": "Counting-house fee", "dues.bank_sub": "{rate} of {n} banked",
+    "dues.loan": "Moneylender's stamp", "dues.loan_sub": "{rate} of {n} borrowed or repaid",
+    "dues.wh": "Wharfage", "dues.wh_sub": "{n} units × {rate} per 100" });
 const womanPick = {};
 
 /* The tab rail shows a picture instead of an icon: the same woman the stage shows for that tab where
@@ -423,7 +459,8 @@ function gameScreen() {
     `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
     `<i class="dk-gap"></i>` + meButton();
   const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
-  return { top, nav, pane, side: ui.tab === "market" ? dealerCard() : "", over: report };
+  const side = ui.tab === "market" ? dealerCard() : ui.tab === "chart" ? duesCard() : "";
+  return { top, nav, pane, side, over: report };
 }
 
 /* The captain button at the foot of the rail: the player's picture (S.me.portrait if the server ever
@@ -569,10 +606,48 @@ function dealerCard() {
     ? (nBuy ? line(te("dealer.pay"), money(pay), "pay", te("dealer.units", { n: nBuy.toLocaleString() })) : "") +
       (nSell ? line(te("dealer.get"), money(get), "get", te("dealer.units", { n: nSell.toLocaleString() })) : "") +
       line(te("dealer.cut"), money(cut), "cut", te("dealer.cut_sub", { margin }))
-    : `<p class="dl-hint">${te("dealer.hint", { margin, example: money(1000) })}</p>`;
+    : "";
   return `<section class="dl-card" title="${te("market.standing", { rep: me.rep[me.port], margin })}">
     <header><span>${te("dealer.title")}</span><b>${te("dealer.margin", { margin })}</b></header>
-    <p class="dl-standing">${te("dealer.standing", { rep: me.rep[me.port] })}</p>${rows}</section>`;
+    ${standingBar(me.rep[me.port])}${rows}</section>`;
+}
+
+/* Standing in this port as a heat bar: the track runs red (0) through amber to green (100) and is
+   lit up to the house's standing, with the number at the end. */
+function standingBar(rep) {
+  const r = Math.max(0, Math.min(100, Math.round(rep || 0)));
+  return `<div class="dl-standing" title="${te("dealer.standing_tip", { rep: r })}" style="--rep:${r}%;--rep-hue:${Math.round(r * 1.2)}">
+    <span>${te("dealer.standing")}</span><div class="dl-heat" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${r}" aria-label="${te("dealer.standing_tip", { rep: r })}"><i></i></div><b>${r}</b></div>`;
+}
+
+/* The mayor's bill, shown in the side column under her picture while the Set sail tab is open.
+   The server works it out (engine Game.dues) from what the house did in this port this visit:
+   anchorage, tonnage, and a share of repairs, ships and guns, bank and loan money, and warehouse
+   use. Cargo trading is not on it. It is paid out of silver as the fleet sails; a shortfall goes
+   on the debt. Staying at anchor costs nothing. */
+function duesCard() {
+  const me = S.me, bill = me && me.dues;
+  if (!me) return "";
+  if (!bill) return `<section class="dl-card du-card"><header><span>${te("dues.title")}</span><b>…</b></header>
+    <p class="du-foot">${te("dues.restart")}</p></section>`;   // server still running the code from before the dues
+  const share = r => pct(r) + "%";
+  const per = r => money(r);
+  const subs = {
+    anchorage: ln => te("dues.anchorage_sub", { n: ln.basis, rate: per(ln.rate) }),
+    tonnage: ln => te("dues.tonnage_sub", { n: ln.basis.toLocaleString(), rate: per(ln.rate) }),
+    repair: ln => te("dues.repair_sub", { n: money(ln.basis), rate: share(ln.rate) }),
+    yard: ln => te("dues.yard_sub", { n: money(ln.basis), rate: share(ln.rate) }),
+    bank: ln => te("dues.bank_sub", { n: money(ln.basis), rate: share(ln.rate) }),
+    loan: ln => te("dues.loan_sub", { n: money(ln.basis), rate: share(ln.rate) }),
+    wh: ln => te("dues.wh_sub", { n: ln.basis.toLocaleString(), rate: per(ln.rate) }),
+  };
+  const rows = bill.lines.map(ln => `<div class="dl-row du-line"><span>${te("dues." + ln.key)}<small>${subs[ln.key] ? subs[ln.key](ln) : ""}</small></span><b>${money(ln.amount)}</b></div>`).join("");
+  const after = me.cash - bill.total, owed = Math.max(0, -after);
+  const foot = `<p class="du-foot">${te("dues.after", { from: money(me.cash), to: money(Math.max(0, after)) })}` +
+    `${owed ? `<br><b class="du-short">${te("dues.short", { owed: money(owed) })}</b>` : ""}<br>${te("dues.stay")}</p>`;
+  return `<section class="dl-card du-card">
+    <header><span>${te("dues.title")}</span><b>${money(bill.total)}</b></header>
+    <p class="du-sub">${te(me.ready && me.dest ? "dues.paid_on_leave" : "dues.due")}</p>${rows}${foot}</section>`;
 }
 
 /* ----------------------------------------------------------------- port -- */
@@ -684,18 +759,37 @@ function chartTab() {
   const me = S.me;
   const dest = me.ready ? me.dest : ui.dest;
   const orders = ui.orders || me.orders;
-  const list = Object.keys(D.ports).filter(k => k !== me.port).map(k => {
+  const routes = Object.keys(D.ports).filter(k => k !== me.port).map(k => {
     const p = D.ports[k];
     const wx = Math.max(S.weather[p.region] || 0, S.weather[D.ports[me.port].region] || 0);
+    return { k, p, wx, score: voyageRisk(me.port, k, wx), distance: Chart.distance(D, me.port, k) };
+  }).sort((a, b) => a.score - b.score || a.distance - b.distance || a.p.name.localeCompare(b.p.name));
+  const minScore = routes.length ? routes[0].score : 0;
+  const maxScore = routes.length ? routes[routes.length - 1].score : 1;
+  const list = routes.map((route, i) => {
+    const { k, p, wx, score } = route;
     const known = me.known[k];
     const seen = known ? (S.turn - known.turn === 0 ? te("chart.seen_now") : te("chart.seen_ago", { n: S.turn - known.turn })) : te("chart.unknown");
-    return `<button type="button" class="dest ${dest === k ? "on" : ""}" data-act="dest" data-port="${k}">
-      <b>${esc(p.name)}</b>${S.crackdown.includes(k) ? `<span class="tag bad">${te("tag.ban")}</span>` : ""}
-      <span class="muted">${esc(riskLabel(me.port, k))} · ${weatherBadge(wx, D.weather)}</span>
-      <span class="muted">${seen} · ${te("chart.standing", { rep: me.rep[k] })}</span></button>`;
+    const heat = maxScore > minScore ? (score - minScore) / (maxScore - minScore) : 0;
+    const rankLabel = i === 0 ? te("sail.easiest") : i === routes.length - 1 ? te("sail.hardest") : `${te("sail.route")} ${i + 1}`;
+    const weatherKind = ["calm", "fair", "squalls", "typhoon"][wx] || "calm";
+    return `<button type="button" class="dest sail-card ${dest === k ? "on" : ""}" data-act="dest" data-port="${k}"
+      style="--risk-hue:${Math.round(118 * (1 - heat))};--risk-level:${Math.round(score * 100)}%" aria-label="${esc(p.name)}, ${rankLabel}">
+      <span class="dest-art">${Media.html("port", k, "banner", "dest-img", D.graphics.ports[k], { slot: "sail:" + k, mode: "fixed" })}
+        <span class="dest-title"><b>${esc(p.name)}</b>${S.crackdown.includes(k) ? `<span class="tag bad">${te("tag.ban")}</span>` : ""}</span>
+        <span class="dest-rank"><b>#${i + 1}</b><small>${rankLabel}</small></span></span>
+      <span class="dest-data">
+        <span class="dest-stat wx${wx}">${sailIcon(weatherKind)}<span><small>${te("sail.weather")}</small><strong>${esc(D.weather[wx])}</strong></span></span>
+        <span class="dest-stat">${sailIcon("distance")}<span><small>${te("sail.distance")}</small><strong>${esc(riskLabel(me.port, k))}</strong></span></span>
+        <span class="dest-stat">${sailIcon("intel")}<span><small>${te("sail.intel")}</small><strong>${seen}</strong></span></span>
+        <span class="dest-stat">${sailIcon("standing")}<span><small>${te("sail.standing")}</small><strong>${Math.round(me.rep[k])}/100</strong></span></span>
+      </span>
+      <span class="dest-heat"><i></i><b>${Math.round(score * 100)}% <small>${te("sail.forecast_risk")}</small></b></span></button>`;
   }).join("");
   return `<section class="card">
       ${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id })}
+      <div class="sail-guide"><span><b>${te("sail.risk_title")}</b><small>${te("sail.risk_note")}</small></span>
+        <span class="heat-key"><small>${te("sail.easiest")}</small><i></i><small>${te("sail.hardest")}</small></span></div>
       <div class="dests">${list}</div></section>
     <section class="card"><h2>${te("orders.title")}</h2>
       <div class="seg">${btn(te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>

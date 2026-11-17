@@ -290,6 +290,8 @@ class Game:
             p["cargo"] = {g: q for g, q in p["cargo"].items() if g in GOODS and q > 0}
             p["wh"] = {g: q for g, q in p["wh"].items() if g in GOODS and q > 0}
             p["known"] = {k: v for k, v in p.get("known", {}).items() if k in PORTS}
+            tab = p.get("tab") if isinstance(p.get("tab"), dict) else {}
+            p["tab"] = {k: float(tab.get(k, 0) or 0) for k in self._new_tab()}
             for sh in p["ships"]:
                 if sh["type"] not in SHIPS:
                     sh["type"] = fallback
@@ -345,7 +347,7 @@ class Game:
              "rep": {port: float(st["rep"]) for port in PORTS},
              "protect": 0, "ready": False, "dest": None, "orders": "fight",
              "log": [tx("l.arrive", ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
-             "known": {}, "wrecks": 0}
+             "known": {}, "wrecks": 0, "tab": self._new_tab()}
         p["rep"][HOME] = float(st["home_rep"])
         s["players"][pid] = p
         s["order"].append(pid)
@@ -428,6 +430,57 @@ class Game:
 
     def protection_cost(self, p):
         return int(max(R["liyuen"]["cost_min"], R["liyuen"]["cost_share"] * self.worth(p)))
+
+    # ----------------------------------------------------- harbour dues --
+    # The mayor of each port bills a house as it sails out: anchorage per ship, tonnage on the hold,
+    # and a share of what the house spent in town this visit (shipyard, shipwright and chandler,
+    # bank, moneylender, warehouse). Cargo bought and sold is not on her bill (the tax lady's, later).
+    # The tally (p["tab"]) starts again each time the house drops anchor in a new port.
+    @staticmethod
+    def _new_tab():
+        return {"repair": 0.0, "yard": 0.0, "bank": 0.0, "loan": 0.0, "wh": 0.0}
+
+    def _tally(self, p, key, amount):
+        tab = p.setdefault("tab", self._new_tab())
+        tab[key] = tab.get(key, 0.0) + max(0.0, float(amount))
+
+    def dues(self, p):
+        """The mayor's bill if the house sailed now: {"lines": [...], "total": n}."""
+        d, tab = R["dues"], p.get("tab") or self._new_tab()
+        ships, hold = len(p["ships"]), self.capacity(p)
+        lines = [
+            {"key": "anchorage", "basis": ships, "rate": d["anchorage"], "amount": ships * d["anchorage"]},
+            {"key": "tonnage", "basis": hold, "rate": d["tonnage"], "amount": hold / 100.0 * d["tonnage"]},
+            {"key": "repair", "basis": tab["repair"], "rate": d["repair_share"], "amount": tab["repair"] * d["repair_share"]},
+            {"key": "yard", "basis": tab["yard"], "rate": d["yard_share"], "amount": tab["yard"] * d["yard_share"]},
+            {"key": "bank", "basis": tab["bank"], "rate": d["bank_share"], "amount": tab["bank"] * d["bank_share"]},
+            {"key": "loan", "basis": tab["loan"], "rate": d["loan_share"], "amount": tab["loan"] * d["loan_share"]},
+            {"key": "wh", "basis": tab["wh"], "rate": d["warehouse"], "amount": tab["wh"] / 100.0 * d["warehouse"]},
+        ]
+        for ln in lines:
+            ln["basis"], ln["amount"] = int(round(ln["basis"])), int(math.ceil(ln["amount"] - 1e-9))
+        lines = [ln for ln in lines if ln["amount"] > 0]
+        return {"lines": lines, "total": sum(ln["amount"] for ln in lines)}
+
+    def _pay_dues(self, p):
+        """Charge the mayor's bill as the house leaves port. Silver first; any shortfall goes on the debt."""
+        bill = self.dues(p)
+        total = bill["total"]
+        if total <= 0:
+            return
+        paid = int(min(total, max(0.0, p["cash"])))
+        owed = total - paid
+        p["cash"] -= paid
+        if owed:
+            p["debt"] += owed
+            p["log"].append(tx("l.dues_short", port=PORTS[p["port"]]["name"], paid=money(paid), owed=money(owed)))
+        else:
+            p["log"].append(tx("l.dues", port=PORTS[p["port"]]["name"], total=money(total)))
+        self._ev("finance", "dues", "{}: paid the mayor of {} {} in harbour dues ({}){}".format(
+            p["name"], PORTS[p["port"]]["name"], money(total),
+            ", ".join("{} {}".format(ln["key"], ln["amount"]) for ln in bill["lines"]),
+            "; {} short, added to the debt".format(money(owed)) if owed else ""),
+            p, port=p["port"], total=total, paid=paid, owed=owed, lines=bill["lines"])
 
     def _gain_rep(self, p, port, amount):
         p["rep"][port] = max(0.0, min(100.0, p["rep"][port] + amount))
@@ -600,12 +653,14 @@ class Game:
                 raise GameError(tx("e.no_deposit"))
             p["cash"] -= q
             p["bank"] += q
+            self._tally(p, "bank", q)
             return tx("m.deposited", amount=money(q))
         q = min(q, int(p["bank"]))
         if q <= 0:
             raise GameError(tx("e.account_empty"))
         p["bank"] -= q
         p["cash"] += q
+        self._tally(p, "bank", q)
         return tx("m.withdrew", amount=money(q))
 
     def _act_loan(self, p, a):
@@ -618,6 +673,7 @@ class Game:
             q = min(q, room)
             p["debt"] += q
             p["cash"] += q
+            self._tally(p, "loan", q)
             return tx("m.borrowed", amount=money(q), rate="{:g}".format(round(loan_rate() * 100, 2)))
         q = min(q, int(math.ceil(p["debt"])), int(p["cash"]))
         if q <= 0:
@@ -626,6 +682,7 @@ class Game:
         p["cash"] -= q
         if p["debt"] < 1:
             p["debt"] = 0.0
+        self._tally(p, "loan", q)
         return tx("m.repaid", amount=money(q))
 
     def _act_warehouse(self, p, a):
@@ -639,6 +696,7 @@ class Game:
             if not p["cargo"][g]:
                 del p["cargo"][g]
             p["wh"][g] = p["wh"].get(g, 0) + q
+            self._tally(p, "wh", q)
             return tx("m.stored", qty=q, good=GOODS[g]["name"])
         q = min(q, p["wh"].get(g, 0), self.capacity(p) - self.used(p))
         if q <= 0:
@@ -647,6 +705,7 @@ class Game:
         if not p["wh"][g]:
             del p["wh"][g]
         p["cargo"][g] = p["cargo"].get(g, 0) + q
+        self._tally(p, "wh", q)
         return tx("m.loaded", qty=q, good=GOODS[g]["name"])
 
     def _act_buy_ship(self, p, a):
@@ -661,6 +720,7 @@ class Game:
         if price > p["cash"]:
             raise GameError(tx("e.ship_cost", ship=SHIPS[kind]["name"], price=money(price)))
         p["cash"] -= price
+        self._tally(p, "yard", price)
         sh = self._new_ship(kind)
         p["ships"].append(sh)
         self._gain_rep(p, p["port"], R["fleet"]["ship_rep"])
@@ -698,6 +758,7 @@ class Game:
         if price > p["cash"]:
             raise GameError(tx("e.gun_cost", price=money(price)))
         p["cash"] -= price
+        self._tally(p, "yard", price)
         sh["guns"] += 1
         return tx("m.gun_mounted", name=sh["name"])
 
@@ -715,6 +776,7 @@ class Game:
         if not fixed:
             raise GameError(tx("e.nothing_to_repair"))
         p["cash"] = max(0.0, p["cash"] - spent)
+        self._tally(p, "repair", spent)
         self._detail = {"points": fixed, "cost": spent, "note": "{} hull points".format(fixed)}
         return tx("m.repaired", cost=money(spent))
 
@@ -926,6 +988,7 @@ class Game:
         for p in players:
             p["log"] = []
             if p["ready"] and p["dest"]:
+                self._pay_dues(p)
                 self._voyage(p, actual, news)
             else:
                 p["log"].append(tx("l.anchor", port=PORTS[p["port"]]["name"]))
@@ -1094,6 +1157,7 @@ class Game:
             return
 
         p["port"] = dest
+        p["tab"] = self._new_tab()
         log.append(tx("l.anchored", port=PORTS[dest]["name"]))
         self._ev("voyage", "arrived", "{} anchored in {}: {} ship{}, hull {}, hold {}/{}, silver {}".format(
             who, PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
@@ -1227,6 +1291,7 @@ class Game:
         p["cash"] -= lost
         p["debt"] += wk["debt"]
         p["port"] = HOME
+        p["tab"] = self._new_tab()
         p["wrecks"] += 1
         p["ships"] = [self._new_ship(wk["ship"], guns=0, hull=wk["hull"])]
         p["log"].append(tx("l.wrecked", lost=money(lost), debt=money(wk["debt"]),
@@ -1278,6 +1343,7 @@ class Game:
                 "log": p["log"], "known": p["known"],
                 "prices": {g: round(v, 2) for g, v in s["prices"][port].items()},
                 "spread": round(sp, 4),
+                "dues": self.dues(p),
             }
         return out
 
@@ -1305,9 +1371,14 @@ class Game:
 
 def static_data():
     """Reference data the browser needs once (and again whenever settings change)."""
-    f, b = R["fleet"], CFG["brand"]
+    f, b, w, pi, ly = R["fleet"], CFG["brand"], R["weather"], R["pirates"], R["liyuen"]
     return {"goods": GOODS, "ports": PORTS, "ships": SHIPS, "regions": REGIONS,
             "weather": [tx("wx.{}".format(i)) for i in range(4)],
+            "voyage_risk": {"risk_min": w["risk_min"], "risk_max": w["risk_max"], "risk_div": w["risk_div"],
+                            "storm_chance": [chance * MULT["storms"] for chance in w["storm_chance"]],
+                            "pirate_chance": pi["chance"] * MULT["pirates"],
+                            "lord_chance": ly["chance"] * MULT["pirates"],
+                            "protect_save": ly["protect_save"]},
             "gun_price": f["gun_price"], "max_fleet": f["max_fleet"],
             "loan_rate": loan_rate(), "bank_rate": R["bank"]["bank_rate"], "home": HOME,
             "impact": R["market"]["impact"], "lengths": R["game"]["lengths"],

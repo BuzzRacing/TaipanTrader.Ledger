@@ -222,6 +222,58 @@ body.player button.dest.on .muted { color: color-mix(in srgb, var(--deck-ivory) 
 body.player input { color: var(--deck-ivory); background: var(--input); border-color: var(--btn-border); box-shadow: inset 0 2px 6px rgba(0, 0, 0, .45); }
 body.player input::placeholder { color: color-mix(in srgb, var(--deck-ivory) 35%, transparent); }
 
+/* ----------------------------------------------------------- set sail routes -- */
+.sail-guide { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin: .85rem 0 .65rem; }
+.sail-guide > span:first-child b { display: block; font: 400 1.08rem/1.15 var(--serif); color: var(--brass-hi); }
+.sail-guide > span:first-child small { display: block; margin-top: .12rem; color: var(--muted); font-size: .76rem; }
+.heat-key { display: flex; align-items: center; gap: .35rem; flex: none; color: var(--muted); }
+.heat-key small { font: 700 .62rem/1 var(--special); letter-spacing: .06em; text-transform: uppercase; }
+.heat-key i { width: 5.5rem; height: .38rem; border-radius: 1rem; background: linear-gradient(90deg, hsl(118 55% 42%), hsl(55 78% 52%), hsl(4 72% 52%));
+  box-shadow: 0 0 0 1px rgba(255, 244, 215, .15), 0 1px 5px #000; }
+.deck .dests { grid-template-columns: repeat(auto-fill, minmax(min(14.5rem, 100%), 1fr)); gap: .75rem; margin-top: 0; }
+body.player button.dest.sail-card { --risk-color: hsl(var(--risk-hue) 62% 46%); position: relative; display: block; min-height: 0; padding: 0; overflow: hidden;
+  text-align: left; border: 1px solid color-mix(in srgb, var(--risk-color) 62%, var(--edge-hi)); border-radius: calc(var(--radius) * 1.25);
+  background: color-mix(in srgb, var(--deck-night) 72%, var(--risk-color) 6%); box-shadow: 0 12px 28px -18px #000, inset 0 0 0 1px rgba(255, 244, 215, .04); }
+body.player button.dest.sail-card:hover:not(:disabled) { border-color: color-mix(in srgb, var(--risk-color) 75%, #fff); background: color-mix(in srgb, var(--deck-lacquer) 88%, var(--risk-color) 12%);
+  box-shadow: 0 14px 32px -18px #000, 0 0 16px -9px var(--risk-color); }
+body.player button.dest.sail-card.on, body.player button.dest.sail-card.on:hover:not(:disabled) { color: var(--deck-ivory); border-color: var(--brass-hi);
+  background: color-mix(in srgb, var(--deck-lacquer) 86%, var(--risk-color) 14%); box-shadow: 0 0 0 2px color-mix(in srgb, var(--deck-brass) 45%, transparent), 0 12px 30px -16px #000; }
+.dest-art { position: relative; display: block; height: clamp(6.4rem, 12vw, 8.2rem); overflow: hidden; background: var(--deck-lacquer); }
+.dest-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5, 4, 3, .08) 12%, rgba(5, 4, 3, .2) 45%, rgba(5, 4, 3, .92) 100%); }
+.dest-art::before { content: ""; position: absolute; z-index: 2; inset: auto 0 0; height: 3px; background: var(--risk-color); box-shadow: 0 0 12px var(--risk-color); }
+.dest-img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 50%; transition: transform .35s ease, filter .35s ease; }
+.sail-card:hover .dest-img { transform: scale(1.045); filter: saturate(1.08) contrast(1.04); }
+.dest-title { position: absolute; z-index: 3; left: .75rem; right: 4.75rem; bottom: .62rem; display: flex; align-items: center; gap: .3rem; min-width: 0; }
+.dest-title b { overflow: hidden; color: #fff; font: 800 clamp(1.12rem, 2vw, 1.42rem)/1.05 var(--serif); text-overflow: ellipsis; white-space: nowrap;
+  letter-spacing: .015em; text-shadow: 0 2px 10px #000, 0 1px 2px #000; }
+.dest-title .tag.bad { margin: 0; color: #fff; border-color: color-mix(in srgb, var(--blood-hi) 85%, #fff); background: color-mix(in srgb, var(--deck-oxblood) 82%, transparent); }
+.dest-rank { position: absolute; z-index: 3; right: .58rem; top: .55rem; display: grid; min-width: 3.65rem; padding: .28rem .42rem .32rem; text-align: center;
+  border: 1px solid color-mix(in srgb, var(--risk-color) 65%, #fff); border-radius: .4rem; color: #fff; background: color-mix(in srgb, var(--risk-color) 58%, rgba(8, 6, 4, .88));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); }
+.dest-rank b { font: 800 1.05rem/1 var(--sans); }
+.dest-rank small { margin-top: .14rem; font: 700 .52rem/1 var(--special); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.dest-data { display: grid; grid-template-columns: 1fr 1fr; gap: .15rem .55rem; padding: .62rem .7rem .48rem; }
+.dest-stat { display: flex; align-items: center; min-width: 0; gap: .4rem; color: color-mix(in srgb, var(--deck-ivory) 76%, var(--deck-brass)); }
+.dest-stat > span { display: block; min-width: 0; }
+.dest-stat small, .dest-stat strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dest-stat small { color: var(--muted); font: 700 .55rem/1.1 var(--special); letter-spacing: .08em; text-transform: uppercase; }
+.dest-stat strong { margin-top: .08rem; color: var(--deck-ivory); font: 700 .75rem/1.15 var(--sans); }
+.dest-icon { flex: none; width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.dest-stat.wx0, .dest-stat.wx1 { color: var(--jade-hi); }
+.dest-stat.wx2 { color: #f1c465; }
+.dest-stat.wx3 { color: #ff9b88; }
+.dest-heat { display: flex; align-items: center; gap: .55rem; padding: 0 .7rem .65rem; color: var(--risk-color); }
+.dest-heat > i { position: relative; flex: 1 1 auto; height: .34rem; overflow: hidden; border-radius: 1rem; background: rgba(0, 0, 0, .45); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.dest-heat > i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--risk-level); border-radius: inherit; background: var(--risk-color); box-shadow: 0 0 8px var(--risk-color); }
+.dest-heat b { color: color-mix(in srgb, var(--risk-color) 74%, #fff); font: 800 .72rem/1 var(--sans); white-space: nowrap; }
+.dest-heat small { color: var(--muted); font-size: .62rem; font-weight: 700; }
+
+@media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 560px) {
+  .sail-guide { align-items: start; }
+  .heat-key { display: none; }
+  .dest-art { height: 6.2rem; }
+}
+
 /* ---------------------------------------------------------------- side: stage, log, helm -- */
 /* the stage is always square (port, market keeper, ship master...), as large as the column allows */
 .dk-side { display: flex; flex-direction: column; align-items: center; container-type: size; min-height: 0; }
@@ -758,7 +810,16 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
 .dl-card header { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
 .dl-card header span { font: .78rem/1.2 var(--special); letter-spacing: .1em; text-transform: uppercase; color: var(--brass-hi); }
 .dl-card header b { font: 800 1.5rem/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--brass-hi); }
-.dl-standing { margin: .15rem 0 .35rem; font-size: .8rem; color: var(--muted); }
+/* standing heat bar: red at 0, amber at 50, green at 100; lit up to the standing, dark beyond it */
+.dl-standing { display: flex; align-items: center; gap: .5rem; margin: .35rem 0 .4rem; }
+.dl-standing span { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.dl-standing b { min-width: 1.8em; text-align: right; font: 700 .95rem/1 var(--sans); font-variant-numeric: tabular-nums;
+  color: hsl(var(--rep-hue) 75% 62%); }
+.dl-heat { position: relative; flex: 1 1 auto; height: 12px; border-radius: 6px; overflow: hidden;
+  background: linear-gradient(90deg, #c0392b, #e67e22 30%, #f1c40f 50%, #9acd32 72%, #27ae60);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45), 0 0 10px -4px hsl(var(--rep-hue) 75% 50%); }
+.dl-heat i { position: absolute; top: 0; bottom: 0; left: var(--rep); right: 0;
+  background: color-mix(in srgb, var(--deck-night) 85%, #000); box-shadow: inset 2px 0 0 var(--deck-ivory); }
 .dl-row { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .22rem 0; border-top: 1px solid var(--rule); }
 .dl-row span { font-size: .9rem; color: var(--deck-ivory); }
 .dl-row small { margin-left: .4rem; font-size: .72rem; color: var(--muted); }
@@ -766,13 +827,28 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
 .dl-row.pay b { color: color-mix(in srgb, var(--blood-hi) 85%, var(--deck-ivory)); }
 .dl-row.get b { color: var(--jade-hi); }
 .dl-row.cut b { color: var(--brass-hi); }
-.dl-hint { margin: 0; padding-top: .3rem; border-top: 1px solid var(--rule); font-size: .82rem; line-height: 1.35; color: var(--muted); }
 
 /* upright screens: the stage is a band across the top, so the card sits beside her instead */
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
   .deck[data-tab="market"] .dk-side { flex-direction: row; justify-content: center; align-items: stretch; }
   .deck[data-tab="market"] .dk-stage { width: auto; height: 100cqh; max-width: 55cqw; }
   .deck[data-tab="market"] .dk-dyn { width: auto; flex: 1 1 0; max-width: 22rem; overflow: auto; }
+}
+
+/* ------------------------------------------------- the mayor's harbour dues under her picture -- */
+/* player.js duesCard(): shown in the side column under the stage while the Set sail tab is open.
+   Same glass card as the dealer's; the bill is taller, so the stage gives up more room. */
+.deck[data-tab="chart"] .dk-side { gap: clamp(.45rem, .9vw, .85rem); }
+.deck[data-tab="chart"] .dk-dyn { display: block; flex: 0 1 auto; min-height: 0; overflow: auto; width: min(100cqw, 100cqh - 16rem); }
+.deck[data-tab="chart"] .dk-stage { flex: none; width: min(100cqw, 100cqh - 16rem - clamp(.45rem, .9vw, .85rem)); }
+.du-card .dl-row b { color: color-mix(in srgb, var(--blood-hi) 85%, var(--deck-ivory)); }
+.du-card .du-short { color: var(--blood-hi); }
+.du-sub { margin: .15rem 0 .35rem; font-size: .8rem; color: var(--muted); }
+.du-foot { margin: 0; padding-top: .3rem; border-top: 1px solid var(--rule); font-size: .82rem; line-height: 1.35; color: var(--muted); }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .deck[data-tab="chart"] .dk-side { flex-direction: row; justify-content: center; align-items: stretch; }
+  .deck[data-tab="chart"] .dk-stage { width: auto; height: 100cqh; max-width: 55cqw; }
+  .deck[data-tab="chart"] .dk-dyn { width: auto; flex: 1 1 0; max-width: 22rem; overflow: auto; }
 }
 
 /* Ledger: the tax collector and the right-hand column are hidden for now, so the price book gets the full width. */

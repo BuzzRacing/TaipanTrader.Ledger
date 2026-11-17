@@ -154,6 +154,9 @@ DEFAULTS = {
                    "hit": 0.40, "dmg_min": 8, "dmg_max": 20, "protect_months": 8,
                    "protect_save": 0.5, "cost_share": 0.06, "cost_min": 500, "renew_at": 2},
         "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 60},
+        # The mayor's harbour dues, paid on leaving port (engine.Game.dues).
+        "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
+                 "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2},
     },
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
     "goods": {
@@ -395,6 +398,14 @@ SECTIONS = [
              F("rules.fleet.repair_price_div", "Plus ship price divided by", "int", min=1, max=10**7),
              F("rules.fleet.repair_noyard", "Multiplier in ports without a shipyard", "num", min=0.1, max=10, step=0.05),
              _pct("rules.fleet.repair_rep_discount", "Discount at standing 100")]},
+         {"title": "Harbour dues (the mayor's bill on leaving port)", "fields": [
+             F("rules.dues.anchorage", "Anchorage per ship", "num", min=0, max=10**6, step=1),
+             F("rules.dues.tonnage", "Tonnage dues per 100 units of hold", "num", min=0, max=10**6, step=0.5),
+             _pct("rules.dues.repair_share", "Shipyard levy: share of repairs paid this visit"),
+             _pct("rules.dues.yard_share", "Shipwright and chandler: share of ships and guns bought this visit"),
+             _pct("rules.dues.bank_share", "Counting-house fee: share of money deposited or withdrawn this visit"),
+             _pct("rules.dues.loan_share", "Moneylender's stamp: share of money borrowed or repaid this visit"),
+             F("rules.dues.warehouse", "Wharfage per 100 units stored or loaded this visit", "num", min=0, max=10**6, step=0.5)]},
      ]},
     {"id": "goods", "title": "Cargo", "intro": "What can be traded. Removing a cargo during a game discards any that players hold.",
      "tables": [
