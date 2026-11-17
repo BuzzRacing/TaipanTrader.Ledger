@@ -1,0 +1,181 @@
+/* SeaTrader media on the player screen and the harbor board.
+   The server sends the media library (Admin > Media Library) with /api/info, already filtered:
+   while the game is family-friendly, nothing tagged NSFW is in it. This file picks which picture or
+   clip to show for a persona, port, ship, cargo or scene, and keeps rotating it by the library's rules:
+
+     random   a new pick each time it comes on screen (or each spoken line, for a persona)
+     shuffle  a new random pick every N seconds, never the same twice in a row
+     rotate   the next one in order every N seconds
+     fixed    always the starred (primary) item
+
+   Screens redraw often, so the current pick for each place is remembered here and survives redraws. */
+"use strict";
+
+const Media = (() => {
+  let L = { items: {}, rules: { defaults: {}, subjects: {} }, options: {}, fallback: {}, family: false };
+  const st = {};            // slot key -> {id, at, seen}
+  const GONE_MS = 2500;     // off screen this long = "appears again" for random mode
+
+  const a = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function rule(kind, subject) {
+    const d = (L.rules.defaults || {})[kind] || { mode: "random", seconds: 10, video_chance: 0 };
+    const s = (L.rules.subjects || {})[kind + ":" + subject] || {};
+    return Object.assign({}, d, s);
+  }
+
+  /* Items for one subject (or several) in one role. An item with no roles fits any role.
+     Without a match the kind's usual role is tried, then a persona's profile pictures. */
+  function pool(kind, subjects, role, opts) {
+    const all = [].concat(...[].concat(subjects).map(s => ((L.items[kind] || {})[s] || [])));
+    const fits = r => all.filter(i => !r || !i.r.length || i.r.includes(r));
+    let list = fits(role);
+    if (!list.length && !opts.strict) {
+      if (role !== L.fallback[kind]) list = fits(L.fallback[kind]);
+      if (!list.length && kind === "persona") list = fits("portrait");
+      if (!list.length) list = all;
+    }
+    if (!opts.video) list = list.filter(i => i.t === "image");
+    return list;
+  }
+
+  function weighted(list, avoid) {
+    const pickFrom = list.length > 1 && avoid ? list.filter(i => i.id !== avoid) : list;
+    const total = pickFrom.reduce((n, i) => n + (i.w || 1), 0);
+    let r = Math.random() * total;
+    for (const i of pickFrom) { r -= i.w || 1; if (r <= 0) return i; }
+    return pickFrom[pickFrom.length - 1];
+  }
+
+  /* Videos are only chosen as often as the rule's "video chance" allows. */
+  function split(list, chance) {
+    const vids = list.filter(i => i.t === "video"), imgs = list.filter(i => i.t !== "video");
+    if (!vids.length) return imgs;
+    if (!imgs.length) return vids;
+    return Math.random() * 100 < chance ? vids : imgs;
+  }
+
+  function keyOf(kind, subjects, role, opts) {
+    return [kind, [].concat(subjects).join("+"), role || "", opts.slot || "", opts.video ? "v" : ""].join("|");
+  }
+
+  /* The item to show now for a place on screen. opts: {video, fresh, strict, slot, mode}. */
+  function choose(kind, subjects, role, opts) {
+    opts = opts || {};
+    const list = pool(kind, subjects, role, opts);
+    if (!list.length) return null;
+    const subj = [].concat(subjects)[0];
+    const r = rule(kind, subj), mode = opts.mode || r.mode;
+    const key = keyOf(kind, subjects, role, opts), now = Date.now();
+    let s = st[key];
+    const curr = s && list.find(i => i.id === s.id);
+    let next = null;
+    if (mode === "fixed") {
+      next = list.find(i => i.p) || list.find(i => i.t === "image") || list[0];
+    } else if (mode === "rotate") {
+      if (!curr) next = list[0];
+      else if (opts.fresh || now - s.at >= r.seconds * 1000) next = list[(list.indexOf(curr) + 1) % list.length];
+    } else if (mode === "shuffle") {
+      if (!curr || opts.fresh || now - s.at >= r.seconds * 1000) next = weighted(split(list, r.video_chance), curr && curr.id);
+    } else {   // random
+      if (!curr || opts.fresh || now - s.seen > GONE_MS) next = weighted(split(list, r.video_chance), curr && curr.id);
+    }
+    if (next) { s = st[key] = { id: next.id, at: now, seen: now }; return next; }
+    s.seen = now;
+    return curr;
+  }
+
+  function attrs(kind, subjects, role, opts) {
+    return `data-mk="${a(kind)}" data-ms="${a([].concat(subjects).join("+"))}" data-mr="${a(role || "")}"` +
+      (opts.video ? ' data-mv="1"' : "") + (opts.slot ? ` data-mslot="${a(opts.slot)}"` : "") +
+      (opts.mode ? ` data-mmode="${a(opts.mode)}"` : "") + (opts.strict ? ' data-mstrict="1"' : "");
+  }
+
+  function element(item, cls, extra) {
+    if (item.t === "video") {
+      return `<video class="${a(cls)} mslot" ${extra} data-mid="${a(item.id)}" src="${a(item.u)}" muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
+    }
+    return `<img class="${a(cls)} mslot" ${extra} data-mid="${a(item.id)}" src="${a(item.u)}" alt="">`;
+  }
+
+  /* HTML for a picture (or clip) of kind/subject in a role. Falls back to a plain picture (the
+     Graphics page's), or nothing, when the library has none. */
+  function html(kind, subjects, role, cls, fallbackUrl, opts) {
+    opts = opts || {};
+    const item = choose(kind, subjects, role, opts);
+    if (!item) return fallbackUrl ? `<img class="${a(cls)}" src="${a(fallbackUrl)}" alt="">` : "";
+    return element(item, cls, attrs(kind, subjects, role, opts));
+  }
+
+  function has(kind, subject, role, opts) {
+    return pool(kind, subject, role, opts || {}).length > 0;
+  }
+
+  /* Swap one element on screen for another item, fading the new one in. */
+  function swap(el, item) {
+    if (!item || el.dataset.mid === item.id) return;
+    if (item.t === "image" && el.tagName === "IMG") {
+      const pre = new Image();
+      pre.onload = () => {
+        if (!el.isConnected) return;
+        el.src = item.u;
+        el.dataset.mid = item.id;
+        el.classList.remove("mfade"); void el.offsetWidth; el.classList.add("mfade");
+      };
+      pre.src = item.u;
+      return;
+    }
+    const keep = Array.from(el.attributes).filter(x => /^data-m(?!id)/.test(x.name)).map(x => `${x.name}="${a(x.value)}"`).join(" ");
+    const cls = Array.from(el.classList).filter(c => c !== "mslot" && c !== "mfade").join(" ");
+    const tmp = document.createElement("div");
+    tmp.innerHTML = element(item, cls + " mfade", keep);
+    el.replaceWith(tmp.firstElementChild);
+  }
+
+  function optsOf(el) {
+    const d = el.dataset;
+    return { video: d.mv === "1", slot: d.mslot || "", mode: d.mmode || "", strict: d.mstrict === "1" };
+  }
+
+  /* Every second: mark what is on screen as seen, and move timed rotations along. */
+  function tick() {
+    document.querySelectorAll(".mslot[data-mk]").forEach(el => {
+      const d = el.dataset, item = choose(d.mk, d.ms.split("+"), d.mr, optsOf(el));
+      if (item && item.id !== d.mid) swap(el, item);
+    });
+  }
+  setInterval(tick, 1000);
+
+  function find(id) {
+    for (const k of Object.keys(L.items)) for (const s of Object.keys(L.items[k])) {
+      const it = L.items[k][s].find(i => i.id === id);
+      if (it) return it;
+    }
+    return null;
+  }
+
+  return {
+    /* The library from /api/info. Anything on screen that is no longer allowed is swapped at once. */
+    setup(m) {
+      if (!m || !m.items) return;
+      L = m;
+      document.querySelectorAll(".mslot").forEach(el => {
+        if (find(el.dataset.mid)) return;
+        const d = el.dataset;
+        const item = d.mk ? choose(d.mk, d.ms.split("+"), d.mr, optsOf(el)) : null;
+        if (item) swap(el, item); else el.remove();
+      });
+    },
+    html, has, choose,
+    /* The picture or clip for a persona reading a line: a fresh pick for every line. */
+    speaker(cid, cls, mood) {
+      if (mood && has("persona", cid, mood, { video: true, strict: true })) {
+        return html("persona", cid, mood, cls || "", "", { video: true, fresh: true, strict: true, slot: "speak" });
+      }
+      return html("persona", cid, "speaking", cls || "", "", { video: true, fresh: true, slot: "speak" });
+    },
+    options: () => L.options || {},
+    family: () => !!L.family,
+  };
+})();

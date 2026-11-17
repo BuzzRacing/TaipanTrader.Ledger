@@ -1,0 +1,315 @@
+"""Every piece of wording in SeaTrader, in English.
+
+The Admin page (Language & Text) can reword any line or add whole languages;
+those edits are saved in config/lang/<code>.json and laid over this table.
+
+Words in {braces} are filled in by the game. Besides the ones each line uses,
+these work in every line: {lender} {pirate} {bank} {winner} {home} {title}
+{contraband} {Contraband}.
+"""
+
+EN = {
+    # --- months, weather, small words -------------------------------------
+    "mon.0": "Jan", "mon.1": "Feb", "mon.2": "Mar", "mon.3": "Apr", "mon.4": "May", "mon.5": "Jun",
+    "mon.6": "Jul", "mon.7": "Aug", "mon.8": "Sep", "mon.9": "Oct", "mon.10": "Nov", "mon.11": "Dec",
+    "wx.0": "Calm", "wx.1": "Fair", "wx.2": "Squalls", "wx.3": "Typhoon",
+    "w.contraband": "contraband",
+    "w.default_firm": "{name} & Co.",
+    "w.the_bank": "The bank",
+    "w.the_lender": "{lender}",
+    "w.the_warehouse": "Your warehouse",
+    "w.the_agent": "{pirate}'s agent",
+    "w.pirate_junks": "pirate junks",
+    "w.war_junks": "of {pirate}'s war junks",
+    "w.fight": "fight", "w.run": "run",
+    "w.host": "host", "w.away": "away",
+
+    # --- rule messages shown when something is not allowed ----------------
+    "e.name": "Enter your name.",
+    "e.ended": "This game has ended. Start a new game to play again.",
+    "e.full": "This game is full ({n} players).",
+    "e.elsewhere": "{name} is playing on another device right now. Close that screen, wait half a minute "
+                   "and try again, or pick another name.",
+    "e.host_new_game": "Only the host can start a new game.",
+    "e.not_in_game": "You are not in this game.",
+    "e.host_settings": "Only the host can change settings, before the game starts.",
+    "e.years": "Choose one of these lengths in years: {list}.",
+    "e.host_start": "Only the host can start the game.",
+    "e.host_force": "Only the host can end the turn.",
+    "e.not_running": "The game is not in progress.",
+    "e.already_sailed": "You have already given sailing orders. Cancel them to keep trading.",
+    "e.unknown_action": "Unknown action.",
+    "e.whole_number": "Enter a whole number.",
+    "e.quantity": "Enter a quantity above zero.",
+    "e.unknown_cargo": "Unknown cargo.",
+    "e.no_room": "Not enough room in the hold ({free} free).",
+    "e.cost": "That costs {cost} and you have {cash} on hand.",
+    "e.only_have": "You only have {qty} {good} aboard.",
+    "e.home_only": "{what} is only in {home}.",
+    "e.no_deposit": "You have no silver on hand to deposit.",
+    "e.account_empty": "Your account is empty.",
+    "e.no_more_loans": "{lender} will lend you nothing more.",
+    "e.nothing_to_repay": "Nothing to repay, or no silver on hand.",
+    "e.nothing_to_store": "Nothing to store, or the warehouse is full.",
+    "e.nothing_to_load": "Nothing to load, or no room in the hold.",
+    "e.unknown_ship": "Unknown ship.",
+    "e.no_shipyard": "There is no shipyard in {port}.",
+    "e.fleet_limit": "Your fleet is at its limit of {n} ships.",
+    "e.ship_cost": "A {ship} costs {price}.",
+    "e.no_such_ship": "No such ship.",
+    "e.last_ship": "You cannot sell your last ship.",
+    "e.unload_first": "Unload cargo first; the rest of the fleet cannot carry it.",
+    "e.no_more_guns": "The '{name}' can mount no more guns.",
+    "e.gun_cost": "A gun costs {price}.",
+    "e.nothing_to_repair": "Nothing to repair, or not enough silver.",
+    "e.protect_content": "{pirate} is content for now ({months} months left).",
+    "e.protect_cost": "{pirate} asks {cost} and you cannot pay it.",
+    "e.unknown_port": "Unknown port.",
+    "e.orders": "Orders must be fight or run.",
+    "e.qty_first": "Enter a quantity first.",
+    "e.amount_first": "Enter an amount first.",
+
+    # --- confirmations -----------------------------------------------------
+    "m.years": "Game length set to {years} years.",
+    "m.forced": "Turn ended by the host.",
+    "m.unsail": "Orders cancelled. You are back in port.",
+    "m.begin": "The game begins.",
+    "m.new_game": "A new game is open. Everyone can join again.",
+    "m.bought": "Bought {qty} {good} for {cost}.",
+    "m.sold": "Sold {qty} {good} for {gain}.",
+    "m.deposited": "Deposited {amount}.",
+    "m.withdrew": "Withdrew {amount}.",
+    "m.borrowed": "Borrowed {amount} at {rate}% a month.",
+    "m.repaid": "Repaid {amount}.",
+    "m.stored": "Stored {qty} {good}.",
+    "m.loaded": "Loaded {qty} {good}.",
+    "m.ship_joined": "The {ship} '{name}' joins your fleet.",
+    "m.ship_sold": "Sold the '{name}' for {value}.",
+    "m.gun_mounted": "Mounted a gun on the '{name}'.",
+    "m.repaired": "Repairs done for {cost}.",
+    "m.protected": "Paid {cost} to {pirate}. Her fleets will leave you be for {months} months.",
+    "m.sail": "Orders given: sail for {port}.",
+    "m.stay": "Orders given: remain at anchor this month.",
+
+    # --- captain's log -----------------------------------------------------
+    "l.arrive": "You arrive in {home} with one {ship}, {cash} in silver and a {debt} debt to {lender}.",
+    "l.anchor": "You remained at anchor in {port}.",
+    "l.collectors": "{lender}'s collectors are asking about you. Your name suffers in {home}.",
+    "l.protect_lapsed": "Your arrangement with {pirate} has lapsed.",
+    "l.robbed": "You were beaten and robbed of {lost} in the street. Silver is safer in the bank.",
+    "l.sailed": "You sailed from {origin} for {dest} {weather}.",
+    "l.sea.0": "on a calm sea", "l.sea.1": "in fair weather",
+    "l.sea.2": "through squalls", "l.sea.3": "into a typhoon",
+    "l.typhoon": "A typhoon caught the fleet at sea and battered your ships.",
+    "l.storm": "A storm caught the fleet at sea and battered your ships.",
+    "l.how_foundered": "foundered in the storm",
+    "l.how_sunk": "was sunk",
+    "l.ship_lost": "The {ship} '{name}' {how}.",
+    "l.cargo_lost": "Cargo went down with her; the fleet could not carry it all.",
+    "l.offcourse": "You were blown far off course and made port in {port} instead.",
+    "l.driven_off": "{n} pirate junks closed in, but {pirate}'s fleet drove them off.",
+    "l.lord_found": "{pirate}'s fleet found you. You have paid her no tribute.",
+    "l.anchored": "You dropped anchor in {port}.",
+    "l.seized": "Customs officers searched the fleet, seized {qty} chests of {contraband} and fined you {fine}.",
+    "l.attack": "{n} {enemy} attacked. Your orders were to {orders}.",
+    "l.attack_noguns": "{n} {enemy} attacked. With no guns aboard, you could only run.",
+    "l.sank_all": "You sank all {n} in {rounds} round{s} and took {booty} in booty.",
+    "l.outran": "You outran them after {rounds} round{s} of fire.",
+    "l.long_fight": "After a long fight you sank {n} of them and the rest broke off.",
+    "l.plundered": "They ran you down, boarded and plundered {qty} units of cargo.",
+    "l.damage": "Your surviving ships took {points} points of damage.",
+    "l.wrecked": "Your last ship went down. A passing clipper pulled you from the sea and landed you in {home}. "
+                 "Cargo and {lost} in silver were lost. {lender} has advanced you a battered {ship}, "
+                 "adding {debt} to your debt.",
+
+    # --- news --------------------------------------------------------------
+    "n.opening": "The trading season opens. {home} harbour is crowded with ships.",
+    "n.start_one": "1 trading house open for business.",
+    "n.start_many": "{n} trading houses open for business.",
+    "n.game_over": "The game is over. {name} of {firm} is {winner}, worth {worth}.",
+    "n.ban_lifted": "The {contraband} ban in {port} has been lifted.",
+    "n.ban": "The authorities in {port} have banned {contraband}. Ships are being searched.",
+    "n.scarce": "{good} is scarce in {port} and merchants are paying dearly.",
+    "n.glut": "A glut of {good_lower} in {port} has sent prices tumbling.",
+    "n.caught": "{name} of {firm} was caught landing {contraband} in {port}.",
+    "n.wrecked": "{name} of {firm} lost the whole fleet at sea and was carried home to {home}.",
+
+    # --- screens: general --------------------------------------------------
+    "ui.offline": "Connection lost. Reconnecting…",
+    "ui.no_server": "Cannot reach the game server.",
+    "btn.buy": "Buy", "btn.sell": "Sell", "btn.max": "max", "btn.all": "all",
+    "btn.deposit": "Deposit", "btn.withdraw": "Withdraw", "btn.all_silver": "all silver",
+    "btn.repay": "Repay", "btn.borrow": "Borrow", "btn.whole_debt": "whole debt",
+    "btn.store": "Store", "btn.load": "Load",
+    "ph.qty": "qty", "ph.amount": "amount",
+    "tag.contraband": "contraband", "tag.fast": "fast", "tag.ban": "banned",
+    "col.house": "House", "col.port": "Port", "col.ships": "Ships", "col.worth": "Net worth",
+    "col.cargo": "Cargo", "col.price": "Price", "col.aboard": "Aboard", "col.quantity": "Quantity",
+    "col.in_store": "In store", "col.ship": "Ship", "col.hold": "Hold", "col.hull": "Hull", "col.guns": "Guns",
+
+    # --- join, lobby, end --------------------------------------------------
+    "join.title": "Found your trading house",
+    "join.late": "A game is under way. You can still join it.",
+    "join.over": "The last game has ended. Ask the host to start a new one.",
+    "join.name": "Your name", "join.name_ph": "e.g. Anthony",
+    "join.firm": "Name of your firm", "join.firm_ph": "e.g. Noble House",
+    "join.button": "Join the game",
+    "join.houses": "Houses in the harbour",
+    "join.none": "No trading houses yet.",
+    "join.url": "Other devices join at {url}",
+    "join.board_url": "Big-screen harbor board: {url}",
+    "lobby.host_title": "You are the host",
+    "lobby.length": "Game length",
+    "lobby.year": "{n} year", "lobby.years": "{n} years",
+    "lobby.turns": "One turn is one month, so {years} years is {turns} turns.",
+    "lobby.start": "Start the game",
+    "lobby.wait_title": "Waiting for the host",
+    "lobby.wait": "The game runs for {years} years. The host starts it when everyone is in.",
+    "lobby.difficulty": "Difficulty: {name}",
+    "end.sub": "The books are closed, {date}",
+    "end.title": "{name} of {firm} is {winner}",
+    "end.host_can": "The host can open a new game from their screen.",
+    "end.kept": "The finished game is kept in the saves folder.",
+    "host.title": "Host",
+    "host.end_month": "End the month now",
+    "host.new_ask": "Host: start a new game",
+    "host.new_confirm": "End this game for everyone and open a new one?",
+    "host.new_yes": "Yes, new game",
+    "host.new_no": "Keep playing",
+
+    # --- in-game header ----------------------------------------------------
+    "stat.silver": "Silver", "stat.bank": "Bank", "stat.debt": "Debt", "stat.worth": "Net worth",
+    "stat.hold": "Hold", "stat.guns": "Guns",
+    "tab.market": "Market", "tab.port": "Port", "tab.fleet": "Fleet", "tab.chart": "Set sail", "tab.ledger": "Ledger",
+    "bar.where": "{port} · {date} · {months} months left",
+    "sail.orders_to": "Orders given: sail for {port}",
+    "sail.orders_stay": "Orders given: remain at anchor",
+    "sail.waiting": "Waiting for {names}",
+    "sail.weighing": "Weighing anchor…",
+    "sail.cancel": "Cancel orders",
+    "sail.go": "Set sail for {port}",
+    "sail.choose": "Choose a port above",
+    "sail.stay": "Stay in {port} this month",
+    "log.eyebrow": "Captain's log", "log.ashore": "Go ashore",
+
+    # --- market ------------------------------------------------------------
+    "market.title": "{port} market",
+    "market.standing": "Your standing here is {rep} of 100, so dealers take a {margin}% margin. "
+                       "Large orders move the price for everyone.",
+    "market.banned": "{Contraband} is banned here. Ships carrying it risk seizure, but buyers pay more.",
+    "market.est": "Buy {qty}: {buy} · Sell {qty}: {sell}",
+    "market.hold": "Hold: {used} of {cap} units used.",
+
+    # --- port services -----------------------------------------------------
+    "port.away": "The bank, {lender}, your warehouse and {pirate}'s agent are all in {home}.",
+    "port.away_here": "Here you can trade in the market and repair your ships.",
+    "port.away_here_yard": "Here you can trade in the market, visit the shipyard and repair your ships.",
+    "bank.title": "{bank}",
+    "bank.info": "Balance {balance} · pays {rate}% a month · safe from thieves.",
+    "loan.title": "{lender}, moneylender",
+    "loan.info": "You owe {debt} · {rate}% a month, compounding · she will lend {room} more.",
+    "wh.title": "Your warehouse",
+    "wh.info": "{used} of {cap} units in store. Hold: {hold_used} of {hold}.",
+    "wh.empty": "Nothing aboard or in store.",
+    "agent.title": "{pirate}'s agent",
+    "agent.content": "{pirate} is content. Her fleets will leave you be for {months} more months.",
+    "agent.running_out": "Your arrangement runs out in {months} months.",
+    "agent.none": "You have no arrangement with {pirate}. Her war junks will hunt you.",
+    "agent.pay": "Pay tribute of {cost}",
+
+    # --- fleet and shipyard ------------------------------------------------
+    "fleet.title": "Your fleet",
+    "fleet.info": "Your ships sail together and share one hold. If a ship is lost, so is the cargo the rest cannot carry.",
+    "fleet.ship_line": "{type} · hold {hold}",
+    "fleet.hull_line": "Hull {hull} of {max} · guns {guns} of {slots}",
+    "fleet.add_gun": "Add gun {price}",
+    "fleet.repair": "Repair {cost}",
+    "fleet.sound": "Sound",
+    "fleet.sell": "Sell {value}",
+    "fleet.repair_all": "Repair all for {cost}",
+    "yard.title": "Shipyard",
+    "yard.limit": "A fleet may have up to {n} ships.",
+    "yard.none": "No shipyard in {port}. Ships are bought and sold in {yards}. Repairs cost more here.",
+
+    # --- chart and sailing -------------------------------------------------
+    "chart.title": "Where next?",
+    "chart.aria": "Chart of the trading ports",
+    "chart.forecast": "The forecast is for this month's sailing and is right about {pct} times in a hundred. "
+                      "Longer passages meet more storms and pirates.",
+    "chart.short": "short run", "chart.long": "long passage", "chart.far": "far voyage",
+    "chart.seen_now": "prices seen this month",
+    "chart.seen_ago": "prices seen {n} mo ago",
+    "chart.unknown": "prices unknown",
+    "chart.standing": "standing {rep}",
+    "orders.title": "Standing orders if attacked",
+    "orders.fight": "Fight ({guns} guns)",
+    "orders.run": "Run",
+    "orders.protected": "{pirate}'s protection has {months} months to run.",
+    "orders.unprotected": "You have no arrangement with {pirate}.",
+
+    # --- ledger ------------------------------------------------------------
+    "ledger.title": "Price book",
+    "ledger.info": "Prices as you last saw them in each port. They will have moved since.",
+    "ledger.now": "seen now", "ledger.ago": "seen {n} mo", "ledger.never": "not visited",
+    "ledger.standings": "Standings",
+    "ledger.news": "News from the ports", "ledger.no_news": "No news.",
+    "ledger.log": "Captain's log", "ledger.no_log": "Nothing to report.",
+
+    # --- harbor board ------------------------------------------------------
+    "board.joined": "joined", "board.ready": "orders given", "board.in_port": "in port",
+    "board.none": "No trading houses have joined yet.",
+    "board.bans": "{Contraband} banned in {ports}",
+    "board.join": "Join the game",
+    "board.winner": "{name} is {winner}",
+    "board.over": "The game is over",
+    "board.at_sea": "The fleets are at sea…",
+    "board.reconnecting": "reconnecting…",
+    "board.length": "Game length {years} years",
+    "board.final": "Final standings",
+    "board.months_left": "{months} months left",
+    "board.join_phone": "Join on your phone",
+    "board.houses": "Trading houses",
+    "board.forecast": "Forecast for this month",
+    "board.quit": "Quit",
+    "board.quit_hint": "Press Alt+F4 to close",
+}
+
+# Softer wording used when the content rating is family-friendly.
+FAMILY = {
+    "l.robbed": "A pickpocket made off with {lost} in the market. Silver is safer in the bank.",
+    "l.how_sunk": "was lost",
+    "l.sank_all": "You drove off all {n} in {rounds} round{s} and won {booty} in salvage.",
+    "l.long_fight": "After a long chase you drove off {n} of them and the rest gave up.",
+    "l.plundered": "They caught you and carried off {qty} units of cargo.",
+    "l.seized": "Customs officers searched the fleet, took {qty} crates of {contraband} and fined you {fine}.",
+    "n.ban": "The authorities in {port} have restricted {contraband}. Ships are being searched.",
+    "n.ban_lifted": "The limit on {contraband} in {port} has been lifted.",
+    "market.banned": "{Contraband} is restricted here. Ships carrying it risk a fine, but buyers pay more.",
+    "board.bans": "{Contraband} restricted in {ports}",
+    "tag.contraband": "restricted", "tag.ban": "restricted",
+    "agent.none": "You have no arrangement with {pirate}. Her fleet will chase you.",
+    "w.war_junks": "of {pirate}'s junks",
+}
+
+GROUPS = [
+    ["join", "Join screen"], ["lobby", "Lobby"], ["end", "End of game"], ["host", "Host controls"], ["stat", "Header figures"],
+    ["tab", "Tabs"], ["bar", "Header"], ["market", "Market"], ["port", "Port (away from home)"],
+    ["bank", "Bank"], ["loan", "Moneylender"], ["wh", "Warehouse"], ["agent", "Protection"],
+    ["fleet", "Fleet"], ["yard", "Shipyard"], ["chart", "Chart"], ["orders", "Battle orders"],
+    ["sail", "Sailing"], ["ledger", "Ledger"], ["log", "Log window"], ["board", "Harbor board"],
+    ["btn", "Buttons"], ["ph", "Input hints"], ["tag", "Tags"], ["col", "Table headings"],
+    ["l", "Captain's log"], ["n", "News"], ["m", "Confirmations"], ["e", "Rule messages"],
+    ["w", "Small words"], ["wx", "Weather"], ["mon", "Months"], ["ui", "Loading and connection"],
+]
+
+
+def resolve(cfg, lang=None):
+    """The wording in force: English, then the language file, then family wording."""
+    lang = lang or {"strings": {}, "family": {}}
+    out = dict(EN)
+    out.update({k: v for k, v in lang.get("strings", {}).items() if k in EN})
+    if cfg["content"]["rating"] == "family":
+        if cfg["language"]["active"] == "en":
+            out.update(FAMILY)
+        out.update({k: v for k, v in lang.get("family", {}).items() if k in EN})
+    return out

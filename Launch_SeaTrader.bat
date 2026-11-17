@@ -2,6 +2,7 @@
 rem SeaTrader launcher. Opens the game in a full-screen window.
 rem   Launch_SeaTrader.bat          player screen
 rem   Launch_SeaTrader.bat board    harbor board (for a second monitor or TV)
+rem   Launch_SeaTrader.bat admin    admin command center (an ordinary browser window)
 rem
 rem By default the game server runs on this computer and is started if needed.
 rem To use a server on another machine (for example a Raspberry Pi), put its
@@ -24,6 +25,7 @@ set "PAGE="
 set "PROFILE=player"
 if /i "%~1"=="board" set "PAGE=board"
 if /i "%~1"=="board" set "PROFILE=board"
+if /i "%~1"=="admin" set "PAGE=admin"
 set "URL=http://%HOST%/%PAGE%"
 
 call :ping
@@ -48,6 +50,8 @@ timeout /t 1 /nobreak >nul
 goto wait
 
 :open
+if /i "%PAGE%"=="admin" start "" "%URL%"
+if /i "%PAGE%"=="admin" goto end
 set "EDGE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
 if not exist "%EDGE%" set "EDGE=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 if exist "%EDGE%" goto edge
@@ -58,11 +62,11 @@ start "" "%URL%"
 goto end
 
 :edge
-start "" "%EDGE%" --kiosk "%URL%" --edge-kiosk-type=fullscreen --no-first-run --user-data-dir="%~dp0.browser\%PROFILE%"
+start "" "%EDGE%" --kiosk "%URL%" --edge-kiosk-type=fullscreen --no-first-run --autoplay-policy=no-user-gesture-required --user-data-dir="%~dp0.browser\%PROFILE%"
 goto end
 
 :chrome
-start "" "%CHROME%" --kiosk "%URL%" --no-first-run --user-data-dir="%~dp0.browser\%PROFILE%"
+start "" "%CHROME%" --kiosk "%URL%" --no-first-run --autoplay-policy=no-user-gesture-required --user-data-dir="%~dp0.browser\%PROFILE%"
 goto end
 
 :unreachable

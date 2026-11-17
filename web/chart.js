@@ -1,5 +1,6 @@
 /* The sea chart: a stylised 1000 x 600 map of the trading waters, drawn as SVG.
-   Uses the same projection as engine.py. Coastlines are rough sketches. */
+   Uses the same projection as engine.py. Coastlines are rough sketches;
+   Admin > Graphics can replace them with a painted chart. */
 "use strict";
 
 const Chart = (() => {
@@ -40,15 +41,11 @@ const Chart = (() => {
      [121.6, -2], [122.6, -4.6], [121.4, -4.6], [120.4, -2.8], [120.2, -5.5], [119.4, -5.4], [119.2, -2.5]]
   ];
 
-  const REGION_AT = { north: [126, 29], china: [115.5, 17], south: [108.2, 3.6], bengal: [91, 14.5] };
-  const LABEL_DX = { calcutta: 12, bangkok: -12, saigon: 12, singapore: -12, batavia: 12,
-                     hongkong: -12, manila: 12, shanghai: -12, nagasaki: -12 };
-
   /* opts: data (static), players, weather, crackdown, here (port key), dest (port key),
            clickable (bool), mine (player id) */
   function svg(o) {
     const D = o.data, out = [];
-    out.push('<svg class="chart" viewBox="0 0 1000 600" role="img" aria-label="Chart of the trading ports">');
+    out.push('<svg class="chart" viewBox="0 0 1000 600" role="img" aria-label="' + te("chart.aria") + '">');
     out.push('<rect class="sea" x="-1000" y="-600" width="3000" height="1800"/>');
     for (let lon = 60; lon <= 160; lon += 5) {
       const x = px(lon, 0)[0];
@@ -58,18 +55,23 @@ const Chart = (() => {
       const y = px(0, lat)[1];
       out.push(`<line class="grat" x1="-1000" y1="${y}" x2="2000" y2="${y}"/>`);
     }
-    for (const poly of LAND) {
-      out.push('<polygon class="land" points="' + poly.map(p => px(p[0], p[1]).join(",")).join(" ") + '"/>');
+    if (D.graphics.chart_bg) {
+      out.push(`<image href="${esc(D.graphics.chart_bg)}" x="0" y="0" width="1000" height="600" preserveAspectRatio="none"/>`);
+    } else {
+      for (const poly of LAND) {
+        out.push('<polygon class="land" points="' + poly.map(p => px(p[0], p[1]).join(",")).join(" ") + '"/>');
+      }
     }
     // compass rose
     out.push('<g class="rose" transform="translate(900,500)"><circle r="34"/>' +
       '<path d="M0-44 L7 0 L0 44 L-7 0Z"/><path d="M-44 0 L0-7 L44 0 L0 7Z"/>' +
       '<text y="-50" text-anchor="middle">N</text></g>');
     // weather by sea region
-    for (const r in REGION_AT) {
-      const [x, y] = px(REGION_AT[r][0], REGION_AT[r][1]);
-      const lvl = o.weather ? o.weather[r] : 0;
-      out.push(`<g class="region"><text class="rname" x="${x}" y="${y}" text-anchor="middle">${esc(D.regions[r])}</text>` +
+    for (const r in D.regions) {
+      const reg = D.regions[r];
+      const [x, y] = px(reg.label_lon, reg.label_lat);
+      const lvl = o.weather && o.weather[r] != null ? o.weather[r] : 0;
+      out.push(`<g class="region"><text class="rname" x="${x}" y="${y}" text-anchor="middle">${esc(reg.name)}</text>` +
         `<text class="rwx wxt${lvl}" x="${x}" y="${+y + 17}" text-anchor="middle">${esc(D.weather[lvl])}</text></g>`);
     }
     // planned route
@@ -85,7 +87,7 @@ const Chart = (() => {
       if (k === o.dest) cls.push("dest");
       if (o.crackdown && o.crackdown.includes(k)) cls.push("ban");
       if (o.clickable && k !== o.here) cls.push("click");
-      const dx = LABEL_DX[k] || 12;
+      const dx = p.label_left ? -12 : 12;
       const act = o.clickable && k !== o.here ? ` data-act="dest" data-port="${k}"` : "";
       out.push(`<g class="${cls.join(" ")}"${act}>` +
         `<circle class="hit" cx="${p.x}" cy="${p.y}" r="26"/>` +
@@ -98,6 +100,7 @@ const Chart = (() => {
     for (const pl of (o.players || [])) (at[pl.port] = at[pl.port] || []).push(pl);
     for (const k in at) {
       const p = D.ports[k];
+      if (!p) continue;
       at[k].forEach((pl, i) => {
         const x = p.x - 4 + (i % 4) * 15 - (Math.min(at[k].length, 4) - 1) * 7.5, y = p.y - 16 - Math.floor(i / 4) * 20;
         out.push(`<g class="flag${pl.id === o.mine ? " mine" : ""}${pl.ready ? " ready" : ""}">` +

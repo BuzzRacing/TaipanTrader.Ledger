@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SeaTrader Admin</title>
+<link rel="icon" id="favicon" href="/uploads/historical-favicon.svg">
+<link rel="stylesheet" href="/admin.css?v=hd2">
+<link rel="stylesheet" id="fonts" href="/fonts.css">
+</head>
+<body>
+<header id="top">
+  <div class="masthead">
+    <a class="brand" href="#live" data-nav="live" title="Go to Live Game">
+      <img class="brand-emblem" id="gmark" src="/uploads/historical-favicon.svg" alt="" width="64" height="64">
+      <span class="brand-copy">
+        <span class="brand-kicker">Maritime operations · 1860</span>
+        <b id="gname">SeaTrader</b>
+        <span class="brand-subtitle">Command Center</span>
+      </span>
+    </a>
+  </div>
+  <div class="rail">
+    <button type="button" id="status" data-nav="live" aria-label="Live game status, open Live Game"><span class="st-phase">Connecting…</span></button>
+    <div class="actions" id="savebar">
+      <span id="saved" class="muted">All changes saved</span>
+      <span id="dirty" hidden></span>
+      <button type="button" id="discard" hidden>Discard</button>
+      <button type="button" id="save" class="primary" hidden title="Save &amp; apply (Ctrl+S)">Save &amp; apply</button>
+    </div>
+  </div>
+</header>
+<div id="shell">
+  <nav id="nav" aria-label="Command center sections"></nav>
+  <main id="main"><p class="muted">Loading…</p></main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="login" hidden>
+  <form class="card" id="loginform">
+    <h2>Admin sign-in</h2>
+    <p class="muted" id="loginmsg">Enter the admin password.</p>
+    <input type="password" id="loginpw" autocomplete="current-password" placeholder="Password">
+    <button type="submit" class="primary">Sign in</button>
+  </form>
+</div>
+<script src="/art-bible.js?v=ab5"></script>
+<script src="/cast.js"></script>
+<script src="/report.js"></script>
+<script src="/admin.js?v=hd1"></script>
+</body>
+</html>

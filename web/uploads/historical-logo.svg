@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" role="img" aria-labelledby="title desc">
+  <title id="title">Sea Trader</title>
+  <desc id="desc">An antique brass sail and coin emblem beside the Sea Trader wordmark.</desc>
+  <defs>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0d382"/>
+      <stop offset=".42" stop-color="#c9a34e"/>
+      <stop offset="1" stop-color="#765022"/>
+    </linearGradient>
+    <linearGradient id="ivory" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#fff4d5"/>
+      <stop offset="1" stop-color="#d8c49a"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="150%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="blur"/>
+      <feOffset dy="8" result="off"/>
+      <feColorMatrix in="off" values="0 0 0 0 0.04 0 0 0 0 0.02 0 0 0 0 0.01 0 0 0 .7 0" result="shade"/>
+      <feMerge><feMergeNode in="shade"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g transform="translate(36 28)" filter="url(#shadow)">
+    <circle cx="215" cy="220" r="176" fill="#17100c" fill-opacity=".88" stroke="url(#brass)" stroke-width="12"/>
+    <circle cx="215" cy="220" r="151" fill="none" stroke="#c9a34e" stroke-opacity=".55" stroke-width="3"/>
+    <path d="M205 82v260" fill="none" stroke="url(#brass)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M195 96C120 137 94 214 105 294c38-23 72-29 90-28z" fill="url(#ivory)" stroke="#c9a34e" stroke-width="5"/>
+    <path d="M218 112c70 29 116 84 121 151-47-19-85-22-121-6z" fill="#7b2428" stroke="#c9a34e" stroke-width="5"/>
+    <path d="M78 326c76 30 192 31 276-3-22 65-82 99-142 99-61 0-111-31-134-96z" fill="#2f6b5a" stroke="#c9a34e" stroke-width="6"/>
+    <path d="M112 338c58 18 137 19 207-2" fill="none" stroke="#f1e3c5" stroke-opacity=".5" stroke-width="5"/>
+    <circle cx="215" cy="220" r="186" fill="none" stroke="#17100c" stroke-width="3"/>
+  </g>
+  <g transform="translate(440 70)" filter="url(#shadow)">
+    <text x="0" y="178" fill="url(#ivory)" font-family="Palatino Linotype, Palatino, Georgia, serif" font-size="198" font-weight="700" letter-spacing="5">SEA</text>
+    <text x="5" y="348" fill="url(#brass)" font-family="Palatino Linotype, Palatino, Georgia, serif" font-size="184" font-weight="700" font-style="italic" letter-spacing="2">TRADER</text>
+    <path d="M10 382h1025" stroke="url(#brass)" stroke-width="5"/>
+    <path d="M10 398h680" stroke="#7b2428" stroke-width="3"/>
+  </g>
+</svg>

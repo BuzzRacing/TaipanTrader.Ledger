@@ -1,5 +1,6 @@
 # Game state and anything personal to this machine
 saves/
+journal/
 server_address.txt
 
 # Kiosk browser profile made by the launcher (cookies, cache, history)
@@ -21,3 +22,21 @@ desktop.ini
 *.log
 *.tmp
 *.bak
+web/fonts.new/
+web/fonts.old/
+
+# Admin password and automatic settings backups (settings themselves are kept)
+config/admin.json
+config/backups/
+
+# Inworld API key pasted on the Admin page, and spoken lines already paid for
+config/voice_key.json
+cache/
+
+# Media library: video clips are too big for GitHub (copy web/media by hand when moving), removed items wait in _trash
+web/media/**/*.mp4
+web/media/**/*.webm
+web/media/**/*.mov
+web/media/**/*.m4v
+web/media/_trash/
+config/media.json.tmp

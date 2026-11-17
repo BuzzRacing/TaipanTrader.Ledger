@@ -1,0 +1,10 @@
+{
+  "base_url": "http://192.168.1.213:8189",
+  "workflow": "imagegen/qwen_image_2_1_portrait.json",
+  "timeout_seconds": 300,
+  "poll_seconds": 2,
+  "width": 1024,
+  "height": 1360,
+  "steps": 25,
+  "negative_prompt": "text, watermark, logo, extra people, duplicate person, cropped head, cropped hands, deformed hands, extra fingers, missing fingers"
+}

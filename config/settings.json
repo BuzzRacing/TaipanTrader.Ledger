@@ -1,0 +1,935 @@
+{
+ "brand": {
+  "title_a": "Sea",
+  "title_b": "Trader",
+  "tagline": "Trading the China seas, 1860",
+  "currency": "$",
+  "lender": "Madam Wu Lian",
+  "pirate": "Admiral Li Yue",
+  "bank": "Merchants' Bank of Hong Kong",
+  "winner": "Taipan"
+ },
+ "theme": {
+  "colors": {
+   "paper": "#f6eedb",
+   "card": "#fbf6e9",
+   "ink": "#2a2118",
+   "muted": "#75664f",
+   "rule": "#d9c9a3",
+   "teak": "#45291a",
+   "teak-2": "#5d3a24",
+   "on-dark": "#f6e7c4",
+   "highlight": "#e8b84a",
+   "vermilion": "#b3261e",
+   "jade": "#2f6b5a",
+   "gold": "#b08a2e",
+   "btn": "#efe2c2",
+   "btn-border": "#c9b383",
+   "tabs": "#ead9b1",
+   "input": "#fffdf6",
+   "sea": "#cfdcd3",
+   "land": "#e9dcb8",
+   "board-bg": "#1f1410",
+   "board-panel": "#2c1d15",
+   "board-ink": "#f1e4c3"
+  },
+  "player_colors": [
+   "#b3261e",
+   "#2d4a8a",
+   "#2f7d5b",
+   "#c58a1b",
+   "#7a3b7d",
+   "#1f7f8c",
+   "#7a4a22",
+   "#4f5d6b"
+  ],
+  "font_title": "\"Uncial Antiqua\", \"Palatino Linotype\", Palatino, Georgia, serif",
+  "font_serif": "\"Palatino Linotype\", Palatino, \"Book Antiqua\", Georgia, serif",
+  "font_sans": "\"Segoe UI\", system-ui, -apple-system, Roboto, Arial, sans-serif",
+  "font_special": "\"Almendra SC\", \"Palatino Linotype\", Palatino, Georgia, serif",
+  "web_fonts": "Uncial Antiqua | MedievalSharp | Alegreya:ital,wght@0,400;0,700;1,400;1,700 | Almendra SC",
+  "font_size": 16,
+  "radius": 8,
+  "custom_css": ""
+ },
+ "graphics": {
+  "logo": "/uploads/historical-logo.svg",
+  "favicon": "/uploads/historical-favicon.svg",
+  "masthead_bg": "/uploads/historical-masthead.webp",
+  "page_bg": "/uploads/historical-page.webp",
+  "board_bg": "/uploads/historical-board.webp",
+  "chart_bg": "/uploads/artbible-surf-chart-275d3e83.png",
+  "goods": {
+   "opium": "/uploads/historical-cargo-opium.webp",
+   "silk": "/uploads/historical-cargo-silk.webp",
+   "porcelain": "/uploads/historical-cargo-porcelain.webp",
+   "arms": "/uploads/historical-cargo-arms.webp",
+   "spices": "/uploads/historical-cargo-spices.webp",
+   "tea": "/uploads/historical-cargo-tea.webp",
+   "rice": "/uploads/historical-cargo-rice.webp",
+   "general": "/uploads/historical-cargo-general.webp"
+  },
+  "ports": {
+   "hongkong": "/uploads/historical-port-hongkong.webp",
+   "shanghai": "/uploads/historical-port-shanghai.webp",
+   "nagasaki": "/uploads/historical-port-nagasaki.webp",
+   "manila": "/uploads/historical-port-manila.webp",
+   "saigon": "/uploads/historical-port-saigon.webp",
+   "bangkok": "/uploads/historical-port-bangkok.webp",
+   "singapore": "/uploads/historical-port-singapore.webp",
+   "batavia": "/uploads/historical-port-batavia.webp",
+   "calcutta": "/uploads/historical-port-calcutta.webp"
+  },
+  "ships": {
+   "junk": "/uploads/historical-ship-junk.webp",
+   "lorcha": "/uploads/historical-ship-lorcha.webp",
+   "barque": "/uploads/historical-ship-barque.webp",
+   "clipper": "/uploads/historical-ship-clipper.webp",
+   "indiaman": "/uploads/historical-ship-indiaman.webp"
+  }
+ },
+ "language": {
+  "active": "en"
+ },
+ "content": {
+  "rating": "historical"
+ },
+ "difficulty": {
+  "level": "normal",
+  "presets": {
+   "easy": {
+    "name": "Calm waters",
+    "pirates": 0.6,
+    "storms": 0.6,
+    "interest": 0.75,
+    "start_cash": 1.5,
+    "seizure": 0.6
+   },
+   "normal": {
+    "name": "Trade winds",
+    "pirates": 1.0,
+    "storms": 1.0,
+    "interest": 1.0,
+    "start_cash": 1.0,
+    "seizure": 1.0
+   },
+   "hard": {
+    "name": "Typhoon season",
+    "pirates": 1.4,
+    "storms": 1.3,
+    "interest": 1.25,
+    "start_cash": 0.7,
+    "seizure": 1.5
+   }
+  }
+ },
+ "ranks": [
+  {
+   "worth": -1000000000,
+   "title": "Debtor"
+  },
+  {
+   "worth": 0,
+   "title": "Clerk"
+  },
+  {
+   "worth": 10000,
+   "title": "Trader"
+  },
+  {
+   "worth": 50000,
+   "title": "Merchant"
+  },
+  {
+   "worth": 200000,
+   "title": "Senior Merchant"
+  },
+  {
+   "worth": 500000,
+   "title": "Merchant Prince"
+  },
+  {
+   "worth": 1000000,
+   "title": "Taipan"
+  }
+ ],
+ "rules": {
+  "game": {
+   "start_year": 1860,
+   "home": "hongkong",
+   "max_players": 8,
+   "lengths": [
+    1,
+    2,
+    3,
+    5,
+    10
+   ],
+   "default_years": 5,
+   "grace_seconds": 25
+  },
+  "start": {
+   "cash": 3500,
+   "debt": 5000,
+   "ship": "junk",
+   "guns": 2,
+   "rep": 50,
+   "home_rep": 60
+  },
+  "market": {
+   "spread_base": 0.04,
+   "spread_swing": 0.03,
+   "impact": 0.25,
+   "floor": 0.25,
+   "ceiling": 4.5,
+   "reversion": 0.3,
+   "vol_mult": 1.0,
+   "start_spread": 0.15,
+   "rep_per_value": 5000,
+   "rep_trade_cap": 2.0,
+   "worth_cargo": 0.9
+  },
+  "bank": {
+   "bank_rate": 0.005,
+   "loan_rate": 0.06,
+   "loan_base": 5000,
+   "loan_per_rep": 100,
+   "loan_asset_share": 0.5,
+   "debt_warn_mult": 1.5,
+   "debt_rep_penalty": 3.0,
+   "mug_threshold": 20000,
+   "mug_chance": 0.06,
+   "mug_min": 0.15,
+   "mug_max": 0.35
+  },
+  "fleet": {
+   "max_fleet": 5,
+   "gun_price": 600,
+   "gun_resale": 0.333,
+   "ship_resale": 0.5,
+   "warehouse_cap": 10000,
+   "repair_base": 6.0,
+   "repair_price_div": 4000,
+   "repair_noyard": 1.3,
+   "repair_rep_discount": 0.2,
+   "ship_rep": 2.0
+  },
+  "events": {
+   "shock_chance": 0.35,
+   "shock_mults": [
+    0.4,
+    0.5,
+    2.0,
+    2.5,
+    3.0
+   ],
+   "shock_min_turns": 2,
+   "shock_max_turns": 3,
+   "ban_chance": 0.15,
+   "ban_min_turns": 3,
+   "ban_max_turns": 5,
+   "ban_price_mult": 1.5
+  },
+  "contraband": {
+   "seize_chance": 0.03,
+   "seize_banned": 0.55,
+   "seize_rep_relief": 0.003,
+   "fine_per_unit": 300,
+   "rep_penalty": 15.0
+  },
+  "weather": {
+   "forecast_accuracy": 0.8,
+   "storm_chance": [
+    0.0,
+    0.04,
+    0.2,
+    0.6
+   ],
+   "storm_dmg_min": 5,
+   "storm_dmg_max": 20,
+   "typhoon_dmg_min": 20,
+   "typhoon_dmg_max": 60,
+   "fast_dmg_mult": 0.8,
+   "offcourse": 0.15,
+   "risk_div": 350,
+   "risk_min": 0.6,
+   "risk_max": 1.8
+  },
+  "pirates": {
+   "chance": 0.18,
+   "fleet_min": 2,
+   "fleet_base": 4,
+   "fleet_per_hold": 40,
+   "fleet_max": 40,
+   "hit": 0.3,
+   "dmg_min": 4,
+   "dmg_max": 14,
+   "hp": 2,
+   "gun_hit": 0.4,
+   "rounds": 6,
+   "run_base": 0.35,
+   "run_fast": 0.2,
+   "run_round": 0.05,
+   "booty_min": 150,
+   "booty_max": 500,
+   "booty_growth": 24,
+   "plunder_min": 0.25,
+   "plunder_max": 0.5
+  },
+  "liyuen": {
+   "chance": 0.06,
+   "fleet_base": 6,
+   "fleet_per_hold": 25,
+   "fleet_max": 60,
+   "hit": 0.4,
+   "dmg_min": 8,
+   "dmg_max": 20,
+   "protect_months": 8,
+   "protect_save": 0.5,
+   "cost_share": 0.06,
+   "cost_min": 500,
+   "renew_at": 2
+  },
+  "wreck": {
+   "cash_loss": 0.5,
+   "debt": 1500,
+   "ship": "junk",
+   "hull": 60
+  }
+ },
+ "goods": {
+  "opium": {
+   "name": "Opium",
+   "family_name": "Fireworks",
+   "base": 4200.0,
+   "vol": 0.16,
+   "depth": 60,
+   "contraband": true
+  },
+  "silk": {
+   "name": "Silk",
+   "family_name": "",
+   "base": 520.0,
+   "vol": 0.1,
+   "depth": 160,
+   "contraband": false
+  },
+  "porcelain": {
+   "name": "Porcelain",
+   "family_name": "",
+   "base": 230.0,
+   "vol": 0.08,
+   "depth": 250,
+   "contraband": false
+  },
+  "arms": {
+   "name": "Arms",
+   "family_name": "Ironware",
+   "base": 160.0,
+   "vol": 0.1,
+   "depth": 250,
+   "contraband": false
+  },
+  "spices": {
+   "name": "Spices",
+   "family_name": "",
+   "base": 95.0,
+   "vol": 0.09,
+   "depth": 450,
+   "contraband": false
+  },
+  "tea": {
+   "name": "Tea",
+   "family_name": "",
+   "base": 70.0,
+   "vol": 0.08,
+   "depth": 500,
+   "contraband": false
+  },
+  "rice": {
+   "name": "Rice",
+   "family_name": "",
+   "base": 14.0,
+   "vol": 0.07,
+   "depth": 1200,
+   "contraband": false
+  },
+  "general": {
+   "name": "General Cargo",
+   "family_name": "",
+   "base": 9.0,
+   "vol": 0.07,
+   "depth": 1200,
+   "contraband": false
+  }
+ },
+ "regions": {
+  "north": {
+   "name": "Yellow Sea & Japan",
+   "typhoon": 0.02,
+   "squalls": 0.2,
+   "label_lon": 126.0,
+   "label_lat": 29.0,
+   "seasons": [
+    {
+     "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "typhoon": 0.18,
+     "squalls": 0.3
+    }
+   ]
+  },
+  "china": {
+   "name": "South China Sea",
+   "typhoon": 0.02,
+   "squalls": 0.2,
+   "label_lon": 115.5,
+   "label_lat": 17.0,
+   "seasons": [
+    {
+     "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "typhoon": 0.18,
+     "squalls": 0.3
+    }
+   ]
+  },
+  "south": {
+   "name": "Straits & Java Sea",
+   "typhoon": 0.01,
+   "squalls": 0.25,
+   "label_lon": 108.2,
+   "label_lat": 3.6,
+   "seasons": [
+    {
+     "months": [
+      1,
+      2,
+      3,
+      11,
+      12
+     ],
+     "typhoon": 0.01,
+     "squalls": 0.4
+    }
+   ]
+  },
+  "bengal": {
+   "name": "Bay of Bengal",
+   "typhoon": 0.02,
+   "squalls": 0.2,
+   "label_lon": 91.0,
+   "label_lat": 14.5,
+   "seasons": [
+    {
+     "months": [
+      4,
+      5,
+      10,
+      11
+     ],
+     "typhoon": 0.15,
+     "squalls": 0.3
+    }
+   ]
+  }
+ },
+ "ports": {
+  "hongkong": {
+   "mods": {
+    "arms": 0.8,
+    "tea": 0.9,
+    "general": 0.85
+   },
+   "name": "Hong Kong",
+   "lon": 114.2,
+   "lat": 22.3,
+   "region": "china",
+   "shipyard": true,
+   "no_ban": false,
+   "label_left": true
+  },
+  "shanghai": {
+   "mods": {
+    "silk": 0.6,
+    "tea": 0.6,
+    "opium": 1.35,
+    "arms": 1.3,
+    "spices": 1.3
+   },
+   "name": "Shanghai",
+   "lon": 121.5,
+   "lat": 31.2,
+   "region": "north",
+   "shipyard": true,
+   "no_ban": false,
+   "label_left": true
+  },
+  "nagasaki": {
+   "mods": {
+    "porcelain": 0.6,
+    "silk": 0.85,
+    "arms": 1.5,
+    "spices": 1.4,
+    "rice": 1.3,
+    "opium": 1.2
+   },
+   "name": "Nagasaki",
+   "lon": 129.9,
+   "lat": 32.75,
+   "region": "north",
+   "shipyard": false,
+   "no_ban": false,
+   "label_left": true
+  },
+  "manila": {
+   "mods": {
+    "general": 0.75,
+    "rice": 0.9,
+    "spices": 0.9,
+    "silk": 1.3,
+    "porcelain": 1.3,
+    "tea": 1.2
+   },
+   "name": "Manila",
+   "lon": 121.0,
+   "lat": 14.6,
+   "region": "china",
+   "shipyard": false,
+   "no_ban": false,
+   "label_left": false
+  },
+  "saigon": {
+   "mods": {
+    "rice": 0.55,
+    "spices": 0.85,
+    "arms": 1.3,
+    "porcelain": 1.25,
+    "general": 1.2
+   },
+   "name": "Saigon",
+   "lon": 106.7,
+   "lat": 10.8,
+   "region": "china",
+   "shipyard": false,
+   "no_ban": false,
+   "label_left": false
+  },
+  "bangkok": {
+   "mods": {
+    "rice": 0.6,
+    "spices": 0.8,
+    "silk": 1.25,
+    "arms": 1.2,
+    "tea": 1.2
+   },
+   "name": "Bangkok",
+   "lon": 100.5,
+   "lat": 13.75,
+   "region": "south",
+   "shipyard": false,
+   "no_ban": false,
+   "label_left": true
+  },
+  "singapore": {
+   "mods": {
+    "arms": 0.85,
+    "general": 0.8,
+    "opium": 0.85,
+    "tea": 1.4,
+    "silk": 1.35,
+    "porcelain": 1.3
+   },
+   "name": "Singapore",
+   "lon": 103.8,
+   "lat": 1.35,
+   "region": "south",
+   "shipyard": true,
+   "no_ban": false,
+   "label_left": true
+  },
+  "batavia": {
+   "mods": {
+    "spices": 0.5,
+    "rice": 1.2,
+    "tea": 1.3,
+    "silk": 1.4,
+    "arms": 1.25,
+    "porcelain": 1.35,
+    "general": 1.3
+   },
+   "name": "Batavia",
+   "lon": 106.8,
+   "lat": -6.2,
+   "region": "south",
+   "shipyard": false,
+   "no_ban": false,
+   "label_left": false
+  },
+  "calcutta": {
+   "mods": {
+    "opium": 0.55,
+    "tea": 0.8,
+    "general": 0.9,
+    "rice": 0.9,
+    "silk": 1.3,
+    "spices": 1.3,
+    "porcelain": 1.5
+   },
+   "name": "Calcutta",
+   "lon": 88.4,
+   "lat": 22.6,
+   "region": "bengal",
+   "shipyard": true,
+   "no_ban": true,
+   "label_left": false
+  }
+ },
+ "ships": {
+  "junk": {
+   "name": "Junk",
+   "hold": 60,
+   "hull": 100,
+   "slots": 4,
+   "price": 3000,
+   "fast": false
+  },
+  "lorcha": {
+   "name": "Lorcha",
+   "hold": 120,
+   "hull": 140,
+   "slots": 8,
+   "price": 9000,
+   "fast": false
+  },
+  "barque": {
+   "name": "Barque",
+   "hold": 250,
+   "hull": 200,
+   "slots": 12,
+   "price": 22000,
+   "fast": false
+  },
+  "clipper": {
+   "name": "Clipper",
+   "hold": 180,
+   "hull": 160,
+   "slots": 10,
+   "price": 35000,
+   "fast": true
+  },
+  "indiaman": {
+   "name": "East Indiaman",
+   "hold": 500,
+   "hull": 320,
+   "slots": 24,
+   "price": 80000,
+   "fast": false
+  }
+ },
+ "ship_names": [
+  "Morning Cloud",
+  "Jade Heron",
+  "Lucky Star",
+  "Sea Witch",
+  "Golden Carp",
+  "Lady Hughes",
+  "Red Rover",
+  "Water Dragon",
+  "Flying Cloud",
+  "Pearl of Canton",
+  "Falcon",
+  "Nemesis",
+  "Lotus Wind",
+  "Black Joke",
+  "Sylph",
+  "Cowasjee",
+  "Ariel",
+  "Taeping",
+  "Fiery Cross",
+  "Mandarin",
+  "Eastern Queen",
+  "Kestrel",
+  "Tiger Tail",
+  "Silver Moon",
+  "Antelope"
+ ],
+ "journal": {
+  "keep_games": 50,
+  "server_days": 30
+ },
+ "characters": {
+  "narrator": {
+   "name": "Roxana Cama",
+   "title": "First Mate & Queen of the Black Log",
+   "brand_link": "",
+   "age": 41,
+   "origin": "Bombay",
+   "home_port": "calcutta",
+   "color": "#2f6b5a",
+   "portrait": "/uploads/portrait-narrator-230a604b.png",
+   "voice_id": "Deborah",
+   "speaking_rate": 1.0,
+   "delivery": "low, poised and intimate, a seasoned pirate officer making every entry sound like a verdict",
+   "catchphrase": "The black log remembers, Captain. Pray I write kindly of you.",
+   "bio": "Daughter of a Parsi shipping dynasty, Roxana learned navigation aboard her aunt's opium clippers and double-entry bookkeeping from her mother. She has kept the black logs of three pirate queens, outlived two, and can make a captain blush or confess with the same level stare.",
+   "quirk": "Winds her brass pocket chronometer whenever bad news is coming, which the crew has learned to dread.",
+   "vice": "Fine Darjeeling, dangerous women, and wagers made during storms.",
+   "secret": "She owns a quiet one-eighth share in a rival corsair's clipper and has never told you.",
+   "stats": {
+    "cunning": 7,
+    "nerve": 6,
+    "charm": 6,
+    "greed": 3
+   },
+   "portrait_prompt": "An unmistakably adult Parsi woman (age 41), a commanding pirate first mate on the quarterdeck of a trading schooner in Hong Kong harbour at dusk, fitted lacquer-black frock coat open over an ivory angrakha-cut corset, oxblood sash, black Parsi topi, black logbook under one arm and brass chronometer in her hand, sensual calculating gaze, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "bosun": {
+   "name": "Peggy “Powder” O'Rourke",
+   "title": "Bosun, Master Gunner & Powder Queen",
+   "brand_link": "",
+   "age": 34,
+   "origin": "Cork",
+   "home_port": "singapore",
+   "color": "#b3261e",
+   "portrait": "/uploads/portrait-bosun-3bb0c4a1.png",
+   "voice_id": "Ashley",
+   "speaking_rate": 1.08,
+   "delivery": "loud, filthy-mouthed and delighted, a fearless pirate queen shouting over cannon fire and wind",
+   "catchphrase": "Run out the bloody guns—and mind the fingers you still fancy keeping!",
+   "bio": "Peggy shipped out of Cork, out-swore the boatswain and out-shot the gunner before breakfast. She now rules the gun deck like a powder-streaked pirate queen, equal parts battlefield terror and dockside temptation. She has sunk more rival junks than anyone on the China coast will admit.",
+   "quirk": "Names every cannon after a saint and apologises to them before each broadside.",
+   "vice": "Rum, cards, bare-knuckle fights and lovers with catastrophically poor judgment.",
+   "secret": "She can't swim a stroke.",
+   "stats": {
+    "cunning": 5,
+    "nerve": 10,
+    "charm": 7,
+    "greed": 4
+   },
+   "portrait_prompt": "An unmistakably adult Irish woman (age 34), voluptuous pirate bosun and master gunner standing by a smoking brass cannon, fitted tobacco-leather waistcoat, her naked breasts exposed, oxblood sash, red hair whipping loose, powder smudges on bare arms and cleavage, coil of slow match in one hand, fierce laughing grin, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "lender": {
+   "name": "Madam Wu Lian",
+   "title": "Moneylender & Silver Queen of Hong Kong",
+   "brand_link": "lender",
+   "age": 63,
+   "origin": "Canton",
+   "home_port": "hongkong",
+   "color": "#b08a2e",
+   "portrait": "/uploads/portrait-lender-7c0ef57d.png",
+   "voice_id": "Olivia",
+   "speaking_rate": 0.92,
+   "delivery": "unhurried and velvet-warm with steel underneath, every word a seduction, a courtesy and a warning",
+   "catchphrase": "Madam Wu is patient, darling. Her interest is not.",
+   "bio": "Wu Lian lent her first silver dollar at fourteen and has never lost one since. Half the hongs on the Praya owe her money and the other half owe her favours. Captains call her a pirate queen because she can take a fleet with one signature; she merely smiles and adjusts the interest.",
+   "quirk": "Speaks of herself as Madam Wu, as if dictating the borrower's final ledger entry.",
+   "vice": "Collects Song celadon, silk garters and beautiful collateral.",
+   "secret": "She quietly funds the orphanage in Wan Chai and would ruin anyone who said so.",
+   "stats": {
+    "cunning": 10,
+    "nerve": 6,
+    "charm": 8,
+    "greed": 9
+   },
+   "portrait_prompt": "An unmistakably adult Cantonese woman (age 63), the silver-haired pirate queen of Hong Kong finance, seated behind a rosewood desk in a lamplit counting house, historically grounded dark Qing-era silk jacket with a plunging crossed neckline and imperial-jade fastenings, abacus, silver dollars and ledgers before her, faint seductive smile and merciless eyes, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "pirate": {
+   "name": "Admiral Li Yue",
+   "title": "Pirate Queen of the South China Sea",
+   "brand_link": "pirate",
+   "age": 48,
+   "origin": "the Pearl River delta",
+   "home_port": "",
+   "color": "#9a3340",
+   "portrait": "/uploads/portrait-pirate-de5e688f.png",
+   "voice_id": "Deborah",
+   "speaking_rate": 0.9,
+   "delivery": "low, slow and coldly sensual, a pirate queen who never needs to raise her voice",
+   "catchphrase": "Li Yue does not chase, darling. She waits.",
+   "bio": "Nobody agrees on Admiral Li Yue's face, and the few who saw it up close have learned discretion. Her war junks hold the sea lanes from Hainan to the Pescadores, and every trader on the coast pays tribute or pays in ships. She keeps her word exactly, which frightens people more than if she broke it.",
+   "quirk": "Sends a single white peony before every attack.",
+   "vice": "Pride. She has burned a fleet over an unreturned courtesy.",
+   "secret": "She was a customs clerk once and still reads every Imperial Maritime Customs report in bed.",
+   "stats": {
+    "cunning": 9,
+    "nerve": 9,
+    "charm": 6,
+    "greed": 8
+   },
+   "portrait_prompt": "An unmistakably adult Cantonese woman (age 48), formidable Qing-era pirate queen on the stern deck of a great war junk at night, dark quilted silk robe falling open over sculpted leather armour and a daring bare décolletage, oxblood sash, elaborate pinned hair, a single white peony on the rail, lantern light from below, coldly sensual and utterly calm, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "agent": {
+   "name": "Madam Shek Yu-lan",
+   "title": "The Pirate Queen's Agent on the Praya",
+   "brand_link": "",
+   "age": 37,
+   "origin": "Macau",
+   "home_port": "hongkong",
+   "color": "#7a3b7d",
+   "portrait": "/uploads/portrait-agent-0ac6fcf0.png",
+   "voice_id": "Olivia",
+   "speaking_rate": 1.0,
+   "delivery": "silky, wickedly amused and intimate, polite as a contract and twice as binding",
+   "catchphrase": "Protection is cheaper than regret—and much more pleasurable.",
+   "bio": "Madam Shek runs a respectable tea house on the Praya where the tea is excellent and the receipts are written in a cipher. Captains who pay her leave with a red silk token; captains who don't leave with a story she will enjoy hearing later.",
+   "quirk": "Weighs every coin on a tiny ivory balance, even from people she likes.",
+   "vice": "Mahjong, played for stakes she never mentions.",
+   "secret": "She keeps a second ledger, and Admiral Li Yue does not know it exists.",
+   "stats": {
+    "cunning": 9,
+    "nerve": 7,
+    "charm": 10,
+    "greed": 6
+   },
+   "portrait_prompt": "An unmistakably adult Macanese-Chinese woman (age 37), a pirate queen's dangerously glamorous agent, seated in a lacquered tea house on the Hong Kong waterfront, fitted oxblood Qing-era silk jacket with sheer sleeves and a deep neckline, small ivory coin balance before her, red silk protection token between two fingers, commanding pose and knowing half-smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "banker": {
+   "name": "Moira Haig",
+   "title": "Chief Cashier & Queen of the Vault",
+   "brand_link": "",
+   "age": 52,
+   "origin": "Edinburgh",
+   "home_port": "hongkong",
+   "color": "#2d4a8a",
+   "portrait": "/uploads/portrait-banker-a2a810cc.png",
+   "voice_id": "Sarah",
+   "speaking_rate": 0.98,
+   "delivery": "dry, precise and imperious, a seductive Scottish banker counting every word and every weakness",
+   "catchphrase": "The bank thanks you for your custom. I thank you for your caution.",
+   "bio": "Moira Haig came out from Edinburgh to audit the bank for six months and seized the chief cashier's chair within six weeks. She trusts iron safes, written receipts and women ruthless enough to balance their own books. Dockside captains call her the corsair of compound interest, never to her face.",
+   "quirk": "Counts change twice, out loud, while holding the customer's gaze.",
+   "vice": "Islay malt at six, forbidden novels at seven, and immaculate leather gloves at all hours.",
+   "secret": "She writes scandalous pirate romances under a gentleman's pen name; London society devours them.",
+   "stats": {
+    "cunning": 6,
+    "nerve": 4,
+    "charm": 3,
+    "greed": 5
+   },
+   "portrait_prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset, steel spectacles, pinned auburn hair, leather gloves, silver dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "comprador": {
+   "name": "Lau Siu-wah",
+   "title": "Comprador & Queen of the Godowns",
+   "brand_link": "",
+   "age": 45,
+   "origin": "Shunde",
+   "home_port": "hongkong",
+   "color": "#2f7d5b",
+   "portrait": "/uploads/portrait-comprador-923b711d.png",
+   "voice_id": "Deborah",
+   "speaking_rate": 1.04,
+   "delivery": "brisk, flirtatious and razor-shrewd, a merchant pirate queen closing a deal with dry humour",
+   "catchphrase": "Every price is fair, darling—if you know exactly when to sell.",
+   "bio": "Widowed at thirty, Lau took over her husband's comprador house and doubled it within three years. She speaks five languages, reads seven price lists at once, and knows what silk will fetch in Shanghai before the Shanghai merchants do.",
+   "quirk": "Taps her abacus beads while you talk, already working out what you'll offer.",
+   "vice": "Cannot resist a bargain, a dare or a silk blouse cut scandalously well.",
+   "secret": "Her 'late husband' handed her the business on purpose and lives happily in Macau as a painter.",
+   "stats": {
+    "cunning": 9,
+    "nerve": 6,
+    "charm": 7,
+    "greed": 7
+   },
+   "portrait_prompt": "An unmistakably adult Cantonese woman (age 45), voluptuous comprador and merchant pirate queen in a busy godown of tea chests and silk bales, fitted storm-blue Qing-era jacket with jade fastenings, neckline loosened in the humid heat, trousers, jade bangle, abacus under one arm and writing brush in hand, confident sensual appraising look, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "shipwright": {
+   "name": "Tang Wai-lin",
+   "title": "Master Shipwright & Queen of the Keel",
+   "brand_link": "",
+   "age": 56,
+   "origin": "Whampoa",
+   "home_port": "hongkong",
+   "color": "#7a4a22",
+   "portrait": "/uploads/portrait-shipwright-bc277b87.png",
+   "voice_id": "Ashley",
+   "speaking_rate": 1.0,
+   "delivery": "gruff, warm and teasing, a powerful craftswoman who loves timber more than most people",
+   "catchphrase": "A ship is only as good as the woman who caulks her.",
+   "bio": "Tang Wai-lin has built junks, lorchas and two British clippers, and says the clippers were the easy ones. She can tell a hull's age by knocking on it and its owner's character by how it was repaired. Captains wait months for her yard and pay double when the Queen of the Keel names her price.",
+   "quirk": "Talks tenderly to the ships and indecently to their owners.",
+   "vice": "Boat races, strong forearms and always backing the vessel she built.",
+   "secret": "She carves a small kingfisher inside the keel of every ship she builds, for luck.",
+   "stats": {
+    "cunning": 5,
+    "nerve": 7,
+    "charm": 4,
+    "greed": 5
+   },
+   "portrait_prompt": "An unmistakably adult Cantonese woman (age 56), muscular master shipwright and dockyard pirate queen beside a half-built junk hull, linen shirt open low and sleeves rolled, fitted leather waist cincher, adze on one shoulder, sawdust on sun-warmed skin, silver-streaked hair tied back, weathered hands on teak, proud gruff smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "customs": {
+   "name": "Inspector Arabella Vane",
+   "title": "Customs Inspector & Revenue Queen",
+   "brand_link": "",
+   "age": 39,
+   "origin": "Bath",
+   "home_port": "shanghai",
+   "color": "#4f5d6b",
+   "portrait": "/uploads/portrait-customs-422516f6.png",
+   "voice_id": "Ashley",
+   "speaking_rate": 0.97,
+   "delivery": "crisp, imperious and spectacularly foul-mouthed, reading the law like a boarding order",
+   "catchphrase": "Your manifest is shite, Captain. Open the bloody hold.",
+   "bio": "Arabella Vane joined the Imperial Maritime Customs because she believed rules were weapons and stayed because nobody wielded them better. She has seized more contraband than any officer on the coast; smugglers call her Shanghai's blue-coated pirate queen, though never within pistol range.",
+   "quirk": "Quotes regulation numbers from memory, including the amendments, then adds profanity of her own.",
+   "vice": "Immaculate uniforms, filthy language and smugglers bold enough to make inspection interesting.",
+   "secret": "She lets one charming smuggler escape each New Year, then spends twelve months pretending it was clerical error.",
+   "stats": {
+    "cunning": 7,
+    "nerve": 8,
+    "charm": 2,
+    "greed": 1
+   },
+   "portrait_prompt": "An unmistakably adult English woman (age 39), fierce customs inspector and blue-coated revenue queen on a crowded Shanghai wharf, fitted storm-blue uniform coat with brass buttons worn over a black silk corset and daring neckline, pith helmet under one arm, manifest clipboard and boarding pistol, crates opened behind her, stern sensual glare, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "crier": {
+   "name": "Tilly Marsh",
+   "title": "Gazette Crier & Queen of Rumours",
+   "brand_link": "",
+   "age": 29,
+   "origin": "Liverpool",
+   "home_port": "hongkong",
+   "color": "#c58a1b",
+   "portrait": "/uploads/portrait-crier-4195e5dd.png",
+   "voice_id": "Sarah",
+   "speaking_rate": 1.06,
+   "delivery": "bright, shameless and theatrical, a flirtatious pirate crier scandalising a busy harbour",
+   "catchphrase": "Hear ye, beauties! Fortunes made, reputations ruined—all before breakfast!",
+   "bio": "Tilly sold newspapers on the Liverpool docks, stowed away on a tea clipper, and talked the Harbour Gazette into hiring her the day she landed. She hears every rumour on the waterfront first and prints the true ones, mostly.",
+   "quirk": "Rings a little brass handbell before every headline, even indoors.",
+   "vice": "Gossip, applause and climbing rigging in clothes wholly unsuited to the task.",
+   "secret": "Half her best scoops come from Madam Shek, in exchange for the other half.",
+   "stats": {
+    "cunning": 6,
+    "nerve": 7,
+    "charm": 9,
+    "greed": 4
+   },
+   "portrait_prompt": "An unmistakably adult English woman (age 29), dazzling pirate news crier on the Hong Kong waterfront, holding a fresh broadsheet and brass handbell, short fitted tobacco-leather jacket over an ivory corset and dramatically split oxblood skirt, ink on her fingers, auburn hair escaping beneath a small cocked hat, one boot on a bollard, mid-call with a wicked grin, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  }
+ },
+ "voice": {
+  "enabled": true,
+  "read_log": true,
+  "read_news_board": true,
+  "read_news_players": false,
+  "read_confirmations": true,
+  "read_errors": true,
+  "model_id": "inworld-tts-2-flash",
+  "temperature": 1.0,
+  "custom_news": "crier",
+  "lines": {}
+ }
+}

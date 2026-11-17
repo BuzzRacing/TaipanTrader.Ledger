@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sea Trader sail emblem">
+  <defs>
+    <radialGradient id="bg"><stop stop-color="#3b281d"/><stop offset="1" stop-color="#15100c"/></radialGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f0d382"/><stop offset=".5" stop-color="#c9a34e"/><stop offset="1" stop-color="#765022"/></linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="246" fill="url(#bg)" stroke="url(#brass)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#c9a34e" stroke-opacity=".45" stroke-width="5"/>
+  <path d="M247 91v294" stroke="url(#brass)" stroke-width="16" stroke-linecap="round"/>
+  <path d="M231 111c-88 45-120 137-104 225 37-24 75-34 104-34z" fill="#f1e3c5" stroke="#c9a34e" stroke-width="9"/>
+  <path d="M267 131c79 34 129 94 135 168-48-20-92-26-135-11z" fill="#7b2428" stroke="#c9a34e" stroke-width="9"/>
+  <path d="M103 367c85 32 216 34 309-3-30 71-89 105-158 105-68 0-124-31-151-102z" fill="#2f6b5a" stroke="#c9a34e" stroke-width="10"/>
+</svg>
