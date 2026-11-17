@@ -231,6 +231,7 @@ EN = {
     "tab.market": "Market", "tab.port": "Port", "tab.fleet": "Fleet", "tab.chart": "Set sail", "tab.ledger": "Ledger",
     "tab.advice": "Advice",
     "bar.where": "{port} · {date} · {months} months left",
+    "bar.welcome": "Welcome to", "bar.came.sailed": "in from {from}", "bar.came.stayed": "a month at anchor", "bar.came.wrecked": "back after the wreck",
     "sail.orders_to": "Orders given: sail for {port}",
     "sail.orders_stay": "Orders given: remain at anchor",
     "sail.waiting": "Waiting for {names}",

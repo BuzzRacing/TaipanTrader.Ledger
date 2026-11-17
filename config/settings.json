@@ -116,7 +116,8 @@
     "interest": 0.75,
     "start_cash": 1.5,
     "seizure": 0.6,
-    "customs_view": "exact"
+    "customs_view": "exact",
+    "battle_view": "exact"
    },
    "normal": {
     "name": "Trade winds",
@@ -125,7 +126,8 @@
     "interest": 1.0,
     "start_cash": 1.0,
     "seizure": 1.0,
-    "customs_view": "bar"
+    "customs_view": "bar",
+    "battle_view": "bar"
    },
    "hard": {
     "name": "Typhoon season",
@@ -134,7 +136,8 @@
     "interest": 1.25,
     "start_cash": 0.7,
     "seizure": 1.5,
-    "customs_view": "tell"
+    "customs_view": "tell",
+    "battle_view": "tell"
    }
   }
  },
@@ -215,6 +218,8 @@
    "debt_rep_penalty": 1.0,
    "debt_grace_months": 3,
    "debt_call_every": 3,
+   "wu_advice": true,
+   "wu_easy_share": 0.25,
    "mug_threshold": 20000,
    "mug_chance": 0.06,
    "mug_min": 0.15,
@@ -306,13 +311,28 @@
    "protect_save": 0.5,
    "cost_share": 0.06,
    "cost_min": 500,
-   "renew_at": 2
+   "renew_at": 2,
+   "tribute": true,
+   "tribute_mult": 2.0
   },
   "wreck": {
    "cash_loss": 0.5,
    "debt": 1500,
    "ship": "junk",
-   "hull": 100
+   "hull": 100,
+   "guns": 2
+  },
+  "battle": {
+   "interactive": true,
+   "parley": true,
+   "parley_per_junk": 60,
+   "parley_cargo": 0.05,
+   "retreat_min": 0.15,
+   "retreat_max": 0.3,
+   "retreat_floor": 5,
+   "round_secs": 20,
+   "first_extra": 10,
+   "voice_grace": 6
   },
   "dues": {
    "anchorage": 10.0,
@@ -329,6 +349,8 @@
   },
   "customs": {
    "enabled": true,
+   "home_free": true,
+   "bond": true,
    "drift": 0.005,
    "range": 0.0125,
    "min_rate": 0.0,
@@ -885,8 +907,8 @@
    "home_port": "hongkong",
    "color": "#b08a2e",
    "portrait": "/uploads/portrait-lender-7c0ef57d.png",
-   "voice_id": "Xinyi",
-   "speaking_rate": 0.92,
+   "voice_id": "Asuka",
+   "speaking_rate": 1.0,
    "delivery": "unhurried, low and velvet-warm, openly flirtatious and amused, steel underneath; she wants her captain to win and enjoys every minute of watching",
    "catchphrase": "Madam Wu is patient, darling. Her interest is not.",
    "bio": "Wu Lian lent her first silver dollar at fourteen and has never lost one since. Half the hongs on the Praya owe her money and the other half owe her favours. Captains call her a pirate queen because she can take a fleet with one signature; she merely smiles and adjusts the interest.",

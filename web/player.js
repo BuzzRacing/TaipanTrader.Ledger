@@ -311,7 +311,8 @@ const STAGE_WOMEN = {
 };
 /* Stage titles until the server is restarted with the current strings.py. */
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {},
-  { "ledger.taxlady": "Tax collector of {port}, keeper of the ledger", "chart.mayor": "Mayor of {port}",
+  { "bar.welcome": "Welcome to", "bar.came.sailed": "in from {from}", "bar.came.stayed": "a month at anchor", "bar.came.wrecked": "back after the wreck",
+    "ledger.taxlady": "Tax collector of {port}, keeper of the ledger", "chart.mayor": "Mayor of {port}",
     "chart.current": "CURRENT PORT", "chart.destination": "DESTINATION", "chart.route_warning": "ROUTE WARNING", "chart.route_forecast": "Route forecast: {weather}",
     "deck.me": "Captain {name}: voices and options", "deck.speech": "Voices", "deck.speech_on": "Voices are on",
     "deck.speech_off": "Voices are off", "deck.speech_none": "Voices are turned off for this game",
@@ -490,7 +491,17 @@ function topHtml() {
   return `<div class="dk-house"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
       <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
       <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
+    ${portPlate()}
     <div class="dk-stats">${stats}</div>`;
+}
+
+/* The port the fleet lies in, between the house name and the plaques: "Welcome to" over the port's
+   name, with where the fleet came from beside it. Replaces the old banner card on Port > Arrival. */
+function portPlate() {
+  const me = S.me, last = (me.books || {}).last;
+  const key = !last ? "" : last.wrecked ? "wrecked" : last.sailed ? "sailed" : "stayed";
+  const came = key ? `<small>${te("bar.came." + key, { from: esc(portName(last.from)) })}</small>` : "";
+  return `<div class="dk-port"><span>${te("bar.welcome")}</span><b>${esc(portName(me.port))}</b>${came}</div>`;
 }
 
 /* Silver and hold after every trade lined up on the market bars (the live ones, before Buy/Sell). */
@@ -835,20 +846,10 @@ function portStrip() {
 
 /* ---- Arrival */
 function portArrival() {
-  const me = S.me, last = (me.books || {}).last;
-  let head;
-  if (!last) {
-    head = `<section class="card pt-land"><h2>${te("port.land.first", { port: esc(portName(me.port)) })}</h2>
-      <p>${te("port.land.first_note")}</p></section>`;
-  } else {
-    const net = plTotal(last.lines), key = last.wrecked ? "wrecked" : last.sailed ? "sailed" : "stayed";
-    const lead = (me.log || []).slice(0, 4).map(l => `<li>${esc(l)}</li>`).join("");
-    head = `<section class="card pt-land"><h2>${te("port.land." + key, { port: esc(portName(me.port)), from: esc(portName(last.from)) })}</h2>
-      <p class="pt-sum">${te("port.land.sum_" + (net >= 0 ? "up" : "down"), { date: esc(last.date), net: money(Math.abs(net)) })}</p>
-      ${lead ? `<ul class="log pt-lead">${lead}</ul>${(me.log || []).length > 4 ? btn(te("port.land.more") + ' <span aria-hidden="true">&rsaquo;</span>', "port_view", 'data-v="log"', "link pt-more") : ""}` : ""}</section>`;
-  }
-  return `${head}
-    <section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>
+  // The "Welcome to (port)" banner now lives in the header (portPlate); the month's result is on the
+  // strip above and the full voyage log is under the Log sub-tab.
+  const me = S.me;
+  return `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>
     <section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>`;
 }
 
