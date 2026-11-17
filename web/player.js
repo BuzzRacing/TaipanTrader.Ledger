@@ -499,9 +499,9 @@ function topHtml() {
     <div class="dk-stats">${stats}</div>`;
 }
 
-/* The seventh plaque: the house's standing in this port as a heat icon, no number. A shield tinted by
-   the heat, beside five rising cells running red (hostile) to green (favoured), lit up to the standing's
-   tier. The tier's name is in the tooltip and for screen readers. */
+/* The seventh plaque: the house's standing in this port as a heat icon, no number. Five fat rising
+   bars running red (hostile) to green (favoured), lit up to the standing's tier. No shield. The tier's
+   name is in the tooltip and for screen readers. */
 const STANDING_HEAT = [4, 26, 44, 78, 122];
 function standingPlaque(rep) {
   const r = Math.max(0, Math.min(100, Math.round(rep || 0)));
@@ -509,12 +509,12 @@ function standingPlaque(rep) {
   const word = te("stat.standing_" + ["hostile", "cool", "neutral", "warm", "favoured"][tier]);
   const tip = te("stat.standing_tip", { port: esc(portName(S.me.port)), tier: word });
   const heat = i => `hsl(${STANDING_HEAT[i]} 72% ${i === 2 ? 50 : 46}%)`;
-  const cells = STANDING_HEAT.map((_, i) =>
-    `<rect x="${19 + i * 8.6}" y="${14 - (i + 1) * 2.4}" width="7" height="${(i + 1) * 2.4 + 2}" rx="1.4" ` +
-    (i <= tier ? `fill="${heat(i)}"` : `class="off"`) + `/>`).join("");
-  const svg = `<svg class="plq-heat" viewBox="0 0 62 18" role="img" aria-label="${tip}" focusable="false">
-    <path class="shield" d="M7.5 1.2 14 3.8v4.7c0 3.9-2.6 6.4-6.5 8.2C3.6 14.9 1 12.4 1 8.5V3.8l6.5-2.6Z" fill="${heat(tier)}"/>
-    <path class="tick" d="m4.6 8.6 2 2 3.8-3.8"/>${cells}</svg>`;
+  const bars = STANDING_HEAT.map((_, i) => {
+    const h = 6 + i * 3;
+    return `<rect x="${(i * 10.4).toFixed(1)}" y="${18 - h}" width="8.6" height="${h}" rx="1.6" ` +
+      (i <= tier ? `fill="${heat(i)}"` : `class="off"`) + `/>`;
+  }).join("");
+  const svg = `<svg class="plq-heat" viewBox="0 0 50 18" role="img" aria-label="${tip}" focusable="false">${bars}</svg>`;
   return `<div class="plq standing tier-${tier}" title="${tip}" style="--heat:${heat(tier)}"><span>${te("stat.standing")}</span><b>${svg}</b></div>`;
 }
 
