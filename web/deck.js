@@ -157,7 +157,9 @@ const Stage = (() => {
         return;
       }
       const c = cast[item.c] || {};
-      const lib = typeof Media !== "undefined" ? Media.speaker(item.c, "stg-img", item.m) : "";
+      // A speaker can have a picture of her own in this port (stageFace in player.js: the Mayor, the Tax collector).
+      const own = typeof stageFace === "function" ? stageFace(item.c) : "";
+      const lib = own || (typeof Media !== "undefined" ? Media.speaker(item.c, "stg-img", item.m) : "");
       talkLayer.innerHTML = lib || (c.portrait ? `<img class="stg-img" src="${esc(c.portrait)}" alt="">`
                                                : `<i class="stg-mono">${esc(monogram(c.name))}</i>`);
       el.style.setProperty("--who", c.color || "var(--deck-brass)");

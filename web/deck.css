@@ -224,6 +224,8 @@ body.player input::placeholder { color: color-mix(in srgb, var(--deck-ivory) 35%
 
 /* ----------------------------------------------------------- set sail routes -- */
 .sail-guide { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin: .85rem 0 .65rem; }
+.sail-guide.sail-guide-top { margin-top: 0; }
+.sail-map { margin-top: .9rem; }
 .sail-guide > span:first-child b { display: block; font: 400 1.08rem/1.15 var(--serif); color: var(--brass-hi); }
 .sail-guide > span:first-child small { display: block; margin-top: .12rem; color: var(--muted); font-size: .76rem; }
 .heat-key { display: flex; align-items: center; gap: .35rem; flex: none; color: var(--muted); }
@@ -844,6 +846,24 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
 .du-card .dl-row b { color: color-mix(in srgb, var(--blood-hi) 85%, var(--deck-ivory)); }
 .du-card .du-short { color: var(--blood-hi); }
 .du-sub { margin: .15rem 0 .35rem; font-size: .8rem; color: var(--muted); }
+.du-level { color: var(--brass-hi); }
+.du-level.lo { color: var(--jade-hi); }
+.du-card .du-off b { color: var(--jade-hi); }
+.du-card .du-on b { color: var(--blood-hi); }
+.du-choice-h { margin-top: .9rem; }
+.du-slipnote { color: color-mix(in srgb, var(--blood-hi) 70%, var(--deck-ivory)); }
+.du-card.du-slipping { border-color: color-mix(in srgb, var(--blood-hi) 60%, var(--edge)); }
+.du-card.du-slipping header b { text-decoration: line-through; text-decoration-color: var(--blood-hi); }
+/* tax collector's declaration slider (Set sail orders card) */
+.tx-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .8rem; margin: .3rem 0 .2rem; }
+.tx-range { width: 100%; accent-color: var(--jade-hi); }
+.tx-row.hiding .tx-range { accent-color: var(--blood-hi); }
+.tx-out { display: flex; flex-direction: column; line-height: 1.15; min-width: 7.5rem; }
+.tx-out b { font-variant-numeric: tabular-nums; }
+.tx-out small { color: var(--muted); font-size: .78rem; }
+.tx-tax { font: 700 1.1rem/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--brass-hi); white-space: nowrap; }
+.tx-risk.bad { color: color-mix(in srgb, var(--blood-hi) 75%, var(--deck-ivory)); }
+.du-level.hi { color: color-mix(in srgb, var(--blood-hi) 85%, var(--deck-ivory)); }
 .du-foot { margin: 0; padding-top: .3rem; border-top: 1px solid var(--rule); font-size: .82rem; line-height: 1.35; color: var(--muted); }
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
   .deck[data-tab="chart"] .dk-side { flex-direction: row; justify-content: center; align-items: stretch; }
@@ -851,11 +871,15 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
   .deck[data-tab="chart"] .dk-dyn { width: auto; flex: 1 1 0; max-width: 22rem; overflow: auto; }
 }
 
-/* Ledger: the tax collector and the right-hand column are hidden for now, so the price book gets the full width. */
+/* Ledger (the price book): no stage and no side card. The side column is hidden and the pane takes its
+   place, so the price book has the full width right of the rail. The tax card now sits under the Mayor's
+   dues on Set sail (player.js taxCard()). */
 .deck[data-tab="ledger"] { grid-template-areas: "top top top" "nav main main"; }
 .deck[data-tab="ledger"] .dk-side { display: none; }
+.tx-card .dl-row.pay b { color: var(--brass-hi); }
+.deck[data-tab="chart"] .dk-dyn { display: flex; flex-direction: column; gap: clamp(.45rem, .9vw, .85rem); }
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
-  .deck[data-tab="ledger"] { grid-template-areas: "top" "main" "main" "nav"; }
+  .deck[data-tab="ledger"] { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "top" "main" "nav"; }
 }
 
 /* Price book: every cargo column the same width, so the pictures line up evenly. The port column is fixed

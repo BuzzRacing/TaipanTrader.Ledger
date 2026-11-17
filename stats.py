@@ -385,7 +385,9 @@ def _walk(events, ps):
             last_cargo[pid] = dict(e.get("cargo") or {})
             continue
         if typ == "seized":
-            held = {g: q for g, q in last_cargo.get(pid, {}).items() if g in contraband}
+            # newer journals list exactly what was taken (gold is only sometimes contraband)
+            held = dict(e["goods"]) if isinstance(e.get("goods"), dict) else \
+                {g: q for g, q in last_cargo.get(pid, {}).items() if g in contraband}
             v = h.lose(held, "seized", turn)
             fine = int(e.get("fine") or 0)
             h.perils["seizures"] += 1

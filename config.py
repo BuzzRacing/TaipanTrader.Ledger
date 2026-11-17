@@ -156,18 +156,23 @@ DEFAULTS = {
         "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 60},
         # The mayor's harbour dues, paid on leaving port (engine.Game.dues).
         "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
-                 "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2},
+                 "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2,
+                 "slip_caught": 0.35, "slip_mult": 2.0, "slip_rep": 10},
+        # The tax lady's cut of cargo profit, settled on leaving port (engine.Game.tax).
+        "tax": {"rate": 0.10, "audit_max": 0.5, "penalty_mult": 3.0, "rep": 8},
     },
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
     "goods": {
-        "opium":     {"name": "Opium", "family_name": "Fireworks", "base": 4200, "vol": 0.16, "depth": 60, "contraband": True},
-        "silk":      {"name": "Silk", "family_name": "", "base": 520, "vol": 0.10, "depth": 160, "contraband": False},
-        "porcelain": {"name": "Porcelain", "family_name": "", "base": 230, "vol": 0.08, "depth": 250, "contraband": False},
-        "arms":      {"name": "Arms", "family_name": "Ironware", "base": 160, "vol": 0.10, "depth": 250, "contraband": False},
-        "spices":    {"name": "Spices", "family_name": "", "base": 95, "vol": 0.09, "depth": 450, "contraband": False},
-        "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 500, "contraband": False},
-        "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 1200, "contraband": False},
-        "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 1200, "contraband": False},
+        "opium":     {"name": "Opium", "family_name": "Fireworks", "base": 4200, "vol": 0.16, "depth": 60, "contraband": True, "ban_odds": 0.0},
+        "silk":      {"name": "Silk", "family_name": "", "base": 520, "vol": 0.10, "depth": 160, "contraband": False, "ban_odds": 0.0},
+        "porcelain": {"name": "Porcelain", "family_name": "", "base": 230, "vol": 0.08, "depth": 250, "contraband": False, "ban_odds": 0.0},
+        "arms":      {"name": "Arms", "family_name": "Ironware", "base": 160, "vol": 0.10, "depth": 250, "contraband": False, "ban_odds": 0.0},
+        "spices":    {"name": "Spices", "family_name": "", "base": 95, "vol": 0.09, "depth": 450, "contraband": False, "ban_odds": 0.0},
+        "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 500, "contraband": False, "ban_odds": 0.0},
+        "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 1200, "contraband": False, "ban_odds": 0.0},
+        "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 1200, "contraband": False, "ban_odds": 0.0},
+        # Gold is legal, but a port's ban sometimes covers bullion too (ban_odds).
+        "gold":      {"name": "Gold", "family_name": "", "base": 2400, "vol": 0.05, "depth": 90, "contraband": False, "ban_odds": 0.5},
     },
     "regions": {
         "north":  {"name": "Yellow Sea & Japan", "typhoon": 0.02, "squalls": 0.20, "label_lon": 126, "label_lat": 29,
@@ -181,24 +186,26 @@ DEFAULTS = {
     },
     # mods = local price multipliers (below 1 = made here, above 1 = in demand).
     "ports": {
-        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True,
-                      "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85}},
-        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True,
-                      "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3}},
-        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "shipyard": False, "no_ban": False, "label_left": True,
-                      "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2}},
-        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "shipyard": False, "no_ban": False, "label_left": False,
-                      "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2}},
-        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "shipyard": False, "no_ban": False, "label_left": False,
+        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0,
+                      "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
+        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2,
+                      "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
+        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4,
+                      "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}},
+        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8,
+                      "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}},
+        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0,
+                      "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}},
+        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9,
                       "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}},
-        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "shipyard": False, "no_ban": False, "label_left": True,
-                      "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2}},
-        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "shipyard": True, "no_ban": False, "label_left": True,
+        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7,
+                      "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}},
+        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6,
                       "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}},
-        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "shipyard": False, "no_ban": False, "label_left": False,
+        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1,
                       "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}},
-        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "shipyard": True, "no_ban": True, "label_left": False,
-                      "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5}},
+        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3,
+                      "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}},
     },
     # hold = cargo units; hull = damage it can take; slots = guns it can mount.
     "ships": {
@@ -405,7 +412,19 @@ SECTIONS = [
              _pct("rules.dues.yard_share", "Shipwright and chandler: share of ships and guns bought this visit"),
              _pct("rules.dues.bank_share", "Counting-house fee: share of money deposited or withdrawn this visit"),
              _pct("rules.dues.loan_share", "Moneylender's stamp: share of money borrowed or repaid this visit"),
-             F("rules.dues.warehouse", "Wharfage per 100 units stored or loaded this visit", "num", min=0, max=10**6, step=0.5)]},
+             F("rules.dues.warehouse", "Wharfage per 100 units stored or loaded this visit", "num", min=0, max=10**6, step=0.5),
+             _pct("rules.dues.rep_discount", "Discount at standing 100 (the same surcharge at standing 0)",
+                  "Standing 50 pays the full bill; the change is in proportion either side of it."),
+             _pct("rules.dues.slip_caught", "Slipping out at night: chance the harbour watch catches you"),
+             F("rules.dues.slip_mult", "Caught slipping out: pay the bill this many times", "num", min=1, max=20, step=0.5),
+             F("rules.dues.slip_rep", "Caught slipping out: standing lost in that port", "num", min=0, max=100, step=1)]},
+         {"title": "Tax collector (her cut of cargo profit on leaving port)", "fields": [
+             _pct("rules.tax.rate", "Tax on profit from cargo sold this visit",
+                  "Profit is the sale price less the average price paid. Multiplied by the port's harbour dues level."),
+             _pct("rules.tax.audit_max", "Chance she checks the books if nothing is declared",
+                  "Falls in proportion to how much is declared; none when everything is declared."),
+             F("rules.tax.penalty_mult", "Caught hiding profit: fine as a multiple of the hidden tax", "num", min=0, max=50, step=0.5),
+             F("rules.tax.rep", "Caught hiding profit: standing lost in that port", "num", min=0, max=100, step=1)]},
      ]},
     {"id": "goods", "title": "Cargo", "intro": "What can be traded. Removing a cargo during a game discards any that players hold.",
      "tables": [
@@ -415,7 +434,11 @@ SECTIONS = [
                       C("base", "Usual price", "num", min=0.5, max=10**7, step=1),
                       C("vol", "Monthly swing", "pct", min=0, max=1),
                       C("depth", "Depth (units)", "int", "Units traded that move the local price by the 'price move' setting.", min=1, max=10**7),
-                      C("contraband", "Contraband", "bool", "Subject to bans, searches and seizure.")]},
+                      C("contraband", "Contraband", "bool", "Subject to bans, searches and seizure."),
+                      C("ban_odds", "Sometimes contraband", "pct",
+                        "For cargo that is normally legal: the chance a port's ban also covers it. While it does, it sells "
+                        "for more there and can be searched and seized. Ignored when Contraband is ticked.",
+                        min=0, max=1, default=0.0)]},
      ]},
     {"id": "ports", "title": "Ports", "intro": "Where the game is played. The chart covers longitude 85 to 135 and latitude -10 to 35.",
      "tables": [
@@ -426,7 +449,9 @@ SECTIONS = [
                       C("region", "Sea", "select", options_from="regions"),
                       C("shipyard", "Shipyard", "bool"),
                       C("no_ban", "Never bans contraband", "bool"),
-                      C("label_left", "Name left of dot", "bool", "Which side of the dot the name sits on the chart.")]},
+                      C("label_left", "Name left of dot", "bool", "Which side of the dot the name sits on the chart."),
+                      C("dues", "Harbour dues level", "num", "Multiplies the Mayor's whole bill when leaving this port. 1 is normal, 0.5 half, 2 double.",
+                        min=0, max=20, step=0.05, default=1.0)]},
      ],
      "matrix": {"path": "ports", "sub": "mods", "cols_from": "goods", "title": "Local prices",
                 "help": "Each cell multiplies the cargo's usual price in that port. Below 1 it is made there and cheap; "
@@ -695,6 +720,11 @@ def validate(raw):
                     row = row if isinstance(row, dict) else {}
                     new = {k: v for k, v in row.items() if k in ("mods",)}
                     for col in tb["columns"]:
+                        if col["key"] not in row and "default" in col:
+                            # a column added later: settings saved before it get the shipped value, or the default
+                            shipped = get_path(DEFAULTS, tb["path"]).get(key, {})
+                            new[col["key"]] = _coerce(col, shipped.get(col["key"], col["default"]), "{} / {}".format(title, key), errors)
+                            continue
                         if col["key"] not in row:
                             errors.append("{} / {}: '{}' is missing".format(title, key, col["label"]))
                             continue

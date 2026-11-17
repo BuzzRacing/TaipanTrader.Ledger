@@ -276,7 +276,7 @@ function blankRow(tb) {
   const row = clone(last || {});
   tb.columns.forEach(c => { if (row[c.key] === undefined) row[c.key] = c.type === "bool" ? false : c.type === "text" ? "" : 1; });
   if (tb.path === "ports") { row.mods = {}; row.no_ban = false; }
-  if (tb.path === "goods") { row.family_name = ""; row.contraband = false; }
+  if (tb.path === "goods") { row.family_name = ""; row.contraband = false; row.ban_odds = 0; }
   if (tb.path === "ranks") { row.worth = Math.max(0, row.worth) * 2 || 1000; row.title = "New rank"; }
   return row;
 }

@@ -99,7 +99,20 @@ def configure(cfg=None, text=None):
 
 
 def contraband():
+    """Cargo that is always contraband (searched in every port, banned outright by a crackdown)."""
     return [k for k, g in GOODS.items() if g.get("contraband")]
+
+
+def sometimes_contraband():
+    """Cargo that is normally legal but a port's ban may also cover (e.g. gold), with that chance."""
+    return {k: float(g.get("ban_odds") or 0) for k, g in GOODS.items()
+            if not g.get("contraband") and float(g.get("ban_odds") or 0) > 0}
+
+
+def names_of(goods):
+    """'Opium & Gold' for a list of cargo keys (falls back to the generic word)."""
+    names = [GOODS[g]["name"] for g in goods if g in GOODS]
+    return " & ".join(names) if names else tx("w.contraband")
 
 
 def money(n):
@@ -222,13 +235,13 @@ class Game:
             msg += " ({})".format(note)
         self._ev("snapshot", kind, msg, date=date_label(s["turn"]), phase=s["phase"], seed=s["seed"],
                  firms=firms, prices={port: {g: round(v, 2) for g, v in row.items()} for port, row in s["prices"].items()},
-                 weather=dict(s["weather"]), crackdown=dict(s["crackdown"]), shocks=copy.deepcopy(s["shocks"]),
+                 weather=dict(s["weather"]), crackdown=dict(s["crackdown"]), ban_goods=copy.deepcopy(s.get("ban_goods", {})), shocks=copy.deepcopy(s["shocks"]),
                  state=state)
 
     # ------------------------------------------------------------ setup --
     def _new_state(self):
         s = {"phase": "lobby", "turn": 0, "years": R["game"]["default_years"], "players": {}, "order": [],
-             "prices": {}, "shocks": [], "crackdown": {}, "weather": {}, "news": [],
+             "prices": {}, "shocks": [], "crackdown": {}, "ban_goods": {}, "weather": {}, "news": [],
              "next_id": 1}
         self.s = s
         for port in PORTS:
@@ -241,12 +254,34 @@ class Game:
         spread = R["market"]["start_spread"]
         return self._target(port, good) * self.rng.uniform(1 - spread, 1 + spread)
 
+    def banned(self, port):
+        """Cargo banned in a port right now: the always-contraband goods plus any
+        sometimes-contraband goods (gold) this port's ban happens to cover. Empty with no ban."""
+        if port not in self.s["crackdown"]:
+            return []
+        extra = self.s.get("ban_goods", {}).get(port, [])
+        return contraband() + [g for g in extra if g in GOODS and g not in contraband()]
+
+    def at_risk(self, port):
+        """Cargo customs will seize if they search a ship arriving in this port."""
+        return self.banned(port) if port in self.s["crackdown"] else contraband()
+
+    def _roll_ban_goods(self, port):
+        """Decide which sometimes-contraband goods a new ban in this port also covers."""
+        extra = sometimes_contraband()
+        picked = [g for g, odds in extra.items() if self.rng.random() < odds]
+        if not picked and not contraband() and extra:
+            # nothing is always contraband, so a ban must cover something
+            picked = [self.rng.choice(sorted(extra))]
+        self.s.setdefault("ban_goods", {})[port] = picked
+        return picked
+
     def _target(self, port, good):
         t = GOODS[good]["base"] * PORTS[port]["mods"].get(good, 1.0)
         for sh in self.s["shocks"]:
             if sh["port"] == port and sh["good"] == good:
                 t *= sh["mult"]
-        if GOODS[good].get("contraband") and port in self.s["crackdown"]:
+        if port in self.s["crackdown"] and good in self.banned(port):
             t *= R["events"]["ban_price_mult"]
         return t
 
@@ -279,6 +314,9 @@ class Game:
                        for port in PORTS}
         s["shocks"] = [sh for sh in s["shocks"] if sh["port"] in PORTS and sh["good"] in GOODS]
         s["crackdown"] = {k: v for k, v in s["crackdown"].items() if k in PORTS}
+        extra = sometimes_contraband()
+        s["ban_goods"] = {k: [g for g in v if g in extra] for k, v in (s.get("ban_goods") or {}).items()
+                          if k in s["crackdown"]}
         s["weather"] = {r: int(s.get("weather", {}).get(r, 1)) for r in REGIONS}
         fallback = R["wreck"]["ship"]
         for p in s["players"].values():
@@ -292,6 +330,14 @@ class Game:
             p["known"] = {k: v for k, v in p.get("known", {}).items() if k in PORTS}
             tab = p.get("tab") if isinstance(p.get("tab"), dict) else {}
             p["tab"] = {k: float(tab.get(k, 0) or 0) for k in self._new_tab()}
+            p["slip"] = bool(p.get("slip", False))
+            p["declare"] = max(0.0, min(1.0, float(p.get("declare", 1.0))))
+            # What each cargo cost on average. Saves from before this was kept count what is held at today's price.
+            basis = p.get("basis") if isinstance(p.get("basis"), dict) else {}
+            held = set(p["cargo"]) | set(p["wh"])
+            p["basis"] = {g: float(basis.get(g, self.s["prices"].get(p["port"], {}).get(g, GOODS[g]["base"])))
+                          for g in held if g in GOODS}
+
             for sh in p["ships"]:
                 if sh["type"] not in SHIPS:
                     sh["type"] = fallback
@@ -347,7 +393,7 @@ class Game:
              "rep": {port: float(st["rep"]) for port in PORTS},
              "protect": 0, "ready": False, "dest": None, "orders": "fight",
              "log": [tx("l.arrive", ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
-             "known": {}, "wrecks": 0, "tab": self._new_tab()}
+             "known": {}, "wrecks": 0, "tab": self._new_tab(), "slip": False, "declare": 1.0, "basis": {}}
         p["rep"][HOME] = float(st["home_rep"])
         s["players"][pid] = p
         s["order"].append(pid)
@@ -437,8 +483,17 @@ class Game:
     # bank, moneylender, warehouse). Cargo bought and sold is not on her bill (the tax lady's, later).
     # The tally (p["tab"]) starts again each time the house drops anchor in a new port.
     @staticmethod
+    def _tidy_basis(p):
+        """Forget what a cargo cost once none is held, aboard or ashore. Done after every action and month,
+        so a replayed game keeps exactly the same records as the live one."""
+        b = p.get("basis")
+        if isinstance(b, dict):
+            for g in [g for g in b if not p["cargo"].get(g) and not p["wh"].get(g)]:
+                del b[g]
+
+    @staticmethod
     def _new_tab():
-        return {"repair": 0.0, "yard": 0.0, "bank": 0.0, "loan": 0.0, "wh": 0.0}
+        return {"repair": 0.0, "yard": 0.0, "bank": 0.0, "loan": 0.0, "wh": 0.0, "profit": 0.0, "sales": 0.0}
 
     def _tally(self, p, key, amount):
         tab = p.setdefault("tab", self._new_tab())
@@ -448,6 +503,7 @@ class Game:
         """The mayor's bill if the house sailed now: {"lines": [...], "total": n}."""
         d, tab = R["dues"], p.get("tab") or self._new_tab()
         ships, hold = len(p["ships"]), self.capacity(p)
+        level = float(PORTS.get(p["port"], {}).get("dues", 1.0))   # this port's harbour dues level (Admin > Ports)
         lines = [
             {"key": "anchorage", "basis": ships, "rate": d["anchorage"], "amount": ships * d["anchorage"]},
             {"key": "tonnage", "basis": hold, "rate": d["tonnage"], "amount": hold / 100.0 * d["tonnage"]},
@@ -458,14 +514,89 @@ class Game:
             {"key": "wh", "basis": tab["wh"], "rate": d["warehouse"], "amount": tab["wh"] / 100.0 * d["warehouse"]},
         ]
         for ln in lines:
-            ln["basis"], ln["amount"] = int(round(ln["basis"])), int(math.ceil(ln["amount"] - 1e-9))
+            ln["basis"], ln["amount"] = int(round(ln["basis"])), int(math.ceil(ln["amount"] * level - 1e-9))
         lines = [ln for ln in lines if ln["amount"] > 0]
-        return {"lines": lines, "total": sum(ln["amount"] for ln in lines)}
+        # Standing in this port: 50 pays the full bill, 100 gets the full discount, 0 pays the same again as a surcharge.
+        sub = sum(ln["amount"] for ln in lines)
+        rep = float(p["rep"].get(p["port"], 50.0))
+        share = d.get("rep_discount", 0.0) * (rep - 50.0) / 50.0     # + is a discount, - a surcharge
+        adjust = -int(round(sub * share))
+        if adjust:
+            lines.append({"key": "standing", "basis": int(round(rep)), "rate": round(abs(share), 4), "amount": adjust})
+        return {"lines": lines, "total": max(0, sub + adjust), "level": level, "rep": int(round(rep))}
 
-    def _pay_dues(self, p):
+    # ------------------------------------------------------ tax collector --
+    # She takes a share of the profit on cargo sold in her port this visit, settled as the house leaves.
+    # The house declares a share of that profit (0 to 1). Hiding any of it risks her checking the books.
+    def tax(self, p, declare=None):
+        t, tab = R["tax"], p.get("tab") or self._new_tab()
+        f = max(0.0, min(1.0, float(p.get("declare", 1.0) if declare is None else declare)))
+        profit = max(0, int(round(tab.get("profit", 0.0))))
+        level = float(PORTS.get(p["port"], {}).get("dues", 1.0))
+        rate = t["rate"] * level
+        due = int(math.ceil(profit * rate - 1e-9))
+        paid = int(math.ceil(profit * f * rate - 1e-9))
+        hidden = max(0, due - paid)
+        return {"profit": profit, "sales": int(round(tab.get("sales", 0.0))), "rate": round(rate, 4), "due": due,
+                "declare": f, "declared": int(round(profit * f)), "tax": paid, "hidden": hidden,
+                "audit": round(t["audit_max"] * (1 - f), 4) if hidden else 0.0,
+                "caught": due + int(math.ceil(hidden * t["penalty_mult"]))}
+
+    def _collect(self, p, amount):
+        """Take money from silver; whatever is missing goes on the debt. Returns what went on the debt."""
+        paid = int(min(amount, max(0.0, p["cash"])))
+        p["cash"] -= paid
+        if amount - paid:
+            p["debt"] += amount - paid
+        return amount - paid
+
+    def _settle_tax(self, p, news):
+        b = self.tax(p)
+        if b["due"] <= 0:
+            return
+        port, name = p["port"], PORTS[p["port"]]["name"]
+        if b["hidden"] and self._chance(b["audit"], "tax_audit", "{}: declared {} of {} profit in {}".format(
+                p["name"], money(b["declared"]), money(b["profit"]), name), p, declare=b["declare"]):
+            fine = b["caught"] - b["due"]
+            owed = self._collect(p, b["caught"])
+            self._gain_rep(p, port, -R["tax"]["rep"])
+            p["log"].append(tx("l.tax_caught", port=name, total=money(b["caught"]), fine=money(fine)))
+            news.append(tx("n.tax_caught", name=p["name"], firm=p["firm"], port=name))
+            self._ev("finance", "tax_caught", "{}: the tax collector of {} checked the books; paid {} (tax {} + fine {}){}".format(
+                p["name"], name, money(b["caught"]), money(b["due"]), money(fine),
+                "; {} short, added to the debt".format(money(owed)) if owed else ""), p, **b)
+            return
+        owed = self._collect(p, b["tax"])
+        key = "l.tax_hidden" if b["hidden"] else "l.tax"
+        p["log"].append(tx(key, port=name, declared=money(b["declared"]), profit=money(b["profit"]), tax=money(b["tax"])))
+        self._ev("finance", "tax", "{}: declared {} of {} profit in {} and paid {} in tax{}".format(
+            p["name"], money(b["declared"]), money(b["profit"]), name, money(b["tax"]),
+            "; {} short, added to the debt".format(money(owed)) if owed else ""), p, **b)
+
+    def _depart(self, p, news):
+        """Leaving port: pay the Mayor, or try to slip out at night without paying."""
+        if not p.get("slip"):
+            return self._pay_dues(p)
+        d, port = R["dues"], p["port"]
+        bill = self.dues(p)["total"]
+        if bill <= 0:
+            return self._pay_dues(p)
+        if self._chance(d["slip_caught"], "slip_caught", "{}: slipping out of {} without paying {} in dues".format(
+                p["name"], PORTS[port]["name"], money(bill)), p, bill=bill):
+            self._gain_rep(p, port, -d["slip_rep"])
+            p["log"].append(tx("l.slip_caught", port=PORTS[port]["name"]))
+            news.append(tx("n.slip_caught", name=p["name"], firm=p["firm"], port=PORTS[port]["name"]))
+            self._ev("finance", "slip_caught", "{} was caught slipping out of {}: pays {} times the bill, standing -{}".format(
+                p["name"], PORTS[port]["name"], d["slip_mult"], d["slip_rep"]), p, port=port, bill=bill)
+            return self._pay_dues(p, mult=d["slip_mult"])
+        p["log"].append(tx("l.slip_away", port=PORTS[port]["name"], total=money(bill)))
+        self._ev("finance", "slip_away", "{} slipped out of {} at night without paying {} in dues".format(
+            p["name"], PORTS[port]["name"], money(bill)), p, port=port, bill=bill)
+
+    def _pay_dues(self, p, mult=1.0):
         """Charge the mayor's bill as the house leaves port. Silver first; any shortfall goes on the debt."""
         bill = self.dues(p)
-        total = bill["total"]
+        total = int(math.ceil(bill["total"] * mult))
         if total <= 0:
             return
         paid = int(min(total, max(0.0, p["cash"])))
@@ -511,6 +642,8 @@ class Game:
             self._hold = None
             raise
         held, self._hold = self._hold, None
+        if pid in self.s["players"]:
+            self._tidy_basis(p)
         data = {"do": "act", "a": clean, "present": sorted(present), "port": port, "result": msg}
         text = "{} in {}: {}".format(p["name"], PORTS[port]["name"] if port in PORTS else port, msg)
         if self._detail:
@@ -565,7 +698,7 @@ class Game:
         if s["phase"] != "port":
             raise GameError(tx("e.not_running"))
         if kind == "unsail":
-            p["ready"], p["dest"] = False, None
+            p["ready"], p["dest"], p["slip"], p["declare"] = False, None, False, 1.0
             return tx("m.unsail")
         if p["ready"]:
             raise GameError(tx("e.already_sailed"))
@@ -621,6 +754,9 @@ class Game:
             raise GameError(tx("e.cost", cost=money(cost), cash=money(p["cash"])))
         self._trade_detail(p, g, q, cost, end)
         p["cash"] -= cost
+        held = p["cargo"].get(g, 0) + p["wh"].get(g, 0)
+        basis = p.setdefault("basis", {})
+        basis[g] = (basis.get(g, 0.0) * held + cost) / float(held + q)   # average price paid per unit
         p["cargo"][g] = p["cargo"].get(g, 0) + q
         self.s["prices"][p["port"]][g] = end
         self._trade_rep(p, cost)
@@ -633,6 +769,9 @@ class Game:
         gain, end = self.quote(p, g, q, "sell")
         self._trade_detail(p, g, q, gain, end)
         p["cash"] += gain
+        unit = p.setdefault("basis", {}).get(g, gain / float(q))      # unknown cost counts as no profit
+        self._tally(p, "sales", gain)
+        p["tab"]["profit"] = p["tab"].get("profit", 0.0) + (gain - unit * q)   # a loss offsets profit this visit
         p["cargo"][g] -= q
         if not p["cargo"][g]:
             del p["cargo"][g]
@@ -801,9 +940,15 @@ class Game:
         if orders not in ("fight", "run"):
             raise GameError(tx("e.orders"))
         p["orders"], p["dest"], p["ready"] = orders, dest, True
-        self._detail = {"dest": dest, "orders": orders, "note": "standing orders: " + orders}
+        p["slip"] = bool(a.get("slip")) and dest is not None    # leave at night without paying the Mayor
+        try:
+            p["declare"] = max(0.0, min(1.0, float(a.get("declare", 1.0)))) if dest is not None else 1.0
+        except (TypeError, ValueError):
+            p["declare"] = 1.0                                   # share of profit declared to the tax collector
+        self._detail = {"dest": dest, "orders": orders, "slip": p["slip"],
+                        "note": "standing orders: " + orders + (", slipping out without paying dues" if p["slip"] else "")}
         if dest:
-            return tx("m.sail", port=PORTS[dest]["name"])
+            return tx("m.slip" if p["slip"] else "m.sail", port=PORTS[dest]["name"])
         return tx("m.stay")
 
     # ------------------------------------------------------------ admin --
@@ -937,9 +1082,12 @@ class Game:
                 raise GameError("No such port.")
             turns = int(number("turns", 0, 120))
             if turns:
+                if a["port"] not in s["crackdown"]:
+                    self._roll_ban_goods(a["port"])
                 s["crackdown"][a["port"]] = turns
             else:
                 s["crackdown"].pop(a["port"], None)
+                s.setdefault("ban_goods", {}).pop(a["port"], None)
             return "Ban set." if turns else "Ban lifted."
         raise GameError("Unknown admin action.")
 
@@ -988,14 +1136,15 @@ class Game:
         for p in players:
             p["log"] = []
             if p["ready"] and p["dest"]:
-                self._pay_dues(p)
+                self._depart(p, news)
+                self._settle_tax(p, news)
                 self._voyage(p, actual, news)
             else:
                 p["log"].append(tx("l.anchor", port=PORTS[p["port"]]["name"]))
                 self._ev("voyage", "anchor", "{} stayed at anchor in {}{}".format(
                     p["name"], PORTS[p["port"]]["name"], "" if p["ready"] else " (gave no orders)"), p,
                     port=p["port"], gave_orders=p["ready"])
-            p["ready"], p["dest"] = False, None
+            p["ready"], p["dest"], p["slip"], p["declare"] = False, None, False, 1.0
 
         for p in players:
             bank0, debt0 = p["bank"], p["debt"]
@@ -1026,6 +1175,8 @@ class Game:
                 self._ev("finance", "robbed", "{} was robbed of {}".format(p["name"], money(lost)), p, lost=lost)
 
         self._move_markets(news)
+        for p in players:
+            self._tidy_basis(p)
         s["turn"] += 1
         self._roll_weather()
         for p in players:
@@ -1057,9 +1208,13 @@ class Game:
         for port in list(s["crackdown"]):
             s["crackdown"][port] -= 1
             if s["crackdown"][port] <= 0:
+                goods = self.banned(port)
                 del s["crackdown"][port]
-                news.append(tx("n.ban_lifted", port=PORTS[port]["name"]))
-                self._ev("market", "ban_lifted", "The contraband ban in {} has ended".format(PORTS[port]["name"]), port=port)
+                s.setdefault("ban_goods", {}).pop(port, None)
+                what = names_of(goods)
+                news.append(tx("n.ban_lifted", port=PORTS[port]["name"], contraband=what.lower(), Contraband=what))
+                self._ev("market", "ban_lifted", "The ban on {} in {} has ended".format(what, PORTS[port]["name"]),
+                         port=port, goods=goods)
         before = {port: dict(row) for port, row in s["prices"].items()}
         if self._chance(ev["shock_chance"], "shock", "Glut or shortage this month"):
             port, good = rng.choice(list(PORTS)), rng.choice(list(GOODS))
@@ -1072,14 +1227,17 @@ class Game:
                 s["shocks"][-1]["turns"]), port=port, good=good, mult=mult, turns=s["shocks"][-1]["turns"])
             news.append(tx("n.scarce" if mult > 1 else "n.glut", good=GOODS[good]["name"],
                            good_lower=GOODS[good]["name"].lower(), port=PORTS[port]["name"]))
-        if contraband() and self._chance(ev["ban_chance"], "ban", "A port bans contraband this month"):
+        if (contraband() or sometimes_contraband()) and self._chance(ev["ban_chance"], "ban", "A port bans contraband this month"):
             open_ports = [k for k in PORTS if not PORTS[k].get("no_ban") and k not in s["crackdown"]]
             if open_ports:
                 port = rng.choice(open_ports)
                 s["crackdown"][port] = rng.randint(ev["ban_min_turns"], ev["ban_max_turns"])
-                news.append(tx("n.ban", port=PORTS[port]["name"]))
-                self._ev("market", "ban", "{} bans contraband for {} months".format(
-                    PORTS[port]["name"], s["crackdown"][port]), port=port, turns=s["crackdown"][port])
+                self._roll_ban_goods(port)
+                goods = self.banned(port)
+                what = names_of(goods)
+                news.append(tx("n.ban", port=PORTS[port]["name"], contraband=what.lower(), Contraband=what))
+                self._ev("market", "ban", "{} bans {} for {} months".format(
+                    PORTS[port]["name"], what, s["crackdown"][port]), port=port, turns=s["crackdown"][port], goods=goods)
         for port in PORTS:
             for g, spec in GOODS.items():
                 base = spec["base"] * PORTS[port]["mods"].get(g, 1.0)
@@ -1163,21 +1321,24 @@ class Game:
             who, PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
             "/".join(str(sh["hull"]) for sh in p["ships"]), self.used(p), self.capacity(p), money(p["cash"])),
             p, port=dest, cargo=dict(p["cargo"]), cash=int(p["cash"]))
-        held = sum(p["cargo"].get(g, 0) for g in contraband())
+        risky = self.at_risk(dest)
+        held = sum(p["cargo"].get(g, 0) for g in risky)
         if held:
             banned = dest in self.s["crackdown"]
             chance = (cb["seize_banned"] - cb["seize_rep_relief"] * p["rep"][dest]) if banned else cb["seize_chance"]
             if self._chance(chance * MULT["seizure"], "seizure", "{}: customs search in {} ({} units of contraband, {}, standing {})".format(
                     who, PORTS[dest]["name"], held, "banned here" if banned else "no ban", int(round(p["rep"][dest]))), p):
                 fine = int(min(p["cash"], held * cb["fine_per_unit"]))
-                for g in contraband():
-                    p["cargo"].pop(g, None)
+                taken = {g: p["cargo"].pop(g) for g in risky if p["cargo"].get(g)}
+                what = names_of(list(taken))
                 p["cash"] -= fine
                 self._gain_rep(p, dest, -cb["rep_penalty"])
-                log.append(tx("l.seized", qty=held, fine=money(fine)))
-                news.append(tx("n.caught", name=p["name"], firm=p["firm"], port=PORTS[dest]["name"]))
-                self._ev("voyage", "seized", "{}: customs in {} seized {} units and fined {}; standing -{}".format(
-                    who, PORTS[dest]["name"], held, money(fine), cb["rep_penalty"]), p, qty=held, fine=fine, port=dest)
+                log.append(tx("l.seized", qty=held, fine=money(fine), contraband=what.lower(), Contraband=what))
+                news.append(tx("n.caught", name=p["name"], firm=p["firm"], port=PORTS[dest]["name"],
+                               contraband=what.lower(), Contraband=what))
+                self._ev("voyage", "seized", "{}: customs in {} seized {} units of {} and fined {}; standing -{}".format(
+                    who, PORTS[dest]["name"], held, what, money(fine), cb["rep_penalty"]), p, qty=held, fine=fine,
+                    port=dest, goods=taken)
 
     def _battle(self, p, n, label, hit, dmg):
         rng, log, pi = self.rng, p["log"], R["pirates"]
@@ -1316,6 +1477,7 @@ class Game:
             "years": s["years"], "turns_left": max(0, s["years"] * 12 - s["turn"]),
             "players": standings, "news": s["news"][:14],
             "weather": s["weather"], "crackdown": sorted(s["crackdown"]),
+            "bans": {k: self.banned(k) for k in sorted(s["crackdown"])},
             "waiting": [q["name"] for q in standings if q["present"] and not q["ready"]],
             "me": None,
         }
@@ -1342,8 +1504,10 @@ class Game:
                 "ready": p["ready"], "dest": p["dest"], "orders": p["orders"],
                 "log": p["log"], "known": p["known"],
                 "prices": {g: round(v, 2) for g, v in s["prices"][port].items()},
+                "basis": {g: round(v, 2) for g, v in (p.get("basis") or {}).items()},   # average paid per unit
                 "spread": round(sp, 4),
-                "dues": self.dues(p),
+                "dues": self.dues(p), "slip": bool(p.get("slip")),
+                "tax": self.tax(p, 1.0), "declare": float(p.get("declare", 1.0)),
             }
         return out
 
@@ -1366,7 +1530,8 @@ class Game:
         return {"phase": s["phase"], "turn": s["turn"], "date": date_label(s["turn"]), "years": s["years"],
                 "turns_left": max(0, s["years"] * 12 - s["turn"]), "players": players,
                 "prices": {port: {g: round(v, 1) for g, v in row.items()} for port, row in s["prices"].items()},
-                "weather": s["weather"], "crackdown": s["crackdown"], "shocks": s["shocks"], "news": s["news"]}
+                "weather": s["weather"], "crackdown": s["crackdown"], "ban_goods": s.get("ban_goods", {}),
+                "bans": {k: self.banned(k) for k in s["crackdown"]}, "shocks": s["shocks"], "news": s["news"]}
 
 
 def static_data():
@@ -1384,6 +1549,8 @@ def static_data():
             "impact": R["market"]["impact"], "lengths": R["game"]["lengths"],
             "start_year": R["game"]["start_year"], "renew_at": R["liyuen"]["renew_at"],
             "ban_price_mult": R["events"]["ban_price_mult"],
+            "dues_rules": {k: R["dues"][k] for k in ("slip_caught", "slip_mult", "slip_rep")},
+            "tax_rules": {k: R["tax"][k] for k in ("audit_max", "penalty_mult", "rep")},
             "forecast_accuracy": R["weather"]["forecast_accuracy"],
             "brand": b, "graphics": CFG["graphics"], "colors": CFG["theme"]["player_colors"],
             "rating": CFG["content"]["rating"],

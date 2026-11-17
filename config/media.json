@@ -2506,6 +2506,14 @@
      "how": "first"
     }
    ]
+  },
+  "port:foochow": {
+   "url": "",
+   "item": "",
+   "since": "2026-11-16 22:04",
+   "bytes": 0,
+   "mtime": 0,
+   "history": []
   }
  }
 }

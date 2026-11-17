@@ -240,6 +240,40 @@ CHARACTERS = {
                            "pinned with a gold fan comb, lantern smoke and green baize glow, amused knowing gaze straight "
                            "into the camera as if she has already bet against you, {style}",
     },
+    "mayor": {
+        "name": "Her Worship the Mayor", "title": "Mayor of the Port & Keeper of the Harbour Watch", "brand_link": "",
+        "age": 47, "origin": "Each port's own", "home_port": "hongkong", "color": "#a4532f", "portrait": "",
+        "voice_id": "Deborah", "speaking_rate": 0.94,
+        "delivery": "regal, unhurried and dangerously polite, a port mayor whose courtesy is a loaded pistol",
+        "catchphrase": "My harbour, Captain. My watch. My silver.",
+        "bio": "Every treaty port on the China Seas has its Mayor, and every one of them came up the same way: "
+               "through the harbour office, the counting house and a husband or two who did not last. She sees "
+               "every ship off personally. She speaks only when a captain tries to leave without paying.",
+        "quirk": "Turns the chain of office on her desk one link at a time while she decides what you owe.",
+        "vice": "Good port wine, better gossip, and the sound of a dodger's purse being emptied on her desk.",
+        "secret": "The harbour watch is three old men and a lantern. Her reputation does the rest.",
+        "stats": {"cunning": 8, "nerve": 7, "charm": 6, "greed": 7},
+        "portrait_prompt": "An {adult} woman (age 47), the Mayor of a treaty port behind a teak harbour-office desk, "
+                           "ledger and iron strongbox before her, gold chain of office over a fitted pirate frock coat "
+                           "and corset, harbour lanterns through the window behind, cool appraising smile, {style}",
+    },
+    "taxlady": {
+        "name": "The Tax Collector", "title": "Collector of Revenue & Keeper of the Ledger", "brand_link": "",
+        "age": 36, "origin": "Each port's own", "home_port": "hongkong", "color": "#3f6e6a", "portrait": "",
+        "voice_id": "Olivia", "speaking_rate": 0.96,
+        "delivery": "precise, amused and icy, a revenue collector who already knows the true figure before you lie",
+        "catchphrase": "I can count, Captain. Can you?",
+        "bio": "She walks the gangways with a tally book and a customs seal, and she remembers every price "
+               "paid on her wharf this season. Most captains declare honestly. She speaks only to the ones "
+               "who do not, and only after she has been through their books.",
+        "quirk": "Licks her pencil before writing down a fine, slowly, so you can watch.",
+        "vice": "Clean columns, sharp pencils, and captains who think a smile will balance a ledger.",
+        "secret": "She audits at random far more often than she admits; the fear is cheaper than the clerks.",
+        "stats": {"cunning": 9, "nerve": 6, "charm": 5, "greed": 5},
+        "portrait_prompt": "An {adult} woman (age 36), a treaty-port tax collector on a busy gangway with an open "
+                           "tally book, pencil and brass customs seal, strongbox at her feet, fitted dark revenue coat "
+                           "over a corset, spectacles pushed up into pinned hair, knowing half-smile, {style}",
+    },
 }
 for _c in CHARACTERS.values():
     _c["portrait_prompt"] = _c["portrait_prompt"].format(adult=_ADULT, style=_STYLE)
@@ -260,6 +294,9 @@ for _who, _keys in {
                    "e.fleet_limit", "e.ship_cost", "e.no_such_ship", "e.last_ship", "e.unload_first",
                    "e.no_more_guns", "e.gun_cost", "e.nothing_to_repair"],
     "customs": ["l.seized", "n.ban", "n.ban_lifted", "n.caught"],
+    # The Mayor and the Tax collector speak only when they catch a captain (owner's decision).
+    "mayor": ["l.slip_caught"],
+    "taxlady": ["l.tax_caught"],
     "crier": ["n.opening", "n.start_one", "n.start_many", "n.game_over", "n.scarce", "n.glut", "n.wrecked",
               "m.begin", "m.new_game"],
 }.items():
@@ -274,6 +311,8 @@ for _who, _keys in {
 # (or stock family) wording; reword a line and it is read in full unless the
 # Admin page gives it a spoken version of its own (cfg voice.say).
 SAY = {
+    "l.slip_caught": "Slipping out of {port} in the dark, Captain? My watch never sleeps. You will pay double, and {port} will remember your name.",
+    "l.tax_caught": "Did you think I could not count, Captain? The full tax, a fine on top, and {port} will not forget it.",
     "e.full": "This game is full.",
     "e.years": "Choose one of the game lengths shown.",
     "e.no_room": "There is not enough room in the hold.",

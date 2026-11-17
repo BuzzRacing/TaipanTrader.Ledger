@@ -127,6 +127,7 @@ One turn is one month. Everyone does their port business at the same time: trade
 - **Li Yuen.** Pay his agent in Hong Kong and his fleets leave you alone, and sometimes drive off other pirates.
 - **Money.** The bank in Hong Kong pays 0.5% a month and is safe from thieves. Elder Brother Wu lends at 6% a month, compounding.
 - **Opium.** The most profitable cargo and the riskiest. Ports ban it from time to time: prices jump there, and so do seizures.
+- **Gold.** Legal bullion: high value, steady prices, cheap in Nagasaki and dear in Calcutta. But when a port declares a ban it sometimes covers gold too (50% by default, *Cargo → Sometimes contraband* in Admin). While it does, gold sells for more there and customs will seize it. The market and price board flag gold as banned in those ports.
 - **Winning.** When the game length runs out, the house with the highest net worth is Taipan.
 
 ## Project layout

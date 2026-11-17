@@ -305,6 +305,25 @@
    "debt": 1500,
    "ship": "junk",
    "hull": 60
+  },
+  "dues": {
+   "anchorage": 10.0,
+   "tonnage": 5.0,
+   "repair_share": 0.05,
+   "yard_share": 0.03,
+   "bank_share": 0.01,
+   "loan_share": 0.01,
+   "warehouse": 2.0,
+   "rep_discount": 0.2,
+   "slip_caught": 0.35,
+   "slip_mult": 2.0,
+   "slip_rep": 10.0
+  },
+  "tax": {
+   "rate": 0.1,
+   "audit_max": 0.5,
+   "penalty_mult": 3.0,
+   "rep": 8.0
   }
  },
  "goods": {
@@ -314,7 +333,8 @@
    "base": 4200.0,
    "vol": 0.16,
    "depth": 60,
-   "contraband": true
+   "contraband": true,
+   "ban_odds": 0.0
   },
   "silk": {
    "name": "Silk",
@@ -322,7 +342,8 @@
    "base": 520.0,
    "vol": 0.1,
    "depth": 160,
-   "contraband": false
+   "contraband": false,
+   "ban_odds": 0.0
   },
   "porcelain": {
    "name": "Porcelain",
@@ -330,7 +351,8 @@
    "base": 230.0,
    "vol": 0.08,
    "depth": 250,
-   "contraband": false
+   "contraband": false,
+   "ban_odds": 0.0
   },
   "arms": {
    "name": "Arms",
@@ -338,7 +360,8 @@
    "base": 160.0,
    "vol": 0.1,
    "depth": 250,
-   "contraband": false
+   "contraband": false,
+   "ban_odds": 0.0
   },
   "spices": {
    "name": "Spices",
@@ -346,7 +369,8 @@
    "base": 95.0,
    "vol": 0.09,
    "depth": 450,
-   "contraband": false
+   "contraband": false,
+   "ban_odds": 0.0
   },
   "tea": {
    "name": "Tea",
@@ -354,7 +378,8 @@
    "base": 70.0,
    "vol": 0.08,
    "depth": 500,
-   "contraband": false
+   "contraband": false,
+   "ban_odds": 0.0
   },
   "rice": {
    "name": "Rice",
@@ -362,7 +387,8 @@
    "base": 14.0,
    "vol": 0.07,
    "depth": 1200,
-   "contraband": false
+   "contraband": false,
+   "ban_odds": 0.0
   },
   "general": {
    "name": "General Cargo",
@@ -370,7 +396,17 @@
    "base": 9.0,
    "vol": 0.07,
    "depth": 1200,
-   "contraband": false
+   "contraband": false,
+   "ban_odds": 0.0
+  },
+  "gold": {
+   "name": "Gold",
+   "family_name": "",
+   "base": 2400.0,
+   "vol": 0.05,
+   "depth": 90,
+   "contraband": false,
+   "ban_odds": 0.5
   }
  },
  "regions": {
@@ -459,7 +495,8 @@
    "mods": {
     "arms": 0.8,
     "tea": 0.9,
-    "general": 0.85
+    "general": 0.85,
+    "gold": 1.05
    },
    "name": "Hong Kong",
    "lon": 114.2,
@@ -467,7 +504,8 @@
    "region": "china",
    "shipyard": true,
    "no_ban": false,
-   "label_left": true
+   "label_left": true,
+   "dues": 1.0
   },
   "shanghai": {
    "mods": {
@@ -475,7 +513,8 @@
     "tea": 0.6,
     "opium": 1.35,
     "arms": 1.3,
-    "spices": 1.3
+    "spices": 1.3,
+    "gold": 1.15
    },
    "name": "Shanghai",
    "lon": 121.5,
@@ -483,7 +522,8 @@
    "region": "north",
    "shipyard": true,
    "no_ban": false,
-   "label_left": true
+   "label_left": true,
+   "dues": 1.2
   },
   "nagasaki": {
    "mods": {
@@ -492,7 +532,8 @@
     "arms": 1.5,
     "spices": 1.4,
     "rice": 1.3,
-    "opium": 1.2
+    "opium": 1.2,
+    "gold": 0.55
    },
    "name": "Nagasaki",
    "lon": 129.9,
@@ -500,7 +541,8 @@
    "region": "north",
    "shipyard": false,
    "no_ban": false,
-   "label_left": true
+   "label_left": true,
+   "dues": 1.4
   },
   "manila": {
    "mods": {
@@ -509,7 +551,8 @@
     "spices": 0.9,
     "silk": 1.3,
     "porcelain": 1.3,
-    "tea": 1.2
+    "tea": 1.2,
+    "gold": 0.85
    },
    "name": "Manila",
    "lon": 121.0,
@@ -517,7 +560,8 @@
    "region": "china",
    "shipyard": false,
    "no_ban": false,
-   "label_left": false
+   "label_left": false,
+   "dues": 0.8
   },
   "saigon": {
    "mods": {
@@ -533,7 +577,8 @@
    "region": "china",
    "shipyard": false,
    "no_ban": false,
-   "label_left": false
+   "label_left": false,
+   "dues": 0.9
   },
   "bangkok": {
    "mods": {
@@ -541,7 +586,8 @@
     "spices": 0.8,
     "silk": 1.25,
     "arms": 1.2,
-    "tea": 1.2
+    "tea": 1.2,
+    "gold": 1.2
    },
    "name": "Bangkok",
    "lon": 100.5,
@@ -549,7 +595,8 @@
    "region": "south",
    "shipyard": false,
    "no_ban": false,
-   "label_left": true
+   "label_left": true,
+   "dues": 0.7
   },
   "singapore": {
    "mods": {
@@ -566,7 +613,8 @@
    "region": "south",
    "shipyard": true,
    "no_ban": false,
-   "label_left": true
+   "label_left": true,
+   "dues": 0.6
   },
   "batavia": {
    "mods": {
@@ -584,7 +632,8 @@
    "region": "south",
    "shipyard": false,
    "no_ban": false,
-   "label_left": false
+   "label_left": false,
+   "dues": 1.1
   },
   "calcutta": {
    "mods": {
@@ -594,7 +643,8 @@
     "rice": 0.9,
     "silk": 1.3,
     "spices": 1.3,
-    "porcelain": 1.5
+    "porcelain": 1.5,
+    "gold": 1.35
    },
    "name": "Calcutta",
    "lon": 88.4,
@@ -602,7 +652,27 @@
    "region": "bengal",
    "shipyard": true,
    "no_ban": true,
-   "label_left": false
+   "label_left": false,
+   "dues": 1.3
+  },
+  "foochow": {
+   "mods": {
+    "tea": 0.5,
+    "porcelain": 0.85,
+    "opium": 1.3,
+    "arms": 1.25,
+    "spices": 1.2,
+    "rice": 1.15,
+    "general": 1.1
+   },
+   "name": "Foochow",
+   "lon": 119.3,
+   "lat": 26.1,
+   "region": "china",
+   "shipyard": false,
+   "no_ban": false,
+   "label_left": true,
+   "dues": 1.0
   }
  },
  "ships": {
@@ -953,6 +1023,56 @@
     "greed": 6
    },
    "portrait_prompt": "An unmistakably adult Macanese woman (age 34), the bookmaker who runs the Golden Fan gambling house on the Hong Kong waterfront, leaning over a lacquered fan-tan table with one ringed hand on a gold-and-jade abacus, a leather tally book open beside towers of silver dollars, a chalked odds board of trading-house names behind her, fitted black silk cheongsam-cut gown with oxblood and gold embroidery and a daring high slit, jade drop earrings, glossy black hair pinned with a gold fan comb, lantern smoke and green baize glow, amused knowing gaze straight into the camera as if she has already bet against you, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "mayor": {
+   "name": "Her Worship the Mayor",
+   "title": "Mayor of the Port & Keeper of the Harbour Watch",
+   "brand_link": "",
+   "age": 47,
+   "origin": "Each port's own",
+   "home_port": "hongkong",
+   "color": "#a4532f",
+   "portrait": "",
+   "voice_id": "Deborah",
+   "speaking_rate": 0.94,
+   "delivery": "regal, unhurried and dangerously polite, a port mayor whose courtesy is a loaded pistol",
+   "catchphrase": "My harbour, Captain. My watch. My silver.",
+   "bio": "Every treaty port on the China Seas has its Mayor, and every one of them came up the same way: through the harbour office, the counting house and a husband or two who did not last. She sees every ship off personally. She speaks only when a captain tries to leave without paying.",
+   "quirk": "Turns the chain of office on her desk one link at a time while she decides what you owe.",
+   "vice": "Good port wine, better gossip, and the sound of a dodger's purse being emptied on her desk.",
+   "secret": "The harbour watch is three old men and a lantern. Her reputation does the rest.",
+   "stats": {
+    "cunning": 8,
+    "nerve": 7,
+    "charm": 6,
+    "greed": 7
+   },
+   "portrait_prompt": "An unmistakably adult woman (age 47), the Mayor of a treaty port behind a teak harbour-office desk, ledger and iron strongbox before her, gold chain of office over a fitted pirate frock coat and corset, harbour lanterns through the window behind, cool appraising smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+  },
+  "taxlady": {
+   "name": "The Tax Collector",
+   "title": "Collector of Revenue & Keeper of the Ledger",
+   "brand_link": "",
+   "age": 36,
+   "origin": "Each port's own",
+   "home_port": "hongkong",
+   "color": "#3f6e6a",
+   "portrait": "",
+   "voice_id": "Olivia",
+   "speaking_rate": 0.96,
+   "delivery": "precise, amused and icy, a revenue collector who already knows the true figure before you lie",
+   "catchphrase": "I can count, Captain. Can you?",
+   "bio": "She walks the gangways with a tally book and a customs seal, and she remembers every price paid on her wharf this season. Most captains declare honestly. She speaks only to the ones who do not, and only after she has been through their books.",
+   "quirk": "Licks her pencil before writing down a fine, slowly, so you can watch.",
+   "vice": "Clean columns, sharp pencils, and captains who think a smile will balance a ledger.",
+   "secret": "She audits at random far more often than she admits; the fear is cheaper than the clerks.",
+   "stats": {
+    "cunning": 9,
+    "nerve": 6,
+    "charm": 5,
+    "greed": 5
+   },
+   "portrait_prompt": "An unmistakably adult woman (age 36), a treaty-port tax collector on a busy gangway with an open tally book, pencil and brass customs seal, strongbox at her feet, fitted dark revenue coat over a corset, spectacles pushed up into pinned hair, knowing half-smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   }
  },
  "voice": {
