@@ -558,14 +558,16 @@ function barStyle(tr) {
 }
 
 function tradeButton(g, tr) {
-  if (!tr.side) return `<button type="button" class="mk-go" data-act="trade" data-good="${g}" disabled>
-    <b>${tr.max ? te("market.drag") : te("market.no_room")}</b></button>`;
+  // The button and, to its right, its own profit/loss slot. The slot is always there (empty unless a
+  // sale is lined up) so the drag bar keeps the same width and never jumps while dragging.
+  if (!tr.side) return `<div class="mk-act"><button type="button" class="mk-go" data-act="trade" data-good="${g}" disabled>
+    <b>${tr.max ? te("market.drag") : te("market.no_room")}</b></button><span class="mk-pl-slot"></span></div>`;
   const total = quote(g, tr.qty, tr.side), pl = tr.side === "sell" ? profitOf(g, tr.qty, total) : null;
-  const plTag = pl === null ? "" : `<em class="mk-pl ${pl >= 0 ? "up" : "down"}">${te(pl >= 0 ? "market.pl_up" : "market.pl_down", { profit: money(Math.abs(pl)) })}</em>`;
   const tip = pl === null ? "" : ` title="${te(pl >= 0 ? "market.pl_tip_up" : "market.pl_tip_down", { profit: money(Math.abs(pl)), paid: money(paidFor(g)) })}"`;
-  return `<button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}"${tip}>
+  const plTag = pl === null ? "" : `<em class="mk-pl ${pl >= 0 ? "up" : "down"}"${tip}>${te(pl >= 0 ? "market.pl_up" : "market.pl_down", { profit: money(Math.abs(pl)) })}</em>`;
+  return `<div class="mk-act${pl === null ? "" : " has-pl"}"><button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}"${tip}>
     <b>${te(tr.side === "buy" ? "btn.buy" : "btn.sell")} ${tr.qty.toLocaleString()}</b>
-    <small>${money(total)}</small>${plTag}</button>`;
+    <small>${money(total)}</small></button><span class="mk-pl-slot">${plTag}</span></div>`;
 }
 
 /* What the house paid for a cargo on average (engine p["basis"], hold and warehouse together), or

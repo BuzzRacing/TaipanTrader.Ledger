@@ -8,6 +8,7 @@ Run:  python server.py [--port 8765] [--new] [--admin-password WORD]
   /admin       command center: every setting, the look, the wording, the live game
   /stats       the player's statistics: this voyage and career, charts and heat maps (see stats.py)
   /voice/...   lines read aloud by the cast (Inworld voices; see voice.py)
+  /api/voice/floor  whose turn it is to speak, so screens never talk over each other (voicefloor.py)
   journal/     everything that happens, written down (see journal.py); read it on
                the Admin page under Captain's Report
   /events      live state stream (Server-Sent Events)
@@ -44,6 +45,7 @@ import media
 import stats
 import strings
 import voice
+import voicefloor
 from engine import Game, GameError, static_data
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -504,6 +506,10 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/admin/"):
                 return self._admin_post(path[len("/api/admin/"):], parse_qs(url.query))
             body = self._body()
+            if path == "/api/voice/floor":
+                once = body.get("clip") if body.get("once") else ""
+                return self._send(200, dict(voicefloor.FLOOR.ask(self.client_address[0], body.get("id"),
+                                                                 body.get("op"), once), ok=True))
             if path == "/api/join":
                 with HUB.cond:
                     try:
@@ -1210,6 +1216,7 @@ def main():
     media.on_change(_media_changed)
     media.JOBS.start(imagegen.generate_image, lambda level, msg: journal.log(level, "media", msg))
     join_url = "http://{}:{}".format(lan_address(), args.port)
+    voicefloor.FLOOR.add_own(lan_address())
     journal.log("INFO", "server", "Server starting on port {} ({}, Python {}, code {})".format(
         args.port, platform.system(), platform.python_version(), git_commit() or "unversioned"),
         port=args.port, folder=ROOT, join_url=join_url, commit=git_commit(), new=bool(args.new))
