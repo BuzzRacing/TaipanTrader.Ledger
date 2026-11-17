@@ -159,6 +159,11 @@ const Customs = (() => {
     return `<div class="cx-odds"><small>${te("customs.odds_title")}</small><div class="cx-bar" data-cx="bar">${seg("t", n.pt, t("customs.odds_tax"))}${seg("b", n.pb, t("customs.odds_buy"))}${seg("a", n.pa, t("customs.odds_caught"))}</div>${legend}</div>`;
   }
 
+  /* A line declared under half its worth: say plainly what she may do with it. */
+  function lowWarn(l) {
+    return !l.sealed && l.p < 50 ? te("customs.low_warn", { price: money(l.d), value: money(l.ln.value) }) : "";
+  }
+
   function chip(p, sealed) {
     return sealed ? `<em class="cx-chip sealed">${te("customs.sealed")}</em>` : p > 100 ? `<em class="cx-chip over">${te("customs.over")} +${p - 100}%</em>`
       : p < 100 ? `<em class="cx-chip under">${te("customs.under")} −${100 - p}%</em>`
@@ -176,7 +181,8 @@ const Customs = (() => {
       <span class="cx-slide" style="--h:${(100 / max * 100).toFixed(1)}%"><input type="range" class="cx-range" data-k="cx_${g}" min="0" max="${max}" step="1" value="${l.p}" ${l.sealed ? "disabled" : ""}
         aria-label="${te("customs.declare")} ${esc(D.goods[g].name)}"><span data-cx="chip_${g}">${chip(l.p, l.sealed)}</span></span>
       <span class="cx-decl"><small>${te("customs.declare")}</small><b data-cx="d_${g}">${l.sealed ? "—" : money(l.d)}</b></span>
-      <span class="cx-tax"><small>${te("customs.tax")}</small><b data-cx="t_${g}">${money(l.tax)}</b></span>${seal}</div>`;
+      <span class="cx-tax"><small>${te("customs.tax")}</small><b data-cx="t_${g}">${money(l.tax)}</b></span>${seal}
+      <p class="cx-warn" data-cx="w_${g}">${lowWarn(l)}</p></div>`;
   }
 
   function declareHtml(c) {
@@ -265,7 +271,7 @@ const Customs = (() => {
     const set = (k, h) => { const o = box.querySelector(`[data-cx="${k}"]`); if (o) o.innerHTML = h; };
     n.lines.forEach(l => {
       const g = l.ln.good;
-      set("d_" + g, l.sealed ? "—" : money(l.d)); set("t_" + g, money(l.tax)); set("chip_" + g, chip(l.p, l.sealed));
+      set("d_" + g, l.sealed ? "—" : money(l.d)); set("t_" + g, money(l.tax)); set("chip_" + g, chip(l.p, l.sealed)); set("w_" + g, lowWarn(l));
     });
     set("declared", money(n.declared)); set("tax", money(n.tax));
     set("ifb", `<small>${te("customs.if_bought")}</small><b>${n.under ? te("customs.if_bought_sub", { amount: money(n.lose) }) : "—"}</b>`);

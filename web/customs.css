@@ -126,3 +126,6 @@
 .cx-line.sealed .cx-seal { color: var(--gold); }
 .cx-chip.sealed { color: var(--gold); }
 .cx-out.sealed { color: var(--gold); }
+/* The plain warning under a line declared below half its worth. */
+.cx-warn { grid-column: 1 / -1; margin: 0; font-size: .8rem; font-weight: 600; color: var(--blood-hi); }
+.cx-warn:empty { display: none; }

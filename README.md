@@ -154,5 +154,6 @@ One turn is one month. Everyone does their port business at the same time: trade
 | `tests/config_test.py` | Checks the settings, the wording, and that a game survives its ports, cargoes and ships being changed mid-game. |
 | `tests/journal_test.py` | Plays recorded bot games through a restart, admin corrections and a settings change, then replays every month from the journal and checks each comes out exactly as recorded. |
 | `tests/stats_test.py` | Plays recorded bot games and checks the Tally Book: the books balance, fair play holds while a game runs, everything opens when it ends, and the career adds up. |
+| `tests/lender_test.py` | Checks Madam Wu's advice when a house borrows or repays: the tier follows the collectors' line, the lines take turns, the voice drops the amounts, and family wording. |
 | `tests/customs_test.py` | Checks the Port Authority: the desk on arrival, over-declaring, buyouts and buy-backs, the honest filing at month end, drifting rates and who reads her lines. |
 | `tests/voice_test.py` | Checks the cast and the voice layer against a pretend Inworld, so it runs offline. |

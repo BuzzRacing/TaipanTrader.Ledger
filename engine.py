@@ -1320,16 +1320,48 @@ class Game:
             p["debt"] += q
             p["cash"] += q
             self._tally(p, "loan", q)
-            return tx("m.borrowed", amount=money(q), rate="{:g}".format(round(loan_rate() * 100, 2)))
+            rate = "{:g}".format(round(loan_rate() * 100, 2))
+            c = self.collectors(p)
+            share = float(R["bank"].get("wu_easy_share", 0.25))
+            tier = "danger" if c and c["calls_in"] else \
+                "careful" if c and p["debt"] >= share * c["line"] else "easy"
+            return self._wu(p, "m.borrowed", tier, amount=money(q), rate=rate)
         q = min(q, int(math.ceil(p["debt"])), int(p["cash"]))
         if q <= 0:
             raise GameError(tx("e.nothing_to_repay"))
+        before = self.collectors(p)
         p["debt"] = max(0.0, p["debt"] - q)
         p["cash"] -= q
         if p["debt"] < 1:
             p["debt"] = 0.0
         self._tally(p, "loan", q)
-        return tx("m.repaid", amount=money(q))
+        after = self.collectors(p)
+        if p["debt"] <= 0:
+            tier = "clear"
+        elif after and after["calls_in"]:
+            tier = "still"
+        elif before and before["calls_in"]:
+            tier = "under"
+        else:
+            tier = "part"
+        return self._wu(p, "m.repaid", tier, amount=money(q),
+                        suggest=money(after["to_clear"]) if after and after["calls_in"] else "")
+
+    def _wu(self, p, key, tier, **kw):
+        """Madam Wu's word on a loan or a repayment: the receipt and her advice for how close the debt is
+        to the collectors' line. tier: easy / careful / danger (borrowing), part / still / under / clear
+        (repaying; "still" means still headed for a call, with {suggest} the amount that stops it).
+        She takes each tier's lines in turn (p["wu_said"]), so no dice are rolled and replays match.
+        Off (Admin > Economy > Bank and moneylender), or with a tier's lines all deleted: the plain receipt."""
+        if R["bank"].get("wu_advice", True):
+            count = 0
+            while "{}.{}.{}".format(key, tier, count) in TEXT:
+                count += 1
+            if count:
+                n = int(p.get("wu_said", 0))
+                p["wu_said"] = n + 1
+                return tx("{}.{}.{}".format(key, tier, n % count), home=PORTS[home_of(p)]["name"], **kw)
+        return tx(key, **kw)
 
     def _act_warehouse(self, p, a):
         self._home_only(p, tx("w.the_warehouse"))

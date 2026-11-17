@@ -13,7 +13,7 @@ let token = store("seatrader_token");
 let stream = null;
 let online = true;
 let reloading = false;
-const ui = { tab: "market", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
+const ui = { tab: "port", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
              spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false, meOpen: false,
              tally: false, tallyShown: false, tallyTurn: null,
              bookView: "signals", bookGood: null, bookPort: null, bookMode: "buy", bookRoute: null,
@@ -800,20 +800,33 @@ function portTab() {
   if (ui.portTurn !== S.turn) { ui.portTurn = S.turn; ui.portView = "arrival"; }
   const views = portViews();
   if (!views.includes(ui.portView)) ui.portView = "arrival";
-  const seg = `<div class="pt-tabs" role="tablist" aria-label="${te("port.views")}">${views.map(v =>
-    `<button type="button" role="tab" class="pt-tab${ui.portView === v ? " on" : ""}" data-act="port_view" data-v="${v}" aria-selected="${ui.portView === v}">${te("port.view." + v)}</button>`).join("")}</div>`;
+  const seg = `<nav class="pt-tabs" role="tablist" aria-label="${te("port.views")}">${views.map(v =>
+    `<button type="button" role="tab" class="pt-tab${ui.portView === v ? " on" : ""}" data-act="port_view" data-v="${v}" aria-selected="${ui.portView === v}"><span>${te("port.view." + v)}</span>${portBadge(v)}</button>`).join("")}</nav>`;
   const body = { arrival: portArrival, accounts: portAccounts, log: portLog, news: portNews, services: portServices }[ui.portView]();
   return `<div class="pt">${portStrip()}${seg}<div class="pt-view pt-${ui.portView}">${body}</div></div>`;
+}
+
+/* A small count on a sub-tab: things needing attention on Arrival, lines in this voyage's log, news items. */
+function portBadge(v) {
+  const me = S.me;
+  let n = 0, cls = "";
+  if (v === "arrival") {
+    n = (me.debt > 0 ? 1 : 0) + (me.protect <= D.renew_at ? 1 : 0) + ((me.ships || []).some(x => x.repair) ? 1 : 0)
+      + (((S.bans || {})[me.port] || []).some(g => me.cargo[g]) ? 1 : 0);
+    cls = "warn";
+  } else if (v === "log") n = (me.log || []).length;
+  else if (v === "news") n = (S.news || []).length;
+  return n ? `<em class="pt-badge ${cls}" aria-hidden="true">${n}</em>` : "";
 }
 
 function portStrip() {
   const me = S.me, last = (me.books || {}).last;
   const net = last ? plTotal(last.lines) : null;
   const rate = D.loan_rate, rep = (me.rep || {})[me.port];
-  const cell = (label, value, cls, sub) => `<div class="pt-fig ${cls || ""}"><span>${label}</span><b>${value}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  const cell = (label, value, cls, sub) => `<div class="pt-fig ${cls || ""}"><span>${label}</span><b>${value}</b><small>${sub || "&nbsp;"}</small></div>`;
   return `<div class="pt-strip">
-    ${cell(te(last && !last.sailed ? "port.fig.month" : "port.fig.voyage"), net === null ? "—" : esc(signed(net)), tone(net))}
-    ${cell(te("port.fig.worth"), money(me.worth), "", esc(me.rank))}
+    ${cell(te(last && !last.sailed ? "port.fig.month" : "port.fig.voyage"), net === null ? "—" : esc(signed(net)), tone(net), last ? esc(last.date) : "")}
+    ${cell(te("port.fig.worth"), money(me.worth), "worth", `<i class="pt-rank">${esc(me.rank)}</i>`)}
     ${cell(te("port.fig.owed"), money(me.debt), me.debt > 0 ? "down" : "")}
     ${cell(te("port.fig.interest"), money(me.debt * rate), me.debt > 0 ? "down" : "", te("port.fig.interest_rate", { rate: pct(rate, 2) }))}
     ${cell(te("port.fig.standing"), rep == null ? "—" : rep, "", te("port.fig.standing_in", { port: esc(portName(me.port)) }))}
@@ -832,7 +845,7 @@ function portArrival() {
     const lead = (me.log || []).slice(0, 4).map(l => `<li>${esc(l)}</li>`).join("");
     head = `<section class="card pt-land"><h2>${te("port.land." + key, { port: esc(portName(me.port)), from: esc(portName(last.from)) })}</h2>
       <p class="pt-sum">${te("port.land.sum_" + (net >= 0 ? "up" : "down"), { date: esc(last.date), net: money(Math.abs(net)) })}</p>
-      ${lead ? `<ul class="log pt-lead">${lead}</ul>${(me.log || []).length > 4 ? btn(te("port.land.more"), "port_view", 'data-v="log"', "link") : ""}` : ""}</section>`;
+      ${lead ? `<ul class="log pt-lead">${lead}</ul>${(me.log || []).length > 4 ? btn(te("port.land.more") + ' <span aria-hidden="true">&rsaquo;</span>', "port_view", 'data-v="log"', "link pt-more") : ""}` : ""}</section>`;
   }
   return `${head}
     <section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>
@@ -842,7 +855,9 @@ function portArrival() {
 /* What is worth doing in this port, most useful first. Each item can jump to the tab that does it. */
 function portTodo() {
   const me = S.me, items = [];
-  const go = (tab, label) => btn(label, "tab", `data-tab="${tab}"`, "pt-go");
+  const arrow = ' <span aria-hidden="true">&rsaquo;</span>';
+  const go = (tab, label) => btn(label + arrow, "tab", `data-tab="${tab}"`, "pt-go");
+  const goView = (v) => btn(te("port.view." + v) + arrow, "port_view", `data-v="${v}"`, "pt-go");
   if (me.ready) items.push(["ok", te(me.dest ? "port.todo.sailing" : "port.todo.staying", { port: esc(portName(me.dest || me.port)) }), go("chart", te("tab.chart"))]);
   // Cargo that sells here for more than it cost.
   const sells = Object.keys(me.cargo || {}).map(g => {
@@ -862,17 +877,17 @@ function portTodo() {
   if (aboard.length) items.push(["warn", te("port.todo.banned", { goods: aboard.map(g => D.goods[g].name).join(", ") }), ""]);
   const home = me.port === myHome();
   if (me.protect <= D.renew_at) items.push(["warn", ten(me.protect > 0 ? "port.todo.protect_low" : "port.todo.protect_none", me.protect),
-    home ? btn(te("port.view.services"), "port_view", 'data-v="services"', "pt-go") : ""]);
+    home ? goView("services") : ""]);
   if (me.debt > 0) items.push(["down", te(home ? "port.todo.debt_home" : "port.todo.debt", { interest: money(me.debt * D.loan_rate) }),
-    home ? btn(te("port.view.services"), "port_view", 'data-v="services"', "pt-go") : btn(te("port.view.accounts"), "port_view", 'data-v="accounts"', "pt-go")]);
+    goView(home ? "services" : "accounts")]);
   const coll = me.collectors;
   if (coll && coll.calls_in) items.push([coll.calls_in === 1 ? "down" : "warn", ten("port.todo.collectors", coll.calls_in, { amount: money(coll.to_clear) }),
-    btn(te("port.view.accounts"), "port_view", 'data-v="accounts"', "pt-go")]);
+    goView("accounts")]);
   if (!me.used && !me.ready) items.push(["", te("port.todo.empty"), go("market", te("tab.market"))]);
   if (!items.length) return `<p class="muted">${te("port.todo.none")}</p>`;
-  const icon = { up: "◆", warn: "⚠", down: "⚖", ok: "⚓", "": "•" };
+  const icon = { up: "◆", warn: "!", down: "⚖", ok: "⚓", "": "·" };
   return `<ul class="pt-list">${items.map(([k, text, act]) =>
-    `<li class="${k}"><i>${icon[k]}</i><span>${text}</span>${act}</li>`).join("")}</ul>`;
+    `<li class="${k || "plain"}"><i aria-hidden="true">${icon[k]}</i><span>${text}</span>${act || "<b></b>"}</li>`).join("")}</ul>`;
 }
 
 /* The port at a glance: what is cheap and dear, bans, the dealer's cut, dues, shipyard, the Port Authority, rivals. */
@@ -978,16 +993,20 @@ function portOwe() {
   rows += row(te("port.owe.protect"), me.protect > 0 ? ten("port.owe.months", me.protect) : te("port.owe.no_protect"), me.protect <= D.renew_at ? "down" : "");
   if (me.bank > 0) rows += row(te("port.owe.bank"), money(me.bank), "up", te("port.owe.bank_note", { rate: pct(D.bank_rate, 2), interest: money(me.bank * D.bank_rate) }));
   return `<table class="pt-table pt-owetable">${rows}</table>
-    ${home ? btn(te("port.owe.to_services"), "port_view", 'data-v="services"', "pt-go") : ""}`;
+    ${home ? `<div class="pt-actions">${btn(te("port.owe.to_services") + ' <span aria-hidden="true">&rsaquo;</span>', "port_view", 'data-v="services"', "pt-go")}</div>` : ""}`;
 }
 
 /* ---- Log */
 function portLog() {
   const me = S.me, bk = me.books || {};
-  const now = (me.log || []).length ? `<section class="card pt-logcard"><h2>${te("port.log.now", { date: esc(bk.last ? bk.last.date : S.date) })}</h2>
-      <ul class="log">${me.log.map(l => `<li>${esc(l)}</li>`).join("")}</ul>${btn(te("port.log.read"), "relog", "", "ghost")}</section>` : "";
-  const older = (bk.logbook || []).map(e => `<section class="card pt-logcard old"><h2>${esc(e.date)} <small>${te(e.from === e.to ? "port.log.at" : "port.log.route", { from: esc(portName(e.from)), to: esc(portName(e.to)) })}</small></h2>
-      <ul class="log">${(e.lines || []).map(l => `<li>${esc(l)}</li>`).join("")}</ul></section>`).join("");
+  const lines = list => `<ol class="pt-entries">${list.map(l => `<li>${esc(l)}</li>`).join("")}</ol>`;
+  const read = `<button type="button" class="primary pt-read" data-act="relog">${DECK_ICONS.speech_on}<span>${te("port.log.read")}</span></button>`;
+  const now = (me.log || []).length ? `<section class="card pt-logcard">
+      <header class="pt-cardhead"><h2>${te("port.log.now", { date: esc(bk.last ? bk.last.date : S.date) })}</h2>${read}</header>
+      ${lines(me.log)}</section>` : "";
+  const older = (bk.logbook || []).map(e => `<section class="card pt-logcard old">
+      <header class="pt-loghead"><b>${esc(e.date)}</b><span>${te(e.from === e.to ? "port.log.at" : "port.log.route", { from: esc(portName(e.from)), to: esc(portName(e.to)) })}</span></header>
+      ${lines(e.lines || [])}</section>`).join("");
   return now + older || `<section class="card"><p class="muted">${te("ledger.no_log")}</p></section>`;
 }
 
@@ -995,14 +1014,14 @@ function portLog() {
 function portNews() {
   const news = (S.news || []).map(n => {
     const at = n.indexOf(": ");
-    return at > 0 && at < 14 ? `<li><span class="pt-when">${esc(n.slice(0, at))}</span>${esc(n.slice(at + 2))}</li>` : `<li>${esc(n)}</li>`;
+    return at > 0 && at < 14 ? `<li><span class="pt-when">${esc(n.slice(0, at))}</span><span>${esc(n.slice(at + 2))}</span></li>` : `<li><span class="pt-when"></span><span>${esc(n)}</span></li>`;
   }).join("");
   const bans = Object.keys(S.bans || {}).map(k => `<tr><td>${esc(portName(k))}</td><td class="n">${(S.bans[k] || []).map(g => `<span class="pt-chip down">${esc(D.goods[g] ? D.goods[g].name : g)}</span>`).join("")}</td></tr>`).join("");
   const wx = Object.keys(D.regions || {}).map(r => {
     const lv = (S.weather || {})[r] || 0;
-    return `<tr><td>${esc(D.regions[r].name || r)}</td><td class="n"><span class="pt-wx wx${lv}">${esc(D.weather[lv])}</span></td></tr>`;
+    return `<tr><td>${esc(D.regions[r].name || r)}</td><td class="n"><span class="pt-wx wx${Math.min(3, lv)}">${esc(D.weather[lv])}</span></td></tr>`;
   }).join("");
-  return `<section class="card pt-newscard"><h2>${te("port.news.title")}</h2><ul class="log">${news || `<li class="muted">${te("ledger.no_news")}</li>`}</ul></section>
+  return `<section class="card pt-newscard"><h2>${te("port.news.title")}</h2><ul class="pt-news-list">${news || `<li class="muted">${te("ledger.no_news")}</li>`}</ul></section>
     <section class="card"><h2>${te("port.news.bans")}</h2>${bans ? `<table class="pt-table">${bans}</table>` : `<p class="muted">${te("port.news.no_bans")}</p>`}</section>
     <section class="card"><h2>${te("port.news.weather")}</h2><table class="pt-table">${wx}</table>
       <p class="muted pt-fine">${te("port.news.weather_note", { right: pct(D.forecast_accuracy, 0) })}</p></section>`;
@@ -1168,10 +1187,12 @@ function chartTab() {
     const heat = maxScore > minScore ? (score - minScore) / (maxScore - minScore) : 0;
     const rankLabel = i === 0 ? te("sail.easiest") : i === routes.length - 1 ? te("sail.hardest") : `${te("sail.route")} ${i + 1}`;
     const weatherKind = ["calm", "fair", "squalls", "typhoon"][wx] || "calm";
-    return `<button type="button" class="dest sail-card ${dest === k ? "on" : ""}" data-act="dest" data-port="${k}"
-      style="--risk-hue:${Math.round(118 * (1 - heat))};--risk-level:${Math.round(score * 100)}%" aria-label="${esc(p.name)}, ${rankLabel}">
+    const isHome = k === myHome();
+    return `<button type="button" class="dest sail-card ${dest === k ? "on" : ""}${isHome ? " home" : ""}" data-act="dest" data-port="${k}"
+      style="--risk-hue:${Math.round(118 * (1 - heat))};--risk-level:${Math.round(score * 100)}%" aria-label="${esc(p.name)}${isHome ? ", " + te("sail.home_port") : ""}, ${rankLabel}">
       <span class="dest-art">${Media.html("port", k, "banner", "dest-img", D.graphics.ports[k], { slot: "sail:" + k, mode: "fixed" })}
         ${S.crackdown.includes(k) ? `<span class="dest-ban tag bad">${te("tag.ban")}</span>` : ""}
+        ${isHome ? `<span class="dest-home">\u2693 ${te("sail.home_port")}</span>` : ""}
         <span class="dest-title"><b>${esc(p.name)}</b><span class="dest-pct">${Math.round(score * 100)}%</span></span></span>
       <span class="dest-data">
         <span class="dest-stat wx${wx}">${sailIcon(weatherKind)}<span><small>${te("sail.weather")}</small><strong>${esc(D.weather[wx])}</strong></span></span>
@@ -1187,12 +1208,30 @@ function chartTab() {
       <div class="sail-map">${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id, focusRoute: true })}</div></section>
     <section class="card"><h2>${te("orders.title")}</h2>
       <div class="seg">${btn(te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
-      <p class="muted">${me.protect > 0 ? te("orders.protected", { months: me.protect }) : te("orders.unprotected")}</p>
+      ${protectionNote()}
       ${slipChoice()}
       <div class="row">${btn(dest ? te("sail.go", { port: portName(dest) }) : te("sail.choose"), "sail", "", "primary wide", !dest || me.ready)}</div>
       <div class="row">${btn(te("sail.stay", { port: portName(me.port) }), "stay", "", "wide", me.ready)}</div>
       ${me.ready ? `<p class="muted">${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</p>
       <div class="row">${btn(te("sail.cancel"), "unsail", "", "ghost wide")}</div>` : ""}</section>`;
+}
+
+/* Protection under the standing orders. Comfortable cover is one quiet line; none (or nearly out) is a
+   warning panel with one button straight to where tribute is paid: the home port services when here,
+   otherwise it sets course for home. */
+function protectionNote() {
+  const me = S.me, home = myHome();
+  if (me.protect > D.renew_at) return `<p class="muted">${te("orders.protected", { months: me.protect })}</p>`;
+  const low = me.protect > 0;
+  const action = me.port === home
+    ? btn(te("orders.go_pay", { cost: money(me.protect_cost) }), "to_services", "", "primary or-pay", me.ready)
+    : btn(te("orders.sail_home"), "dest", `data-port="${home}"`, "primary or-pay" + (ui.dest === home ? " on" : ""), me.ready);
+  return `<div class="or-protect${low ? " low" : ""}" role="alert">
+      <span class="or-protect-icon" aria-hidden="true">${low ? "\u23F3" : "\u2620"}</span>
+      <div class="or-protect-text"><b>${te(low ? "orders.protect_low_title" : "orders.unprotected_title")}</b>
+        <span>${low ? ten("orders.protect_low_body", me.protect) : te("orders.unprotected_body")}
+          ${me.port === home ? "" : te("orders.pay_where")}</span></div>
+      ${action}</div>`;
 }
 
 /* Leaving port: pay the Mayor's bill, or try to slip out at night (engine Game._depart). Only offered
@@ -1455,6 +1494,7 @@ app.addEventListener("click", async e => {
     case "seen": ui.seenTurn = S.turn; Voice.drop("log"); return render();
     case "relog": ui.seenTurn = null; ui.spokenTurn = null; return render();
     case "port_view": ui.portView = d.v; return render();
+    case "to_services": ui.tab = "port"; ui.tally = false; ui.portTurn = S.turn; ui.portView = "services"; return render();
     case "pl_range": ui.plRange = d.v; return render();
     case "years": return act("settings", { years: +d.y });
     case "start": return act("start");

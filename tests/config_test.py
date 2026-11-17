@@ -72,7 +72,7 @@ if __name__ == "__main__":
                 "url date margin rep buy sell used cap balance room hold_used hold type hull max guns slots "
                 "yards pct names turns ports how " + "a b buys dmg first last o off place players ran rank result sales sunk v visits when won " +
                 "total paid owed declared profit tax caught chance level from to after now cargo line goods value base "
-                "age distance gap net seas of right interest hits shots left round secs").split()}), key
+                "age distance gap net seas of right interest hits shots left round secs suggest").split()}), key
     # 3b. random starts: every house in a different port, a different draw each game,
     #     and "home" puts everyone back in the home port
     assert config.validate({"rules": {"start": {"where": "the moon"}}})[1]

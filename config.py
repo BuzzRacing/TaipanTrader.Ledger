@@ -133,7 +133,7 @@ DEFAULTS = {
                    "rep_per_value": 5000, "rep_trade_cap": 2.0, "worth_cargo": 0.9},
         "bank": {"bank_rate": 0.005, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
-                 "debt_grace_months": 3, "debt_call_every": 3,
+                 "debt_grace_months": 3, "debt_call_every": 3, "wu_advice": True, "wu_easy_share": 0.25,
                  "mug_threshold": 20000, "mug_chance": 0.06, "mug_min": 0.15, "mug_max": 0.35},
         "fleet": {"max_fleet": 5, "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
                   "warehouse_cap": 10000, "repair_base": 6, "repair_price_div": 4000,
@@ -425,7 +425,13 @@ SECTIONS = [
              F("rules.bank.debt_grace_months", "Grace period before the first call (months)", "int",
                "Months in a row over the line before the collectors first call.", min=0, max=120),
              F("rules.bank.debt_call_every", "Then they call every (months)", "int", min=1, max=120),
-             F("rules.bank.debt_rep_penalty", "Standing lost each time they call", "num", min=0, max=100, step=0.5)]},
+             F("rules.bank.debt_rep_penalty", "Standing lost each time they call", "num", min=0, max=100, step=0.5),
+             F("rules.bank.wu_advice", "The moneylender gives advice when you borrow or repay", "bool",
+               "On: after the receipt she adds a word that follows how close the debt is to the collectors' line. "
+               "Off: the receipt only. Her lines are in Language & Text (Confirmations, m.borrowed.* and m.repaid.*)."),
+             _pct("rules.bank.wu_easy_share", "She starts to caution you at (share of the collectors' line)",
+                  "Below this the moneylender just encourages you; from here to the line she cautions; over it she warns.",
+                  0, 1)]},
          {"title": "Street robbery", "fields": [
              F("rules.bank.mug_threshold", "Silver on hand that tempts thieves", "int", min=0, max=10**9),
              _pct("rules.bank.mug_chance", "Chance per month"),
