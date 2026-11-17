@@ -10,7 +10,8 @@ let stream = null;
 let online = true;
 let reloading = false;
 const ui = { tab: "market", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
-             spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false };
+             spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false, meOpen: false,
+             tally: false, tallyShown: false, tallyTurn: null };
 let VS = {};             // voice settings: who is in the cast, what this screen reads aloud
 const app = document.getElementById("app");
 
@@ -103,11 +104,31 @@ function quote(good, qty, side) {
   return Math.floor(qty * (mid + mid / (1 + k)) / 2 * (1 - S.me.spread));
 }
 
+/* Silver and hold left for one cargo once every OTHER trade lined up on the market bars is counted:
+   buys elsewhere take room and silver, sells elsewhere give them back. Reads the raw bar values (not
+   tradeOf) so the bars never chase each other round in a loop. */
+function roomFor(good) {
+  const me = S.me;
+  let cash = me.cash, used = me.used;
+  if (!me.ready && D.goods) Object.keys(D.goods).forEach(g => {
+    if (g === good || ui.vals["t_" + g] == null) return;
+    const raw = parseInt(ui.vals["t_" + g], 10);
+    if (isNaN(raw)) return;
+    const have = me.cargo[g] || 0, d = Math.max(0, raw) - have;
+    if (!d) return;
+    const side = d > 0 ? "buy" : "sell", q = quote(g, Math.abs(d), side);
+    cash += side === "buy" ? -q : q;
+    used += d;
+  });
+  return { cash, free: Math.max(0, me.capacity - used) };
+}
+
 function maxBuy(good) {
-  let lo = 0, hi = S.me.capacity - S.me.used;
+  const r = roomFor(good);
+  let lo = 0, hi = r.free;
   while (lo < hi) {
     const mid = Math.ceil((lo + hi) / 2);
-    if (quote(good, mid, "buy") <= S.me.cash) lo = mid; else hi = mid - 1;
+    if (quote(good, mid, "buy") <= r.cash) lo = mid; else hi = mid - 1;
   }
   return lo;
 }
@@ -130,7 +151,7 @@ function newGameControl() {
 
 /* -------------------------------------------------------------- screens -- */
 /* The game screen ("the deck") is a fixed frame that never scrolls: top bar, tab rail, the working
-   pane, and the side column with the speaker stage, log and helm. Each region is only rewritten
+   pane, and the side column with the square speaker stage. Each region is only rewritten
    when its content changed, so scroll positions, focus and playing clips survive every update. */
 const drawn = {};
 function region(name, html) {
@@ -148,6 +169,7 @@ function deckFrame() {
       <nav class="dk-nav" data-r="nav"></nav>
       <main class="dk-main"><div class="dk-pane" data-r="pane"></div></main>
       <aside class="dk-side"><div class="dk-stage" id="stageSlot"></div><div class="dk-dyn" data-r="side"></div></aside>
+      <section class="dk-tallyhost" id="tallyHost"></section>
       <div class="dk-over" data-r="over"></div></div>`;
     deck = document.getElementById("deck");
   }
@@ -170,7 +192,7 @@ function render() {
   if (inGame) {
     const deck = deckFrame(), parts = gameScreen();
     deck.classList.toggle("locked", !!S.me.ready);
-    deck.dataset.tab = ui.tab;
+    deck.dataset.tab = ui.tally ? "tally" : ui.tab;
     ["top", "nav", "pane", "side", "over"].forEach(k => { if (!(ui.drag && k === "pane")) region(k, parts[k]); });
     if (ui.paneTab !== ui.tab) { ui.paneTab = ui.tab; app.querySelector(".dk-pane").scrollTop = 0; }
   } else {
@@ -178,6 +200,7 @@ function render() {
     if (!app.querySelector(".solo")) { forget(); app.innerHTML = '<div class="solo" data-r="solo"></div>'; }
     region("solo", html);
   }
+  syncTally(inGame);
 
   if (focusId) {
     const el = document.getElementById(focusId);
@@ -225,7 +248,16 @@ const STAGE_WOMEN = {
 };
 /* Stage titles until the server is restarted with the current strings.py. */
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {},
-  { "ledger.taxlady": "Tax collector of {port}, keeper of the ledger", "chart.mayor": "Mayor of {port}" });
+  { "ledger.taxlady": "Tax collector of {port}, keeper of the ledger", "chart.mayor": "Mayor of {port}",
+    "deck.me": "Captain {name}: voices and options", "deck.speech": "Voices", "deck.speech_on": "Voices are on",
+    "deck.speech_off": "Voices are off", "deck.speech_none": "Voices are turned off for this game",
+    "deck.options": "Options", "deck.options_soon": "Options are not built yet.",
+    "ledger.here": "you are here", "ledger.blank": "No prices yet. Visit to fill this page.",
+    "ledger.key_lo": "cheapest seen", "ledger.key_hi": "dearest seen",
+    "ledger.tip_lo": "Cheapest {cargo} you have seen", "ledger.tip_hi": "Dearest {cargo} you have seen",
+    "dealer.title": "Dealer's margin", "dealer.margin": "{margin}%", "dealer.standing": "Your standing here: {rep} of 100",
+    "dealer.pay": "You pay", "dealer.get": "You get", "dealer.units": "{n} units", "dealer.cut": "Dealer's cut",
+    "dealer.cut_sub": "{margin}% margin", "dealer.hint": "Drag a bar to see what you will pay. On {example} of goods the dealer takes {margin}%." });
 const womanPick = {};
 
 /* The tab rail shows a picture instead of an icon: the same woman the stage shows for that tab where
@@ -384,40 +416,38 @@ function gameScreen() {
   if (ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
   const top = topHtml();
-  const nav = ["market", "port", "fleet", "chart", "ledger"].map(k =>
-    `<button type="button" class="${ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
+  const nav = ["port", "market", "fleet", "chart", "ledger"].map(k =>
+    `<button type="button" class="${!ui.tally && ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
     `${tabFace(k)}<span>${te("tab." + k)}</span></button>`).join("") +
-    `<button type="button" class="dk-tally${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
-    `${tabFace("tally")}<span>${te("st.open")}</span></button>`;
+    `<button type="button" class="dk-tally${ui.tally ? " on" : ""}${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-pressed="${ui.tally}" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
+    `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
+    `<i class="dk-gap"></i>` + meButton();
   const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
-  return { top, nav, pane, side: feed() + helm(), over: report };
+  return { top, nav, pane, side: ui.tab === "market" ? dealerCard() : "", over: report };
 }
 
-/* The side column under the stage: this month's log or the port news, scrolling inside itself. */
-function feed() {
-  const f = ui.feed === "news" ? "news" : "log";
-  const items = f === "log" ? S.me.log : S.news;
-  const list = items.length ? items.map(n => "<li>" + esc(n) + "</li>").join("")
-    : `<li class="muted">${te(f === "log" ? "ledger.no_log" : "ledger.no_news")}</li>`;
-  return `<section class="dk-feed"><div class="dk-feedtabs">
-      ${btn(te("deck.log"), "feed", 'data-f="log"', f === "log" ? "on" : "")}${btn(te("deck.news"), "feed", 'data-f="news"', f === "news" ? "on" : "")}</div>
-    <ul class="dk-list">${list}</ul></section>`;
-}
-
-/* Sailing orders, always in reach. */
-function helm() {
-  const me = S.me;
-  if (me.ready) {
-    return `<section class="dk-helm ready"><p class="eyebrow">${te("deck.helm")}</p>
-      <b>${me.dest ? te("sail.orders_to", { port: portName(me.dest) }) : te("sail.orders_stay")}</b>
-      <span class="muted">${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</span>
-      ${btn(te("sail.cancel"), "unsail", "", "ghost wide")}</section>`;
+/* The captain button at the foot of the rail: the player's picture (S.me.portrait if the server ever
+   sends one), otherwise their initials on the house colour, with their name under it. Tapping it opens
+   a small fly-out beside it (above it in portrait) with Voices on/off and Options. Tapping outside it
+   or pressing Escape closes it. */
+function meButton() {
+  const me = S.me, open = !!ui.meOpen;
+  const name = me.name || me.firm || "";
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
+  const face = me.portrait ? `<img src="${esc(me.portrait)}" alt="">` : `<em>${esc(initials)}</em>`;
+  let fly = "";
+  if (open) {
+    const on = Voice.enabled(), muted = Voice.muted();
+    const voice = !on
+      ? `<button type="button" disabled title="${te("deck.speech_none")}">${DECK_ICONS.speech_off}<span>${te("deck.speech")}</span></button>`
+      : `<button type="button" class="${muted ? "" : "on"}" data-act="speech" aria-pressed="${!muted}" title="${te(muted ? "deck.speech_off" : "deck.speech_on")}">` +
+        `${DECK_ICONS[muted ? "speech_off" : "speech_on"]}<span>${te("deck.speech")}</span></button>`;
+    fly = `<div class="dk-fly" role="menu">${voice}` +
+      `<button type="button" data-act="options" title="${te("deck.options_soon")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button></div>`;
   }
-  const dest = ui.dest && D.ports[ui.dest] ? ui.dest : null;
-  return `<section class="dk-helm"><p class="eyebrow">${te("deck.helm")}</p>
-      <b>${dest ? te("deck.course", { port: portName(dest) }) : te("deck.no_course")}</b>
-      ${dest ? btn(te("sail.go", { port: portName(dest) }), "sail", "", "primary wide")
-             : btn(te("deck.plot"), "tab", 'data-tab="chart"', "primary wide")}</section>`;
+  return `<div class="dk-me${open ? " open" : ""}" style="--house:${COLORS[me.color % 8]}">${fly}` +
+    `<button type="button" class="dk-face" data-act="me" aria-haspopup="menu" aria-expanded="${open}" aria-label="${te("deck.me", { name })}" title="${te("deck.me", { name })}">` +
+    `${face}<span>${esc(name)}</span></button></div>`;
 }
 
 function logModal() {
@@ -489,7 +519,6 @@ function marketTab() {
   const rows = Object.keys(D.goods).map(marketRow).join("");
   return `<section class="card mk" style="--n:${Object.keys(D.goods).length}">
     <header class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
-      <span class="muted">${te("market.standing_short", { rep: me.rep[me.port], margin: pct(me.spread) })}</span>
       <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span></header>
     ${banned ? `<p class="note bad">${te("market.banned")}</p>` : ""}
     <table class="mk-table"><thead><tr><th colspan="2">${te("col.cargo")}</th><th class="n">${te("col.price")} · ${te("col.aboard")}</th><th class="mk-scale"><span>${te("btn.sell")}</span><span>${te("btn.buy")}</span></th><th></th></tr></thead>
@@ -509,15 +538,62 @@ function dragRow(g) {
   region("top", topHtml());
   const hold = app.querySelector(".mk-head .mk-hold");
   if (hold) hold.innerHTML = te("market.hold_short", { used: pending().used, cap: S.me.capacity });
+  region("side", dealerCard());
+}
+
+/* The dealer's card under the market keeper on the stage: standing and margin in this port, and what
+   the lined-up trades cost. "You pay" is the silver for every planned buy, "You get" the silver for
+   every planned sale, and "Dealer's cut" is how much of that the margin takes (the difference from
+   trading at the market price with no margin). Updates live while a bar is dragged. */
+function dealerCut(g, qty, side) {
+  const mid = S.me.prices[g], k = D.impact * qty / D.goods[g].depth;
+  const end = side === "buy" ? mid * (1 + k) : mid / (1 + k);
+  const total = quote(g, qty, side), base = qty * (mid + end) / 2;
+  return { total, cut: Math.round(Math.abs(total - base)) };
+}
+function dealerCard() {
+  const me = S.me;
+  if (!me || !D.goods) return "";
+  let pay = 0, get = 0, cut = 0, nBuy = 0, nSell = 0;
+  if (!me.ready) Object.keys(D.goods).forEach(g => {
+    if (ui.vals["t_" + g] == null) return;
+    const tr = tradeOf(g);
+    if (!tr.side) return;
+    const q = dealerCut(g, tr.qty, tr.side);
+    cut += q.cut;
+    if (tr.side === "buy") { pay += q.total; nBuy += tr.qty; } else { get += q.total; nSell += tr.qty; }
+  });
+  const margin = pct(me.spread);
+  const line = (label, v, cls, sub) => `<div class="dl-row ${cls}"><span>${label}${sub ? `<small>${sub}</small>` : ""}</span><b>${v}</b></div>`;
+  const rows = (nBuy || nSell)
+    ? (nBuy ? line(te("dealer.pay"), money(pay), "pay", te("dealer.units", { n: nBuy.toLocaleString() })) : "") +
+      (nSell ? line(te("dealer.get"), money(get), "get", te("dealer.units", { n: nSell.toLocaleString() })) : "") +
+      line(te("dealer.cut"), money(cut), "cut", te("dealer.cut_sub", { margin }))
+    : `<p class="dl-hint">${te("dealer.hint", { margin, example: money(1000) })}</p>`;
+  return `<section class="dl-card" title="${te("market.standing", { rep: me.rep[me.port], margin })}">
+    <header><span>${te("dealer.title")}</span><b>${te("dealer.margin", { margin })}</b></header>
+    <p class="dl-standing">${te("dealer.standing", { rep: me.rep[me.port] })}</p>${rows}</section>`;
 }
 
 /* ----------------------------------------------------------------- port -- */
+/* The Port tab opens with the house's news board: standings, port news and this month's log.
+   They show in every port; the bank, loans, warehouse and agent below only at home. */
+function portBoard() {
+  const me = S.me;
+  const list = (items, empty) => items.map(n => "<li>" + esc(n) + "</li>").join("") || "<li>" + te(empty) + "</li>";
+  return `<section class="card"><h2>${te("ledger.standings")}</h2>${standings()}
+      ${btn(te("st.open_hint"), "tally", "", "wide")}</section>
+    <section class="card"><h2>${te("ledger.news")}</h2><ul class="log">${list(S.news, "ledger.no_news")}</ul></section>
+    <section class="card"><h2>${te("ledger.log")}</h2><ul class="log">${list(me.log, "ledger.no_log")}</ul></section>`;
+}
+
 function portTab() {
   const me = S.me;
   if (me.port !== D.home) {
     return `<section class="card">${Media.html("port", me.port, "banner", "portart", D.graphics.ports[me.port])}<h2>${esc(portName(me.port))}</h2>
       <p>${te("port.away")}</p>
-      <p class="muted">${te(D.ports[me.port].shipyard ? "port.away_here_yard" : "port.away_here")}</p></section>`;
+      <p class="muted">${te(D.ports[me.port].shipyard ? "port.away_here_yard" : "port.away_here")}</p></section>
+    ${portBoard()}`;
   }
   const goods = Object.keys(D.goods).filter(g => (me.cargo[g] || 0) + (me.wh[g] || 0) > 0);
   const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
@@ -530,7 +606,8 @@ function portTab() {
     ? `<p>${te("agent.content", { months: me.protect })}</p>`
     : `<p>${me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none")}</p>
        ${btn(te("agent.pay", { cost: money(me.protect_cost) }), "protection", "", "primary")}`;
-  return `<section class="card"><h2>${te("bank.title")}</h2>
+  return `${portBoard()}
+    <section class="card"><h2>${te("bank.title")}</h2>
       <p class="muted">${te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) })}</p>
       <div class="row">${input("bank", t("ph.amount"))}${btn(te("btn.deposit"), "bank", 'data-op="deposit"', "primary")}${btn(te("btn.withdraw"), "bank", 'data-op="withdraw"')}
         ${btn(te("btn.all_silver"), "fill", `data-k="bank" data-v="${me.cash}"`, "link")}</div></section>
@@ -617,35 +694,68 @@ function chartTab() {
       <span class="muted">${esc(riskLabel(me.port, k))} · ${weatherBadge(wx, D.weather)}</span>
       <span class="muted">${seen} · ${te("chart.standing", { rep: me.rep[k] })}</span></button>`;
   }).join("");
-  return `<section class="card"><h2>${te("chart.title")}</h2>
+  return `<section class="card">
       ${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id })}
-      <p class="muted">${te("chart.forecast", { pct: Math.round(D.forecast_accuracy * 100) })}</p>
       <div class="dests">${list}</div></section>
     <section class="card"><h2>${te("orders.title")}</h2>
       <div class="seg">${btn(te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
       <p class="muted">${me.protect > 0 ? te("orders.protected", { months: me.protect }) : te("orders.unprotected")}</p>
       <div class="row">${btn(dest ? te("sail.go", { port: portName(dest) }) : te("sail.choose"), "sail", "", "primary wide", !dest || me.ready)}</div>
-      <div class="row">${btn(te("sail.stay", { port: portName(me.port) }), "stay", "", "wide", me.ready)}</div></section>`;
+      <div class="row">${btn(te("sail.stay", { port: portName(me.port) }), "stay", "", "wide", me.ready)}</div>
+      ${me.ready ? `<p class="muted">${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</p>
+      <div class="row">${btn(te("sail.cancel"), "unsail", "", "ghost wide")}</div>` : ""}</section>`;
 }
 
 /* --------------------------------------------------------------- ledger -- */
+/* The price book: one row per port, one column per cargo. In each column the cheapest port the
+   house has seen is marked jade (buy there) and the dearest oxblood (sell there). Old sightings
+   fade with age; ports never visited are shown as blank pages. */
 function ledgerTab() {
-  const me = S.me, goods = Object.keys(D.goods);
-  const head = goods.map(g => `<th class="n">${esc(D.goods[g].name.split(" ")[0])}</th>`).join("");
-  const rows = Object.keys(D.ports).map(k => {
-    const kn = me.known[k];
-    const age = kn ? (S.turn - kn.turn === 0 ? te("ledger.now") : te("ledger.ago", { n: S.turn - kn.turn })) : te("ledger.never");
-    const cells = goods.map(g => `<td class="n">${kn && kn.prices[g] != null ? kn.prices[g].toLocaleString() : "·"}</td>`).join("");
-    return `<tr class="${k === me.port ? "me" : ""}"><td><b>${esc(portName(k))}</b><br><span class="muted">${age} · ${te("chart.standing", { rep: me.rep[k] })}</span></td>${cells}</tr>`;
+  const me = S.me, goods = Object.keys(D.goods), ports = Object.keys(D.ports);
+  const priceAt = (k, g) => k === me.port ? me.prices[g] : (me.known[k] && me.known[k].prices[g]);
+  // Cheapest and dearest port seen for each cargo (needs two ports to mean anything).
+  const best = {};
+  goods.forEach(g => {
+    const seen = ports.filter(k => priceAt(k, g) != null);
+    if (seen.length < 2) return;
+    const by = seen.slice().sort((a, b) => priceAt(a, g) - priceAt(b, g));
+    if (priceAt(by[0], g) !== priceAt(by[by.length - 1], g)) best[g] = { lo: by[0], hi: by[by.length - 1] };
+  });
+  const head = goods.map(g => {
+    const n = me.cargo[g] || 0;
+    return `<th class="pb-good" title="${esc(D.goods[g].name)}">
+      <span class="pb-gico">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}${n ? `<i class="pb-aboard">${n}</i>` : ""}
+        <span class="pb-gname">${esc(D.goods[g].name.split(" ")[0])}</span></span></th>`;
   }).join("");
-  const list = (items, empty) => items.map(n => "<li>" + esc(n) + "</li>").join("") || "<li>" + te(empty) + "</li>";
-  return `<section class="card"><h2>${te("ledger.title")}</h2>
-      <p class="muted">${te("ledger.info")}</p>
-      <div class="scroll"><table class="grid book"><thead><tr><th>${te("col.port")}</th>${head}</tr></thead><tbody>${rows}</tbody></table></div></section>
-    <section class="card"><h2>${te("ledger.standings")}</h2>${standings()}
-      ${btn(te("st.open_hint"), "tally", "", "wide")}</section>
-    <section class="card"><h2>${te("ledger.news")}</h2><ul class="log">${list(S.news, "ledger.no_news")}</ul></section>
-    <section class="card"><h2>${te("ledger.log")}</h2><ul class="log">${list(me.log, "ledger.no_log")}</ul></section>
+  const rows = ports.map(k => {
+    const kn = me.known[k], here = k === me.port, age = here ? 0 : kn ? S.turn - kn.turn : null;
+    const fresh = age === null ? "never" : age === 0 ? "now" : age <= 2 ? "recent" : "old";
+    const when = here ? te("ledger.here") : age === null ? te("ledger.never") : age === 0 ? te("ledger.now") : te("ledger.ago", { n: age });
+    const far = here ? "" : `<span class="pb-far">${esc(riskLabel(me.port, k))}</span>`;
+    const ban = S.crackdown.includes(k) ? `<span class="tag bad">${te("tag.ban")}</span>` : "";
+    const rep = Math.round(me.rep[k]);
+    const cells = age === null
+      ? `<td class="pb-blank" colspan="${goods.length}">${te("ledger.blank")}</td>`
+      : goods.map(g => {
+          const v = priceAt(k, g), b = best[g];
+          const mark = b && b.lo === k ? "lo" : b && b.hi === k ? "hi" : "";
+          const barred = D.goods[g].contraband && S.crackdown.includes(k) ? " barred" : "";
+          const tip = mark ? ` title="${esc(te(mark === "lo" ? "ledger.tip_lo" : "ledger.tip_hi", { cargo: D.goods[g].name }))}"` : "";
+          return `<td class="pb-p ${mark}${barred}"${tip}>${v != null ? `<b>${v.toLocaleString()}</b>` : "·"}</td>`;
+        }).join("");
+    return `<tr class="pb-row ${here ? "here" : ""} f-${fresh}">
+      <th class="pb-port" scope="row">
+        <span class="pb-pimg">${Media.html("port", k, "banner", "pb-img", D.graphics.ports[k])}</span>
+        <span class="pb-ptext"><b class="pb-pname">${esc(portName(k))}</b>${ban}
+          <span class="pb-meta"><i class="pb-dot"></i>${when}${far ? " · " + far : ""}</span>
+          <span class="pb-rep" title="${esc(te("chart.standing", { rep }))}"><i style="width:${rep}%"></i></span></span></th>
+      ${cells}</tr>`;
+  }).join("");
+  return `<section class="card pb">
+      <header class="mk-head"><h2>${te("ledger.title")}</h2>
+        <span class="pb-key"><i class="lo"></i>${te("ledger.key_lo")}<i class="hi"></i>${te("ledger.key_hi")}</span></header>
+      <div class="pb-scroll"><table class="pb-table" style="--n:${goods.length}"><thead><tr><th class="pb-corner">${te("col.port")}</th>${head}</tr></thead>
+        <tbody>${rows}</tbody></table></div></section>
     ${me.host ? `<section class="card"><h2>${te("host.title")}</h2>` + btn(te("host.end_month"), "force", "", "") + newGameControl() + "</section>" : ""}`;
 }
 
@@ -683,14 +793,11 @@ app.addEventListener("click", async e => {
   const d = el.dataset;
   switch (d.act) {
     case "join": return doJoin();
-    case "tab": ui.tab = d.tab; return render();
-    case "tally": {
-      // The Tally Book opens in its own window so the deck never scrolls or loses its place.
-      const w = window.open("/stats", "seatrader_tally");
-      if (!w) location.href = "/stats";
-      return;
-    }
-    case "feed": ui.feed = d.f; return render();
+    case "tab": ui.tab = d.tab; ui.tally = false; return render();
+    case "tally": ui.tally = !ui.tally; ui.meOpen = false; return render();
+    case "me": ui.meOpen = !ui.meOpen; return render();
+    case "speech": Voice.setMuted(!Voice.muted()); return render();
+    case "options": ui.meOpen = false; render(); return toast(t("deck.options_soon"));
     case "seen": ui.seenTurn = S.turn; Voice.drop("log"); return render();
     case "years": return act("settings", { years: +d.y });
     case "start": return act("start");
@@ -730,6 +837,65 @@ app.addEventListener("click", async e => {
     case "newgame_no": ui.confirmNew = false; return render();
     case "newgame": ui.confirmNew = false; return act("new_game");
   }
+});
+
+/* ------------------------------------------------------------ the Tally Book -- */
+/* The Tally Book (stats.js at /stats?embed=1) opens inside this same window, never a new one.
+   In a game, Tally in the rail swaps the working pane and the side column for it (deck.css,
+   .deck[data-tab="tally"]); in the lobby or at the end it covers the screen (.tally-solo).
+   The frame is kept while it is hidden so it reopens at once and where it was left; the deck tells
+   it when it is shown or hidden and when a month has passed. Its close button (or Escape) brings
+   back the tab the player was on. */
+const TALLY_SRC = "/stats?embed=1";
+function tallyPost(f, msg) {
+  if (f && f.contentWindow) f.contentWindow.postMessage({ tally: msg }, location.origin);
+}
+function syncTally(inGame) {
+  const wantSolo = ui.tally && !inGame;
+  let solo = document.getElementById("tallySolo");
+  if (!wantSolo && solo) { solo.remove(); solo = null; }
+  if (wantSolo && !solo) {
+    solo = document.createElement("div");
+    solo.id = "tallySolo";
+    solo.className = "tally-solo";
+    document.body.appendChild(solo);
+  }
+  const host = inGame ? document.getElementById("tallyHost") : solo;
+  if (!host) return;
+  let f = host.querySelector(".tally-frame");
+  if (!f) {
+    if (!ui.tally) return;
+    f = document.createElement("iframe");
+    f.className = "tally-frame";
+    f.title = t("st.title");
+    f.src = TALLY_SRC;
+    host.appendChild(f);
+    ui.tallyShown = true;
+    ui.tallyTurn = S.turn;
+    return;
+  }
+  if (ui.tally !== ui.tallyShown) {
+    ui.tallyShown = ui.tally;
+    if (ui.tally) ui.tallyTurn = S.turn;
+    tallyPost(f, ui.tally ? "show" : "hide");
+    return;
+  }
+  if (ui.tally && ui.tallyTurn !== S.turn) { ui.tallyTurn = S.turn; tallyPost(f, "refresh"); }
+}
+window.addEventListener("message", e => {
+  if (e.origin !== location.origin || !e.data || e.data.tally !== "close") return;
+  if (ui.tally) { ui.tally = false; render(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && ui.tally && !ui.meOpen) { ui.tally = false; render(); }
+});
+
+/* The captain's fly-out closes on a tap anywhere else, or on Escape. */
+document.addEventListener("click", e => {
+  if (ui.meOpen && !e.target.closest(".dk-me")) { ui.meOpen = false; render(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && ui.meOpen) { ui.meOpen = false; render(); }
 });
 
 loadInfo().then(info => { D = info.data; VS = Voice.setup(info.voice); Stage.setCast(VS.cast); connect(); });
