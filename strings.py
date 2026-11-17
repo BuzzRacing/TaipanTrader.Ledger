@@ -96,6 +96,7 @@ EN = {
     "l.arrive": "You arrive in {home} with one {ship}, {cash} in silver and a {debt} debt to {lender}.",
     "l.anchor": "You remained at anchor in {port}.",
     "l.collectors": "{lender}'s collectors are asking about you. Your name suffers in {home}.",
+    "l.collectors_warn": "{lender} has sent word: your debt has grown too large. Pay it down in {home} within {months} month{s}, or the collectors will call and your name will suffer.",
     "l.protect_lapsed": "Your arrangement with {pirate} has lapsed.",
     "l.robbed": "You were beaten and robbed of {lost} in the street. Silver is safer in the bank.",
     "l.sailed": "You sailed from {origin} for {dest} {weather}.",

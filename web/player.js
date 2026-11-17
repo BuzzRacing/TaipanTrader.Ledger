@@ -5,6 +5,10 @@
 
 let D = null;            // reference data (goods, ports, ships, brand, wording)
 let S = null;            // latest game state from the server
+/* This player's own home port (where they started): bank, lender, warehouse and protection. */
+function myHome() { return (S && S.me && S.me.home) || D.home; }
+/* Each house has its own home port, so {home} in any wording means this player's. */
+function applyHome() { if (S && S.me && D && D.ports && D.ports[myHome()]) TOK.home = D.ports[myHome()].name; }
 let token = store("seatrader_token");
 let stream = null;
 let online = true;
@@ -43,6 +47,7 @@ async function refreshInfo() {
   if (reloading) return;
   reloading = true;
   try { const info = await loadInfo(); D = info.data; VS = Voice.setup(info.voice); Stage.setCast(VS.cast); } catch (e) { /* try again on the next state */ }
+  applyHome();
   reloading = false;
   if (ui.dest && !D.ports[ui.dest]) ui.dest = null;
   render();
@@ -53,6 +58,7 @@ function connect() {
   if (stream) stream.close();
   stream = listen(token, state => {
     S = state;
+    applyHome();
     if (state.unknown_token) { token = null; store("seatrader_token", null); connect(); return; }
     if (state.cfg !== cfgSeen) return refreshInfo();
     render();
@@ -192,7 +198,14 @@ function newGameControl() {
 const drawn = {};
 function region(name, html) {
   const el = app.querySelector('[data-r="' + name + '"]');
-  if (el && drawn[name] !== html) { el.innerHTML = html; drawn[name] = html; Chart.fit(el); }
+  if (el && drawn[name] !== html) {
+    // An overlay that is only changing its contents does not fade in again.
+    const veil = name === "over" && el.querySelector(".veil");
+    const kind = veil && ["cl-veil", "cx-veil"].find(c => veil.classList.contains(c));
+    el.innerHTML = html; drawn[name] = html; Chart.fit(el);
+    const next = kind && el.querySelector(".veil." + kind);
+    if (next) next.classList.add("no-fade");
+  }
 }
 function forget() { Object.keys(drawn).forEach(k => delete drawn[k]); }
 
@@ -229,7 +242,12 @@ function render() {
     const deck = deckFrame(), parts = gameScreen();
     deck.classList.toggle("locked", !!S.me.ready);
     deck.dataset.tab = ui.tally ? "tally" : ui.tab;
-    ["top", "nav", "pane", "side", "over"].forEach(k => { if (!(ui.drag && k === "pane")) region(k, parts[k]); });
+    ["top", "nav", "pane", "side", "over"].forEach(k => {
+      if (ui.drag && k === "pane") return;
+      // The Port Authority's declaration desk is updated in place while it stays open.
+      if (k === "over" && parts.over.includes("cx-desk declare") && Customs.keep()) { drawn.over = null; return; }
+      region(k, parts[k]);
+    });
     if (ui.paneTab !== ui.tab) { ui.paneTab = ui.tab; app.querySelector(".dk-pane").scrollTop = 0; }
   } else {
     const html = !S.me ? joinScreen() : S.phase === "lobby" ? lobbyScreen() : endScreen();
@@ -766,7 +784,7 @@ const tone = n => n > 0.5 ? "up" : n < -0.5 ? "down" : "";
 const ten = (key, n, vars) => te(n === 1 && T[key + "_1"] != null ? key + "_1" : key, Object.assign({ n, months: n }, vars || {}));
 
 function portViews() {
-  return ["arrival", "accounts", "log", "news"].concat(S.me.port === D.home ? ["services"] : []);
+  return ["arrival", "accounts", "log", "news"].concat(S.me.port === myHome() ? ["services"] : []);
 }
 
 function portTab() {
@@ -834,7 +852,7 @@ function portTodo() {
   const banned = (S.bans || {})[me.port] || [];
   const aboard = banned.filter(g => me.cargo[g]);
   if (aboard.length) items.push(["warn", te("port.todo.banned", { goods: aboard.map(g => D.goods[g].name).join(", ") }), ""]);
-  const home = me.port === D.home;
+  const home = me.port === myHome();
   if (me.protect <= D.renew_at) items.push(["warn", ten(me.protect > 0 ? "port.todo.protect_low" : "port.todo.protect_none", me.protect),
     home ? btn(te("port.view.services"), "port_view", 'data-v="services"', "pt-go") : ""]);
   if (me.debt > 0) items.push(["down", te(home ? "port.todo.debt_home" : "port.todo.debt", { interest: money(me.debt * D.loan_rate) }),
@@ -923,7 +941,7 @@ function portUnrealised() {
 }
 
 function portOwe() {
-  const me = S.me, r = D.loan_rate, home = me.port === D.home;
+  const me = S.me, r = D.loan_rate, home = me.port === myHome();
   const last = (me.books || {}).last, paid = last ? -(last.lines.interest || 0) : 0;
   const row = (label, value, cls, note) => `<tr><td>${label}${note ? `<small>${note}</small>` : ""}</td><td class="n ${cls || ""}">${value}</td></tr>`;
   const double = r > 0 ? Math.ceil(Math.log(2) / Math.log(1 + r)) : 0;

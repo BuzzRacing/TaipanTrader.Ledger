@@ -437,6 +437,7 @@ body.ingame #speaking { display: none !important; }
   .dk-over:has(:is(.cl-veil, .cx-veil)) { grid-row: side-start / main-end; }
 }
 @keyframes veilIn { from { opacity: 0; } }
+.deck .veil.no-fade { animation: none; }
 
 /* ---------------------------------------------------------------- toast, voices, offline -- */
 body.player #toast { background: linear-gradient(180deg, var(--deck-lacquer), var(--deck-night)); color: var(--deck-ivory);

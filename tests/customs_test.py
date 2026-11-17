@@ -29,7 +29,9 @@ def arrive(seed, dest, cargo=(("tea", 30), ("general", 25))):
 
 
 def main():
-    engine.configure(config.defaults())
+    base = config.defaults()
+    base["rules"]["start"]["where"] = "home"     # these voyages are written as leaving Hong Kong
+    engine.configure(base)
     # 1. Arriving with cargo opens her desk, and nothing else can be done until it is cleared.
     seen = 0
     for seed in range(40):

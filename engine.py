@@ -56,6 +56,13 @@ def tx(key, **kw):
         return tpl
 
 
+def home_of(p):
+    """A house's own home port: where it started, and where its bank, lender, warehouse and
+    protection are. Houses from saves made before homes were personal use the game's home port."""
+    h = p.get("home")
+    return h if h in PORTS else HOME
+
+
 def _project(lon, lat):
     """Chart projection shared with the browser (1000 x 600 chart)."""
     return (lon - 85.0) / 50.0 * 1000.0, (35.0 - lat) / 45.0 * 600.0
@@ -325,8 +332,9 @@ class Game:
                                  if (PORTS[port].get("tax_rate", 0.0) or 0.0) > 0 else 0.0) for port in PORTS}
         fallback = R["wreck"]["ship"]
         for p in s["players"].values():
+            p["home"] = home_of(p)
             if p["port"] not in PORTS:
-                p["port"] = HOME
+                p["port"] = p["home"]
             if p.get("dest") not in PORTS:
                 p["dest"] = None
             p["rep"] = {port: float(p["rep"].get(port, R["start"]["rep"])) for port in PORTS}
@@ -396,25 +404,36 @@ class Game:
         cash = float(int(st["cash"] * MULT["start_cash"]))
         used = {q["color"] for q in s["players"].values()}
         color = next((c for c in range(8) if c not in used), len(s["order"]) % 8)
+        port = self._start_port()
         p = {"id": pid, "name": name, "firm": firm, "token": secrets.token_urlsafe(16),
-             "color": color, "port": HOME,
+             "color": color, "port": port,
              "cash": cash, "bank": 0.0, "debt": float(st["debt"]),
              "cargo": {}, "wh": {},
              "ships": [self._new_ship(st["ship"], guns=min(st["guns"], SHIPS[st["ship"]]["slots"]))],
              "rep": {port: float(st["rep"]) for port in PORTS},
              "protect": 0, "ready": False, "dest": None, "orders": "fight",
-             "log": [tx("l.arrive", ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
+             "log": [tx("l.arrive", home=PORTS[port]["name"], ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
              "known": {}, "wrecks": 0, "tab": self._new_tab(), "slip": False, "basis": {}, "customs": None}
-        p["rep"][HOME] = float(st["home_rep"])
+        p["rep"][port] = float(st["home_rep"])
+        p["start_port"] = p["home"] = port
         p["books"] = self._new_books(p)
         s["players"][pid] = p
         s["order"].append(pid)
         self._note_prices(p)
         ship = p["ships"][0]
-        self._ev("players", "seat_new", "{} joined as {} with {} silver, {} debt and the {} {}".format(
-            name, firm, money(cash), money(st["debt"]), SHIPS[ship["type"]]["name"].lower(), ship["name"]),
-            p, do="join", name=str(raw_name or "")[:60], firm=str(raw_firm or "")[:60], via=via)
+        self._ev("players", "seat_new", "{} joined as {} in {} with {} silver, {} debt and the {} {}".format(
+            name, firm, PORTS[port]["name"], money(cash), money(st["debt"]), SHIPS[ship["type"]]["name"].lower(),
+            ship["name"]), p, do="join", start_port=port, name=str(raw_name or "")[:60], firm=str(raw_firm or "")[:60], via=via)
         return p["token"]
+
+    def _start_port(self):
+        """Where a new player sets out from: the home port, or (Game Setup > Where players
+        start) a random port that no other house started in, while there are any left."""
+        if R["start"].get("where", "home") != "random":
+            return HOME
+        taken = {q.get("start_port", q["port"]) for q in self.s["players"].values()}
+        free = [port for port in PORTS if port not in taken] or list(PORTS)
+        return self.rng.choice(sorted(free))
 
     def _new_ship(self, kind, guns=0, hull=None):
         names = CFG["ship_names"]
@@ -477,7 +496,7 @@ class Game:
     def loan_limit(self, p):
         b = R["bank"]
         assets = p["cash"] + p["bank"] + sum(self.ship_value(sh) for sh in p["ships"])
-        return b["loan_base"] + b["loan_per_rep"] * p["rep"][HOME] + b["loan_asset_share"] * max(assets, 0)
+        return b["loan_base"] + b["loan_per_rep"] * p["rep"][home_of(p)] + b["loan_asset_share"] * max(assets, 0)
 
     def repair_rate(self, p, sh):
         f = R["fleet"]
@@ -1173,8 +1192,8 @@ class Game:
         return tx("m.sold", qty=q, good=GOODS[g]["name"], gain=money(gain))
 
     def _home_only(self, p, what):
-        if p["port"] != HOME:
-            raise GameError(tx("e.home_only", what=what))
+        if p["port"] != home_of(p):
+            raise GameError(tx("e.home_only", what=what, home=PORTS[home_of(p)]["name"]))
 
     def _act_bank(self, p, a):
         self._home_only(p, tx("w.the_bank"))
@@ -1547,12 +1566,27 @@ class Game:
                 p["bank"] *= 1 + b["bank_rate"]
             if p["debt"] > 0:
                 p["debt"] *= 1 + loan_rate()
+                # Collectors: a grace period after debt first passes the line, then a call every few months.
+                # "debt_over" counts the months in a row spent over the line (old saves start at 0).
                 if p["debt"] > self.loan_limit(p) * b["debt_warn_mult"]:
-                    self._gain_rep(p, HOME, -b["debt_rep_penalty"])
-                    p["log"].append(tx("l.collectors"))
-                    self._ev("finance", "collectors", "{}: debt {} is over {} times the loan limit {}; standing in {} "
-                             "fell by {}".format(p["name"], money(p["debt"]), b["debt_warn_mult"],
-                                                 money(self.loan_limit(p)), PORTS[HOME]["name"], b["debt_rep_penalty"]), p)
+                    p["debt_over"] = int(p.get("debt_over", 0)) + 1
+                    grace = max(0, int(b.get("debt_grace_months", 0)))
+                    every = max(1, int(b.get("debt_call_every", 1)))
+                    if p["debt_over"] > grace and (p["debt_over"] - grace - 1) % every == 0:
+                        self._gain_rep(p, home_of(p), -b["debt_rep_penalty"])
+                        p["log"].append(tx("l.collectors", home=PORTS[home_of(p)]["name"]))
+                        self._ev("finance", "collectors", "{}: debt {} is over {} times the loan limit {} (month {} over "
+                                 "the line; grace {}, then every {}); standing in {} fell by {}".format(
+                                     p["name"], money(p["debt"]), b["debt_warn_mult"], money(self.loan_limit(p)),
+                                     p["debt_over"], grace, every, PORTS[home_of(p)]["name"], b["debt_rep_penalty"]), p)
+                    elif p["debt_over"] == 1:
+                        # First month over the line: a warning only, no standing lost.
+                        p["log"].append(tx("l.collectors_warn", months=grace, s="" if grace == 1 else "s"))
+                        self._ev("finance", "collectors_warn", "{}: debt {} is over {} times the loan limit {}; warned, "
+                                 "no penalty. The collectors first call after {} month(s) of grace".format(
+                                     p["name"], money(p["debt"]), b["debt_warn_mult"], money(self.loan_limit(p)), grace), p)
+                else:
+                    p["debt_over"] = 0
             self._book(p, "bank_interest", p["bank"] - bank0)
             self._book(p, "interest", -(p["debt"] - debt0))
             if bank0 > 0 or debt0 > 0:
@@ -1853,7 +1887,7 @@ class Game:
         wk = R["wreck"]
         lost = int(p["cash"] * wk["cash_loss"])
         self._ev("voyage", "shipwreck", "{} lost the whole fleet: cargo gone ({} units), {} silver lost, {} debt added, "
-                 "back in {} with a {}".format(p["name"], self.used(p), money(lost), money(wk["debt"]), PORTS[HOME]["name"],
+                 "back in {} with a {}".format(p["name"], self.used(p), money(lost), money(wk["debt"]), PORTS[home_of(p)]["name"],
                                                SHIPS[wk["ship"]]["name"].lower()), p, lost=lost, debt=wk["debt"],
                  cargo=dict(p["cargo"]))
         self._book(p, "wreck_cargo", -self._cost_of(p, p["cargo"]))
@@ -1861,13 +1895,13 @@ class Game:
         p["cargo"] = {}
         p["cash"] -= lost
         p["debt"] += wk["debt"]
-        p["port"] = HOME
+        p["port"] = home_of(p)
         p["tab"] = self._new_tab()
         p["wrecks"] += 1
         p["ships"] = [self._new_ship(wk["ship"], guns=0, hull=wk["hull"])]
-        p["log"].append(tx("l.wrecked", lost=money(lost), debt=money(wk["debt"]),
+        p["log"].append(tx("l.wrecked", home=PORTS[home_of(p)]["name"], lost=money(lost), debt=money(wk["debt"]),
                            ship=SHIPS[wk["ship"]]["name"].lower()))
-        news.append(tx("n.wrecked", name=p["name"], firm=p["firm"]))
+        news.append(tx("n.wrecked", name=p["name"], firm=p["firm"], home=PORTS[home_of(p)]["name"]))
 
     # ------------------------------------------------------------- view --
     def view(self, pid, present=()):
@@ -1898,7 +1932,7 @@ class Game:
             worth = int(self.worth(p))
             out["me"] = {
                 "id": p["id"], "name": p["name"], "firm": p["firm"], "color": p["color"],
-                "host": p["id"] == host, "port": port,
+                "host": p["id"] == host, "port": port, "home": home_of(p),
                 "cash": int(p["cash"]), "bank": int(p["bank"]), "debt": int(math.ceil(p["debt"])),
                 "worth": worth, "rank": rank_for(worth),
                 "cargo": p["cargo"], "wh": p["wh"], "wh_cap": R["fleet"]["warehouse_cap"],

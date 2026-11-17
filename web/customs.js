@@ -243,7 +243,7 @@ const Customs = (() => {
     }
     const body = c.status === "declare" ? declareHtml(c) : c.status === "verdict" ? verdictHtml(c) : welcomeHtml(c);
     const label = c.status === "declare" ? "customs.declare_btn" : c.status === "verdict" ? "customs.continue" : "customs.welcome_btn";
-    return `<div class="veil cx-veil"><section class="modal cx-desk ${c.status}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}">
+    return `<div class="veil cx-veil"><section class="modal cx-desk ${c.status}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}" data-key="${esc(key(c))}">
       <div class="cl-art cx-art" aria-hidden="true">${face(c, shownState, "cl-art-media")}</div>
       ${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary")}</footer>
     </section></div>`;
@@ -277,6 +277,27 @@ const Customs = (() => {
       box.querySelector(".cx-art").innerHTML = face(c, n.state, "cl-art-media");
       showOnStage();
     }
+  }
+
+  /* The declaration desk already on screen is kept and brought up to date in place (sliders, the
+     sweetener, every number), never rebuilt: rebuilding it restarts the veil's fade and reloads her
+     picture, which reads as the whole screen blinking. True when the desk was kept. */
+  function keep() {
+    const c = cu(), box = app.querySelector(".cx-desk.declare");
+    if (!c || S.me.ready || c.status !== "declare" || !box) return false;
+    if (ui.cxKey !== key(c) || box.dataset.key !== key(c)) return false;
+    if (box.querySelectorAll(".cx-line").length !== c.lines.length) return false;
+    box.querySelectorAll(".cx-range").forEach(r => {
+      const p = String(pctOf(c, r.dataset.k.slice(3)));
+      if (r.value !== p) r.value = p;
+    });
+    const tick = box.querySelector('[data-act="cx_bribe"]');
+    if (tick) {
+      tick.checked = !!ui.cxBribe;
+      tick.closest(".cx-bribe").classList.toggle("on", !!ui.cxBribe);
+    }
+    live();
+    return true;
   }
 
   async function click(d) {
@@ -332,5 +353,5 @@ const Customs = (() => {
     else greeting.removeAttribute("aria-current");
   }
 
-  return { html, live, click, speak, stage, markSpeaking, isOpen: () => !!(cu() && !S.me.ready) };
+  return { html, live, keep, click, speak, stage, markSpeaking, isOpen: () => !!(cu() && !S.me.ready) };
 })();

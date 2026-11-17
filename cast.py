@@ -432,7 +432,7 @@ for _c in CHARACTERS.values():
 
 LINE_DEFAULTS = {}
 for _who, _keys in {
-    "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.robbed", "l.sailed", "l.offcourse", "l.anchored",
+    "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.robbed", "l.sailed", "l.offcourse", "l.anchored",
                  "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.sail", "m.stay", "m.unsail", "m.forced", "m.years"],
     "bosun": ["l.typhoon", "l.storm", "l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
               "l.long_fight", "l.plundered", "l.damage"],

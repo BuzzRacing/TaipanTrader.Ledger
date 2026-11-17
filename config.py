@@ -126,12 +126,14 @@ DEFAULTS = {
     "rules": {
         "game": {"start_year": 1860, "home": "hongkong", "max_players": 8,
                  "lengths": [1, 2, 3, 5, 10], "default_years": 5, "grace_seconds": 25},
-        "start": {"cash": 3500, "debt": 5000, "ship": "junk", "guns": 2, "rep": 50, "home_rep": 60},
+        "start": {"cash": 3500, "debt": 5000, "ship": "junk", "guns": 2, "rep": 50, "home_rep": 60,
+                  "where": "random"},
         "market": {"spread_base": 0.04, "spread_swing": 0.03, "impact": 0.25, "floor": 0.25,
                    "ceiling": 4.5, "reversion": 0.3, "vol_mult": 1.0, "start_spread": 0.15,
                    "rep_per_value": 5000, "rep_trade_cap": 2.0, "worth_cargo": 0.9},
         "bank": {"bank_rate": 0.005, "loan_rate": 0.06, "loan_base": 5000, "loan_per_rep": 100,
-                 "loan_asset_share": 0.5, "debt_warn_mult": 1.5, "debt_rep_penalty": 3,
+                 "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
+                 "debt_grace_months": 3, "debt_call_every": 3,
                  "mug_threshold": 20000, "mug_chance": 0.06, "mug_min": 0.15, "mug_max": 0.35},
         "fleet": {"max_fleet": 5, "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
                   "warehouse_cap": 10000, "repair_base": 6, "repair_price_div": 4000,
@@ -356,8 +358,13 @@ SECTIONS = [
      "groups": [
          {"title": "Game", "fields": [
              F("rules.game.start_year", "Starting year", "int", min=1, max=3000),
-             F("rules.game.home", "Home port", "select", "Where everyone starts, and where the bank, lender, "
-               "warehouse and protection are.", options_from="ports"),
+             F("rules.game.home", "Home port", "select", "Everyone's home port when starts are not random, and the "
+               "port whose prices value cargo for net worth. With random starts each player's home port is the "
+               "port they start in.", options_from="ports"),
+             F("rules.start.where", "Where players start", "select", "Random gives each player a different port, "
+               "drawn afresh every game (ports are shared only when there are more players than ports). The port "
+               "a player starts in is their home port: their bank, lender, warehouse and protection are there.",
+               options=[["random", "A random port each, different every game"], ["home", "Everyone in the home port"]]),
              F("rules.game.max_players", "Most players", "int", min=1, max=8),
              F("rules.game.lengths", "Game lengths offered (years)", "numlist", "The host picks one in the lobby.", min=1, max=50, integer=True),
              F("rules.game.default_years", "Length chosen by default", "int", min=1, max=50),
@@ -402,7 +409,10 @@ SECTIONS = [
              F("rules.bank.loan_per_rep", "Loan limit: per point of home standing", "int", min=0, max=10**7),
              _pct("rules.bank.loan_asset_share", "Loan limit: share of silver, bank and ships", "", 0, 5),
              F("rules.bank.debt_warn_mult", "Collectors call when debt passes (x limit)", "num", min=1, max=100, step=0.1),
-             F("rules.bank.debt_rep_penalty", "Standing lost each month they call", "num", min=0, max=100, step=0.5)]},
+             F("rules.bank.debt_grace_months", "Grace period before the first call (months)", "int",
+               "Months in a row over the line before the collectors first call.", min=0, max=120),
+             F("rules.bank.debt_call_every", "Then they call every (months)", "int", min=1, max=120),
+             F("rules.bank.debt_rep_penalty", "Standing lost each time they call", "num", min=0, max=100, step=0.5)]},
          {"title": "Street robbery", "fields": [
              F("rules.bank.mug_threshold", "Silver on hand that tempts thieves", "int", min=0, max=10**9),
              _pct("rules.bank.mug_chance", "Chance per month"),
@@ -837,6 +847,8 @@ def validate(raw):
                 mods[g] = v
         p["mods"] = mods
     g = cfg["rules"]["game"]
+    if cfg["rules"]["start"].get("where") not in ("random", "home"):
+        errors.append("Game Setup: 'Where players start' must be random or home")
     if g["home"] not in ports:
         errors.append("Game Setup: the home port '{}' does not exist".format(g["home"]))
     for where, k in (("Game Setup / starting ship", cfg["rules"]["start"]["ship"]),
