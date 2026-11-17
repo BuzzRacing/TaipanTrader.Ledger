@@ -24,7 +24,7 @@ const Customs = (() => {
   /* The same sums as engine.Game.customs_odds. */
   function odds(c, line, declared, bribe) {
     const r = c.rules, x = c.cx, value = Math.max(1, line.value), q = declared / value;
-    const k = x.greed * x.mood * line.appetite;
+    const k = x.greed * x.mood * line.appetite * (x.rep_buy == null ? 1 : x.rep_buy);
     let buy, audit;
     if (q > 1 + 1e-9) { buy = 0; audit = 0; }
     else if (q >= 1 - 1e-9) { buy = r.buy_base * k; audit = 0; }
@@ -83,13 +83,33 @@ const Customs = (() => {
   function pool(port, role) {
     return Media.items("port", [port], role, true).filter(i => i.r.includes(role));
   }
+  /* The officer's own persona pictures in one mood (e.g. "happy"), strictly that mood. */
+  function moodPool(officer, mood) {
+    return officer ? Media.items("persona", [officer], mood, true).filter(i => i.r.includes(mood)) : [];
+  }
+  /* Where to look for each mood, best first. Her ruling never falls back to another port's lady
+     while this port has any picture of its own: a port with no "taxlady_tax" picture shows its own
+     officer pleased (persona "happy"), then her profile picture, then her calmest tell. */
+  const LADDER = {
+    welcome: [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
+    bored:   [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
+    over:    [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
+    curious: [["port", "taxlady_curious"], ["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
+    hungry:  [["port", "taxlady_hungry"], ["port", "taxlady_curious"], ["port", "taxlady"], ["officer", "portrait"]],
+    tax:     [["port", "taxlady_tax"], ["officer", "happy"], ["port", "taxlady"], ["officer", "portrait"], ["port", "taxlady_curious"], ["port", "taxlady_bored"]],
+    buyout:  [["port", "taxlady_buyout"], ["officer", "happy"], ["port", "taxlady_hungry"], ["port", "taxlady"], ["officer", "portrait"]],
+    caught:  [["port", "taxlady_caught"], ["officer", "angry"], ["port", "taxlady_hungry"], ["port", "taxlady"], ["officer", "portrait"]],
+  };
   function face(c, state, cls) {
     cls = cls || "stg-img stg-keeper stg-taxlady cx-img";
     const roles = { bored: "taxlady_bored", curious: "taxlady_curious", hungry: "taxlady_hungry", over: "taxlady_bored",
                     tax: "taxlady_tax", buyout: "taxlady_buyout", caught: "taxlady_caught", welcome: "taxlady_bored" };
     const role = roles[state] || "taxlady";
-    let list = pool(c.port, role);
-    if (!list.length) list = pool(c.port, "taxlady");
+    let list = [];
+    for (const [where, r] of (LADDER[state] || LADDER.bored)) {
+      list = where === "port" ? pool(c.port, r) : moodPool(c.officer, r);
+      if (list.length) break;
+    }
     if (!list.length) list = pool(D.home || "hongkong", role);
     if (!list.length) list = pool(D.home || "hongkong", "taxlady");
     if (!list.length) {
@@ -173,15 +193,17 @@ const Customs = (() => {
   function lineRow(c, l) {
     const g = l.ln.good, gi = (D.graphics.goods || {})[g];
     const max = Math.round(c.rules.max_declare * 100);
+    // "Keep sealed aboard" is a small pill on the slider's own caption line (opposite her chip), so it
+    // costs the row no height. Ticking it greys the slider; the chip then reads "sealed in bond".
     const seal = c.bond ? `<label class="cx-seal" title="${te("customs.seal_tip")}"><input type="checkbox" data-act="cx_seal" data-good="${g}" ${l.sealed ? "checked" : ""}>
         <span>${te("customs.seal")}</span></label>` : "";
     return `<div class="cx-line${l.sealed ? " sealed" : ""}" data-good="${g}">
       <span class="cx-good">${gi ? `<img src="${esc(gi)}" alt="">` : ""}<b>${esc(D.goods[g].name)}</b>
         <small title="${te("customs.worth")}">${l.ln.qty.toLocaleString()} × ${money(l.ln.unit)} = <i>${money(l.ln.value)}</i></small></span>
       <span class="cx-slide" style="--h:${(100 / max * 100).toFixed(1)}%"><input type="range" class="cx-range" data-k="cx_${g}" min="0" max="${max}" step="1" value="${l.p}" ${l.sealed ? "disabled" : ""}
-        aria-label="${te("customs.declare")} ${esc(D.goods[g].name)}"><span data-cx="chip_${g}">${chip(l.p, l.sealed)}</span></span>
+        aria-label="${te("customs.declare")} ${esc(D.goods[g].name)}"><span class="cx-slide-foot"><span data-cx="chip_${g}">${chip(l.p, l.sealed)}</span>${seal}</span></span>
       <span class="cx-decl"><small>${te("customs.declare")}</small><b data-cx="d_${g}">${l.sealed ? "—" : money(l.d)}</b></span>
-      <span class="cx-tax"><small>${te("customs.tax")}</small><b data-cx="t_${g}">${money(l.tax)}</b></span>${seal}
+      <span class="cx-tax"><small>${te("customs.tax")}</small><b data-cx="t_${g}">${money(l.tax)}</b></span>
       <p class="cx-warn" data-cx="w_${g}">${lowWarn(l)}</p></div>`;
   }
 
@@ -357,14 +379,21 @@ const Customs = (() => {
     if (f) Stage.idle(f.key, f.html, f.name, f.note);
   }
 
-  /* Her greeting is read aloud once per visit, by the officer of that port. */
+  /* Her greeting is read aloud once per visit, by the officer of that port, the moment her desk opens:
+     ahead of any news still waiting. While the Captain's Log is still up, the clip is fetched early so
+     Inworld has already recorded it by the time the desk appears. */
+  let warmed = "";
   function speak() {
     const c = cu();
-    if (!c || !S.voice || !S.voice.customs || !document.querySelector(".cx-desk")) return;
+    if (!c || !S.voice || !S.voice.customs) return;
+    if (c.home_free) return;   // the house's own home port: she only waves you in, so nothing is read aloud
+    const plan = S.voice.customs[0];
+    if (plan && plan.u && warmed !== plan.u) { warmed = plan.u; fetch(plan.u).catch(() => {}); }
+    if (!document.querySelector(".cx-desk")) return;
     if (ui.cxSpoken === key(c)) return;
     ui.cxSpoken = key(c);
-    const plan = S.voice.customs[0];
-    if (plan) Voice.say([Object.assign({ text: c.welcome, tag: "customs:" + key(c) }, plan)], { group: "msg", replace: "msg" });
+    if (plan) Voice.say([Object.assign({ text: c.welcome, tag: "customs:" + key(c) }, plan)],
+                        { group: "msg", replace: "msg", front: true });
   }
 
   function markSpeaking(item) {

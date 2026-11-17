@@ -222,8 +222,9 @@
    "wu_easy_share": 0.25,
    "mug_threshold": 20000,
    "mug_chance": 0.06,
-   "mug_min": 0.15,
-   "mug_max": 0.35
+   "mug_rep": 0.6,
+   "mug_min": 0.07,
+   "mug_max": 0.15
   },
   "fleet": {
    "max_fleet": 5,
@@ -309,11 +310,11 @@
    "dmg_max": 20,
    "protect_months": 8,
    "protect_save": 0.5,
-   "cost_share": 0.06,
+   "cost_share": 0.02,
    "cost_min": 500,
    "renew_at": 2,
    "tribute": true,
-   "tribute_mult": 2.0
+   "tribute_mult": 1.5
   },
   "wreck": {
    "cash_loss": 0.5,
@@ -330,9 +331,11 @@
    "retreat_min": 0.15,
    "retreat_max": 0.3,
    "retreat_floor": 5,
-   "round_secs": 20,
+   "round_secs": 10,
    "first_extra": 10,
-   "voice_grace": 6
+   "voice_grace": 0,
+   "gun_loss": 0.25,
+   "gun_loss_two": 0.25
   },
   "dues": {
    "anchorage": 10.0,
@@ -343,6 +346,7 @@
    "loan_share": 0.01,
    "warehouse": 2.0,
    "rep_discount": 0.2,
+   "debt_relief": 0.25,
    "slip_caught": 0.35,
    "slip_mult": 2.0,
    "slip_rep": 10.0
@@ -355,17 +359,18 @@
    "range": 0.0125,
    "min_rate": 0.0,
    "max_rate": 0.5,
-   "buy_base": 0.005,
-   "buy_k": 0.5,
+   "buy_base": 0.003,
+   "buy_k": 0.3,
    "buy_exp": 1.8,
    "buy_cap": 0.9,
-   "audit_base": 0.01,
-   "audit_k": 0.22,
+   "audit_base": 0.006,
+   "audit_k": 0.12,
    "audit_cap": 0.9,
    "appetite_power": 1.0,
    "greed_weight": 0.08,
    "cunning_weight": 0.08,
-   "rep_audit": 0.5,
+   "rep_audit": 0.8,
+   "rep_buy": 0.6,
    "mood_swing": 0.15,
    "fine_mult": 2.0,
    "caught_rep": 6.0,

@@ -22,6 +22,8 @@ Needs Python 3.8 or newer. Nothing else to install: the server uses only the sta
 
 The game saves after every turn to `saves/current.json` and resumes from it on the next launch. Players rejoin automatically on the device they joined with, or by entering the same name on another device.
 
+The Harbor Board at `/board` is a read-only Chart Room. It shows who's ready to sail, public battle updates, house standings, forecasts and cargo restrictions. Scroll the news panel for earlier bulletins and the optional port gallery.
+
 ## Admin
 
 **Launch_Admin.bat** opens the command center at `http://localhost:8765/admin`. Nothing changes until you press **Save & apply**; then every open player screen and harbor board updates at once, mid-game included.

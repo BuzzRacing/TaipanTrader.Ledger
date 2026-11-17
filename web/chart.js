@@ -50,7 +50,8 @@ const Chart = (() => {
   ];
 
   /* opts: data (static), players, weather, crackdown, here (port key), dest (port key),
-           clickable (bool), mine (player id), focusRoute (bool: frame a selected route on narrow screens) */
+           clickable (bool), mine (player id), focusRoute (bool: frame a selected route on narrow screens),
+           hideWeather (bool), hideRose (bool) */
   function svg(o) {
     const D = o.data, out = [];
     let viewBox = "0 0 1000 600", focused = false;
@@ -90,11 +91,11 @@ const Chart = (() => {
       }
     }
     // compass rose
-    out.push('<g class="rose" transform="translate(900,500)"><circle r="34"/>' +
+    if (!o.hideRose) out.push('<g class="rose" transform="translate(900,500)"><circle r="34"/>' +
       '<path d="M0-44 L7 0 L0 44 L-7 0Z"/><path d="M-44 0 L0-7 L44 0 L0 7Z"/>' +
       '<text y="-50" text-anchor="middle">N</text></g>');
     // weather by sea region
-    for (const r in D.regions) {
+    for (const r of o.hideWeather ? [] : Object.keys(D.regions)) {
       const reg = D.regions[r];
       const [x, y] = px(reg.label_lon, reg.label_lat);
       const lvl = o.weather && o.weather[r] != null ? o.weather[r] : 0;

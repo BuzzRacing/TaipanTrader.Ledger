@@ -6,12 +6,42 @@
 <title>Crimson Ledger</title>
 <link rel="icon" id="fav" href="data:,">
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/board.css">
 <link rel="stylesheet" id="fonts" href="/fonts.css">
 <link rel="stylesheet" id="theme" href="/theme.css">
 </head>
 <body class="board">
-<div id="app"><p class="loading">…</p></div>
-<button id="bquit" class="bquit" type="button" title="Quit (Esc)">Quit</button>
+<p id="board-loading" class="loading">…</p>
+<main id="app" class="board-room" hidden>
+  <header id="board-head" class="masthead br-head"></header>
+  <p id="board-connection" class="br-connection" role="status"></p>
+  <section id="board-turn" class="br-panel br-turn"></section>
+  <div class="br-grid">
+    <div class="br-chart-column">
+      <section class="br-panel br-map">
+        <header id="board-chart-head" class="br-section-head"></header>
+        <div id="board-chart" class="br-chart-frame"></div>
+      </section>
+      <div id="board-advisories" class="br-advisories"></div>
+    </div>
+    <div class="br-ledger-column">
+      <section class="br-panel br-standings">
+        <header id="board-ledger-head" class="br-section-head"></header>
+        <div id="board-houses" class="br-scroll"></div>
+      </section>
+      <section class="br-panel br-news">
+        <header id="board-news-head" class="br-section-head"></header>
+        <div class="br-scroll" id="board-bulletins">
+          <div id="board-news"></div>
+          <div id="board-gallery"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <footer id="board-controls" class="br-controls">
+    <button id="bquit" type="button">Quit</button>
+  </footer>
+</main>
 <script src="/common.js"></script>
 <script src="/media.js"></script>
 <script src="/voice.js"></script>

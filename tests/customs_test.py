@@ -211,6 +211,23 @@ def main():
     assert voice.PLAN._who("m.customs_clean", "batavia") == "officer_batavia"
     assert voice.PLAN._who("m.customs_clean", None) == "taxlady"
     assert voice.PLAN._who("l.anchored", "batavia") == cast.speaker_for(cfg, "l.anchored")
+    # 7. Standing in the port cuts both her buyouts and her audits; low standing raises both.
+    g = Game(seed=7)
+    g.join("Ann", "")
+    g.admin("start", {})
+    p = g.s["players"]["p1"]
+    line = {"value": 10000, "appetite": 1.0}
+    odds = {}
+    for rep in (0, 50, 100):
+        p["rep"]["calcutta"] = rep
+        cx = dict(g._officer_ctx(p, "calcutta"), mood=1.0)
+        odds[rep] = Game.customs_odds(cx, line, 8000)
+    assert odds[100][0] < odds[50][0] < odds[0][0], odds
+    assert odds[100][1] < odds[50][1] < odds[0][1], odds
+    # A small lie at average standing in the dearest port is now a fair gamble: tax saved beats expected loss.
+    c, rate = engine.R["customs"], PORTS["calcutta"]["tax_rate"]
+    buy, audit = odds[50]
+    assert rate * 2000 > buy * 2000 + audit * c["fine_mult"] * rate * 2000, (rate, odds[50])
     print("OK: Port Authority checks passed")
 
 

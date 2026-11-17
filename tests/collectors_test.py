@@ -144,6 +144,29 @@ def test_defaults_are_the_softer_rule():
     assert d["debt_rep_penalty"] == 1 and d["debt_warn_mult"] == 2.5
 
 
+def test_debtors_relief_on_the_mayors_bill():
+    """Debt takes up to debt_relief off the harbour dues, in proportion to the collectors' line."""
+    game = Game(seed=7)
+    p = game.s["players"][game.pid_for_token(game.join("Tester", ""))]
+    p["rep"][p["port"]] = 50.0
+    cap = R["dues"]["debt_relief"]
+    p["debt"] = 0.0
+    full = game.dues(p)
+    assert not any(ln["key"] == "debt" for ln in full["lines"]) and full["total"] > 0
+    line = game.collectors_line(p)
+    p["debt"] = line / 2                                # half way to the line: half the relief
+    half = game.dues(p)
+    rel = [ln for ln in half["lines"] if ln["key"] == "debt"][0]
+    assert abs(rel["rate"] - cap / 2) < 1e-6 and rel["amount"] < 0
+    assert half["total"] == full["total"] + rel["amount"]
+    p["debt"] = line * 3                                # far past the line: never more than the cap
+    most = game.dues(p)
+    rel = [ln for ln in most["lines"] if ln["key"] == "debt"][0]
+    assert abs(rel["rate"] - cap) < 1e-6
+    assert most["total"] == full["total"] - int(round(full["total"] * cap))
+    assert engine._config.DEFAULTS["rules"]["dues"]["debt_relief"] == 0.25
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

@@ -286,7 +286,8 @@ function deckArt(inGame) {
     Stage.idle(cx.key, cx.html, cx.name, cx.note);
     return;
   }
-  const woman = STAGE_WOMEN[ui.tab];
+  // In the Mayor's Parlour the stage shows the port's Mayor.
+  const woman = mayorOpen() ? STAGE_WOMEN.chart : STAGE_WOMEN[ui.tab];
   const womanImg = woman ? stageWomanHtml(me.port, woman.role) : "";
   document.getElementById("deck").classList.toggle("woman", !!womanImg);
   if (womanImg) {
@@ -320,7 +321,8 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "ledger.here": "you are here", "ledger.blank": "No prices yet. Visit to fill this page.",
     "ledger.key_lo": "cheapest seen", "ledger.key_hi": "dearest seen",
     "ledger.tip_lo": "Cheapest {cargo} you have seen", "ledger.tip_hi": "Dearest {cargo} you have seen",
-    "dealer.title": "Dealer's margin", "dealer.margin": "{margin}%", "dealer.standing": "Standing", "dealer.standing_tip": "Your standing here: {rep} of 100",
+    "dealer.title": "Dealer's margin", "dealer.margin": "{margin}%", "stat.standing": "Standing", "stat.standing_tip": "Your standing in {port}: {tier}", "stat.standing_hostile": "Hostile", "stat.standing_cool": "Cool", "stat.standing_neutral": "Neutral", "stat.standing_warm": "Warm", "stat.standing_favoured": "Favoured",
+    "dealer.standing": "Standing", "dealer.standing_tip": "Your standing here: {rep} of 100",
     "clearance.title": "Outward clearance", "clearance.authority": "Port authority of {port}", "clearance.harbour": "A · Harbour account", "clearance.subtotal": "Harbour dues subtotal", "clearance.total": "Amount payable", "clearance.after": "Silver after filing: {amount}", "clearance.short": "Short by {amount}; the balance becomes debt.", "clearance.anchor": "Filed when the fleet sails · nothing is due while at anchor", "clearance.slip": "Night departure selected · caught: {caught}",
     "market.paid": "paid {paid} avg", "market.paid_tip": "You paid {paid} a unit on average for the {good} you hold, aboard and ashore. Selling one here now brings {price}.",
     "market.pl_up": "+{profit}", "market.pl_down": "−{profit}",
@@ -346,7 +348,8 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "dues.loan": "Moneylender's stamp", "dues.loan_sub": "{rate} of {n} borrowed or repaid",
     "dues.wh": "Wharfage", "dues.wh_sub": "{n} units × {rate} per 100",
     "dues.standing_off": "Mayor's courtesy", "dues.standing_off_sub": "standing {n}: {rate} off",
-    "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra" });
+    "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra",
+    "port.owe.grp_lender": "Moneylender", "port.owe.grp_collect": "Debt collectors", "port.owe.grp_port": "Leaving port", "port.owe.grp_bank": "Counting-house" });
 const womanPick = {};
 /* Cast members who are port women: while the Mayor or the Tax collector speaks, the stage shows the
    picture for the port the house is in (deck.js Stage asks for it), not one portrait for every port. */
@@ -487,12 +490,32 @@ function topHtml() {
   const stats = [["stat.silver", money(p.cash), "silver" + dir(p.cash, me.cash)], ["stat.bank", money(me.bank)],
                  ["stat.debt", money(me.debt), (me.debt > 0 ? "bad" : "") + (due ? " due" : "") + (due === 1 ? " due-now" : ""), due ? ten("stat.debt_due", due) : ""],
                  ["stat.worth", money(me.worth), "worth"], ["stat.hold", p.used + " / " + me.capacity, dir(p.used, me.used).trim()], ["stat.guns", guns()]]
-    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("");
+    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("") +
+    standingPlaque((me.rep || {})[me.port]);
   return `<div class="dk-house"><i class="chip" style="background:${COLORS[me.color % 8]}"></i>
       <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
       <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
     ${portPlate()}
     <div class="dk-stats">${stats}</div>`;
+}
+
+/* The seventh plaque: the house's standing in this port as a heat icon, no number. A shield tinted by
+   the heat, beside five rising cells running red (hostile) to green (favoured), lit up to the standing's
+   tier. The tier's name is in the tooltip and for screen readers. */
+const STANDING_HEAT = [4, 26, 44, 78, 122];
+function standingPlaque(rep) {
+  const r = Math.max(0, Math.min(100, Math.round(rep || 0)));
+  const tier = Math.min(4, Math.floor(r / 20));
+  const word = te("stat.standing_" + ["hostile", "cool", "neutral", "warm", "favoured"][tier]);
+  const tip = te("stat.standing_tip", { port: esc(portName(S.me.port)), tier: word });
+  const heat = i => `hsl(${STANDING_HEAT[i]} 72% ${i === 2 ? 50 : 46}%)`;
+  const cells = STANDING_HEAT.map((_, i) =>
+    `<rect x="${19 + i * 8.6}" y="${14 - (i + 1) * 2.4}" width="7" height="${(i + 1) * 2.4 + 2}" rx="1.4" ` +
+    (i <= tier ? `fill="${heat(i)}"` : `class="off"`) + `/>`).join("");
+  const svg = `<svg class="plq-heat" viewBox="0 0 62 18" role="img" aria-label="${tip}" focusable="false">
+    <path class="shield" d="M7.5 1.2 14 3.8v4.7c0 3.9-2.6 6.4-6.5 8.2C3.6 14.9 1 12.4 1 8.5V3.8l6.5-2.6Z" fill="${heat(tier)}"/>
+    <path class="tick" d="m4.6 8.6 2 2 3.8-3.8"/>${cells}</svg>`;
+  return `<div class="plq standing tier-${tier}" title="${tip}" style="--heat:${heat(tier)}"><span>${te("stat.standing")}</span><b>${svg}</b></div>`;
 }
 
 /* The port the fleet lies in, between the house name and the plaques: "Welcome to" over the port's
@@ -611,12 +634,15 @@ function barStyle(tr) {
   const at = v => `calc(var(--tw) / 2 + (100% - var(--tw)) * ${tr.max ? (v / tr.max).toFixed(4) : 0})`;
   const h = at(tr.have), lo = at(Math.min(tr.have, tr.at)), hi = at(Math.max(tr.have, tr.at));
   const tick = `linear-gradient(90deg,transparent calc(${h} - 2px),var(--bar-tick) calc(${h} - 2px) calc(${h} + 2px),transparent calc(${h} + 2px))`;
+  // The sealed-in-bond share is hatched: it is aboard but cannot be sold in this port.
+  const sl = tr.sealed ? at(tr.sealed) : null;
+  const seal = sl ? `repeating-linear-gradient(135deg,rgba(0,0,0,.45) 0 4px,transparent 4px 8px) 0 0/${sl} 100% no-repeat,` : "";
   const fill = tr.side === "buy"
     ? `linear-gradient(90deg,var(--bar-held) 0 ${lo},var(--bar-buy) ${lo} ${hi},var(--bar-empty) ${hi} 100%)`
     : tr.side === "sell"
       ? `linear-gradient(90deg,var(--bar-held) 0 ${lo},var(--bar-sell) ${lo} ${hi},var(--bar-empty) ${hi} 100%)`
       : `linear-gradient(90deg,var(--bar-held) 0 ${h},var(--bar-empty) ${h} 100%)`;
-  return `background:${tick},${fill}`;
+  return `background:${seal}${tick},${fill}`;
 }
 
 function tradeButton(g, tr) {
@@ -665,7 +691,7 @@ function marketRow(g) {
     <td class="mk-name"><b>${esc(good.name)}</b>${tag}</td>
     <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${tr.sealed ? `<small class="mk-sealed">${te("market.sealed", { n: tr.sealed.toLocaleString() })}</small>` : ""}${paidHtml(g)}</td>
     <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
-      value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"></td>
+      value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"${tr.sealed ? ` title="${te("market.sealed_block", { n: tr.sealed.toLocaleString(), good: good.name, port: portName(me.port) })}"` : ""}></td>
     <td class="mk-do">${tradeButton(g, tr)}</td></tr>`;
 }
 
@@ -784,15 +810,15 @@ function clearanceLedger() {
 /* The Port tab opens with the house's news board: standings, port news and this month's log.
    They show in every port; the bank, loans, warehouse and agent below only at home. */
 /* ----------------------------------------------------------------- port -- */
-/* The Port screen: where a house lands in a new port. A strip of five figures (the voyage's result,
-   net worth, what is owed, interest a month, standing here), then sub-tabs: Arrival (what happened,
+/* The Port screen: where a house lands in a new port. Sub-tabs (the headline figures live in the
+   masthead, so the screen has no figure strip of its own): Arrival (what happened,
    what to do here, the port at a glance), Accounts (profit and loss, debts and dues), Log (the
    captain's log, this voyage and earlier ones), News (from the ports, bans, next month's weather)
    and, in Hong Kong only, Services (bank, moneylender, warehouse, protection).
    The figures come from the account book the server keeps (me.books, engine.py _book). */
 const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
-  ["port", ["dues", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
+  ["port", ["dues", "gift", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
   ["money", ["interest", "bank_interest"]],
   ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed"]],
 ];
@@ -808,13 +834,13 @@ function portViews() {
 
 function portTab() {
   // A new month always opens on Arrival.
-  if (ui.portTurn !== S.turn) { ui.portTurn = S.turn; ui.portView = "arrival"; }
+  if (ui.portTurn !== S.turn) { ui.portTurn = S.turn; ui.portView = "arrival"; ui.mayor = false; }
   const views = portViews();
   if (!views.includes(ui.portView)) ui.portView = "arrival";
   const seg = `<nav class="pt-tabs" role="tablist" aria-label="${te("port.views")}">${views.map(v =>
     `<button type="button" role="tab" class="pt-tab${ui.portView === v ? " on" : ""}" data-act="port_view" data-v="${v}" aria-selected="${ui.portView === v}"><span>${te("port.view." + v)}</span>${portBadge(v)}</button>`).join("")}</nav>`;
   const body = { arrival: portArrival, accounts: portAccounts, log: portLog, news: portNews, services: portServices }[ui.portView]();
-  return `<div class="pt">${portStrip()}${seg}<div class="pt-view pt-${ui.portView}">${body}</div></div>`;
+  return `<div class="pt">${seg}<div class="pt-view pt-${ui.portView}">${body}</div></div>`;
 }
 
 /* A small count on a sub-tab: things needing attention on Arrival, lines in this voyage's log, news items. */
@@ -830,27 +856,130 @@ function portBadge(v) {
   return n ? `<em class="pt-badge ${cls}" aria-hidden="true">${n}</em>` : "";
 }
 
-function portStrip() {
-  const me = S.me, last = (me.books || {}).last;
-  const net = last ? plTotal(last.lines) : null;
-  const rate = D.loan_rate, rep = (me.rep || {})[me.port];
-  const cell = (label, value, cls, sub) => `<div class="pt-fig ${cls || ""}"><span>${label}</span><b>${value}</b><small>${sub || "&nbsp;"}</small></div>`;
-  return `<div class="pt-strip">
-    ${cell(te(last && !last.sailed ? "port.fig.month" : "port.fig.voyage"), net === null ? "—" : esc(signed(net)), tone(net), last ? esc(last.date) : "")}
-    ${cell(te("port.fig.worth"), money(me.worth), "worth", `<i class="pt-rank">${esc(me.rank)}</i>`)}
-    ${cell(te("port.fig.owed"), money(me.debt), me.debt > 0 ? "down" : "")}
-    ${cell(te("port.fig.interest"), money(me.debt * rate), me.debt > 0 ? "down" : "", te("port.fig.interest_rate", { rate: pct(rate, 2) }))}
-    ${cell(te("port.fig.standing"), rep == null ? "—" : rep, "", te("port.fig.standing_in", { port: esc(portName(me.port)) }))}
-  </div>`;
-}
-
 /* ---- Arrival */
 function portArrival() {
-  // The "Welcome to (port)" banner now lives in the header (portPlate); the month's result is on the
-  // strip above and the full voyage log is under the Log sub-tab.
+  // The "Welcome to (port)" banner now lives in the header (portPlate); the month's result is under
+  // Accounts and the full voyage log is under the Log sub-tab.
   const me = S.me;
-  return `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>
-    <section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>`;
+  // Call on the Mayor swaps At a Glance for the Mayor's Parlour, and the stage shows her (deckArt).
+  const right = mayorOpen() ? mayorParlour()
+    : `<section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>`;
+  return `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>${right}`;
+}
+
+/* ---- The Mayor's Parlour: once per visit, a purse of silver for standing in this port.
+   Standing gained = cap x (1 - e^(-gift / appetite)) x headroom (engine.py Game.gift_gain, mirrored
+   here so the slider shows the result as it moves). me.gift carries the rule's numbers. */
+const mayorOpen = () => !!(ui.mayor && ui.tab === "port" && ui.portView === "arrival" && S.me.gift && S.me.gift.enabled);
+function mayorGain(gv, rep, amount) {
+  const soft = Math.min(99, Math.max(0, gv.soft_from));
+  const head = rep <= soft ? 1 : Math.max(0, (100 - rep) / (100 - soft));
+  return gv.cap * (1 - Math.exp(-Math.max(0, amount) / gv.appetite)) * head;
+}
+function mayorTier(gv, gain) {
+  const [gracious, warm, delighted] = gv.tiers;
+  return gain >= delighted ? "delighted" : gain >= warm ? "warm" : gain >= gracious ? "gracious" : "cool";
+}
+/* What a standing buys in this port, as the Parlour's table shows it. */
+function mayorPerks(gv, rep) {
+  const r = gv.rules, d = (50 - rep) / 50;
+  const dues = rep < 50 ? "+" + Math.round(r.rep_discount * d * 100) + "%" : rep > 50 ? "−" + Math.round(-r.rep_discount * d * 100) + "%" : t("port.mayor.dues_full");
+  const odds = k => "×" + Math.max(0.1, 1 + k * d).toFixed(2);
+  return { dues, search: odds(r.rep_audit), buyout: odds(r.rep_buy), margin: pct(Math.max(0, r.spread_base - r.spread_swing * (rep - 50) / 50), 1) + "%" };
+}
+function mayorAmount(gv) {
+  const raw = +(ui.vals.gift || 0) || Math.min(gv.max, Math.round(gv.appetite / gv.step) * gv.step);
+  return Math.max(gv.min, Math.min(gv.max, raw));
+}
+function mayorNumbers(gv, amount) {
+  const s0 = Math.round(gv.rep), gain = mayorGain(gv, gv.rep, amount);
+  const s1 = Math.min(100, Math.round(gv.rep + gain)), add = s1 - s0;
+  const more = Math.min(gv.max, amount + 500);
+  const next = more > amount ? mayorGain(gv, gv.rep, more) - gain : 0;
+  return { s0, s1, add, tier: mayorTier(gv, gain), next, after: S.me.cash - amount, now: mayorPerks(gv, gv.rep), then: mayorPerks(gv, gv.rep + gain) };
+}
+function mayorGauge(s0, s1, add, cls) {
+  return `<div class="mp-gauge ${cls || ""}">
+    <div class="mp-gauge-head"><span class="mp-lbl">${te("port.mayor.standing", { port: portName(S.me.port) })}</span>
+      <b class="mp-fig" data-mp="s0">${s0}</b><span aria-hidden="true">→</span><b class="mp-fig up" data-mp="s1">${s1}</b>
+      <em class="mp-plus" data-mp="add">+${add}</em></div>
+    <div class="mp-bar" role="img" aria-label="${s0} → ${s1}" data-mp="bar" style="--from:${s0}%;--to:${s1}%">
+      <i class="mp-then"></i><i class="mp-now"></i><i class="mp-tick"></i></div>
+    <div class="mp-scale"><span>${te("port.mayor.scale_lo")}</span><span>${te("port.mayor.scale_mid")}</span><span>${te("port.mayor.scale_hi")}</span></div>
+  </div>`;
+}
+function mayorParlour() {
+  const me = S.me, gv = me.gift, port = portName(me.port);
+  const head = (chip) => `<header class="pt-cardhead"><h2>${te("port.mayor.title")}</h2><span class="pt-chip">${chip}</span></header>`;
+  if (gv.given) {
+    const th_ = gv.thanks;
+    let words = "";
+    if (th_) {
+      // Her own words: the confirmation without its receipt (everything after "+{gain}.").
+      const tpl = T["m.gift." + th_.tier] || "";
+      const at = tpl.indexOf("{gain}.");
+      const vars = { port: portName(me.port), amount: money(th_.amount), gain: Math.round(th_.gain) };
+      words = esc((at >= 0 ? tpl.slice(at + 7).trim() : tpl).replace(/\{(\w+)\}/g, (m, k) => vars[k] != null ? vars[k] : (TOK[k] != null ? TOK[k] : m)));
+    }
+    const row = (label, value, cls) => `<tr><td>${label}</td><td class="n"><span class="pt-amt ${cls || ""}">${value}</span></td></tr>`;
+    return `<section class="card pt-mayor">${head(te("port.mayor.called"))}
+      ${th_ ? mayorGauge(th_.from, th_.to, th_.to - th_.from, "grown") : ""}
+      ${th_ ? `<div class="mp-thanks"><span class="mp-lbl">${te("port.mayor.thanks")} · ${te("port.mayor.tier." + th_.tier)}</span><p>“${words}”</p></div>
+      <table class="pt-table">${row(te("port.mayor.paid"), "−" + money(th_.amount), "down")}
+        ${row(te("port.mayor.standing", { port }), th_.from + " → " + th_.to, "up")}
+        ${row(te("port.mayor.dues"), esc(mayorPerks(gv, gv.rep).dues))}
+        ${row(te("port.mayor.after"), money(me.cash))}</table>` : ""}
+      <div class="pt-actions mp-actions"><span class="muted">${te("port.mayor.closed", { port })}</span>
+        ${btn(te("port.mayor.back") + ' <span aria-hidden="true">&rsaquo;</span>', "mayor_close", "", "pt-go")}</div></section>`;
+  }
+  const greet = `<p class="mp-greet">“${te("port.mayor.greet", { port })}”</p>`;
+  const close = btn(te("port.mayor.no"), "mayor_close", "", "pt-go");
+  if (gv.max < gv.min) {
+    return `<section class="card pt-mayor">${head(te("port.mayor.once"))}${greet}
+      <p class="mp-note">${te("port.mayor.poor", { amount: money(gv.min) })}</p><div class="pt-actions">${close}</div></section>`;
+  }
+  if (mayorGain(gv, gv.rep, gv.max) < 0.5) {
+    return `<section class="card pt-mayor">${head(te("port.mayor.once"))}${greet}
+      <p class="mp-note">${te("port.mayor.full")}</p><div class="pt-actions">${close}</div></section>`;
+  }
+  const amount = mayorAmount(gv), n = mayorNumbers(gv, amount), locked = me.ready;
+  const perk = (label, k) => `<tr><td>${te(label)}</td><td class="n" data-mp="now_${k}">${esc(n.now[k])}</td><td class="n up" data-mp="then_${k}">${esc(n.then[k])}</td></tr>`;
+  return `<section class="card pt-mayor">${head(te("port.mayor.once"))}${greet}
+    ${mayorGauge(n.s0, n.s1, n.add)}
+    <div class="mp-gift">
+      <div class="mp-gift-head"><label for="mpGift">${te("port.mayor.gift")}</label><output for="mpGift" class="mp-amount" data-mp="amount">${money(amount)}</output></div>
+      <input id="mpGift" type="range" class="mk-range pt-range mp-range" data-k="gift" min="${gv.min}" max="${gv.max}" step="${gv.step}" value="${amount}"
+        aria-valuetext="${esc(money(amount))}" ${locked ? "disabled" : ""}>
+      <div class="mp-ends"><span>${te("port.mayor.end_lo", { amount: money(gv.min) })}</span><span>${te("port.mayor.end_hi", { amount: money(gv.max) })}</span></div>
+    </div>
+    <div class="mp-boxes">
+      <div class="mp-box"><span class="mp-lbl">${te("port.mayor.after")}</span><b class="mp-fig" data-mp="after">${money(n.after)}</b>
+        <small data-mp="next">${n.next >= 0.05 ? te("port.mayor.next", { amount: money(500), gain: n.next.toFixed(1) }) : te("port.mayor.next_none")}</small></div>
+      <div class="mp-box"><span class="mp-lbl">${te("port.mayor.take")}</span><b class="mp-tier" data-mp="tier">${te("port.mayor.tier." + n.tier)}</b>
+        <small data-mp="hint">${te("port.mayor.hint." + n.tier)}</small></div>
+    </div>
+    <table class="pt-table mp-perks"><caption>${te("port.mayor.buys")}</caption>
+      ${perk("port.mayor.dues", "dues")}${perk("port.mayor.search", "search")}${perk("port.mayor.buyout", "buyout")}${perk("port.mayor.margin", "margin")}</table>
+    ${gv.home ? `<p class="mp-note">${te("port.mayor.home")}</p>` : ""}
+    <div class="pt-actions mp-actions"><span class="muted">${te("port.mayor.fine")}</span>${close}
+      ${btn(te("port.mayor.give", { amount: money(amount) }), "mayor_give", "", "primary mp-give", locked)}</div>
+  </section>`;
+}
+/* While the purse slider moves: update the figures in place (the pane is redrawn once it is let go). */
+function mayorLive(range) {
+  const gv = S.me.gift, card = range.closest(".pt-mayor");
+  if (!gv || !card) return;
+  const amount = Math.max(gv.min, Math.min(gv.max, +range.value)), n = mayorNumbers(gv, amount);
+  const set = (k, v) => { const el = card.querySelector(`[data-mp="${k}"]`); if (el) el.textContent = v; };
+  set("amount", money(amount)); set("s1", n.s1); set("add", "+" + n.add); set("after", money(n.after));
+  set("next", n.next >= 0.05 ? t("port.mayor.next", { amount: money(500), gain: n.next.toFixed(1) }) : t("port.mayor.next_none"));
+  set("tier", t("port.mayor.tier." + n.tier)); set("hint", t("port.mayor.hint." + n.tier));
+  ["dues", "search", "buyout", "margin"].forEach(k => set("then_" + k, n.then[k]));
+  const bar = card.querySelector('[data-mp="bar"]');
+  if (bar) { bar.style.setProperty("--to", n.s1 + "%"); bar.setAttribute("aria-label", n.s0 + " → " + n.s1); }
+  range.setAttribute("aria-valuetext", money(amount));
+  const give = card.querySelector(".mp-give");
+  if (give) give.textContent = t("port.mayor.give", { amount: money(amount) });
 }
 
 /* What is worth doing in this port, most useful first. Each item can jump to the tab that does it. */
@@ -885,6 +1014,14 @@ function portTodo() {
   if (coll && coll.calls_in) items.push([coll.calls_in === 1 ? "down" : "warn", ten("port.todo.collectors", coll.calls_in, { amount: money(coll.to_clear) }),
     goView("accounts")]);
   if (!me.used && !me.ready) items.push(["", te("port.todo.empty"), go("market", te("tab.market"))]);
+  // The Mayor's Parlour: a brass "!" while she thinks little of the house (standing under 50).
+  const gv = me.gift;
+  if (gv && gv.enabled && !me.ready) {
+    const port = portName(me.port), low = gv.rep < 50 && !gv.given;
+    const call = mayorOpen() ? "" : btn(te(gv.given ? "port.todo.mayor_back" : "port.todo.mayor_go") + arrow, "mayor_open", "", "pt-go");
+    items.push([gv.given ? "ok" : low ? "warn" : "",
+      te(gv.given ? "port.todo.mayor_done" : low ? "port.todo.mayor_low" : "port.todo.mayor", { port, rep: Math.round(gv.rep) }), call]);
+  }
   if (!items.length) return `<p class="muted">${te("port.todo.none")}</p>`;
   const icon = { up: "◆", warn: "!", down: "⚖", ok: "⚓", "": "·" };
   return `<ul class="pt-list">${items.map(([k, text, act]) =>
@@ -970,30 +1107,50 @@ function portUnrealised() {
 function portOwe() {
   const me = S.me, r = D.loan_rate, home = me.port === myHome();
   const last = (me.books || {}).last, paid = last ? -(last.lines.interest || 0) : 0;
-  const row = (label, value, cls, note) => `<tr><td>${label}${note ? `<small>${note}</small>` : ""}</td><td class="n ${cls || ""}">${value}</td></tr>`;
   const double = r > 0 ? Math.ceil(Math.log(2) / Math.log(1 + r)) : 0;
   const bill = (me.dues || {}).total || 0;
-  let rows = "";
+  /* Values: amounts in ledger figures; counts with the number in figures and the unit in general text;
+     yes/no states as small coloured pills. */
+  const amt = (n, cls) => `<span class="pt-amt ${cls || ""}">${money(n)}</span>`;
+  const count = (text, cls) => `<span class="pt-count ${cls || ""}">${String(text).replace(/(\d[\d,.]*)/, "<b>$1</b>")}</span>`;
+  const state = (text, cls) => `<span class="pt-chip ${cls || ""}">${text}</span>`;
+  const row = (label, value, note, cls) => `<tr class="${cls || ""}"><td>${label}${note ? `<small>${note}</small>` : ""}</td><td class="pt-val">${value}</td></tr>`;
+  const group = (title, rows) => rows ? `<tr class="pt-grp"><td colspan="2">${title}</td></tr>${rows}` : "";
+
+  let hero;
   if (me.debt > 0) {
-    rows += row(`<b>${te("port.owe.lender")}</b>`, money(me.debt), "down", te("port.owe.lender_note", { rate: pct(r, 2) }));
-    if (paid > 0.5) rows += row(te("port.owe.paid"), money(paid), "down");
-    rows += row(te("port.owe.next"), money(me.debt * r), "down");
-    if (double) rows += row(te("port.owe.double"), ten("port.owe.months", double), "", te(home ? "port.owe.repay_here" : "port.owe.repay_home"));
-    const c = me.collectors;
-    if (c) {
-      rows += row(te("port.owe.line"), money(c.line), c.over ? "down" : "", ten("port.owe.line_note", c.every, { months: c.grace }));
-      rows += c.calls_in
-        ? row(`<b>${te("port.owe.call")}</b>`, ten("port.owe.call_in", c.calls_in), "down", te("port.owe.call_note", { rep: c.penalty, amount: money(c.to_clear) }))
-        : row(te("port.owe.call"), te("port.owe.call_none"), "up", te("port.owe.call_none_note"));
-    }
+    const stats = [
+      `<div class="pt-owe-stat"><span class="pt-owe-lbl">${te("port.owe.next")}</span>${amt(me.debt * r, "down")}</div>`,
+      double ? `<div class="pt-owe-stat"><span class="pt-owe-lbl">${te("port.owe.double")}</span>${count(ten("port.owe.months", double), double <= 12 ? "down" : "")}</div>` : "",
+      paid > 0.5 ? `<div class="pt-owe-stat"><span class="pt-owe-lbl">${te("port.owe.paid")}</span>${amt(paid, "down")}</div>` : "",
+    ].join("");
+    hero = `<div class="pt-owe-hero debt">
+        <div class="pt-owe-main"><span class="pt-owe-lbl">${te("port.owe.lender")}</span><b>${money(me.debt)}</b><small>${te("port.owe.lender_note", { rate: pct(r, 2) })} · ${te(home ? "port.owe.repay_here" : "port.owe.repay_home")}</small></div>
+        <div class="pt-owe-stats">${stats}</div></div>`;
   } else {
-    rows += row(te("port.owe.lender"), te("port.owe.clear"), "up");
+    hero = `<div class="pt-owe-hero clear">
+        <div class="pt-owe-main"><span class="pt-owe-lbl">${te("port.owe.lender")}</span><b>${te("port.owe.clear")}</b></div>
+        ${home ? `<div class="pt-owe-stats"><div class="pt-owe-stat"><span class="pt-owe-lbl">${te("port.owe.room")}</span>${amt(me.loan_room, "up")}</div></div>` : ""}</div>`;
   }
-  if (home) rows += row(te("port.owe.room"), money(me.loan_room));
-  rows += row(te("port.owe.dues", { port: esc(portName(me.port)) }), bill > 0 ? money(bill) : te("port.owe.nothing"), "", te("port.owe.dues_note"));
-  rows += row(te("port.owe.protect"), me.protect > 0 ? ten("port.owe.months", me.protect) : te("port.owe.no_protect"), me.protect <= D.renew_at ? "down" : "");
-  if (me.bank > 0) rows += row(te("port.owe.bank"), money(me.bank), "up", te("port.owe.bank_note", { rate: pct(D.bank_rate, 2), interest: money(me.bank * D.bank_rate) }));
-  return `<table class="pt-table pt-owetable">${rows}</table>
+
+  let lender = "";
+  if (me.debt > 0) {
+    if (home) lender += row(te("port.owe.room"), amt(me.loan_room));
+  }
+  let collect = "";
+  const c = me.debt > 0 && me.collectors;
+  if (c) {
+    collect += row(te("port.owe.line"), amt(c.line, c.over ? "down" : ""), ten("port.owe.line_note", c.every, { months: c.grace }));
+    collect += c.calls_in
+      ? row(`<b>${te("port.owe.call")}</b>`, count(ten("port.owe.call_in", c.calls_in), "down"), te("port.owe.call_note", { rep: c.penalty, amount: money(c.to_clear) }), "warn")
+      : row(te("port.owe.call"), state(te("port.owe.call_none"), "up"), te("port.owe.call_none_note"));
+  }
+  let port = row(te("port.owe.dues", { port: esc(portName(me.port)) }), bill > 0 ? amt(bill) : state(te("port.owe.nothing"), "up"), te("port.owe.dues_note"));
+  port += row(te("port.owe.protect"), me.protect > 0 ? count(ten("port.owe.months", me.protect), me.protect <= D.renew_at ? "down" : "up")
+    : state(te("port.owe.no_protect"), "down"));
+  const bank = me.bank > 0 ? row(te("port.owe.bank"), amt(me.bank, "up"), te("port.owe.bank_note", { rate: pct(D.bank_rate, 2), interest: money(me.bank * D.bank_rate) })) : "";
+
+  return `${hero}<table class="pt-table pt-owetable">${group(te("port.owe.grp_lender"), lender)}${group(te("port.owe.grp_collect"), collect)}${group(te("port.owe.grp_port"), port)}${group(te("port.owe.grp_bank"), bank)}</table>
     ${home ? `<div class="pt-actions">${btn(te("port.owe.to_services") + ' <span aria-hidden="true">&rsaquo;</span>', "port_view", 'data-v="services"', "pt-go")}</div>` : ""}`;
 }
 
@@ -1018,13 +1175,30 @@ function portNews() {
     return at > 0 && at < 14 ? `<li><span class="pt-when">${esc(n.slice(0, at))}</span><span>${esc(n.slice(at + 2))}</span></li>` : `<li><span class="pt-when"></span><span>${esc(n)}</span></li>`;
   }).join("");
   const bans = Object.keys(S.bans || {}).map(k => `<tr><td>${esc(portName(k))}</td><td class="n">${(S.bans[k] || []).map(g => `<span class="pt-chip down">${esc(D.goods[g] ? D.goods[g].name : g)}</span>`).join("")}</td></tr>`).join("");
+  const here = (D.ports[S.me.port] || {}).region;
   const wx = Object.keys(D.regions || {}).map(r => {
-    const lv = (S.weather || {})[r] || 0;
-    return `<tr><td>${esc(D.regions[r].name || r)}</td><td class="n"><span class="pt-wx wx${Math.min(3, lv)}">${esc(D.weather[lv])}</span></td></tr>`;
+    const lv = Math.max(0, Math.min(3, (S.weather || {})[r] || 0));
+    const kind = ["calm", "fair", "squalls", "typhoon"][lv];
+    const ports = Object.keys(D.ports).filter(k => D.ports[k].region === r).map(k => esc(D.ports[k].name)).join(" \u00b7 ");
+    return `<li class="pt-wxsea wx${lv}${r === here ? " here" : ""}">
+      <span class="pt-wxicon">${sailIcon(kind)}</span>
+      <div class="pt-wxbody">
+        <div class="pt-wxhead"><b>${esc(D.regions[r].name || r)}</b>${r === here ? `<span class="pt-wxhere">\u2693 ${te("port.news.wx_here")}</span>` : ""}</div>
+        <strong class="pt-wxcond">${esc(D.weather[lv])}</strong>
+        <dl class="pt-wxfacts"><dt>${te("port.news.wx_wind")}</dt><dd>${te("port.news.wx_wind." + lv)}</dd>
+          <dt>${te("port.news.wx_sea")}</dt><dd>${te("port.news.wx_sea." + lv)}</dd></dl>
+        <p class="pt-wxadvice">${te("port.news.wx_advice." + lv)}</p>
+        ${ports ? `<small class="pt-wxports">${ports}</small>` : ""}
+      </div></li>`;
   }).join("");
+  const worst = Math.max(0, ...Object.keys(D.regions || {}).map(r => (S.weather || {})[r] || 0));
   return `<section class="card pt-newscard"><h2>${te("port.news.title")}</h2><ul class="pt-news-list">${news || `<li class="muted">${te("ledger.no_news")}</li>`}</ul></section>
     <section class="card"><h2>${te("port.news.bans")}</h2>${bans ? `<table class="pt-table">${bans}</table>` : `<p class="muted">${te("port.news.no_bans")}</p>`}</section>
-    <section class="card"><h2>${te("port.news.weather")}</h2><table class="pt-table">${wx}</table>
+    <section class="card pt-wxcard${worst >= 3 ? " alert" : ""}">
+      <header class="pt-wxbanner"><span class="pt-wxeyebrow">${te("port.news.wx_bureau")}</span>
+        <h2>${te("port.news.weather")}</h2><span class="pt-wxissued">${te("port.news.wx_issued", { date: esc(S.date) })}</span></header>
+      ${worst >= 3 ? `<p class="pt-wxwarning">${sailIcon("typhoon")}<span>${te("port.news.wx_warning")}</span></p>` : ""}
+      <ul class="pt-wxlist">${wx}</ul>
       <p class="muted pt-fine">${te("port.news.weather_note", { right: pct(D.forecast_accuracy, 0) })}</p></section>`;
 }
 
@@ -1444,15 +1618,29 @@ app.addEventListener("input", e => {
   const k = e.target.dataset.k;
   if (!k) return;
   ui.vals[k] = e.target.value;
-  if (k.startsWith("t_")) { ui.drag = true; dragRow(e.target.dataset.good); }
+  if (k.startsWith("t_")) {
+    // Cargo sealed in bond can't be sold here: hold the thumb at the seal instead of letting it slide
+    // past and snap back, and say why once per drag.
+    const g = e.target.dataset.good, sealed = tradeOf(g).sealed;
+    if (sealed && +e.target.value < sealed) {
+      e.target.value = sealed;
+      ui.vals[k] = String(sealed);
+      if (ui.sealWarned !== g) {
+        ui.sealWarned = g;
+        toast(t("market.sealed_block", { n: sealed.toLocaleString(), good: D.goods[g].name, port: portName(S.me.port) }), true);
+      }
+    }
+    ui.drag = true; dragRow(g);
+  }
   if (k.startsWith("cx_")) { ui.drag = true; Customs.live(e.target); }
+  if (k === "gift") { ui.drag = true; mayorLive(e.target); }
   if (e.target.dataset.service) serviceDrag(e.target);
 });
 app.addEventListener("pointerdown", e => {
   if (e.target.matches(".pt-range:enabled")) ui.drag = true;
 });
 /* The pane is held still while a bar is being dragged, then redrawn once it is let go. */
-const endDrag = () => { if (ui.drag) { ui.drag = false; render(); } };
+const endDrag = () => { ui.sealWarned = null; if (ui.drag) { ui.drag = false; render(); } };
 app.addEventListener("change", e => { if (e.target.classList.contains("mk-range") || e.target.classList.contains("cx-range")) endDrag(); });
 window.addEventListener("pointerup", endDrag);
 window.addEventListener("pointercancel", endDrag);
@@ -1492,11 +1680,19 @@ app.addEventListener("click", async e => {
     case "me": ui.meOpen = !ui.meOpen; return render();
     case "speech": Voice.setMuted(!Voice.muted()); return render();
     case "options": ui.meOpen = false; render(); return toast(t("deck.options_soon"));
-    case "seen": ui.seenTurn = S.turn; Voice.drop("log"); return render();
+    // Closing the log opens the Port Authority desk: her greeting starts with it, not at the next update.
+    case "seen": ui.seenTurn = S.turn; Voice.drop("log"); render(); return Customs.speak();
     case "relog": ui.seenTurn = null; ui.spokenTurn = null; return render();
     case "port_view": ui.portView = d.v; return render();
     case "to_services": ui.tab = "port"; ui.tally = false; ui.portTurn = S.turn; ui.portView = "services"; return render();
     case "pl_range": ui.plRange = d.v; return render();
+    case "mayor_open": ui.mayor = true; ui.vals.gift = ""; return render();
+    case "mayor_close": ui.mayor = false; return render();
+    case "mayor_give": {
+      const gv = S.me.gift;
+      if (!gv) return;
+      return act("gift", { amount: mayorAmount(gv) });
+    }
     case "years": return act("settings", { years: +d.y });
     case "start": return act("start");
     case "trade": {

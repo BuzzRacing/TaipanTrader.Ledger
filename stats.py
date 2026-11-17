@@ -34,7 +34,7 @@ _CACHE_MAX = 64
 
 # Actions whose silver change counts as a cost or income line in "where the silver went".
 ACTION_LINES = {"buy_gun": "guns", "repair": "repairs", "buy_ship": "ships_bought", "sell_ship": "ships_sold",
-                "protection": "protection"}
+                "protection": "protection", "gift": "gift"}
 
 
 # ------------------------------------------------------------- reading --

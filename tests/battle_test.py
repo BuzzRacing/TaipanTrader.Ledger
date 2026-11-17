@@ -459,6 +459,52 @@ def test_bot_games_keep_the_books():
     assert kinds >= {"away", "retreated"}, kinds
 
 
+def test_guns_can_be_shot_away():
+    """Enemy hits sometimes smash guns instead of the hull; the guns lost are booked and shown."""
+    setup(battle__gun_loss=1.0, battle__gun_loss_two=0.0, pirates__hit=1.0, pirates__gun_hit=0.0)
+    g = new_game(guns=4)
+    g.s["players"]["p2"]["protect"] = 5
+    R["liyuen"]["protect_save"] = 1.0
+    assert sail(g, present=["p1", "p2"])
+    p1 = g.s["players"]["p1"]
+    hull0, before = p1["ships"][0]["hull"], dict(books(p1))
+    g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])      # refuse their price: the fight begins
+    while p1.get("battle") and p1["battle"]["stage"] == "parley":
+        g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+    # six junks, every one hits: the first four hits each take a gun, and only then is the hull holed
+    assert p1["ships"][0]["guns"] == 0 and p1["ships"][0]["hull"] < hull0
+    lost = round(books(p1).get("ships_lost", 0) - before.get("ships_lost", 0), 2)
+    assert lost == -4 * R["fleet"]["gun_price"] * R["fleet"]["gun_resale"], lost
+    if p1.get("battle"):
+        v = g.battle_view(p1)
+        assert v["guns"] == 0 and not v["can_fight"]
+        assert any(f["cap"] == engine.tx("battle.cap.guns_gone", guns=4, s="s", left=0) for f in v["beat"]["frames"])
+        try:
+            g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+            raise AssertionError("fought with no guns")
+        except GameError:
+            pass
+        g.act("p1", {"type": "sea", "choice": "auto"}, present=["p1", "p2"])  # standing orders say fight: she runs instead
+        g.fight_out(["p1", "p2"], pick=lambda v: "run")
+    f = p1["fights"][-1]
+    assert f["ships"][0]["guns0"] == 4 and f["ships"][0]["guns1"] == 0
+    assert engine.tx("l.guns_lost", guns=4, s="s") in p1["log"]
+
+
+def test_hull_only_when_no_guns_aboard():
+    setup(battle__gun_loss=1.0, pirates__hit=1.0, pirates__run_base=0.0, pirates__run_fast=0.0, pirates__run_round=0.0)
+    g = new_game(guns=0)
+    for p in g.s["players"].values():
+        p["protect"] = 0
+    assert sail(g, present=["p1", "p2"], orders="run")
+    p1 = g.s["players"]["p1"]
+    hull0 = p1["ships"][0]["hull"]
+    assert p1.get("battle")
+    g.fight_out(["p1", "p2"], pick=lambda v: "run")
+    sh = p1["fights"][-1]["ships"][0]                       # (a wreck is replaced by a sound junk, so read the reckoning)
+    assert sh["guns0"] == sh["guns1"] == 0 and (sh["lost"] or sh["hull1"] < hull0)
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in tests:

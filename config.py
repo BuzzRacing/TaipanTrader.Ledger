@@ -134,7 +134,8 @@ DEFAULTS = {
         "bank": {"bank_rate": 0.005, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
                  "debt_grace_months": 3, "debt_call_every": 3, "wu_advice": True, "wu_easy_share": 0.25,
-                 "mug_threshold": 20000, "mug_chance": 0.06, "mug_min": 0.15, "mug_max": 0.35},
+                 "mug_threshold": 20000, "mug_chance": 0.06, "mug_rep": 0.6,
+                 "mug_min": 0.07, "mug_max": 0.15},
         "fleet": {"max_fleet": 5, "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
                   "warehouse_cap": 10000, "repair_base": 6, "repair_price_div": 4000,
                   "repair_noyard": 1.3, "repair_rep_discount": 0.2, "ship_rep": 2},
@@ -154,25 +155,26 @@ DEFAULTS = {
                     "plunder_min": 0.25, "plunder_max": 0.5},
         "liyuen": {"chance": 0.06, "fleet_base": 6, "fleet_per_hold": 25, "fleet_max": 60,
                    "hit": 0.40, "dmg_min": 8, "dmg_max": 20, "protect_months": 8,
-                   "protect_save": 0.5, "cost_share": 0.06, "cost_min": 500, "renew_at": 2,
-                   "tribute": True, "tribute_mult": 2.0},
+                   "protect_save": 0.5, "cost_share": 0.02, "cost_min": 500, "renew_at": 2,
+                   "tribute": True, "tribute_mult": 1.5},
         "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 100, "guns": 2},
         # The sea battle played on screen (engine.Game, "sea battles"). A captain at a screen chooses
         # each round; the month waits at sea until every fight is over.
         "battle": {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
                    "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
-                   "round_secs": 20, "first_extra": 10, "voice_grace": 6},
+                   "round_secs": 10, "first_extra": 10, "voice_grace": 0,
+                   "gun_loss": 0.25, "gun_loss_two": 0.25},
         # The mayor's harbour dues, paid on leaving port (engine.Game.dues).
         "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
-                 "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2,
+                 "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2, "debt_relief": 0.25,
                  "slip_caught": 0.35, "slip_mult": 2.0, "slip_rep": 10},
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
         "customs": {"enabled": True, "home_free": True, "bond": True, "drift": 0.005, "range": 0.0125, "min_rate": 0.0, "max_rate": 0.5,
-                    "buy_base": 0.005, "buy_k": 0.5, "buy_exp": 1.8, "buy_cap": 0.9,
-                    "audit_base": 0.01, "audit_k": 0.22, "audit_cap": 0.9,
-                    "appetite_power": 1.0, "greed_weight": 0.08, "cunning_weight": 0.08, "rep_audit": 0.5,
+                    "buy_base": 0.003, "buy_k": 0.3, "buy_exp": 1.8, "buy_cap": 0.9,
+                    "audit_base": 0.006, "audit_k": 0.12, "audit_cap": 0.9,
+                    "appetite_power": 1.0, "greed_weight": 0.08, "cunning_weight": 0.08, "rep_audit": 0.8, "rep_buy": 0.6,
                     "mood_swing": 0.15, "fine_mult": 2.0, "caught_rep": 6,
                     "strongbox": 9000, "strongbox_swing": 0.4, "buyback_premium": 0.25,
                     "bribe_share": 0.3, "bribe_min": 50, "bribe_cut": 0.5, "bribe_honest": 0.25,
@@ -435,6 +437,8 @@ SECTIONS = [
          {"title": "Street robbery", "fields": [
              F("rules.bank.mug_threshold", "Silver on hand that tempts thieves", "int", min=0, max=10**9),
              _pct("rules.bank.mug_chance", "Chance per month"),
+             _pct("rules.bank.mug_rep", "Standing 100 cuts the chance by (standing 0 adds the same)",
+                  "Standing in the port where the house is ashore at month end. At standing 50 the chance is as set above.", 0, 1),
              _pct("rules.bank.mug_min", "Least taken"),
              _pct("rules.bank.mug_max", "Most taken")]},
          {"title": "Fleet and warehouse", "fields": [
@@ -459,6 +463,8 @@ SECTIONS = [
              F("rules.dues.warehouse", "Wharfage per 100 units stored or loaded this visit", "num", min=0, max=10**6, step=0.5),
              _pct("rules.dues.rep_discount", "Discount at standing 100 (the same surcharge at standing 0)",
                   "Standing 50 pays the full bill; the change is in proportion either side of it."),
+             _pct("rules.dues.debt_relief", "Debtor's relief: most taken off for a house in debt",
+                  "In proportion to the debt against the collectors' line: half way to the line gets half of this, at or past the line gets all of it. 0 turns it off."),
              _pct("rules.dues.slip_caught", "Slipping out at night: chance the harbour watch catches you"),
              F("rules.dues.slip_mult", "Caught slipping out: pay the bill this many times", "num", min=1, max=20, step=0.5),
              F("rules.dues.slip_rep", "Caught slipping out: standing lost in that port", "num", min=0, max=100, step=1)]},
@@ -477,7 +483,7 @@ SECTIONS = [
              _pct("rules.customs.max_declare", "Highest declaration allowed (share of true worth)",
                   "Above 100% is over-declaring: she never buys, you pay more tax, and your standing rises.", 1, 5)]},
          {"title": "Port Authority: her odds", "fields": [
-             _pct("rules.customs.buy_base", "Chance she buys an honest line", "Times her greed, her mood and how much the port wants that cargo."),
+             _pct("rules.customs.buy_base", "Chance she buys an honest line", "Times her greed, her mood, your standing and how much the port wants that cargo."),
              _pct("rules.customs.buy_k", "Buyout chance added by a 100% lie", "", 0, 5),
              F("rules.customs.buy_exp", "Buyout curve", "num", "1 rises evenly with the lie; above 1 small lies are "
                "safe and big ones are not.", min=0.2, max=5, step=0.05),
@@ -492,6 +498,7 @@ SECTIONS = [
              _pct("rules.customs.greed_weight", "Each point of greed above 5: more buyouts", "", 0, 1),
              _pct("rules.customs.cunning_weight", "Each point of cunning above 5: more audits", "", 0, 1),
              _pct("rules.customs.rep_audit", "Standing 100 cuts audits by (standing 0 adds the same)", "", 0, 1),
+             _pct("rules.customs.rep_buy", "Standing 100 cuts buyouts by (standing 0 adds the same)", "", 0, 1),
              _pct("rules.customs.mood_swing", "Her mood swing, for ports that do not set their own", "", 0, 1),
              _pct("rules.customs.tell_curious", "Her tell: curious above this risk", "", 0, 1),
              _pct("rules.customs.tell_hungry", "Her tell: hungry above this risk", "", 0, 1)]},
@@ -623,6 +630,9 @@ SECTIONS = [
              F("rules.battle.first_extra", "Extra seconds on the first round", "int", min=0, max=600),
              F("rules.battle.voice_grace", "Seconds allowed for the bosun's line", "int",
                "Added to every round so the clock does not run while she is speaking.", min=0, max=60),
+             _pct("rules.battle.gun_loss", "Enemy hits that smash guns instead of the hull",
+                  "Each hit on a ship that still has guns: this share dismounts guns (no hull damage); the rest hole the hull."),
+             _pct("rules.battle.gun_loss_two", "Gun hits that smash two guns, not one"),
              F("rules.battle.parley", "Pirates name a price to let the fleet pass", "bool",
                "Before the first shot. The pirate queen's fleet never does."),
              F("rules.battle.parley_per_junk", "Their price: silver per junk", "int", min=0, max=10**7),

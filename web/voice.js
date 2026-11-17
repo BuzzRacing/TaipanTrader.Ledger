@@ -204,7 +204,8 @@ const Voice = (() => {
       if (!items.length) return;
       if (opts && opts.replace) queue = queue.filter(q => q.group !== opts.replace);
       if (opts && opts.group) items.forEach(x => { x.group = opts.group; });
-      queue.push(...items);
+      if (opts && opts.front) queue.unshift(...items);   // read next, ahead of anything already waiting
+      else queue.push(...items);
       pump();
     },
     stop,

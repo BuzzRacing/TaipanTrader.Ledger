@@ -284,8 +284,10 @@ const Battle = (() => {
     $(".sf-cap").textContent = "";
     $(".sf-tell").textContent = "";
     $(".sf-who").hidden = true;
-    const ships = f.ships.map(s => `<li class="${s.lost ? "lost" : s.hull1 < s.hull0 ? "hit" : ""}"><b>${a(s.name)}</b>
-      <span>${s.lost ? te("battle.res.ship_lost") : te("battle.res.hull", { a: s.hull0, b: s.hull1 })}</span></li>`).join("");
+    const gunsHit = s => s.guns0 != null && s.guns1 != null && s.guns1 < s.guns0;
+    const ships = f.ships.map(s => `<li class="${s.lost ? "lost" : (s.hull1 < s.hull0 || gunsHit(s)) ? "hit" : ""}"><b>${a(s.name)}</b>
+      <span>${s.lost ? te("battle.res.ship_lost") : te("battle.res.hull", { a: s.hull0, b: s.hull1 })
+        + (!s.lost && gunsHit(s) ? " · " + te("battle.res.guns", { a: s.guns0, b: s.guns1 }) : "")}</span></li>`).join("");
     const cargo = f.cargo.length
       ? f.cargo.map(c => `<li>${te("battle.res.cargo_line", { qty: c.qty, good: D.goods[c.good] ? D.goods[c.good].name : c.good, cost: money(c.cost) })}</li>`).join("")
       : `<li class="none">${te(f.outcome === "wrecked" ? "battle.res.cargo_wreck" : "battle.res.cargo_none")}</li>`;
@@ -295,7 +297,7 @@ const Battle = (() => {
       f.booty ? `<div class="up"><small>${te("battle.res.booty")}</small><b>+${money(f.booty)}</b></div>` : "",
       f.paid ? `<div class="dn"><small>${te("battle.res.paid_line")}</small><b>-${money(f.paid)}</b></div>` : "",
     ].join("");
-    const hurt = f.ships.some(s => !s.lost && s.hull1 < s.hull0);
+    const hurt = f.ships.some(s => !s.lost && (s.hull1 < s.hull0 || gunsHit(s)));
     setHtml($(".sf-result"), `<section class="sf-card o-${a(f.outcome)}" role="dialog" aria-labelledby="sfResTitle">
       <header><p class="eyebrow">${a(f.n + " " + f.enemy)}${f.where ? " · " + te("battle.off", { port: f.where }) : ""}</p>
         <h2 id="sfResTitle">${te("battle.res." + f.outcome)}</h2></header>

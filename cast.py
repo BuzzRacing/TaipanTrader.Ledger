@@ -249,7 +249,8 @@ CHARACTERS = {
         "catchphrase": "My harbour, Captain. My watch. My silver.",
         "bio": "Every treaty port on the China Seas has its Mayor, and every one of them came up the same way: "
                "through the harbour office, the counting house and a husband or two who did not last. She sees "
-               "every ship off personally. She speaks only when a captain tries to leave without paying.",
+               "every ship off personally. She speaks when a captain tries to leave without paying, "
+               "and when a captain's purse truly pleases her.",
         "quirk": "Turns the chain of office on her desk one link at a time while she decides what you owe.",
         "vice": "Good port wine, better gossip, and the sound of a dodger's purse being emptied on her desk.",
         "secret": "The harbour watch is three old men and a lantern. Her reputation does the rest.",
@@ -438,7 +439,9 @@ for _who, _keys in {
     # Silent (owner's decision, 17 Nov 2026): giving orders can turn the month at once, so "Orders given:
     # sail for ..." was heard after the voyage had already begun, over the sea battle or the captain's log.
     # The words still show on screen. Admin > Cast & Voices can hand them back to a reader.
-    "": ["m.sail", "m.stay", "m.slip"],
+    "": ["m.sail", "m.stay", "m.slip",
+         # The Mayor's Parlour (decision 3): small thanks are text only; the log line is the receipt.
+         "m.gift.cool", "m.gift.gracious", "l.gift"],
     "bosun": ["l.typhoon", "l.storm", "l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
               "l.long_fight", "l.plundered", "l.damage", "l.attack_met", "l.retreated", "l.parley_paid"],
     "lender": ["m.borrowed", "m.repaid", "e.no_more_loans", "e.nothing_to_repay"] + [
@@ -455,7 +458,8 @@ for _who, _keys in {
                    "e.no_more_guns", "e.gun_cost", "e.nothing_to_repair"],
     "customs": ["l.seized", "n.ban", "n.ban_lifted", "n.caught"],
     # The Mayor and the Tax collector speak only when they catch a captain (owner's decision).
-    "mayor": ["l.slip_caught"],
+    # The Mayor's Parlour: she thanks a Warm or Delighted gift aloud (decision 3).
+    "mayor": ["l.slip_caught", "m.gift.warm", "m.gift.delighted"],
     # The Port Authority: every line is read by the officer of the port the house is in
     # (voice.Planner, OFFICER_KEYS); "taxlady" is her stand-in when a line has no port.
     "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_home", "l.customs_empty", "l.customs_paid", "l.customs_bought",
@@ -478,6 +482,8 @@ OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_D
 # Admin page gives it a spoken version of its own (cfg voice.say).
 SAY = {
     "l.slip_caught": "Slipping out of {port} in the dark, Captain? My watch never sleeps. You will pay double, and {port} will remember your name.",
+    "m.gift.warm": "Now that is how a captain calls on a lady. My clerks will be told your house is a friend of the city.",
+    "m.gift.delighted": "Captain! Sit, sit, you will take a glass with me. Anyone who troubles your house in my harbour answers to me.",
     "l.customs_welcome": "{line} Declare your cargo, Captain. Truly, or not. I do so enjoy finding out.",
     "l.customs_paid": "Your papers are stamped, Captain. Welcome to {port}.",
     "l.customs_bought": "I bought your {goods} at your own price, Captain. You did say that was what it was worth.",

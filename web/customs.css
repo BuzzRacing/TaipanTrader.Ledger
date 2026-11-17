@@ -119,11 +119,16 @@
 }
 @media (prefers-reduced-motion: reduce) { .cx-vline { animation: none; } .cx-bar i { transition: none; } }
 
-/* A cargo kept sealed in bond: its own row under the line, the slider greyed. */
-.cx-seal { grid-column: 1 / -1; display: flex; align-items: center; gap: .4rem; font-size: .78rem; color: var(--muted); cursor: pointer; }
-.cx-seal input { width: 1.05rem; height: 1.05rem; accent-color: var(--gold); }
-.cx-line.sealed .cx-slide, .cx-line.sealed .cx-decl { opacity: .45; }
-.cx-line.sealed .cx-seal { color: var(--gold); }
+/* A cargo kept sealed in bond: a small pill on the slider's caption line, opposite her chip, so it
+   adds no height to the row. Ticked, it turns gold and the slider greys out. */
+.cx-slide-foot { display: flex; align-items: center; justify-content: space-between; gap: .4rem; flex-wrap: wrap; min-height: 1.15rem; }
+.cx-desk label.cx-seal { display: inline-flex; align-items: center; gap: .3rem; margin: 0; padding: .05rem .5rem .05rem .35rem;
+  font: 400 .68rem/1.4 var(--sans); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; color: var(--muted);
+  border: 1px solid var(--edge); border-radius: 1rem; background: var(--glass-2); cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
+.cx-desk label.cx-seal:hover { border-color: var(--edge-hi); color: var(--deck-ivory); }
+.cx-desk label.cx-seal input { width: .8rem; height: .8rem; min-height: 0; margin: 0; padding: 0; accent-color: var(--gold); }
+.cx-line.sealed label.cx-seal { color: var(--gold); border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent); }
+.cx-line.sealed .cx-range, .cx-line.sealed .cx-decl { opacity: .45; }
 .cx-chip.sealed { color: var(--gold); }
 .cx-out.sealed { color: var(--gold); }
 /* The plain warning under a line declared below half its worth. */

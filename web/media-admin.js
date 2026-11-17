@@ -156,10 +156,35 @@
     return `<div class="ml-uploads">${M.uploads.map(u => `<div><span>${e(u.name)}</span><i style="width:${u.pct}%"></i><b>${u.err ? e(u.err) : u.pct >= 100 ? "filed" : u.pct + "%"}</b></div>`).join("")}</div>`;
   }
 
+  // Starter prompts for the ten sea battle moments, one set per enemy (see SeaTrader Sea Battle).
+  // Your fleet is always a small merchant trading fleet; the enemy changes.
+  const BATTLE_ENEMY = {
+    seafight_pirates: "a pack of ragged South China Sea pirate junks with patched rust-brown battened sails, painted eyes on their bows, swivel guns and crowded decks of pirates",
+    seafight_lord: "the pirate queen's great war fleet of heavy black-lacquered war junks with blood-red battened sails, banners and pennants, gilded sterns, rows of bronze cannon, disciplined crews"
+  };
+  const BATTLE_MOMENTS = {
+    sighting: "Wide view from the quarterdeck of a merchant clipper: on the hazy horizon {enemy} appear and close in, the lookout pointing from the rigging, crew rushing to the guns, tense calm before battle",
+    broadside: "A merchant clipper fires a full broadside, a rippling line of cannon flashes and thick white powder smoke rolling over the water, gun crews heaving at the guns, {enemy} beyond the smoke, low dynamic angle",
+    enemy_hit: "One of {enemy} is struck and going down: shattered mast falling, sails torn and burning, hull listing into the sea, splinters and spray, the merchant fleet's guns still smoking in the foreground",
+    we_are_hit: "Enemy roundshot slams into the deck of a merchant ship: splintering rail, a torn sail, rigging snapping, sailors ducking and bracing, smoke and spray, {enemy} firing close alongside",
+    ship_lost: "A merchant ship of the trading fleet is lost: broken-backed, dismasted and on fire, sinking stern first into a dark sea, sailors in boats pulling away, {enemy} circling in the smoke, sombre mood",
+    boarding: "{enemy} grapple alongside a merchant ship and swarm aboard over the rail, cutlasses and boarding pikes raised, cargo chests and tea crates being hauled across, chaos and smoke, dramatic but not gory",
+    got_away: "A merchant clipper under every stitch of sail running clear before a fresh wind, wake foaming, {enemy} falling far behind in the haze, relief and triumph on deck, golden light breaking through cloud",
+    retreat: "A merchant ship breaking away from battle, crew heaving bales, chests and crates of cargo over the side to lighten her, crates floating in the wake, sails straining, {enemy} firing parting shots through the smoke",
+    victory: "After the battle the merchant fleet sails on battered but victorious, crews cheering in the rigging, the wreckage and smoke of {enemy} drifting on the water behind, warm sunset light",
+    defeat: "Total defeat at sea: the whole merchant fleet burning and sinking under a darkening sky, only wreckage, floating cargo and an empty lifeboat left, {enemy} triumphant in the smoke, grim and sombre"
+  };
+  function battlePrompt(subject, role, style) {
+    const enemy = BATTLE_ENEMY[subject];
+    const moment = BATTLE_MOMENTS[role] || "A sea battle between a small merchant trading fleet and {enemy}, cannon smoke, spray and torn sails, wide cinematic view";
+    return `${moment.replace("{enemy}", enemy)}, 16:9 wide cinematic composition, ${style}`;
+  }
+
   function defaultPrompt(kind, subject, role) {
     if (kind === "persona" && CFG.characters[subject]) return CFG.characters[subject].portrait_prompt || "";
     const style = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
     const name = subjectName(kind, subject);
+    if (kind === "scene" && BATTLE_ENEMY[subject]) return battlePrompt(subject, role, style);
     if (kind === "port" && role === "keeper") return `Waist-up portrait of a breathtakingly beautiful, sultry woman in her late twenties who runs a trading stall in the ${name} market in 1860, looking straight into the camera with a slow, knowing half-smile and direct eye contact, glossy black hair pinned with jade and gold, close-fitting embroidered oxblood silk jacket with a high collar and gold frogging, a little open at the throat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, ${style}`;
     if (kind === "port" && role === "shipmaster") return `Waist-up portrait of a breathtakingly beautiful, sultry, dangerous woman in her early thirties, the ship master who rules the ${name} shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, glossy black hair pinned up with a jade comb and loose strands, fitted black lacquer naval coat with oxblood silk lining, brass buttons and gold braid, worn open at the throat, a brass spyglass in one gloved hand, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, ${style}`;
     if (kind === "port" && role === "mayor") return `Waist-up portrait of a breathtakingly beautiful, sultry woman in her mid-thirties, a former pirate queen who is now the lady mayor of ${name} in 1860 and keeps the town's ledger and collects its taxes, seated at a heavy teak desk and looking straight into the camera with a sly, appraising, amused half-smile, as if she already knows what you owe her, direct eye contact, glossy black hair swept up with a gold pin and one loose curl, a gold hoop earring, a fitted oxblood silk brocade bodice under a black lacquer pirate captain's coat with gold braid, worn open at the throat and shoulders, a gold mayor's chain of office across her chest, a quill in one ringed hand, an open leather-bound ledger, a brass strongbox spilling silver dollars, tax seals and a cutlass hung on the wall behind her, warm candle and lantern glow, harbour window haze, shallow depth of field, she is the centre of the frame, ${style}`;
@@ -539,6 +564,19 @@
         const stock = [undefined].concat(womanRoles).some(r => now === defaultPrompt("port", subject, r));
         if (!now.trim() || stock) M.gen.prompt = defaultPrompt("port", subject, d.mlgenrole);
         M.gen.roles = [d.mlgenrole]; M.gen.aspect = "3:4";
+        return redraw();
+      }
+      // A sea battle moment gets its own starting prompt for that enemy (only replaces a stock prompt, never your own words).
+      const subj = M.gen.forKey.split(":")[1] || "";
+      if ((M.kind || "persona") === "scene" && BATTLE_ENEMY[subj] && BATTLE_MOMENTS[d.mlgenrole]) {
+        const box = $("mlgenprompt"), now = (box && box.value) || M.gen.prompt;
+        const stock = [undefined].concat(Object.keys(BATTLE_MOMENTS)).some(r => now === defaultPrompt("scene", subj, r));
+        if (el.checked) {
+          if (!now.trim() || stock) M.gen.prompt = defaultPrompt("scene", subj, d.mlgenrole);
+          M.gen.roles = [d.mlgenrole]; M.gen.aspect = "16:9";
+        } else if (stock) {
+          M.gen.prompt = defaultPrompt("scene", subj, M.gen.roles[0]);
+        }
         return redraw();
       }
       return;
