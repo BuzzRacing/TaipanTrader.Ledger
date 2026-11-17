@@ -41,6 +41,14 @@ const Chart = (() => {
      [121.6, -2], [122.6, -4.6], [121.4, -4.6], [120.4, -2.8], [120.2, -5.5], [119.4, -5.4], [119.2, -2.5]]
   ];
 
+  // Same drawings as the weather icons on the sail cards.
+  const WX_ICONS = [
+    '<path d="M3 13c2-2 4-2 6 0s4 2 6 0 4-2 6 0M5 17c2-1.7 4-1.7 6 0s4 1.7 6 0"/>',
+    '<circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19"/>',
+    '<path d="M6 15a4 4 0 0 1 .7-7.9A5.5 5.5 0 0 1 17.4 9 3.2 3.2 0 0 1 18 15H6Z"/><path d="m8 18-1 2M13 18l-1 2M18 18l-1 2"/>',
+    '<path d="M20 7.5c-2.8-3.6-8.7-4.4-12.4-1.7C4.2 8.3 3.5 13 5.8 16.1c2 2.8 6 3.5 8.7 1.4 2.4-1.8 2.9-5.3 1.1-7.6-1.5-2-4.4-2.4-6.3-.9-1.6 1.2-1.9 3.6-.7 5.1"/>',
+  ];
+
   /* opts: data (static), players, weather, crackdown, here (port key), dest (port key),
            clickable (bool), mine (player id), focusRoute (bool: frame a selected route on narrow screens) */
   function svg(o) {
@@ -90,10 +98,12 @@ const Chart = (() => {
       const reg = D.regions[r];
       const [x, y] = px(reg.label_lon, reg.label_lat);
       const lvl = o.weather && o.weather[r] != null ? o.weather[r] : 0;
-      const width = Math.max(132, Math.min(210, reg.name.length * 9 + 24));
-      out.push(`<g class="region wxt${lvl}"><rect class="region-bg" x="${x - width / 2}" y="${+y - 18}" width="${width}" height="42" rx="8"/>` +
-        `<text class="rname" x="${x}" y="${y}" text-anchor="middle">${esc(reg.name)}</text>` +
-        `<text class="rwx wxt${lvl}" x="${x}" y="${+y + 17}" text-anchor="middle">${esc(D.weather[lvl])}</text></g>`);
+      // Big weather icon, weather word underneath, sea name below that. No box: a soft halo keeps it legible.
+      const icon = WX_ICONS[lvl] || WX_ICONS[0];
+      out.push(`<g class="region wxt${lvl}">` +
+        `<g class="rwx-icon" transform="translate(${x - 21} ${+y - 50}) scale(1.75)"><g class="halo">${icon}</g><g class="ink">${icon}</g></g>` +
+        `<text class="rwx wxt${lvl}" x="${x}" y="${+y + 6}" text-anchor="middle">${esc(D.weather[lvl])}</text>` +
+        `<text class="rname" x="${x}" y="${+y + 23}" text-anchor="middle">${esc(reg.name)}</text></g>`);
     }
     // Planned route. The forecast is the same worse-of-origin-and-destination value used by the engine.
     if (o.here && o.dest && o.here !== o.dest) {
@@ -123,7 +133,7 @@ const Chart = (() => {
       if (k === o.dest) cls.push("dest");
       if (o.crackdown && o.crackdown.includes(k)) cls.push("ban");
       if (o.clickable && k !== o.here) cls.push("click");
-      const labelW = Math.max(82, Math.min(158, p.name.length * 10.5 + 24));
+      const labelW = Math.max(90, Math.min(230, p.name.length * 13 + 30));
       const labelH = k === o.here || k === o.dest ? 46 : 34;
       const labelX = p.label_left ? p.x - labelW - 19 : p.x + 19;
       const labelY = p.y - labelH / 2;
@@ -166,5 +176,27 @@ const Chart = (() => {
     return Math.hypot(D.ports[a].x - D.ports[b].x, D.ports[a].y - D.ports[b].y);
   }
 
-  return { svg, distance };
+  /* Size every port label box to its text as actually drawn, so a wider font never spills out.
+     Runs after each redraw and again once web fonts finish loading. Hidden charts are skipped. */
+  function fit(root) {
+    const scope = root || document;
+    scope.querySelectorAll("svg.chart .port").forEach(g => {
+      const rect = g.querySelector(".label-bg");
+      const texts = g.querySelectorAll(".port-name, .port-status");
+      if (!rect || !texts.length) return;
+      let x0 = Infinity, x1 = -Infinity;
+      texts.forEach(t => {
+        let b;
+        try { b = t.getBBox(); } catch (e) { return; }
+        if (!b || !b.width) return;
+        x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x + b.width);
+      });
+      if (!isFinite(x0)) return;
+      rect.setAttribute("x", (x0 - 12).toFixed(1));
+      rect.setAttribute("width", (x1 - x0 + 24).toFixed(1));
+    });
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fit());
+
+  return { svg, distance, fit };
 })();

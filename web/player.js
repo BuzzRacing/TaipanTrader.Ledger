@@ -11,7 +11,8 @@ let online = true;
 let reloading = false;
 const ui = { tab: "market", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
              spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false, meOpen: false,
-             tally: false, tallyShown: false, tallyTurn: null };
+             tally: false, tallyShown: false, tallyTurn: null,
+             bookView: "signals", bookGood: null, bookPort: null, bookMode: "buy", bookRoute: null };
 let VS = {};             // voice settings: who is in the cast, what this screen reads aloud
 const app = document.getElementById("app");
 
@@ -180,7 +181,7 @@ function newGameControl() {
 const drawn = {};
 function region(name, html) {
   const el = app.querySelector('[data-r="' + name + '"]');
-  if (el && drawn[name] !== html) { el.innerHTML = html; drawn[name] = html; }
+  if (el && drawn[name] !== html) { el.innerHTML = html; drawn[name] = html; Chart.fit(el); }
 }
 function forget() { Object.keys(drawn).forEach(k => delete drawn[k]); }
 
@@ -295,9 +296,9 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "market.pl_tip_down": "Loss of {profit} on this sale, against the {paid} a unit you paid on average.",
     "dealer.pay": "You pay", "dealer.get": "You get", "dealer.units": "{n} units", "dealer.cut": "Dealer's cut",
     "dealer.cut_sub": "{margin}% margin", "sail.risk_title": "Routes ranked by voyage risk",
-    "sail.risk_note": "Forecast conditions and distance, easiest to hardest", "sail.easiest": "Easiest",
+    "sail.easiest": "Easiest",
     "sail.hardest": "Hardest", "sail.route": "Route", "sail.weather": "Weather", "sail.distance": "Distance",
-    "sail.intel": "Intel", "sail.standing": "Standing", "sail.forecast_risk": "forecast risk",
+    "sail.intel": "Intel", "sail.standing": "Standing",
     "dues.title": "Harbour dues", "dues.due": "Due when you sail", "dues.paid_on_leave": "Paid as you leave",
     "dues.after": "Silver {from} → {to} after dues", "dues.short": "You are {owed} short. It will go on your debt.",
     "dues.stay": "Nothing is due if you stay at anchor.", "dues.choice": "Leaving port", "dues.pay": "Pay the Mayor {total}",
@@ -481,7 +482,7 @@ function gameScreen() {
   if (ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
   const top = topHtml();
-  const nav = ["port", "market", "fleet", "chart", "ledger"].map(k =>
+  const nav = ["port", "market", "ledger", "fleet", "chart"].map(k =>
     `<button type="button" class="${!ui.tally && ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
     `${tabFace(k)}<span>${te("tab." + k)}</span></button>`).join("") +
     `<button type="button" class="dk-tally${ui.tally ? " on" : ""}${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-pressed="${ui.tally}" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
@@ -841,17 +842,17 @@ function chartTab() {
     return `<button type="button" class="dest sail-card ${dest === k ? "on" : ""}" data-act="dest" data-port="${k}"
       style="--risk-hue:${Math.round(118 * (1 - heat))};--risk-level:${Math.round(score * 100)}%" aria-label="${esc(p.name)}, ${rankLabel}">
       <span class="dest-art">${Media.html("port", k, "banner", "dest-img", D.graphics.ports[k], { slot: "sail:" + k, mode: "fixed" })}
-        <span class="dest-title"><b>${esc(p.name)}</b>${S.crackdown.includes(k) ? `<span class="tag bad">${te("tag.ban")}</span>` : ""}</span></span>
+        ${S.crackdown.includes(k) ? `<span class="dest-ban tag bad">${te("tag.ban")}</span>` : ""}
+        <span class="dest-title"><b>${esc(p.name)}</b><span class="dest-pct">${Math.round(score * 100)}%</span></span></span>
       <span class="dest-data">
         <span class="dest-stat wx${wx}">${sailIcon(weatherKind)}<span><small>${te("sail.weather")}</small><strong>${esc(D.weather[wx])}</strong></span></span>
         <span class="dest-stat">${sailIcon("distance")}<span><small>${te("sail.distance")}</small><strong>${esc(riskLabel(me.port, k))}</strong></span></span>
         <span class="dest-stat">${sailIcon("intel")}<span><small>${te("sail.intel")}</small><strong>${seen}</strong></span></span>
         <span class="dest-stat">${sailIcon("standing")}<span><small>${te("sail.standing")}</small><strong>${Math.round(me.rep[k])}/100</strong></span></span>
-      </span>
-      <span class="dest-heat"><i></i><b>${Math.round(score * 100)}% <small>${te("sail.forecast_risk")}</small></b></span></button>`;
+      </span></button>`;
   }).join("");
   return `<section class="card">
-      <div class="sail-guide sail-guide-top"><span><b>${te("sail.risk_title")}</b><small>${te("sail.risk_note")}</small></span>
+      <div class="sail-guide sail-guide-top"><span><b>${te("sail.risk_title")}</b></span>
         <span class="heat-key"><small>${te("sail.easiest")}</small><i></i><small>${te("sail.hardest")}</small></span></div>
       <div class="dests">${list}</div>
       <div class="sail-map">${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id, focusRoute: true })}</div></section>
@@ -878,56 +879,199 @@ function slipChoice() {
 }
 
 /* --------------------------------------------------------------- ledger -- */
-/* The price book: one row per port, one column per cargo. In each column the cheapest port the
-   house has seen is marked jade (buy there) and the dearest oxblood (sell there). Old sightings
-   fade with age; ports never visited are shown as blank pages. */
+function bookPrice(price) {
+  return CUR + price.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
+function bookSeen(age) {
+  if (age === null) return t("ledger.unknown");
+  if (age === 0) return t("ledger.fresh");
+  const when = age === 1 ? t("ledger.month") : t("ledger.months", { n: age });
+  return age >= 4 ? t("ledger.old", { age: when }) : when;
+}
+
+function bookButton(label, action, value, selected, cls = "") {
+  return `<button type="button" class="${cls}" data-act="book_${action}" data-value="${esc(value)}" aria-pressed="${selected}">${label}</button>`;
+}
+
+function bookSignals(goods, ports, banner) {
+  const me = S.me, g = goods.includes(ui.bookGood) ? ui.bookGood : goods[0];
+  const local = me.prices[g], name = D.goods[g].name, home = portName(me.port);
+  const rows = ports.map(p => ({ ...p, price: p.prices[g] }));
+  const selected = rows.find(p => p.key === ui.bookPort) || rows.find(p => !p.here && Number.isFinite(p.price)) || rows[0];
+  const scale = Math.max(1, ...rows.filter(p => Number.isFinite(p.price) && Number.isFinite(local)).map(p => Math.abs(p.price - local)));
+  const cargo = goods.map(key => {
+    const art = Media.html("cargo", key, "icon", "book-cargo-art", D.graphics.goods[key]);
+    const aboard = me.cargo[key] || 0;
+    return bookButton(`${art}<span>${esc(D.goods[key].name)}${aboard ? `<small>${te("ledger.aboard", { n: aboard })}</small>` : ""}</span>`,
+      "good", key, key === g, "book-cargo");
+  }).join("");
+  const chart = rows.map(p => {
+    const known = Number.isFinite(p.price), gap = known && Number.isFinite(local) ? p.price - local : 0;
+    const width = Math.abs(gap) / scale * 50;
+    const bars = known ? `<span class="book-axis" aria-hidden="true"><span class="book-bar ${gap < 0 ? "lower" : ""}"
+      data-book-port="${esc(p.key)}" style="left:${gap < 0 ? 50 - width : 50}%;width:${width}%"></span></span>` : '<span aria-hidden="true"></span>';
+    const when = p.here ? t("ledger.here") : known ? bookSeen(p.age) : t("ledger.unknown");
+    const ban = p.bans.includes(g) ? ` · ${te("ledger.banned")}` : "";
+    return bookButton(`<span><b>${esc(portName(p.key))}</b><small class="${p.age >= 4 ? "book-old" : ""}">${esc(when)}${ban}</small></span>${bars}
+      <strong>${known ? esc(bookPrice(p.price)) : "—"}</strong>`, "port", p.key, p === selected, `book-port${p.here ? " here" : ""}`);
+  }).join("");
+  const gap = selected.price - local;
+  let detail;
+  if (selected.bans.includes(g)) detail = t("ledger.banned");
+  else if (!Number.isFinite(selected.price)) detail = t("ledger.unknown");
+  else if (selected.here) detail = t("ledger.live") + " · " + t("ledger.unit", { price: bookPrice(local) });
+  else if (!Number.isFinite(local)) detail = t("ledger.no_baseline");
+  else if (Math.abs(gap) < .005) detail = t("ledger.equal", { port: home });
+  else detail = t(gap < 0 ? "ledger.lower" : "ledger.higher", { gap: bookPrice(Math.abs(gap)) });
+  return `${banner}
+    <div class="book-controls" role="group" aria-label="${te("ledger.cargo")}">${cargo}</div>
+    <div class="book-detail" aria-live="polite">
+      <strong>${esc(name)} · ${esc(portName(selected.key))}</strong>
+      ${selected.here ? "" : `<small>${esc(riskLabel(me.port, selected.key))} · ${esc(Number.isFinite(selected.price) ? bookSeen(selected.age) : t("ledger.unknown"))}</small>`}
+      <p>${esc(detail)}</p>
+    </div>
+    <div class="book-key"><span>${te("ledger.cheaper")}</span><span>${esc(home)} · ${Number.isFinite(local) ? esc(bookPrice(local)) : "—"}</span><span>${te("ledger.dearer")}</span></div>
+    <div class="book-ports" role="group" aria-label="${te("ledger.port")}">${chart}</div>
+    <p class="book-note">${te("ledger.signal_note")} ${te("ledger.note")}</p>`;
+}
+
+function bookVoyages(goods, ports, banner) {
+  const me = S.me, buying = ui.bookMode === "buy";
+  const local = Object.fromEntries(goods.filter(g => Number.isFinite(me.prices[g]) && !ports[0].bans.includes(g) &&
+    (buying ? me.capacity > me.used && quote(g, 1, "buy") <= me.cash : me.cargo[g] > 0))
+    .map(g => [g, quote(g, 1, buying ? "buy" : "sell")]));
+  const options = ports.filter(p => !p.here && p.age !== null).flatMap(p => {
+    const trades = Object.keys(local).filter(g => !p.bans.includes(g) && Number.isFinite(p.prices[g]) && p.prices[g] - local[g] >= .005)
+      .map(g => ({ g, price: p.prices[g], gap: p.prices[g] - local[g] }))
+      .sort((a, b) => b.gap - a.gap);
+    return trades.length ? [{ ...p, ...trades[0] }] : [];
+  }).sort((a, b) => (a.age >= 4) - (b.age >= 4) || b.gap - a.gap || a.age - b.age);
+  const route = options.find(p => p.key === ui.bookRoute) || options[0];
+  const mode = `<div class="book-controls" role="group" aria-label="${te("ledger.intent")}">
+    ${bookButton(te("ledger.buy"), "mode", "buy", buying, "book-toggle")}
+    ${bookButton(te("ledger.sell"), "mode", "sell", !buying, "book-toggle")}</div>`;
+  if (!route) return `${banner}${mode}<p class="book-detail">${te("ledger.none")}</p>`;
+  const summary = p => t("ledger.route_age", { port: portName(p.key), age: bookSeen(p.age), distance: riskLabel(me.port, p.key) });
+  const gap = p => t(buying ? "ledger.buy_gap" : "ledger.sell_gap", { gap: bookPrice(p.gap) });
+  const list = options.map(p => bookButton(`<strong>${esc(portName(p.key))} · ${esc(D.goods[p.g].name)}</strong>
+    <small>${esc(bookSeen(p.age))}</small><span class="book-gain">+${esc(bookPrice(p.gap))} / unit</span>`,
+    "route", p.key, p === route, "book-route")).join("");
+  return `${banner}${mode}<div class="book-voyage">
+    <div class="book-routes" role="group" aria-label="${te("ledger.routes")}">${list}</div>
+    <section class="book-detail book-plan">
+      <div aria-live="polite"><h3>${te(buying ? "ledger.buy_route" : "ledger.sell_route", { cargo: D.goods[route.g].name, port: portName(route.key) })}</h3>
+      <small>${esc(summary(route))}${buying ? "" : ` · ${te("ledger.aboard", { n: me.cargo[route.g] })}`}</small>
+      <div class="book-course" aria-hidden="true"></div>
+      <div class="book-quotes"><div><small>${te(buying ? "ledger.buy_here" : "ledger.sell_here")}</small><b>${esc(bookPrice(local[route.g]))}</b></div>
+      <div><small>${te("ledger.seen_bid")}</small><b>${esc(bookPrice(route.price))}</b></div></div>
+      <p class="book-gain">+${esc(gap(route))}</p></div>
+      ${btn(te("ledger.open_chart"), "book_chart", `data-value="${esc(route.key)}"`, "book-toggle", me.ready)}
+    </section></div><p class="book-note">${te("ledger.note")}</p>`;
+}
+
+function bookTable(goods, ports, banner) {
+  /* Heat map: each cell is shaded by how far the destination's last posted price sits above (green)
+     or below (red) the cost to buy one unit here. Strength grows with the gap, saturating at ±50%,
+     so a glance separates really bad, bad, good and really good. The exact gap is in the tooltip. */
+  const me = S.me;
+  const buyCosts = Object.fromEntries(goods.filter(g => Number.isFinite(me.prices[g]))
+    .map(g => [g, quote(g, 1, "buy")]));
+  const headings = goods.map(g => {
+    const art = Media.html("cargo", g, "icon", "book-table-art", D.graphics.goods[g]);
+    const aboard = me.cargo[g] || 0;
+    const name = g === "general" && D.goods[g].name === "General Cargo" ? t("ledger.general") : D.goods[g].name;
+    return `<th scope="col"><div class="book-table-tile">${art}<span class="book-table-name">${esc(name)}</span>
+      ${aboard ? `<span class="book-table-count" aria-label="${te("ledger.aboard", { n: aboard })}">${esc(aboard)}</span>` : ""}</div></th>`;
+  }).join("");
+  const rows = ports.map(p => {
+    const seen = p.here ? t("ledger.here") : bookSeen(p.age);
+    const cells = goods.map(g => {
+      const cost = buyCosts[g], price = p.here ? cost : p.prices[g];
+      let label = "", tone = "", heat = 0, pct = "";
+      if (p.bans.includes(g)) { label = "banned"; tone = "blocked"; }
+      else if (ports[0].bans.includes(g)) { label = "banned_here"; tone = "blocked"; }
+      else if (Number.isFinite(price)) {
+        if (p.here) { label = "buy_cost"; tone = "base"; }
+        else if (!Number.isFinite(cost) || cost <= 0) label = "no_baseline";
+        else {
+          const r = (price - cost) / cost;
+          heat = Math.min(1, Math.abs(r) / .5);
+          pct = (r >= 0 ? "+" : "−") + Math.round(Math.abs(r) * 100) + "%";
+          label = r > 0 ? "good_buy" : "dont_buy";
+          tone = r > 0 ? (r >= .25 ? "good hot" : "good") : (r <= -.25 ? "poor hot" : "poor");
+        }
+      }
+      const tip = [label ? t("ledger." + label) : "", pct].filter(Boolean).join(" · ");
+      const style = heat ? ` style="--heat:${(.22 + heat * .78).toFixed(2)}"` : "";
+      const mark = tone === "blocked" ? '<i class="book-ban" aria-hidden="true">⊘</i>' : "";
+      return `<td class="${tone}"${style}${tip ? ` title="${esc(tip)}" aria-label="${esc((Number.isFinite(price) ? bookPrice(price) + " · " : "") + tip)}"` : ""}>${mark}${
+        Number.isFinite(price) ? esc(bookPrice(price)) : `<span aria-label="${te("ledger.unknown")}">—</span>`}</td>`;
+    }).join("");
+    return `<tr class="${p.here ? "here" : ""}"><th scope="row" title="${esc(seen)}"><b>${p.here ? "⚓ " : ""}${esc(portName(p.key))}</b>
+      <small class="${p.age >= 4 ? "book-old" : ""}">${esc(p.here ? t("ledger.now") : p.age === null ? "—" : t("ledger.ago", { n: p.age }))}</small></th>${cells}</tr>`;
+  }).join("");
+  const legend = `<div class="book-heat-key" id="book-table-note" title="${te("ledger.all_note")}">
+      <span class="k poor hot"></span><span>${te("ledger.heat_worst")}</span>
+      <span class="k poor"></span><span>${te("ledger.heat_bad")}</span>
+      <span class="k good"></span><span>${te("ledger.heat_good")}</span>
+      <span class="k good hot"></span><span>${te("ledger.heat_best")}</span>
+      <span class="book-heat-info" aria-hidden="true">ⓘ</span></div>`;
+  return `${banner}${legend}
+    <div class="book-table-scroll" role="region" aria-label="${te("ledger.all")}" aria-describedby="book-table-note" tabindex="0">
+      <table class="book-table" aria-label="${te("ledger.all")}">
+        <thead><tr><th scope="col">${te("col.port")}</th>${headings}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 function ledgerTab() {
-  const me = S.me, goods = Object.keys(D.goods), ports = Object.keys(D.ports);
-  const priceAt = (k, g) => k === me.port ? me.prices[g] : (me.known[k] && me.known[k].prices[g]);
-  // Cheapest and dearest port seen for each cargo (needs two ports to mean anything).
-  const best = {};
-  goods.forEach(g => {
-    const seen = ports.filter(k => priceAt(k, g) != null);
-    if (seen.length < 2) return;
-    const by = seen.slice().sort((a, b) => priceAt(a, g) - priceAt(b, g));
-    if (priceAt(by[0], g) !== priceAt(by[by.length - 1], g)) best[g] = { lo: by[0], hi: by[by.length - 1] };
+  const me = S.me, goods = Object.keys(D.goods);
+  const ports = [me.port, ...Object.keys(D.ports).filter(k => k !== me.port)].map(key => {
+    const here = key === me.port, known = me.known[key];
+    const bans = S.bans?.[key] || [];
+    return { key, here, bans, prices: here ? me.prices : (known?.prices || {}),
+      age: here ? 0 : known ? Math.max(0, S.turn - known.turn) : null };
   });
-  const head = goods.map(g => {
-    const n = me.cargo[g] || 0;
-    return `<th class="pb-good" title="${esc(D.goods[g].name)}">
-      <span class="pb-gico">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}${n ? `<i class="pb-aboard">${n}</i>` : ""}
-        <span class="pb-gname">${esc(D.goods[g].name.split(" ")[0])}</span></span></th>`;
-  }).join("");
-  const rows = ports.map(k => {
-    const kn = me.known[k], here = k === me.port, age = here ? 0 : kn ? S.turn - kn.turn : null;
-    const fresh = age === null ? "never" : age === 0 ? "now" : age <= 2 ? "recent" : "old";
-    const when = here ? te("ledger.here") : age === null ? te("ledger.never") : age === 0 ? te("ledger.now") : te("ledger.ago", { n: age });
-    const far = here ? "" : `<span class="pb-far">${esc(riskLabel(me.port, k))}</span>`;
-    const ban = S.crackdown.includes(k) ? `<span class="tag bad">${te("tag.ban")}</span>` : "";
-    const rep = Math.round(me.rep[k]);
-    const cells = age === null
-      ? `<td class="pb-blank" colspan="${goods.length}">${te("ledger.blank")}</td>`
-      : goods.map(g => {
-          const v = priceAt(k, g), b = best[g];
-          const mark = b && b.lo === k ? "lo" : b && b.hi === k ? "hi" : "";
-          const barred = D.goods[g].contraband && S.crackdown.includes(k) ? " barred" : "";
-          const tip = mark ? ` title="${esc(te(mark === "lo" ? "ledger.tip_lo" : "ledger.tip_hi", { cargo: D.goods[g].name }))}"` : "";
-          return `<td class="pb-p ${mark}${barred}"${tip}>${v != null ? `<b>${v.toLocaleString()}</b>` : "·"}</td>`;
-        }).join("");
-    return `<tr class="pb-row ${here ? "here" : ""} f-${fresh}">
-      <th class="pb-port" scope="row">
-        <span class="pb-pimg">${Media.html("port", k, "banner", "pb-img", D.graphics.ports[k])}</span>
-        <span class="pb-ptext"><b class="pb-pname">${esc(portName(k))}</b>${ban}
-          <span class="pb-meta"><i class="pb-dot"></i>${when}${far ? " · " + far : ""}</span>
-          <span class="pb-rep" title="${esc(te("chart.standing", { rep }))}"><i style="width:${rep}%"></i></span></span></th>
-      ${cells}</tr>`;
-  }).join("");
-  return `<section class="card pb">
-      <header class="mk-head"><h2>${te("ledger.title")}</h2>
-        <span class="pb-key"><i class="lo"></i>${te("ledger.key_lo")}<i class="hi"></i>${te("ledger.key_hi")}</span></header>
-      <div class="pb-scroll"><table class="pb-table" style="--n:${goods.length}"><thead><tr><th class="pb-corner">${te("col.port")}</th>${head}</tr></thead>
-        <tbody>${rows}</tbody></table></div></section>
-    ${me.host ? `<section class="card"><h2>${te("host.title")}</h2>` + btn(te("host.end_month"), "force", "", "") + newGameControl() + "</section>" : ""}`;
+  // No banner: the view switch is a slim segmented bar so the page's height goes to the prices.
+  const banner = `<div class="book-seg" role="group" aria-label="${te("ledger.view")}">
+      ${bookButton(te("ledger.signals"), "view", "signals", ui.bookView === "signals", "book-toggle")}
+      ${bookButton(te("ledger.voyage"), "view", "voyage", ui.bookView === "voyage", "book-toggle")}
+      ${bookButton(te("ledger.all"), "view", "all", ui.bookView === "all", "book-toggle")}</div>`;
+  const view = { signals: bookSignals, voyage: bookVoyages, all: bookTable }[ui.bookView];
+  return `<section class="card book">${view(goods, ports, banner)}</section>
+    ${me.host ? `<section class="card host-bar"><h2>${te("host.title")}</h2><div class="host-actions">` +
+      btn(te("host.end_month"), "force", "", "slim") + newGameControl() + "</div></section>" : ""}`;
+}
+
+function bookSelect(action, value) {
+  const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const prior = new Map();
+  if (action === "good" && motion) {
+    app.querySelectorAll(".book-bar").forEach(bar => {
+      const style = getComputedStyle(bar);
+      prior.set(bar.dataset.bookPort, { left: style.left, width: style.width });
+    });
+  }
+  switch (action) {
+    case "view": ui.bookView = value; break;
+    case "good": ui.bookGood = value; break;
+    case "port": ui.bookPort = value; break;
+    case "mode": ui.bookMode = value; ui.bookRoute = null; break;
+    case "route": ui.bookRoute = value; break;
+  }
+  render();
+  app.querySelectorAll(`[data-act="book_${action}"]`).forEach(button => {
+    if (button.dataset.value === value && document.activeElement !== button) button.focus({ preventScroll: true });
+  });
+  if (prior.size) app.querySelectorAll(".book-bar").forEach(bar => {
+    const from = prior.get(bar.dataset.bookPort);
+    if (from) bar.animate([from, { left: bar.style.left, width: bar.style.width }], { duration: 440, easing: "ease-out" });
+  });
+  if (motion && (action === "route" || action === "mode")) {
+    app.querySelector(".book-course")?.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: 530, easing: "ease-out" });
+  }
 }
 
 /* --------------------------------------------------------------- events -- */
@@ -966,6 +1110,15 @@ app.addEventListener("click", async e => {
   switch (d.act) {
     case "join": return doJoin();
     case "tab": ui.tab = d.tab; ui.tally = false; return render();
+    case "book_view": case "book_good": case "book_port": case "book_mode": case "book_route":
+      return bookSelect(d.act.slice(5), d.value);
+    case "book_chart":
+      if (!S.me.ready && d.value !== S.me.port && D.ports[d.value]) {
+        ui.dest = d.value;
+        ui.tab = "chart";
+        return render();
+      }
+      return;
     case "tally": ui.tally = !ui.tally; ui.meOpen = false; return render();
     case "me": ui.meOpen = !ui.meOpen; return render();
     case "speech": Voice.setMuted(!Voice.muted()); return render();

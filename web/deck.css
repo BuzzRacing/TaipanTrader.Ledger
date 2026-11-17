@@ -238,12 +238,11 @@ body.player .sail-map .chart .port .ring { fill: var(--deck-night); }
 body.player .sail-map .chart .port.here .ring { fill: var(--deck-brass); }
 body.player .sail-map .chart .port.dest .ring { fill: var(--deck-oxblood); }
 body.player .sail-map .chart .port .label-leader { stroke: color-mix(in srgb, var(--deck-ivory) 45%, var(--deck-night)); }
-body.player .sail-map .chart .region-bg { fill: color-mix(in srgb, var(--deck-night) 78%, transparent); stroke: color-mix(in srgb, var(--deck-jade) 60%, var(--deck-ivory)); }
-body.player .sail-map .chart .region.wxt2 .region-bg { fill: color-mix(in srgb, #70491f 80%, var(--deck-night)); stroke: #e0ac55; }
-body.player .sail-map .chart .region.wxt3 .region-bg { fill: color-mix(in srgb, var(--deck-oxblood) 72%, var(--deck-night)); stroke: var(--blood-hi); }
+body.player .sail-map .chart .region { --wx: var(--jade-hi); --halo: color-mix(in srgb, var(--deck-night) 88%, transparent); }
+body.player .sail-map .chart .region.wxt2 { --wx: #f1c465; }
+body.player .sail-map .chart .region.wxt3 { --wx: #ff9b88; }
 body.player .sail-map .chart .rname { fill: color-mix(in srgb, var(--deck-ivory) 78%, var(--deck-jade)); }
 .sail-guide > span:first-child b { display: block; font: 400 1.08rem/1.15 var(--serif); color: var(--brass-hi); }
-.sail-guide > span:first-child small { display: block; margin-top: .12rem; color: var(--muted); font-size: .76rem; }
 .heat-key { display: flex; align-items: center; gap: .35rem; flex: none; color: var(--muted); }
 .heat-key small { font: 700 .62rem/1 var(--special); letter-spacing: .06em; text-transform: uppercase; }
 .heat-key i { width: 5.5rem; height: .38rem; border-radius: 1rem; background: linear-gradient(90deg, hsl(118 55% 42%), hsl(55 78% 52%), hsl(4 72% 52%));
@@ -261,16 +260,19 @@ body.player button.dest.sail-card.on, body.player button.dest.sail-card.on:hover
 .dest-art::before { content: ""; position: absolute; z-index: 2; inset: auto 0 0; height: 3px; background: var(--risk-color); box-shadow: 0 0 12px var(--risk-color); }
 .dest-img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 50%; transition: transform .35s ease, filter .35s ease; }
 .sail-card:hover .dest-img { transform: scale(1.045); filter: saturate(1.08) contrast(1.04); }
-.dest-title { position: absolute; z-index: 3; left: .75rem; right: 4.75rem; bottom: .62rem; display: flex; align-items: center; gap: .3rem; min-width: 0; }
-.dest-title b { overflow: hidden; color: #fff; font: 800 clamp(1.12rem, 2vw, 1.42rem)/1.05 var(--serif); text-overflow: ellipsis; white-space: nowrap;
+.dest-title { position: absolute; z-index: 3; left: .75rem; right: .75rem; bottom: .55rem; display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+.dest-title b { flex: 1 1 auto; min-width: 0; overflow: hidden; color: #fff; font: 800 clamp(1.45rem, 2.7vw, 1.85rem)/1.05 var(--serif); text-overflow: ellipsis; white-space: nowrap;
   letter-spacing: .015em; text-shadow: 0 2px 10px #000, 0 1px 2px #000; }
-.dest-title .tag.bad { margin: 0; color: #fff; border-color: color-mix(in srgb, var(--blood-hi) 85%, #fff); background: color-mix(in srgb, var(--deck-oxblood) 82%, transparent); }
+.dest-pct { flex: none; margin-left: auto; color: #fff; font: 800 clamp(1.1rem, 2vw, 1.35rem)/1 var(--sans); font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 10px #000, 0 1px 2px #000; }
+.dest-ban.tag.bad { position: absolute; z-index: 3; top: .55rem; left: .6rem; margin: 0; padding: .22rem .45rem; color: #fff; border: 1px solid color-mix(in srgb, var(--blood-hi) 85%, #fff);
+  border-radius: .35rem; background: color-mix(in srgb, var(--deck-oxblood) 82%, transparent); box-shadow: 0 3px 10px rgba(0, 0, 0, .45); }
 .dest-rank { position: absolute; z-index: 3; right: .58rem; top: .55rem; display: grid; min-width: 3.65rem; padding: .28rem .42rem .32rem; text-align: center;
   border: 1px solid color-mix(in srgb, var(--risk-color) 65%, #fff); border-radius: .4rem; color: #fff; background: color-mix(in srgb, var(--risk-color) 58%, rgba(8, 6, 4, .88));
   box-shadow: 0 4px 14px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); }
 .dest-rank b { font: 800 1.05rem/1 var(--sans); }
 .dest-rank small { margin-top: .14rem; font: 700 .52rem/1 var(--special); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
-.dest-data { display: grid; grid-template-columns: 1fr 1fr; gap: .15rem .55rem; padding: .62rem .7rem .48rem; }
+.dest-data { display: grid; grid-template-columns: 1fr 1fr; gap: .15rem .55rem; padding: .62rem .7rem .62rem; }
 .dest-stat { display: flex; align-items: center; min-width: 0; gap: .4rem; color: color-mix(in srgb, var(--deck-ivory) 76%, var(--deck-brass)); }
 .dest-stat > span { display: block; min-width: 0; }
 .dest-stat small, .dest-stat strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -280,11 +282,6 @@ body.player button.dest.sail-card.on, body.player button.dest.sail-card.on:hover
 .dest-stat.wx0, .dest-stat.wx1 { color: var(--jade-hi); }
 .dest-stat.wx2 { color: #f1c465; }
 .dest-stat.wx3 { color: #ff9b88; }
-.dest-heat { display: flex; align-items: center; gap: .55rem; padding: 0 .7rem .65rem; color: var(--risk-color); }
-.dest-heat > i { position: relative; flex: 1 1 auto; height: .34rem; overflow: hidden; border-radius: 1rem; background: rgba(0, 0, 0, .45); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
-.dest-heat > i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--risk-level); border-radius: inherit; background: var(--risk-color); box-shadow: 0 0 8px var(--risk-color); }
-.dest-heat b { color: color-mix(in srgb, var(--risk-color) 74%, #fff); font: 800 .72rem/1 var(--sans); white-space: nowrap; }
-.dest-heat small { color: var(--muted); font-size: .62rem; font-weight: 700; }
 
 @media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 560px) {
   .sail-guide { align-items: start; }
@@ -729,93 +726,115 @@ body.player .yd-ico .gicon, .yd-ico .yd-img, .yd-ico img, .yd-ico video { displa
   .dk-nav button.face span, .dk-nav button span { font-size: .58rem; }
 }
 
-/* ===================================================== PRICE BOOK (Ledger) ===
-   Ports down the side, cargoes across the top. Jade = cheapest seen (buy there),
-   oxblood = dearest seen (sell there). Old sightings fade; unvisited ports are blank pages. */
-.deck .card.pb { padding-top: .55rem; }
-.pb-key { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; font: .72rem/1.1 var(--special); letter-spacing: .07em; color: var(--muted); white-space: nowrap; }
-.pb-key i { display: inline-block; width: .8rem; height: .8rem; border-radius: 3px; margin-left: .5rem; }
-.pb-key i.lo { background: color-mix(in srgb, var(--deck-jade) 70%, transparent); box-shadow: inset 0 0 0 1px var(--jade-hi); }
-.pb-key i.hi { background: color-mix(in srgb, var(--deck-oxblood) 75%, transparent); box-shadow: inset 0 0 0 1px var(--blood-hi); }
+/* ===================================================== PRICE BOOK (Ledger) === */
+.deck .book { display: grid; gap: .55rem; padding-top: .55rem; }
+.book-old { color: var(--brass-hi); }
+.book-controls { display: flex; flex-wrap: wrap; gap: .45rem; }
+body.player .book button {
+  min-height: 44px; border: 1px solid var(--edge); background: var(--deck-lacquer); color: var(--ink);
+  border-radius: var(--radius); padding: .45rem .7rem; letter-spacing: normal; text-transform: none;
+}
+body.player .book button:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
+body.player .book button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--deck-lacquer) 83%, var(--deck-brass));
+  border-color: var(--brass-hi);
+}
+body.player .book button.book-cargo { min-height: 0; display: flex; align-items: center; gap: .5rem; padding: .25rem .6rem .25rem .25rem; text-align: left; }
+.book-cargo-art { width: 2.2rem; height: 2.2rem; object-fit: cover; flex: none; border-radius: 3px; }
+.book small { display: block; color: var(--muted); font-size: .86em; line-height: 1.2; }
+.book small.book-old { color: var(--brass-hi); }
+.book-detail { background: var(--deck-lacquer); padding: .75rem 1rem; border-inline-start: 2px solid var(--deck-brass); overflow-wrap: anywhere; }
+.book-detail p, .book-note { margin: .25rem 0 0; }
+.book-detail h3 { margin: 0 0 .35rem; font: 400 clamp(1.2rem, 2.15vw, 1.8rem)/1.15 var(--serif); }
+.book-note { color: var(--muted); }
+.book-key { display: grid; grid-template-columns: 1fr auto 1fr; gap: .45rem; align-items: center; color: var(--muted); font-size: .9em; }
+.book-key span:nth-child(2) { text-align: center; color: var(--brass-hi); }
+.book-key span:last-child { text-align: right; }
+.book-ports, .book-routes { display: grid; gap: .32rem; align-content: start; }
+body.player .book button.book-port {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(2.3rem, 1.3fr) minmax(6ch, .52fr);
+  gap: .65rem; align-items: center; text-align: left; width: 100%;
+}
+.book-port b { font: 400 1.03rem/1.15 var(--serif); }
+.book-port.here b { color: var(--brass-hi); }
+.book-port strong, .book-quotes b { font-family: Consolas, monospace; font-variant-numeric: tabular-nums; }
+.book-port strong { text-align: right; overflow-wrap: anywhere; }
+.book-axis { position: relative; height: .75rem; background: var(--deck-night); border-radius: 3px; }
+.book-axis::after { content: ""; position: absolute; inset: -2px auto -2px 50%; width: 1px; background: var(--brass-hi); }
+.book-bar { position: absolute; inset-block: 1px; border-radius: 2px; background: var(--jade-hi); }
+.book-bar.lower { background: color-mix(in srgb, var(--deck-storm) 65%, var(--deck-ivory)); }
+.book-voyage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: .9rem; align-items: start; }
+body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; text-align: left; }
+.book-gain { color: var(--jade-hi); }
+.book-course { height: 2px; margin: .85rem .2rem; background: var(--deck-brass); transform-origin: left; }
+.book-quotes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.book-quotes b { display: block; font-size: 1.2rem; }
+.book-plan .book-toggle { margin-top: .7rem; }
+.book-table-scroll { overflow: auto; max-height: min(40rem, 70dvh); border: 1px solid var(--edge); border-radius: var(--radius); }
+.book-table-scroll:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
+.book-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.book-table :is(th, td) { padding: .22rem .45rem; border-bottom: 1px solid var(--rule); line-height: 1.15; }
+.book-table thead th { position: sticky; top: 0; z-index: 2; min-width: 4.6rem; padding: .18rem; background: var(--deck-lacquer); vertical-align: bottom; }
+.book-table th:first-child { position: sticky; left: 0; min-width: clamp(6.5rem, 18vw, 9rem); text-align: left; border-right: 1px solid var(--edge); }
+.book-table thead th:first-child { z-index: 3; padding: .2rem .45rem; font: 400 .72rem/1 var(--special); letter-spacing: .08em; text-transform: uppercase; color: var(--brass-hi); }
+.book-table tbody th { z-index: 1; background: var(--deck-night); white-space: nowrap; }
+.book-table tbody th b { font: 400 .92rem/1.1 var(--serif); }
+.book-table tbody th small { display: inline; margin-left: .3rem; font-size: .72rem; }
+.book-table td { text-align: right; white-space: nowrap; font: .84rem/1.15 Consolas, monospace; font-variant-numeric: tabular-nums; }
+.book-table tr.here td { background: color-mix(in srgb, var(--deck-brass) 12%, var(--deck-night)); }
+.book-table tr.here th { background: var(--deck-lacquer); color: var(--brass-hi); border-left: 2px solid var(--deck-brass); }
+.book-table tr.here td.base { color: var(--brass-hi); font-weight: 700; }
+/* Heat map: --heat (0.22–1) set per cell from the price gap vs. buying here. */
+.book-table { --heat-good: #2fbf71; --heat-poor: #d8343d; }
+.book-table td.good { background: color-mix(in srgb, var(--heat-good) calc(var(--heat, .4) * 62%), var(--deck-night)); color: #effff5; }
+.book-table td.poor { background: color-mix(in srgb, var(--heat-poor) calc(var(--heat, .4) * 58%), var(--deck-night)); color: #fff0ec; }
+.book-table td.hot { font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.book-table td.good.hot { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-good) 70%, #fff); }
+.book-table td.poor.hot { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-poor) 70%, #fff); }
+.book-table td.blocked { color: var(--muted); background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(255, 255, 255, .04) 5px 10px), var(--deck-night); }
+.book-ban { font-style: normal; color: var(--blood-hi); margin-right: .3rem; }
+.book-table tbody tr:hover :is(td, th) { filter: brightness(1.18); }
+.book-table-tile { position: relative; overflow: hidden; height: clamp(2.3rem, 4vw, 2.9rem); border-radius: 3px; background: var(--deck-night); }
+.book-table-tile .book-table-art { display: block; width: 100%; height: 100%; object-fit: cover; }
+.book-table-name { position: absolute; inset: auto 0 0; color: white; padding: .5rem .15rem .12rem; font-size: .72rem; line-height: 1;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .9)); font-weight: 800; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.book-table-count { position: absolute; top: .15rem; right: .15rem; min-width: 1.1rem; padding: .05rem .22rem;
+  border-radius: 3px; background: var(--brass-hi); color: var(--deck-night); font: 700 .7rem/1.1 Consolas, monospace; }
+/* One-line heat legend; the long caveat lives in its tooltip. */
+.book-heat-key { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .45rem; font: 400 .74rem/1 var(--special); letter-spacing: .05em; color: var(--muted); cursor: help; }
+.book-heat-key .k { width: 1.5rem; height: .6rem; border-radius: 2px; --heat: .45; }
+.book-heat-key .k.hot { --heat: 1; }
+.book-heat-key .k.good { background: color-mix(in srgb, #2fbf71 calc(var(--heat) * 62%), var(--deck-night)); }
+.book-heat-key .k.poor { background: color-mix(in srgb, #d8343d calc(var(--heat) * 58%), var(--deck-night)); }
+.book-heat-key .k + span { margin-right: .35rem; }
+.book-heat-info { color: var(--brass-hi); margin-left: auto; }
 
-.pb-scroll { overflow: auto; max-width: 100%; margin: .3rem -.2rem 0; border-radius: calc(var(--radius, 6px) * 1);
-  -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-.pb-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-.pb-scroll::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--deck-brass) 50%, transparent); border-radius: 6px; }
-.pb-table { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums lining-nums; }
+/* Slim branded segmented switch (Market Signals · Voyage Brief · All Prices). */
+.book-seg { display: inline-flex; justify-self: start; padding: 2px; gap: 2px; border: 1px solid color-mix(in srgb, var(--deck-brass) 55%, transparent);
+  border-radius: 999px; background: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .15)); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .55); }
+body.player .book .book-seg button { min-height: 0; height: 1.75rem; padding: 0 .95rem; border: 0; border-radius: 999px; background: transparent; box-shadow: none;
+  color: var(--brass-hi); font: 400 .8rem/1 var(--special); letter-spacing: .07em; white-space: nowrap; }
+body.player .book .book-seg button:hover:not(:disabled) { background: rgba(201, 163, 78, .14); }
+body.player .book .book-seg button[aria-pressed="true"] { color: var(--deck-night); text-shadow: none;
+  background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass) 60%, color-mix(in srgb, var(--deck-brass) 75%, #000));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 245, 210, .6); }
+/* Other price-book toggles (buy/sell, Review in Set Sail) follow the same slim pill look. */
+body.player .book button.book-toggle { min-height: 0; height: 1.85rem; padding: 0 .85rem; border-radius: 999px; font: 400 .8rem/1 var(--special); letter-spacing: .06em; }
+body.player .book button.book-toggle[aria-pressed="true"] { color: var(--deck-night); border-color: var(--brass-hi);
+  background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass) 60%, color-mix(in srgb, var(--deck-brass) 75%, #000)); }
 
-/* Column heads: cargo picture, short name, and a brass pip with what is aboard. */
-.pb-table thead th { position: sticky; top: 0; z-index: 2; padding: .25rem .15rem; text-align: center; vertical-align: bottom;
-  background: color-mix(in srgb, var(--deck-night) 92%, var(--deck-lacquer)); border-bottom: 1px solid var(--edge-hi); }
-.pb-table th.pb-corner { left: 0; z-index: 3; text-align: left; font: 400 .7rem/1.1 var(--special); letter-spacing: .1em;
-  color: color-mix(in srgb, var(--deck-brass) 80%, var(--deck-ivory)); padding-left: .5rem; }
-/* Square cargo pictures as big as the column allows, with the name printed inside. */
-.pb-table thead th.pb-good { min-width: 3.6rem; }
-.pb-gico { position: relative; display: block; width: 100%; aspect-ratio: 1; line-height: 0; overflow: hidden; border-radius: 4px;
-  box-shadow: 0 0 0 1px var(--edge-hi), 0 3px 8px rgba(0, 0, 0, .5); background: var(--deck-lacquer); container-type: inline-size; }
-body.player .pb-gico .gicon, .pb-gico img, .pb-gico video { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; border-radius: 0; box-shadow: none; }
-.pb-aboard { position: absolute; right: .2rem; top: .2rem; min-width: 1.15rem; padding: .12rem .25rem; border-radius: 1rem; font: 700 .62rem/1 var(--special);
-  font-style: normal; color: var(--deck-night); background: var(--brass-hi); box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
-.pb-gname { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.1rem .15rem .3rem; text-align: center;
-  font: 700 min(.8rem, 14.5cqi)/1 var(--sans); letter-spacing: .02em; text-transform: uppercase; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: clip;
-  background: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 60%, transparent); text-shadow: 0 1px 3px #000, 0 0 6px rgba(0, 0, 0, .8); }
-
-/* Port column: picture, name, freshness, sailing distance, standing. Sticks on sideways scroll. */
-.pb-table tbody th.pb-port { position: sticky; left: 0; z-index: 1; display: flex; align-items: center; gap: .55rem; min-width: 12.5rem;
-  padding: .35rem .6rem .35rem .4rem; text-align: left; font-weight: 400;
-  background: color-mix(in srgb, var(--deck-night) 88%, var(--deck-lacquer)); border-right: 1px solid var(--rule); }
-.pb-pimg { flex: none; line-height: 0; }
-.pb-pimg img, .pb-pimg video, body.player .pb-pimg .pb-img { display: block; width: 3.4rem; height: 2.4rem; margin: 0; object-fit: cover;
-  border-radius: 4px; box-shadow: 0 0 0 1px var(--edge), 0 3px 8px rgba(0, 0, 0, .5); }
-.pb-ptext { display: flex; flex-direction: column; gap: .12rem; min-width: 0; }
-.pb-pname { font: 400 1rem/1.1 var(--serif); color: var(--ink); white-space: nowrap; }
-.pb-ptext .tag { font-size: .62rem; }
-.pb-meta { font: .7rem/1.15 var(--special); letter-spacing: .05em; color: var(--muted); white-space: nowrap; }
-.pb-dot { display: inline-block; width: .5rem; height: .5rem; margin-right: .35rem; border-radius: 50%; vertical-align: .05em; background: var(--muted); }
-.f-now .pb-dot { background: var(--jade-hi); box-shadow: 0 0 6px var(--jade-hi); }
-.f-recent .pb-dot { background: var(--brass-hi); }
-.f-old .pb-dot { background: var(--blood-hi); }
-.f-never .pb-dot { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
-.pb-rep { display: block; width: 5.5rem; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--deck-ivory) 14%, transparent); overflow: hidden; }
-.pb-rep i { display: block; height: 100%; background: linear-gradient(90deg, var(--deck-brass), var(--brass-hi)); }
-
-/* Price cells. */
-.pb-table td { padding: .3rem .45rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); vertical-align: middle; }
-.pb-table tbody tr:last-child > * { border-bottom: 0; }
-.pb-p b { font: 600 .98rem/1 var(--sans); color: var(--ink); }
-.pb-p.lo { background: color-mix(in srgb, var(--deck-jade) 34%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jade-hi) 55%, transparent); }
-.pb-p.lo b { color: var(--jade-hi); }
-.pb-p.lo b::before { content: "\25BE\00a0"; font-size: .75em; }
-.pb-p.hi { background: color-mix(in srgb, var(--deck-oxblood) 40%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blood-hi) 55%, transparent); }
-.pb-p.hi b { color: var(--blood-hi); }
-.pb-p.hi b::before { content: "\25B4\00a0"; font-size: .75em; }
-.pb-p.barred b { text-decoration: line-through; text-decoration-color: var(--blood-hi); }
-.pb-table tbody tr:hover > td { background-color: color-mix(in srgb, var(--deck-brass) 7%, transparent); }
-
-/* Freshness: the older the sighting, the fainter the figures. */
-.f-recent > td.pb-p b { opacity: .82; }
-.f-old > td.pb-p b { opacity: .58; }
-.f-never > th.pb-port { opacity: .62; }
-td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: var(--muted);
-  background: repeating-linear-gradient(135deg, transparent 0 9px, color-mix(in srgb, var(--deck-brass) 6%, transparent) 9px 10px); }
-
-/* The port you are in: brass rail down the left, gilt name. */
-.pb-row.here > th.pb-port { box-shadow: inset 3px 0 0 var(--brass-hi); background: color-mix(in srgb, var(--deck-lacquer) 80%, var(--deck-brass) 12%); }
-.pb-row.here .pb-pname { color: var(--brass-hi); }
-.pb-row.here .pb-meta { color: var(--brass-hi); }
-.pb-row.here > td { background-color: color-mix(in srgb, var(--deck-brass) 8%, transparent); }
-
-/* Narrow panes: drop the port picture and tighten everything. */
-@media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 560px) {
-  .pb-pimg { display: none; }
-  .pb-table tbody th.pb-port { min-width: 8.5rem; padding: .3rem .4rem; }
-  .pb-pname { font-size: .9rem; }
-  .pb-rep { width: 4rem; }
-  .pb-table thead th.pb-good { min-width: 2.8rem; }
-  .pb-gname { padding-top: .8rem; }
-  .pb-table td { padding: .25rem .3rem; }
-  .pb-p b { font-size: .85rem; }
-  .pb-key { margin-left: 0; }
+/* Host bar under the ledger: one compact line instead of a tall card. */
+.deck .card.host-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .6rem; padding-block: .35rem; }
+.deck .card.host-bar h2 { margin: 0; padding: 0; border: 0; background: none; font: 400 .78rem/1 var(--special); letter-spacing: .1em; text-transform: uppercase; }
+.host-bar .host-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-left: auto; }
+.host-bar .host-actions .row { display: contents; }
+.host-bar .host-actions .row b { font: 700 .8rem/1.1 var(--sans); color: var(--blood-hi); }
+body.player .host-bar button { min-height: 0; height: 1.75rem; padding: 0 .85rem; border-radius: 999px; font: 400 .78rem/1 var(--special); letter-spacing: .07em; white-space: nowrap; }
+body.player .host-bar button.ghost { border-color: color-mix(in srgb, var(--deck-oxblood) 70%, var(--deck-brass)); color: var(--blood-hi); }
+@media (max-width: 640px) {
+  .book-voyage { grid-template-columns: 1fr; }
+  .book-plan { grid-row: 1; }
+  body.player .book button.book-port { gap: .4rem; }
 }
 
 /* ------------------------------------------------- the dealer's card under the market keeper -- */
@@ -939,22 +958,6 @@ td.pb-blank { text-align: center; font: italic .82rem/1.2 var(--serif); color: v
   .deck[data-tab="ledger"] { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "top" "main" "nav"; }
 }
 
-/* Price book: every cargo column the same width, so the pictures line up evenly. The port column is fixed
-   and the cargo columns share what is left; below the minimum the table scrolls sideways instead. */
-.pb-table { table-layout: fixed; min-width: calc(13rem + var(--n, 8) * 3.9rem); }
-.pb-table th.pb-corner { width: 13rem; }
-.pb-table thead th.pb-good { width: auto; min-width: 0; }
-.pb-table tbody th.pb-port { min-width: 0; }
-.pb-table td { overflow: hidden; text-overflow: ellipsis; }
-@media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 560px) {
-  .pb-table { min-width: calc(8.5rem + var(--n, 8) * 3.1rem); }
-  .pb-table th.pb-corner { width: 8.5rem; }
-}
-.pb-ptext { overflow: hidden; }
-.pb-ptext .tag { align-self: flex-start; width: max-content; }
-.pb-meta { overflow: hidden; text-overflow: ellipsis; }
-.pb-table th.pb-corner { width: 13.5rem; }
-
 /* MARKET: what was paid, and profit or loss on a planned sale (16 Nov 2026, 10:05 pm) */
 .mk-paid { display: block; margin-top: .1rem; font-size: .68rem; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mk-paid.up { color: var(--jade-hi); }
@@ -967,5 +970,5 @@ body.player button.mk-go em.mk-pl.down { color: #ffd9cf; background: rgba(0, 0, 
 /* Names in the game title font (16 Nov 2026): your house in the top bar,
    ship names on the Fleet cards, port names on the destination cards,
    the price book and the stage plate (not while someone is speaking). */
-.dk-house b, .fl-ship .fl-name b, .dest-title b, .pb-pname,
+.dk-house b, .fl-ship .fl-name b, .dest-title b, .book-port b,
 #stage:not(.talking) .stg-plate b { font-family: var(--title); font-weight: 400; }

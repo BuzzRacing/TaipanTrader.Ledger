@@ -151,11 +151,16 @@ button.on .wx3 { color: #ffa497; }
 .chart .rose circle { fill: none; stroke: #9db3a8; stroke-width: 1.5; }
 .chart .rose path { fill: #9db3a8; }
 .chart .rose text { font: 700 14px var(--serif); fill: #7c958a; }
-.chart .region-bg { fill: rgba(224, 237, 229, .74); stroke: rgba(95, 123, 112, .55); stroke-width: 1.5; }
-.chart .region.wxt2 .region-bg { fill: rgba(255, 239, 199, .88); stroke: #b47b24; stroke-width: 2; }
-.chart .region.wxt3 .region-bg { fill: rgba(255, 218, 205, .9); stroke: var(--vermilion); stroke-width: 2; }
-.chart .rname { font: italic 15px var(--serif); fill: #3d5c51; letter-spacing: .06em; }
-.chart .rwx { font: 800 14px var(--sans); }
+.chart .region { --wx: var(--jade); --halo: rgba(255, 251, 240, .9); }
+.chart .region.wxt2 { --wx: #a5670d; }
+.chart .region.wxt3 { --wx: var(--vermilion); }
+.chart .region text { paint-order: stroke; stroke: var(--halo); stroke-width: 4px; stroke-linejoin: round; }
+.chart .rname { font: italic 14px var(--serif); fill: #3d5c51; letter-spacing: .06em; }
+.chart .rwx { font: 800 17px var(--sans); }
+.chart .region .rwx { fill: var(--wx); }
+.chart .rwx-icon * { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.chart .rwx-icon .halo * { stroke: var(--halo); stroke-width: 4; }
+.chart .rwx-icon .ink * { stroke: var(--wx); stroke-width: 1.8; }
 .chart .wxt0, .chart .wxt1 { fill: var(--jade); }
 .chart .wxt2 { fill: #a5670d; }
 .chart .wxt3 { fill: var(--vermilion); }
