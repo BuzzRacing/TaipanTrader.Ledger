@@ -222,7 +222,8 @@ def cannon_slots():
 BATTLE_DEFAULTS = {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
                    "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
                    "round_secs": 10, "first_extra": 10, "voice_grace": 0,
-                   "gun_loss": 0.25, "gun_loss_two": 0.25}
+                   "gun_loss": 0.25, "gun_loss_two": 0.25,
+                   "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3}
 
 # Which heading of the captain's report each player action belongs under.
 ACTION_CAT = {"buy": "trade", "sell": "trade", "warehouse": "trade", "depot": "trade",
@@ -558,7 +559,11 @@ class Game:
             if p["name"].lower() == name.lower():
                 if p.get("captain") and p["captain"] != captain:
                     raise GameError(tx("e.captain_seat", name=p["name"]))
-                if p["id"] in present:
+                # A seat claimed by name alone is refused while one of its screens is still open, so nobody
+                # can take another player's seat. A Captain who has just given the right PIN has proved who
+                # they are (a different Captain was turned away just above), so they may take the seat back
+                # even if an old screen - a sleeping iPad, a forgotten tab - still looks connected.
+                if p["id"] in present and not captain:
                     raise GameError(tx("e.elsewhere", name=p["name"]))
                 if captain and not p.get("captain"):
                     p["captain"] = captain
@@ -3255,10 +3260,13 @@ class Game:
         return parts[0] if parts else ""
 
     def _enemy_fire(self, p, b, pirates):
-        """Every junk afloat fires once. A hit either holes a ship (hull damage) or, now and then,
-        dismounts guns on her deck (rules.battle.gun_loss; one gun, sometimes two). A ship with no
-        guns left can only be holed. A cannon is as likely to be struck as the mounts she fills,
-        and one goes at a time."""
+        """Every junk afloat fires once. A hit lands in one of three places:
+        - the guns (rules.battle.gun_loss): one gun dismounted, sometimes two; a cannon is as likely
+          to be struck as the mounts she fills, and one goes at a time. A ship with no guns can't be.
+        - the hold (rules.battle.cargo_hit, of the hits that miss the guns): one kind of goods aboard,
+          every kind as likely as the next (so the gold is no safer than the rice), loses
+          cargo_hit_min to cargo_hit_max of its units over the side, at least one.
+        - the hull: everything else."""
         rng, bt = self.rng, R["battle"]
         out = []
         for _ in pirates:
@@ -3278,14 +3286,30 @@ class Game:
                 self._book(p, "ships_lost", -k * R["fleet"]["gun_price"] * R["fleet"]["gun_resale"])
                 out.append({"name": target["name"], "damage": 0, "guns": k, "hull": target["hull"],
                             "guns_left": target["guns"]})
-            else:
-                points = rng.randint(*b["dmg"])
-                target["hull"] -= points
-                out.append({"name": target["name"], "damage": points, "guns": 0, "hull": target["hull"]})
+                continue
+            aboard = sorted(g for g, q in p["cargo"].items() if q > 0)
+            if aboard and rng.random() < bt.get("cargo_hit", 0.0):
+                g = rng.choice(aboard)
+                lo, hi = sorted((float(bt.get("cargo_hit_min", 0.1)), float(bt.get("cargo_hit_max", 0.3))))
+                q = min(p["cargo"][g], max(1, int(round(p["cargo"][g] * rng.uniform(lo, hi)))))
+                self._book(p, "overboard", -self._cost_of(p, {g: q}))
+                p["cargo"][g] -= q
+                if p["cargo"][g] <= 0:
+                    del p["cargo"][g]
+                shot = b.setdefault("shot", {})
+                shot[g] = shot.get(g, 0) + q
+                out.append({"name": target["name"], "damage": 0, "guns": 0, "hull": target["hull"], "cargo": {g: q}})
+                continue
+            points = rng.randint(*b["dmg"])
+            target["hull"] -= points
+            out.append({"name": target["name"], "damage": points, "guns": 0, "hull": target["hull"]})
         return out
 
     @staticmethod
     def _hit_text(h):
+        if h.get("cargo"):
+            return "{} hit in the hold: {} lost".format(h["name"], ", ".join(
+                "{} {}".format(q, GOODS[g]["name"] if g in GOODS else g) for g, q in h["cargo"].items()))
         if h.get("cannons"):
             return "{} lost a cannon ({} left)".format(h["name"], h.get("cannons_left", 0))
         if h.get("guns"):
@@ -3311,6 +3335,16 @@ class Game:
                                       "guns_lost" if say and not holed and not dismounted else None,
                                       guns=cannons, n=cannons, s="" if cannons == 1 else "s",
                                       left=self.cannons(p)))
+        spilled = {}
+        for h in taken_round:
+            for g, q in (h.get("cargo") or {}).items():
+                spilled[g] = spilled.get(g, 0) + q
+        if spilled:
+            gold = "gold" in spilled
+            spoke = holed or dismounted or cannons
+            frames.append(self._frame("we_are_hit", "cargo_gold" if gold else "cargo_hit",
+                                      ("cargo_gold" if gold else "cargo_hit") if say and (gold or not spoke) else None,
+                                      goods=self._goods_text(spilled), qty=sum(spilled.values())))
         afloat = {sh["name"] for sh in p["ships"]}
         for sh in b["ships0"]:
             if sh["name"] in names and sh["name"] not in afloat:
@@ -3330,6 +3364,8 @@ class Game:
                            for sh in b["ships0"] if sh["name"] in now)
         if cannons_lost > 0:
             p["log"].append(tx("l.cannons_lost", n=cannons_lost, s="" if cannons_lost == 1 else "s"))
+        if b.get("shot") and p["ships"]:
+            p["log"].append(tx("l.cargo_shot", goods=self._goods_text(b["shot"]), qty=sum(b["shot"].values())))
         if b["seed"] is not None:
             ships = [{"name": sh["name"], "type": sh["type"], "hull0": sh["hull"],
                       "guns0": sh.get("guns", 0), "guns1": now[sh["name"]]["guns"] if sh["name"] in now else 0,
@@ -3338,7 +3374,10 @@ class Game:
                       "hull1": now[sh["name"]]["hull"] if sh["name"] in now else 0,
                       "max": SHIPS[sh["type"]]["hull"] if sh["type"] in SHIPS else sh["hull"],
                       "lost": sh["name"] not in now} for sh in b["ships0"]]
-            lost = {g: q - p["cargo"].get(g, 0) for g, q in b["cargo0"].items() if q - p["cargo"].get(g, 0) > 0}
+            # What left the hold: start against now, leaving out any prize cargo carried aboard after.
+            won = (b.get("prize") or {}).get("goods", {})
+            lost = {g: q - (p["cargo"].get(g, 0) - won.get(g, 0)) for g, q in b["cargo0"].items()
+                    if q - (p["cargo"].get(g, 0) - won.get(g, 0)) > 0}
             cargo = [{"good": g, "qty": q, "cost": int(round(self._cost_of(p, {g: q})))} for g, q in lost.items()]
             dest = b.get("dest")
             if outcome != "wrecked" and self.s.get("sea"):       # a shipwreck makes its own headline

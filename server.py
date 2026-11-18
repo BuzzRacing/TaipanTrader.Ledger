@@ -39,6 +39,7 @@ import captains
 import cast
 import config
 import engine
+import finale
 import fonts
 import imagegen
 import journal
@@ -711,6 +712,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._file("stats.html")
         if path == "/api/stats":
             return self._stats_get(query)
+        if path == "/api/finale":
+            return self._finale_get()
         if path == "/fonts.css":
             return self._send(200, config.fonts_css(engine.CFG, fonts.local_css()), "text/css; charset=utf-8")
         if path == "/theme.css":
@@ -836,6 +839,22 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(200, {"ok": True, "token": token})
 
     # ------------------------------------------------------------- stats --
+    def _finale_get(self):
+        """The finale's Ledger of the Voyage (finale.py): every house's story, worked out from the
+        journal up to the close. Only once the game has ended (or is in free play after the end)."""
+        with HUB.cond:
+            g = HUB.game
+            gid = g.s.get("game_id")
+            over = g.s["phase"] == "ended" or bool(g.s.get("free_play"))
+        if not over:
+            return self._send(200, {"ok": False})
+        try:
+            data = finale.book(gid)
+        except Exception:
+            crash("Working out the finale's ledger failed", game=gid)
+            data = None
+        return self._send(200, data or {"ok": False})
+
     def _stats_get(self, query):
         """A player's statistics (stats.py). The seat token says who is asking. Without a
         seat in the game in progress, a name gives that player's past games only, so

@@ -41,7 +41,7 @@ goto waitpi
 ssh -o BatchMode=yes %PI% "journalctl -u seatrader -n 8 --no-pager" >> "%LOG%" 2>&1
 echo DEPLOY_DONE>> "%LOG%"
 echo.
-echo Live on sea.trade.
+echo Live on http://crimson.ledger/
 goto end
 
 :notmoved

@@ -171,6 +171,9 @@ DEFAULTS = {
                    "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
                    "round_secs": 10, "first_extra": 10, "voice_grace": 0,
                    "gun_loss": 0.25, "gun_loss_two": 0.25,
+                   # Hits that miss the guns may land in the hold: one kind of goods (gold as likely as rice)
+                   # loses cargo_hit_min to cargo_hit_max of its units over the side, at least one.
+                   "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3,
                    # Prize cargo from a won fight (engine.Game._battle_prize): a tier by weight, then that many
                    # kinds of goods. Scraps are a few units each; the others are a value in silver per enemy
                    # junk (grown like booty) shared among the goods. Only what fits in the hold is taken.
@@ -752,6 +755,11 @@ SECTIONS = [
              _pct("rules.battle.gun_loss", "Enemy hits that smash guns instead of the hull",
                   "Each hit on a ship that still has guns: this share dismounts guns (no hull damage); the rest hole the hull."),
              _pct("rules.battle.gun_loss_two", "Gun hits that smash two guns, not one"),
+             _pct("rules.battle.cargo_hit", "Enemy hits that burst the hold instead of the hull",
+                  "Of the hits that miss the guns: this share lands in the hold. One kind of goods aboard, every "
+                  "kind as likely as the next (gold included), loses part of its units over the side."),
+             _pct("rules.battle.cargo_hit_min", "Hold hit: share of that good lost, least"),
+             _pct("rules.battle.cargo_hit_max", "Hold hit: share of that good lost, most"),
              F("rules.battle.parley", "Pirates name a price to let the fleet pass", "bool",
                "Before the first shot. The pirate queen's fleet never does."),
              F("rules.battle.parley_per_junk", "Their price: silver per junk", "int", min=0, max=10**7),

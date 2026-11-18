@@ -567,6 +567,52 @@ def test_prize_can_be_switched_off():
     assert p["fights"][-1]["prize"] == [] and p["cargo"] == {"rice": 5}
 
 
+def test_hits_can_burst_the_hold_gold_and_all():
+    """Enemy hits can land in the hold: a kind of goods aboard (gold as likely as rice) loses units
+    over the side. Booked as cargo lost overboard, logged, captioned, and on the reckoning."""
+    setup(battle__gun_loss=0.0, battle__cargo_hit=1.0, battle__cargo_hit_min=0.5, battle__cargo_hit_max=0.5,
+          pirates__hit=1.0, pirates__gun_hit=0.0)
+    g = new_game(guns=4, cargo={"gold": 10, "rice": 40})
+    g.s["players"]["p2"]["protect"] = 5
+    R["liyuen"]["protect_save"] = 1.0
+    p1 = g.s["players"]["p1"]
+    p1["ships"][0]["hull"] *= 20
+    assert sail(g, present=["p1", "p2"])
+    hull0, before = p1["ships"][0]["hull"], dict(books(p1))
+    g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+    while p1.get("battle") and p1["battle"]["stage"] == "parley":
+        g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+    # six junks, every one hits, every hit lands in the hold: the hull is untouched, gold and rice spill
+    assert p1["ships"][0]["hull"] == hull0
+    assert p1["cargo"].get("gold", 0) < 10 and p1["cargo"].get("rice", 0) < 40, p1["cargo"]
+    spent = round(books(p1).get("overboard", 0) - before.get("overboard", 0), 2)
+    gone = {"gold": 10 - p1["cargo"].get("gold", 0), "rice": 40 - p1["cargo"].get("rice", 0)}
+    assert spent == round(-(gone["gold"] * GOODS["gold"]["base"] + gone["rice"] * GOODS["rice"]["base"]), 2), spent
+    if p1.get("battle"):
+        caps = [f["cap"] for f in g.battle_view(p1)["beat"]["frames"]]
+        assert any("over the side" in c for c in caps), caps
+        assert any(f.get("say") and "gold" in f["say"].lower() for f in g.battle_view(p1)["beat"]["frames"])
+        g.fight_out(["p1", "p2"], pick=lambda v: "run")
+    f = p1["fights"][-1]
+    lost = {c["good"]: c["qty"] for c in f["cargo"]}
+    assert lost.get("gold", 0) >= gone["gold"] > 0 and lost.get("rice", 0) >= gone["rice"] > 0, lost
+    assert any(line.startswith("Enemy shot burst open the hold") for line in p1["log"]), p1["log"]
+    json.dumps(f)
+
+
+def test_no_hold_hits_when_switched_off():
+    setup(battle__gun_loss=0.0, battle__cargo_hit=0.0, pirates__hit=1.0, pirates__gun_hit=0.0)
+    g = new_game(guns=4, cargo={"gold": 10})
+    g.s["players"]["p2"]["protect"] = 5
+    R["liyuen"]["protect_save"] = 1.0
+    p1 = g.s["players"]["p1"]
+    p1["ships"][0]["hull"] *= 20
+    assert sail(g, present=["p1", "p2"])
+    while p1.get("battle"):
+        g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+    assert p1["cargo"].get("gold") == 10
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in tests:

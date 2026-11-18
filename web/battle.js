@@ -400,13 +400,16 @@ const Battle = (() => {
         ${hullBar(s)}${gunPips(s)}</li>`).join("");
 
     const line = (qty, good, fig, cls) => `<li><span><b>${a(qty)}</b> ${a(goodName(good))}</span><i></i><em class="${cls}">${fig}</em></li>`;
-    const usePrize = won && !f.cargo.length;
-    const list = usePrize
-      ? ((f.prize || []).map(c => line(c.qty, c.good, money(c.worth), "up")).join("")
+    // A win shows what was taken; cargo shot out of the hold on the way shows too, as its own ledger.
+    const usePrize = won;
+    const prizeList = (f.prize || []).map(c => line(c.qty, c.good, money(c.worth), "up")).join("")
           + (f.prize_left ? `<li class="left">${te("battle.res.prize_left", { qty: f.prize_left })}</li>` : "")
-          || `<li class="none">${te("battle.res.prize_none")}</li>`)
-      : (f.cargo.length ? f.cargo.map(c => line(c.qty, c.good, "-" + money(c.cost), "dn")).join("")
-          : `<li class="none">${te(f.outcome === "wrecked" ? "battle.res.cargo_wreck" : "battle.res.cargo_none")}</li>`);
+          || `<li class="none">${te("battle.res.prize_none")}</li>`;
+    const lostList = f.cargo.length ? f.cargo.map(c => line(c.qty, c.good, "-" + money(c.cost), "dn")).join("")
+          : `<li class="none">${te(f.outcome === "wrecked" ? "battle.res.cargo_wreck" : "battle.res.cargo_none")}</li>`;
+    const list = usePrize ? prizeList : lostList;
+    const alsoLost = usePrize && f.cargo.length
+      ? `<h3>${te("battle.res.cargo")}</h3><ul class="sf-rcargo">${lostList}</ul>` : "";
     const st = STAMP[f.outcome];
     const showStamp = st && (f.outcome !== "won" || (f.prize || []).length) && (f.outcome !== "plundered" || f.cargo.length);
     const stamp = showStamp ? `<span class="sf-stamp" aria-hidden="true">${tf(st[0], st[1])}</span>` : "";
@@ -420,7 +423,7 @@ const Battle = (() => {
       f.booty ? `<div class="up"><small>${te("battle.res.booty")}</small><b>+${money(f.booty)}</b></div>` : "",
       f.prize_worth ? `<div class="gold"><small>${te("battle.res.prize_worth")}</small><b>${money(f.prize_worth)}</b></div>` : "",
       f.paid ? `<div class="dn"><small>${te("battle.res.paid_line")}</small><b>-${money(f.paid)}</b></div>` : "",
-      !won && f.cargo.length ? `<div class="dn"><small>${te("battle.res.cargo")}</small><b>-${money(f.cargo.reduce((t, c) => t + c.cost, 0))}</b></div>` : "",
+      f.cargo.length ? `<div class="dn"><small>${te("battle.res.cargo")}</small><b>-${money(f.cargo.reduce((t, c) => t + c.cost, 0))}</b></div>` : "",
     ].join("");
 
     const cl = closingFor(f);
@@ -441,7 +444,7 @@ const Battle = (() => {
       ${rows ? `<div class="sf-rows">${rows}</div>` : ""}
       <div class="sf-cols">
         <div><h3>${te("battle.res.ships")}</h3><ul class="sf-rships">${ships}</ul></div>
-        <div class="sf-rledger"><h3>${te(usePrize ? "battle.res.prize" : "battle.res.cargo")}</h3><ul class="sf-rcargo${usePrize ? " sf-rprize" : ""}">${list}</ul>${stamp}</div>
+        <div class="sf-rledger"><h3>${te(usePrize ? "battle.res.prize" : "battle.res.cargo")}</h3><ul class="sf-rcargo${usePrize ? " sf-rprize" : ""}">${list}</ul>${alsoLost}${stamp}</div>
       </div>
       <p class="sf-note">${f.outcome === "wrecked" ? te("battle.res.wreck_note") : hurt ? te("battle.res.repairs") : ""}${more ? " " + te("battle.res.next") : ""}</p>
       <footer>

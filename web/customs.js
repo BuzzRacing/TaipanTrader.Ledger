@@ -6,10 +6,16 @@
    place. How much of her odds the captain sees depends on the difficulty level (Admin > Ratings &
    Difficulty > "Port Authority odds shown"): exact numbers, a bar without numbers, or only her tell.
 
-   Her pictures are the port's Media Library pictures with the roles taxlady_bored, taxlady_curious,
-   taxlady_hungry (her tells) and taxlady_tax, taxlady_buyout, taxlady_caught (her ruling). With several
-   in a role she shows a different one each time her mood changes. A port without its own uses its
-   plain "Tax lady" pictures, then Hong Kong's, then the officer's profile picture.
+   Her tells are the port's Media Library pictures with the roles taxlady_bored, taxlady_curious and
+   taxlady_hungry. With several in a role she shows a different one each time her mood changes. A port
+   without its own uses its plain "Tax lady" pictures, then Hong Kong's, then the officer's profile picture.
+
+   Her ruling shows her mood: tax paid and buyout show her HAPPY, caught shows her ANGRY. Every picture
+   of her in that mood goes into one pool and they take turns (all of them are shown before any repeats):
+   her persona pictures with the role or tag "happy"/"angry", plus this port's ruling pictures
+   (taxlady_tax / taxlady_buyout = happy, taxlady_caught = angry) and any of this port's tax-lady
+   pictures tagged "happy"/"angry". With none in that mood she shows any picture of her.
+   Her welcome is any picture of her.
 
    While her desk is open the right-hand stage shows her too, in a different picture from the popup's
    (and from the small one beside her greeting): the stage draws from every picture of her this port has,
@@ -117,31 +123,69 @@ const Customs = (() => {
   function moodPool(officer, mood) {
     return officer ? Media.items("persona", [officer], mood, true).filter(i => i.r.includes(mood)) : [];
   }
-  /* Where to look for each mood, best first. Her ruling never falls back to another port's lady
-     while this port has any picture of its own: a port with no "taxlady_tax" picture shows its own
-     officer pleased (persona "happy"), then her profile picture, then her calmest tell. */
+  /* Where to look for each of her tells, best first. */
   const LADDER = {
-    welcome: [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
     bored:   [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
     over:    [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
     curious: [["port", "taxlady_curious"], ["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
     hungry:  [["port", "taxlady_hungry"], ["port", "taxlady_curious"], ["port", "taxlady"], ["officer", "portrait"]],
-    tax:     [["port", "taxlady_tax"], ["officer", "happy"], ["port", "taxlady"], ["officer", "portrait"], ["port", "taxlady_curious"], ["port", "taxlady_bored"]],
-    buyout:  [["port", "taxlady_buyout"], ["officer", "happy"], ["port", "taxlady_hungry"], ["port", "taxlady"], ["officer", "portrait"]],
-    caught:  [["port", "taxlady_caught"], ["officer", "angry"], ["port", "taxlady_hungry"], ["port", "taxlady"], ["officer", "portrait"]],
   };
+  /* Her ruling's mood, and this port's ruling role that counts as that mood. */
+  const RULING = { tax: ["happy", "taxlady_tax"], buyout: ["happy", "taxlady_buyout"], caught: ["angry", "taxlady_caught"] };
+  /* A picture is in a mood when it has that role, or a tag with that word in it ("happy", "mood happy"). */
+  function inMood(i, mood) {
+    return i.r.includes(mood) || (i.g || []).some(t => String(t).toLowerCase().split(/[^a-z]+/).includes(mood));
+  }
+  /* Every picture of her in her ruling's mood: this port's ruling pictures and tax-lady pictures tagged
+     with the mood, and her own persona pictures with that mood as a role or tag. */
+  function rulingPool(c, state) {
+    const [mood, role] = RULING[state];
+    const seen = new Set(), out = [];
+    const add = i => { if (i && i.u && !seen.has(i.u)) { seen.add(i.u); out.push(i); } };
+    const lady = i => i.r.some(r => r === "taxlady" || r.startsWith("taxlady_"));
+    Media.items("port", [c.port], "", true).filter(i => lady(i) && (i.r.includes(role) || inMood(i, mood))).forEach(add);
+    if (c.officer) Media.items("persona", [c.officer], "", true).filter(i => inMood(i, mood)).forEach(add);
+    return out;
+  }
+  /* Any picture of her: her own first, borrowed ones only when she has none. */
+  function anyOfHer(c) {
+    const { own, borrowed } = herPictures(c);
+    return own.length ? own : borrowed;
+  }
+  /* Take turns through a pool: every picture is shown once before any repeats, never the one she wore
+     last, never the one the stage is showing. */
+  const bags = {};
+  function nextInTurn(bagKey, list) {
+    const shown = bags[bagKey] || (bags[bagKey] = new Set());
+    let fresh = list.filter(i => !shown.has(i.u));
+    if (!fresh.length) { shown.clear(); fresh = list; }
+    const tries = [fresh.filter(i => i.id !== pick.last && i.u !== onScreen.stage),
+                   fresh.filter(i => i.u !== onScreen.stage),
+                   list.filter(i => i.id !== pick.last && i.u !== onScreen.stage),
+                   list.filter(i => i.u !== onScreen.stage), list];
+    const choices = tries.find(t => t.length);
+    const it = choices[Math.floor(Math.random() * choices.length)];
+    shown.add(it.u);
+    return it;
+  }
   function face(c, state, cls) {
     cls = cls || "stg-img stg-keeper stg-taxlady cx-img";
-    const roles = { bored: "taxlady_bored", curious: "taxlady_curious", hungry: "taxlady_hungry", over: "taxlady_bored",
-                    tax: "taxlady_tax", buyout: "taxlady_buyout", caught: "taxlady_caught", welcome: "taxlady_bored" };
+    const roles = { bored: "taxlady_bored", curious: "taxlady_curious", hungry: "taxlady_hungry", over: "taxlady_bored" };
     const role = roles[state] || "taxlady";
     let list = [];
-    for (const [where, r] of (LADDER[state] || LADDER.bored)) {
-      list = where === "port" ? pool(c.port, r) : moodPool(c.officer, r);
-      if (list.length) break;
+    if (RULING[state]) {
+      list = rulingPool(c, state);
+      if (!list.length) list = anyOfHer(c);
+    } else if (state === "welcome") {
+      list = anyOfHer(c);
+    } else {
+      for (const [where, r] of (LADDER[state] || LADDER.bored)) {
+        list = where === "port" ? pool(c.port, r) : moodPool(c.officer, r);
+        if (list.length) break;
+      }
+      if (!list.length) list = pool(D.home || "hongkong", role);
+      if (!list.length) list = pool(D.home || "hongkong", "taxlady");
     }
-    if (!list.length) list = pool(D.home || "hongkong", role);
-    if (!list.length) list = pool(D.home || "hongkong", "taxlady");
     if (!list.length) {
       const html = Media.html("persona", c.officer, "portrait", cls, ((VS.cast || {})[c.officer] || {}).portrait || "", { slot: "cx" });
       onScreen.art = srcOf(html);
@@ -150,13 +194,9 @@ const Customs = (() => {
     const memo = state + ":" + key(c);
     let it = list.find(i => i.id === pick[memo]);
     if (!it) {
-      // A new mood (or a new visit) shows a new picture, never the one she wore last.
-      // Never the picture the stage is showing beside her either.
-      const last = pick.last;
-      let choices = list.filter(i => i.id !== last && i.u !== onScreen.stage);
-      if (!choices.length) choices = list.filter(i => i.u !== onScreen.stage);
-      if (!choices.length) choices = list;
-      it = choices[Math.floor(Math.random() * choices.length)];
+      // A new mood (or a new visit) shows the next picture in turn for that mood at this port.
+      const group = RULING[state] ? RULING[state][0] : state;
+      it = nextInTurn(group + ":" + c.port + ":" + (c.officer || ""), list);
       pick[memo] = it.id;
     }
     pick.last = it.id;

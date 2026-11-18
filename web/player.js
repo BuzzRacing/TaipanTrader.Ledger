@@ -617,6 +617,7 @@ function endScreen() {
   return masthead(te("end.sub", { date: S.date })) + `<main class="narrow">
     <section class="card"><h2>${te("end.title", { name: top.name, firm: top.firm })}</h2>${standings()}</section>
     ${S.voyage_story ? `<section class="card">${Ceremony.story(S, D.ports)}</section>` : ""}
+    <section class="card">${btn(te("end.ledger"), "ledger", "", "wide")}</section>
     <section class="card">${btn(te("end.free_play"), "free_play", "", "primary wide")}
       <p class="muted">${te("end.free_play_note")}</p></section>
     <section class="card">${btn(te("st.open_end"), "tally", "", "ghost wide")}</section>
@@ -2408,6 +2409,7 @@ app.addEventListener("click", async e => {
     case "newgame_no": ui.confirmNew = false; return render();
     case "newgame": ui.confirmNew = false; return act("new_game");
     case "free_play": return act("free_play");
+    case "ledger": return Ceremony.openLedger(S, D, app);
     default: if (d.act.startsWith("cx_")) return Customs.click(d);
   }
 });
