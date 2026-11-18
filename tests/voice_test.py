@@ -161,7 +161,7 @@ del cfg["voice"]["lines"]["m.sold"]
 said = lambda r: voice._registry[r["u"][len("/voice/"):-4]]["text"]
 a1 = voice.PLAN.msg(tx("m.bought", qty=60, good="Rice", cost="$951"))
 a2 = voice.PLAN.msg(tx("m.bought", qty=20, good="Rice", cost="$300"))
-check(a1["u"] == a2["u"] and said(a1) == "Bought Rice.", "different amounts share one spoken clip: {}".format(said(a1)))
+check(a1["u"] == a2["u"] and said(a1) == "Approved. Bought Rice.", "different amounts share one spoken clip: {}".format(said(a1)))
 check(voice.PLAN.msg(tx("m.bought", qty=5, good="Tea", cost="$9"))["u"] != a1["u"], "a different good is its own clip")
 check(said(voice.PLAN.msg(tx("e.cost", cost="$5", cash="$1"))) == "You cannot afford that.", "refusals lose their amounts")
 for k, v in cast.SAY.items():

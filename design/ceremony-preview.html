@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening and finale preview</title>
+<style>
+  @font-face {
+    font-family: "Uncial Antiqua";
+    src: url("/fonts/uncial-antiqua-latin-e93ce65c.woff2");
+  }
+  @font-face {
+    font-family: Alegreya;
+    src: url("/fonts/alegreya-latin-77f23cbd.woff2");
+  }
+  :root {
+    color-scheme: dark;
+    --ink: #15100c;
+    --brass: #c9a34e;
+    --linen: #f1e3c5;
+    font-family: Alegreya, Georgia, serif;
+    color: var(--linen);
+    background: var(--ink);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .6rem;
+    padding: .7rem;
+    background: var(--ink);
+  }
+  button {
+    font: inherit;
+    color: inherit;
+    background: #2a1b14;
+    border: 1px solid var(--brass);
+    border-radius: .25rem;
+    padding: .4rem .9rem;
+    cursor: pointer;
+  }
+  button[aria-pressed="true"] { background: #544024; }
+  :focus-visible { outline: 2px solid var(--linen); outline-offset: 3px; }
+  main {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: max(32rem, calc(100svh - 4rem));
+    isolation: isolate;
+    overflow: hidden;
+    text-align: center;
+  }
+  .scenery { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .harbor, .shade, .mist { position: absolute; inset: 0; }
+  .harbor {
+    background: url("/assets/ceremony-harbor.png") center / cover;
+    animation: drift 11s cubic-bezier(.19,.65,.25,1) both;
+  }
+  .shade {
+    background: radial-gradient(ellipse at 50% 36%, transparent 22%, #090d13a8 100%),
+      linear-gradient(180deg, #080e1775, transparent 60%, #090d139e);
+  }
+  .mist {
+    inset: 32% -28% 0;
+    background: radial-gradient(ellipse 28% 9% at 28% 25%, #d8d6c35e, transparent),
+      radial-gradient(ellipse 39% 17% at 70% 45%, #dac4a642, transparent),
+      radial-gradient(ellipse 38% 9% at 30% 77%, #adc3ce55, transparent);
+    animation: haze 11s linear both;
+  }
+  .ship {
+    position: absolute;
+    left: 50%;
+    bottom: 14%;
+    width: clamp(19rem, 47vw, 58rem);
+    animation: sail-out 11s cubic-bezier(.23,.56,.57,1) both;
+  }
+  .ship img {
+    display: block;
+    width: 100%;
+    filter: brightness(.86) saturate(.84);
+    transform-origin: 50% 91%;
+    animation: swell 2.9s ease-in-out infinite alternate;
+  }
+  [data-scene="finale"] .ship { animation: sail-home 9s cubic-bezier(.12,.58,.28,1) both; }
+  [data-scene="finale"] .ship img { filter: brightness(.61) saturate(.7); }
+  [data-scene="underway"] .ship { opacity: 0; }
+  [data-scene="underway"] .frame { animation: appear .75s both; }
+  [data-scene="opening"] .frame {
+    position: absolute;
+    top: clamp(1.4rem, 10vh, 6.5rem);
+  }
+  [data-scene="finale"] .harbor {
+    animation: last-light 9s ease-in-out both;
+  }
+  .frame { width: min(64rem, 100%); padding: 2rem 1rem; }
+  .title {
+    font: normal clamp(2.6rem, 9vw, 7rem)/1.1 "Uncial Antiqua", Georgia, serif;
+    text-shadow: 0 .12em .22em var(--ink), 0 0 .8em var(--ink);
+    margin: 0;
+  }
+  .wordmark { filter: drop-shadow(0 3px 0 #5a3217) drop-shadow(0 6px 14px #07090e); }
+  .wordmark .title {
+    font-size: clamp(2.05rem, 8vw, 7.25rem);
+    overflow-wrap: anywhere;
+    line-height: 1.13;
+    letter-spacing: -.025em;
+    text-shadow: none;
+    background: linear-gradient(110deg, transparent 43%, #fff8dc 49%, transparent 55%) 135% 0 / 250% 100% no-repeat,
+      linear-gradient(#fff5d8 12%, #e6bd68 52%, #ac6e28 54%, #efd18e 78%, #ffd99b);
+    background-clip: text;
+    color: transparent;
+    -webkit-text-stroke: 1px #ffdfa173;
+    animation: gild 2s 4s ease-out both;
+  }
+  [data-scene="opening"] .wordmark { animation: title-rise 2.1s 2.2s both; }
+  .rule {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    width: min(32rem, 72%);
+    margin: .3rem auto 0;
+    color: #f6cf80;
+  }
+  .rule::before, .rule::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: linear-gradient(90deg, transparent, #e7bf72);
+  }
+  .rule::after { transform: scaleX(-1); }
+  .place { font-size: 1.15rem; letter-spacing: .12em; }
+  [data-scene="opening"] .place { animation: appear 1.2s 3.7s both; text-shadow: 0 2px 8px #000; }
+  .cue { min-height: 5rem; margin: 0; font-size: 2rem; }
+  .count {
+    display: inline-block;
+    font: 3.5rem/1.2 Georgia, serif;
+    color: var(--linen);
+    text-shadow: 0 2px 3px #15100c, 0 0 14px #15100c;
+    animation: tick .9s both;
+  }
+  .winner {
+    width: fit-content;
+    margin: auto;
+    padding: 1.2rem 2rem;
+    animation: title-rise 1.2s both;
+    background: radial-gradient(ellipse, #15100ce0 20%, transparent 74%);
+    text-shadow: 0 2px 12px var(--ink);
+  }
+  .winner h2 { font-size: clamp(2.5rem, 7vw, 5.5rem); line-height: 1; margin: .2em 0; }
+  .winner p { margin: .25em 0; font-size: 1.3rem; }
+  .ledger {
+    color: var(--ink);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    text-align: left;
+    border: .45rem solid #392318;
+    border-radius: .65rem;
+    background: linear-gradient(90deg, #dfc398, var(--linen) 47%, #a97e52 50%, #e6cfa7 52%, var(--linen) 95%, #dfc398);
+    box-shadow: 0 1rem 4rem #000a;
+    animation: ledger-open 1s cubic-bezier(.2,.7,.2,1) both;
+  }
+  .ledger section { padding: clamp(1rem, 4vw, 2.5rem); }
+  .ledger h2 { margin: 0 0 .6rem; font-size: 1.65rem; }
+  .ledger p, .ledger td { font-size: 1.12rem; }
+  .ledger table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  td, th { border-bottom: 1px solid #6b452d55; padding: .45rem 0; }
+  td:last-child, th:last-child { text-align: right; padding-left: .5rem; }
+  .sample { margin: .8rem 0 0; text-align: center; }
+  @keyframes drift {
+    from { transform: scale(1.24) translateX(5%); }
+    to { transform: scale(1.075) translateX(-2%); }
+  }
+  @keyframes last-light {
+    from { transform: scale(1.15) translateX(-4%); filter: brightness(.82) saturate(.93); }
+    to { transform: scale(1.06) translateX(2%); filter: brightness(.42) saturate(.7); }
+  }
+  @keyframes sail-out {
+    from { transform: translateX(calc(-50% - 29vw)) translateY(1vh) scale(1.04); }
+    64% { transform: translateX(-53%) scale(.94); }
+    to { transform: translateX(-44%) translateY(-.6vh) scale(.93); }
+  }
+  @keyframes sail-home {
+    from { transform: translateX(55vw) translateY(-6vh) scale(-.66,.66); }
+    62% { transform: translateX(-1vw) scale(-.9,.9); }
+    to { transform: translateX(-6vw) scale(-.93,.93); }
+  }
+  @keyframes swell {
+    from { transform: translateY(2px) rotate(-1.4deg); }
+    to { transform: translateY(-6px) rotate(1.4deg); }
+  }
+  @keyframes haze { from { transform: translateX(-12%); } to { transform: translateX(16%); } }
+  @keyframes title-rise {
+    from { opacity: 0; transform: translateY(.45em) scale(.87); filter: blur(7px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes gild { from { background-position: 135% 0, 0 0; } to { background-position: -35% 0, 0 0; } }
+  @keyframes ledger-open {
+    from { opacity: 0; clip-path: inset(0 48%); transform: translateY(1.8rem) scale(.96); }
+    to { opacity: 1; clip-path: inset(0); transform: none; }
+  }
+  @keyframes appear { from { opacity: 0; transform: translateY(.6rem); } to { opacity: 1; transform: none; } }
+  @keyframes tick { from { opacity: .85; transform: scale(1.12); } to { opacity: 1; transform: none; } }
+  @media (max-width: 38rem) {
+    .ledger { grid-template-columns: 1fr; background: var(--linen); }
+    .ledger section + section { border-top: 1px solid #6b452d55; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+    .ship { transform: translateX(-50%); }
+    [data-scene="finale"] .ship img { transform: scaleX(-1); }
+    .wordmark .title { background-position: -35% 0, 0 0; }
+  }
+</style>
+<nav aria-label="Preview controls">
+  <button type="button" data-preview="opening" aria-pressed="true">Play opening</button>
+  <button type="button" data-preview="finale" aria-pressed="false">Play finale</button>
+</nav>
+<main aria-label="Opening and finale preview">
+  <p>Open this preview through the running game server to load its current title.
+    <a href="http://localhost:8765/design/ceremony-preview.html">Open on the local game server</a>
+  </p>
+</main>
+<script src="/common.js"></script>
+<script>
+  const stage = document.querySelector("main");
+  const buttons = document.querySelectorAll("[data-preview]");
+  let timers = [];
+
+  function after(ms, action) {
+    timers.push(setTimeout(action, ms));
+  }
+
+  function showFrame(content) {
+    stage.innerHTML = `<div class="scenery" aria-hidden="true">
+      <div class="harbor"></div><div class="ship"><img src="/assets/ceremony-clipper.png" alt=""></div>
+      <div class="mist"></div><div class="shade"></div></div>
+      <div class="frame">${content}</div>`;
+  }
+
+  async function play(scene) {
+    timers.forEach(clearTimeout);
+    timers = [];
+    buttons.forEach(button => { button.disabled = true; });
+    let name;
+    try {
+      const { data } = await loadInfo();
+      name = brandName(data.brand);
+      document.title = name + " · Opening and finale preview";
+    } catch (error) {
+      stage.textContent = "Could not load the game title. Check the game server and try again.";
+      console.error("Ceremony preview could not load game settings", error);
+      return;
+    } finally {
+      buttons.forEach(button => { button.disabled = false; });
+    }
+    stage.dataset.scene = scene;
+    buttons.forEach(button => button.setAttribute("aria-pressed", button.dataset.preview === scene));
+
+    if (scene === "opening") {
+      showFrame(`<div class="wordmark"><h1 class="title"></h1><div class="rule" aria-hidden="true">◆</div></div>
+        <p class="place">Victoria Harbour · 1860</p>
+        <p class="cue" role="status"></p>`);
+      stage.querySelector(".wordmark h1").textContent = name;
+      const cue = stage.querySelector(".cue");
+      [3, 2, 1].forEach((number, index) => {
+        after(8000 + index * 1000, () => { cue.innerHTML = `<span class="count">${number}</span>`; });
+      });
+      after(11000, () => {
+        stage.dataset.scene = "underway";
+        stage.querySelector(".frame").innerHTML =
+          '<h1 class="title">Underway</h1><p class="place" role="status">Gameplay begins here</p>';
+      });
+      return;
+    }
+
+    showFrame('<h1 class="title">The Last Tide</h1><p class="place">Victoria Harbour · The final voyage</p>');
+    const frame = stage.querySelector(".frame");
+    after(5500, () => {
+      frame.innerHTML = `<div class="winner" role="status">
+        <p>Winning trading house</p><h2>Jade Compass</h2>
+        <p>Captain Lin · 184,620 silver net worth</p><p>Sample result</p></div>`;
+    });
+    after(9000, () => {
+      frame.innerHTML = `<article class="ledger" aria-label="Voyage results">
+        <section>
+          <h2>Voyage Story</h2>
+          <p>Jade Compass took the lead on a run of tea from Shanghai. A storm off Formosa cost the house a shipment, but Captain Lin returned to Victoria Harbour with two ships and enough silver to hold first place.</p>
+        </section>
+        <section>
+          <h2>Final Standings</h2>
+          <table>
+            <thead><tr><th scope="col">House</th><th scope="col">Net worth</th></tr></thead>
+            <tbody>
+              <tr><td>1. Jade Compass</td><td>184,620</td></tr>
+              <tr><td>2. Lantern Fleet</td><td>163,410</td></tr>
+              <tr><td>3. Red Sail Trading</td><td>97,280</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </article><p class="sample">Sample voyage and standings · Silver</p>`;
+    });
+  }
+
+  if (location.protocol === "file:") {
+    buttons.forEach(button => { button.disabled = true; });
+  } else {
+    buttons.forEach(button => button.addEventListener("click", () => play(button.dataset.preview)));
+    play("opening");
+  }
+</script>
+</html>

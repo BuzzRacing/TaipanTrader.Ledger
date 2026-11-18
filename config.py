@@ -66,7 +66,7 @@ DEFAULTS = {
         "custom_css": "",
     },
     "graphics": {
-        "logo": "/uploads/historical-logo.svg",
+        "logo": "",  # retired: the logo is the game's name in the Ceremony Title lettering (web/wordmark.css)
         "favicon": "/uploads/historical-favicon.svg",
         "masthead_bg": "/uploads/historical-masthead.webp",
         "page_bg": "/uploads/historical-page.webp",
@@ -115,13 +115,13 @@ DEFAULTS = {
         },
     },
     "ranks": [
-        {"worth": -1000000000, "title": "Debtor"},
-        {"worth": 0, "title": "Clerk"},
-        {"worth": 10000, "title": "Trader"},
-        {"worth": 50000, "title": "Merchant"},
-        {"worth": 200000, "title": "Senior Merchant"},
-        {"worth": 500000, "title": "Merchant Prince"},
-        {"worth": 1000000, "title": "Taipan"},
+        {"id": "debtor", "worth": -1000000000, "title": "Debtor"},
+        {"id": "clerk", "worth": 0, "title": "Clerk"},
+        {"id": "trader", "worth": 10000, "title": "Trader"},
+        {"id": "merchant", "worth": 50000, "title": "Merchant"},
+        {"id": "senior_merchant", "worth": 200000, "title": "Senior Merchant"},
+        {"id": "merchant_prince", "worth": 500000, "title": "Merchant Prince"},
+        {"id": "taipan", "worth": 1000000, "title": "Taipan"},
     ],
     "rules": {
         "game": {"start_year": 1860, "home": "hongkong", "max_players": 8,
@@ -139,6 +139,7 @@ DEFAULTS = {
                  "mug_min": 0.07, "mug_max": 0.15,
                  "whrob_chance": 0.02, "whrob_rep": 0.6, "whrob_min": 0.10, "whrob_max": 0.30},
         "fleet": {"max_fleet": 5, "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
+                  "cannon_cost": 7.5, "cannon_power": 2, "cannon_slots": 2,
                   "warehouse_cap": 10000, "depot_open_cost": 10000, "depot_cap": 1000,
                   "depot_expand_cost": 100000, "depot_expand_cap": 1000, "repair_base": 6, "repair_price_div": 4000,
                   "repair_noyard": 1.3, "repair_rep_discount": 0.2, "ship_rep": 2},
@@ -169,7 +170,16 @@ DEFAULTS = {
         "battle": {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
                    "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
                    "round_secs": 10, "first_extra": 10, "voice_grace": 0,
-                   "gun_loss": 0.25, "gun_loss_two": 0.25},
+                   "gun_loss": 0.25, "gun_loss_two": 0.25,
+                   # Prize cargo from a won fight (engine.Game._battle_prize): a tier by weight, then that many
+                   # kinds of goods. Scraps are a few units each; the others are a value in silver per enemy
+                   # junk (grown like booty) shared among the goods. Only what fits in the hold is taken.
+                   "prize": True, "prize_lord_step": 1,
+                   "prize_tiers": {
+                       "scraps": {"weight": 40, "goods_min": 1, "goods_max": 1, "units_min": 1, "units_max": 6},
+                       "modest": {"weight": 35, "goods_min": 2, "goods_max": 3, "value_min": 150, "value_max": 400},
+                       "rich":   {"weight": 18, "goods_min": 3, "goods_max": 5, "value_min": 400, "value_max": 1000},
+                       "haul":   {"weight": 7, "goods_min": 5, "goods_max": 8, "value_min": 1000, "value_max": 2500}}},
         # The mayor's harbour dues, paid on leaving port (engine.Game.dues).
         "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
                  "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2, "debt_relief": 0.25,
@@ -183,7 +193,14 @@ DEFAULTS = {
         # The Registrar (Mrs. Evelyn Marlowe, cast key "taxlady"), found only in a captain's own home port:
         # she meets the house when it comes home and gives one fresh price from her register
         # (engine.Game.registrar_here, _registrar_tip).
-        "registrar": {"enabled": True, "stale_months": 2, "held_first": True},
+        # Hot tips (engine _hot_tip): a boom the giver knows is coming, in a cargo cheap where it is told,
+        # booked into the market so it really lands. The Registrar gives one on hot_home_chance of
+        # homecomings (otherwise her price tip); any other port's officer on hot_away_chance of arrivals.
+        # Never two at once per house: none while a tip is still to come or still running.
+        "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
+                      "hot_enabled": True, "hot_home_chance": 0.5, "hot_away_chance": 0.2,
+                      "hot_every": 3, "hot_lead": 1, "hot_months": 2,
+                      "hot_min": 3.0, "hot_max": 6.0},
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
@@ -195,7 +212,8 @@ DEFAULTS = {
                     "strongbox": 9000, "strongbox_swing": 0.4, "buyback_premium": 0.25,
                     "bribe_share": 0.3, "bribe_min": 50, "bribe_cut": 0.5, "bribe_honest": 0.25,
                     "bribe_refused_mult": 1.5, "bribe_rep": 8, "over_rep": 5, "max_declare": 1.5,
-                    "tell_curious": 0.08, "tell_hungry": 0.25, "seeded": []},
+                    "tell_curious": 0.08, "tell_hungry": 0.25, "seeded": [],
+                    "greet_aloud_min": 2, "greet_aloud_max": 4},
     },
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
     "goods": {
@@ -243,13 +261,14 @@ DEFAULTS = {
         "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "bank": True, "warehouse": True, "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2,
                       "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}},
     },
-    # hold = cargo units; hull = damage it can take; slots = guns it can mount.
+    # hold = cargo units; hull = damage it can take; slots = guns it can mount (a cannon takes
+    # rules.fleet.cannon_slots of them); cannons = whether her deck can carry cannons at all.
     "ships": {
-        "junk":     {"name": "Junk", "hold": 60, "hull": 100, "slots": 4, "price": 3000, "fast": False},
-        "lorcha":   {"name": "Lorcha", "hold": 120, "hull": 140, "slots": 8, "price": 9000, "fast": False},
-        "barque":   {"name": "Barque", "hold": 250, "hull": 200, "slots": 12, "price": 22000, "fast": False},
-        "clipper":  {"name": "Clipper", "hold": 180, "hull": 160, "slots": 10, "price": 35000, "fast": True},
-        "indiaman": {"name": "East Indiaman", "hold": 500, "hull": 320, "slots": 24, "price": 80000, "fast": False},
+        "junk":     {"name": "Junk", "hold": 60, "hull": 100, "slots": 4, "price": 3000, "fast": False, "cannons": False},
+        "lorcha":   {"name": "Lorcha", "hold": 120, "hull": 140, "slots": 8, "price": 9000, "fast": False, "cannons": False},
+        "barque":   {"name": "Barque", "hold": 250, "hull": 200, "slots": 12, "price": 22000, "fast": False, "cannons": True},
+        "clipper":  {"name": "Clipper", "hold": 180, "hull": 160, "slots": 10, "price": 35000, "fast": True, "cannons": False},
+        "indiaman": {"name": "East Indiaman", "hold": 500, "hull": 320, "slots": 24, "price": 80000, "fast": False, "cannons": True},
     },
     "ship_names": ["Morning Cloud", "Jade Heron", "Lucky Star", "Sea Witch", "Golden Carp", "Lady Hughes",
                    "Red Rover", "Water Dragon", "Flying Cloud", "Pearl of Canton", "Falcon", "Nemesis",
@@ -307,8 +326,8 @@ SECTIONS = [
      "These names are also dropped into the game's wording wherever {lender}, {pirate}, {bank} and {winner} appear.",
      "groups": [
          {"title": "Name", "fields": [
-             F("brand.title_a", "Title, first part", "text", "Shown in plain lettering.", max=24),
-             F("brand.title_b", "Title, second part", "text", "Shown in the highlight colour, in italics.", max=24),
+             F("brand.title_a", "Title, first part", "text", "First word of the game's name, shown as the logo on every screen.", max=24),
+             F("brand.title_b", "Title, second part", "text", "Second word of the game's name. Both parts make the logo, in the gilded Ceremony Title lettering.", max=24),
              F("brand.tagline", "Tagline", "text", "Under the title on the join and lobby screens.", max=80),
              F("brand.currency", "Currency symbol", "text", "Put before every amount of money.", max=4)]},
          {"title": "Characters and places", "fields": [
@@ -378,9 +397,10 @@ SECTIONS = [
                         "or only the bosun's manner.", default="bar",
                         options=[["exact", "Exact chances"], ["bar", "Bar and her manner"], ["tell", "Her manner only"]])]},
          {"path": "ranks", "title": "Player ranks", "kind": "list",
-          "help": "A player holds the highest rank whose net worth they have reached.",
+          "help": "Captains receive their highest qualifying promotion at Home Port. Keep each badge ID the same when renaming its title.",
           "columns": [C("worth", "Net worth from", "int", min=-10**12, max=10**12),
-                      C("title", "Title", "text", max=30)]},
+                      C("title", "Title", "text", max=30),
+                      C("id", "Badge ID", "text", "Leave blank to create an ID from the title.", max=48)]},
      ]},
     {"id": "game", "title": "Game Setup", "intro": "How a game starts and how long it runs.",
      "groups": [
@@ -470,7 +490,14 @@ SECTIONS = [
          {"title": "Fleet and warehouse", "fields": [
              F("rules.fleet.max_fleet", "Most ships in a fleet", "int", min=1, max=20),
              F("rules.fleet.gun_price", "Price of a gun", "int", min=0, max=10**7),
-             _pct("rules.fleet.gun_resale", "Gun's share of value when a ship is sold"),
+             _pct("rules.fleet.gun_resale", "Gun's share of value when a ship is sold",
+                  "Cannons sell back at the same share of their price."),
+             F("rules.fleet.cannon_cost", "Price of a cannon, in guns", "num",
+               "7.5 means a cannon costs seven and a half times the price of a gun.", min=0, max=1000, step=0.5),
+             F("rules.fleet.cannon_power", "A cannon's firepower, in guns", "int",
+               "Each cannon fires this many shots a round.", min=1, max=100),
+             F("rules.fleet.cannon_slots", "Gun mounts a cannon takes", "int",
+               "Only ships marked for cannons (Ships) can carry them.", min=1, max=20),
              _pct("rules.fleet.ship_resale", "Ship resale value (sound hull)"),
              F("rules.fleet.warehouse_cap", "Warehouse space (units)", "int", min=0, max=10**8),
              F("rules.fleet.depot_open_cost", "Away warehouse: price to open", "int", min=0, max=10**9),
@@ -535,7 +562,12 @@ SECTIONS = [
              _pct("rules.customs.min_rate", "Lowest rate anywhere", "", 0, 1),
              _pct("rules.customs.max_rate", "Highest rate anywhere", "", 0, 1),
              _pct("rules.customs.max_declare", "Highest declaration allowed (share of true worth)",
-                  "Above 100% is over-declaring: she never buys, you pay more tax, and your standing rises.", 1, 5)]},
+                  "Above 100% is over-declaring: she never buys, you pay more tax, and your standing rises.", 1, 5),
+             F("rules.customs.greet_aloud_min", "Her greeting is read aloud every (landings), at least", "int",
+               "Her greeting is always written on her desk; this only sets how often it is spoken. After she reads "
+               "it, the next landings are quiet. 1 and 1: every landing. The Registrar's price tip is always read.",
+               min=1, max=20),
+             F("rules.customs.greet_aloud_max", "... and at most every (landings)", "int", min=1, max=20)]},
          {"title": "The Registrar (Mrs. Marlowe, at each captain's home port)", "fields": [
              F("rules.registrar.enabled", "The Registrar meets each house in its home port with a price tip", "bool",
                "On: a house coming home is met by the Registrar (cast key taxlady) instead of the port's officer, "
@@ -545,7 +577,23 @@ SECTIONS = [
                "She picks a port whose price the house hasn't seen for this long, or never. If every price is "
                "fresher than that, she gives the oldest one.", min=0, max=60),
              F("rules.registrar.held_first", "She favours a cargo the house is carrying", "bool",
-               "Off: any cargo.")]},
+               "Off: any cargo. (Her ordinary price tip only.)"),
+             F("rules.registrar.hot_enabled", "Hot tips: she foretells a boom", "bool",
+               "On: now and then she (at home) or a port's officer (anywhere else) names a cargo that is cheap "
+               "there and is about to boom in another port. The boom is real: it lands when they say. Off: price tips only."),
+             _pct("rules.registrar.hot_home_chance", "Chance of a hot tip when a house comes home",
+                  "The Registrar gives a hot tip on this share of homecomings; otherwise her ordinary price tip."),
+             _pct("rules.registrar.hot_away_chance", "Chance of a hot tip in any other port",
+                  "That port's own officer gives a hot tip on this share of arrivals; otherwise no tip."),
+             F("rules.registrar.hot_every", "A hot tip at most every (months)", "int",
+               "Per house, from anyone. Never two at once either: while a tip is still to come or still "
+               "running, nobody gives the house another.", min=1, max=60),
+             F("rules.registrar.hot_lead", "The boom lands after (months)", "int",
+               "1: the month after she tells you, so a house that buys and sails at once arrives in it.",
+               min=1, max=6),
+             F("rules.registrar.hot_months", "The boom lasts (months)", "int", min=1, max=12),
+             F("rules.registrar.hot_min", "Boom: lowest price (times normal)", "num", min=1, max=100, step=0.5),
+             F("rules.registrar.hot_max", "Boom: highest price (times normal)", "num", min=1, max=100, step=0.5)]},
          {"title": "Port Authority: her odds", "fields": [
              _pct("rules.customs.buy_base", "Chance she buys an honest line", "Times her greed, her mood, your standing and how much the port wants that cargo."),
              _pct("rules.customs.buy_k", "Buyout chance added by a 100% lie", "", 0, 5),
@@ -633,7 +681,9 @@ SECTIONS = [
                       C("hull", "Hull points", "int", min=1, max=10**5),
                       C("slots", "Gun mounts", "int", min=0, max=500),
                       C("price", "Price", "int", min=0, max=10**9),
-                      C("fast", "Fast", "bool", "Runs from pirates better and suffers less in storms.")]},
+                      C("fast", "Fast", "bool", "Runs from pirates better and suffers less in storms."),
+                      C("cannons", "Cannons", "bool", "Her deck can carry cannons as well as guns. Each cannon takes "
+                        "the gun mounts set under Rules > Fleet.", default=False)]},
      ],
      "groups": [
          {"title": "Ship names", "fields": [
@@ -709,7 +759,32 @@ SECTIONS = [
              _pct("rules.battle.retreat_min", "Retreat: cargo thrown overboard, least"),
              _pct("rules.battle.retreat_max", "Retreat: cargo thrown overboard, most"),
              F("rules.battle.retreat_floor", "Retreat: hull left on the last ship", "int",
-               "A retreat never sinks the last ship; she limps in with this much hull.", min=1, max=1000)]},
+               "A retreat never sinks the last ship; she limps in with this much hull.", min=1, max=1000),
+             F("rules.battle.prize", "A won fight takes the enemy's cargo", "bool",
+               "Whatever the sunk junks had stolen from someone else: mostly scraps, now and then a hold full. "
+               "Only what fits in the hold is taken."),
+             F("rules.battle.prize_lord_step", "Pirate queen's fleet: prize tiers richer by", "int",
+               "Her war junks carry better plunder: the tier drawn moves up this many steps.", min=0, max=3),
+             F("rules.battle.prize_tiers.scraps.weight", "Prize, Scraps: how often (weight)", "int", min=0, max=1000),
+             F("rules.battle.prize_tiers.scraps.goods_min", "Prize, Scraps: kinds of goods, least", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.scraps.goods_max", "Prize, Scraps: kinds of goods, most", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.scraps.units_min", "Prize, Scraps: units of each, least", "int", min=1, max=10000),
+             F("rules.battle.prize_tiers.scraps.units_max", "Prize, Scraps: units of each, most", "int", min=1, max=10000),
+             F("rules.battle.prize_tiers.modest.weight", "Prize, Modest: how often (weight)", "int", min=0, max=1000),
+             F("rules.battle.prize_tiers.modest.goods_min", "Prize, Modest: kinds of goods, least", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.modest.goods_max", "Prize, Modest: kinds of goods, most", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.modest.value_min", "Prize, Modest: silver per enemy junk, least", "int", min=0, max=10**6),
+             F("rules.battle.prize_tiers.modest.value_max", "Prize, Modest: silver per enemy junk, most", "int", min=0, max=10**6),
+             F("rules.battle.prize_tiers.rich.weight", "Prize, Rich: how often (weight)", "int", min=0, max=1000),
+             F("rules.battle.prize_tiers.rich.goods_min", "Prize, Rich: kinds of goods, least", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.rich.goods_max", "Prize, Rich: kinds of goods, most", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.rich.value_min", "Prize, Rich: silver per enemy junk, least", "int", min=0, max=10**6),
+             F("rules.battle.prize_tiers.rich.value_max", "Prize, Rich: silver per enemy junk, most", "int", min=0, max=10**6),
+             F("rules.battle.prize_tiers.haul.weight", "Prize, A great haul: how often (weight)", "int", min=0, max=1000),
+             F("rules.battle.prize_tiers.haul.goods_min", "Prize, A great haul: kinds of goods, least", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.haul.goods_max", "Prize, A great haul: kinds of goods, most", "int", min=1, max=9),
+             F("rules.battle.prize_tiers.haul.value_min", "Prize, A great haul: silver per enemy junk, least", "int", min=0, max=10**6),
+             F("rules.battle.prize_tiers.haul.value_max", "Prize, A great haul: silver per enemy junk, most", "int", min=0, max=10**6)]},
          {"title": "The pirate queen", "fields": [
              _pct("rules.liyuen.chance", "Chance her fleet finds an unprotected player"),
              F("rules.liyuen.fleet_base", "War junks: base", "int", min=1, max=1000),
@@ -758,7 +833,7 @@ SECTIONS = [
 ]
 
 GRAPHIC_SLOTS = [
-    ["logo", "Logo", "Replaces the lettered title on the join screen, lobby and harbor board. A wide transparent PNG works best."],
+    ["logo", "Logo", "Not a picture: the logo is the game's name (Brand > Title) in the gilded Ceremony Title lettering of the opening animation."],
     ["favicon", "Browser tab icon", "A small square image."],
     ["masthead_bg", "Title banner background", "Behind the title on the join and lobby screens."],
     ["page_bg", "Player screen background", "Behind the cards on every player screen. Subtle textures work best."],
@@ -1000,6 +1075,13 @@ def validate(raw):
         errors.append("Ratings: difficulty level '{}' does not exist".format(cfg["difficulty"]["level"]))
     if cfg["content"]["rating"] not in ("historical", "family"):
         errors.append("Ratings: unknown content rating")
+    rank_ids = set()
+    for rank in cfg["ranks"]:
+        key = rank["id"] or re.sub(r"[^a-z0-9]+", "_", rank["title"].lower()).strip("_")
+        if not ID_RE.fullmatch(key) or key in rank_ids:
+            errors.append("Player ranks / {}: use a unique badge ID starting with a lowercase letter".format(rank["title"]))
+        rank["id"] = key
+        rank_ids.add(key)
     cfg["ranks"].sort(key=lambda r: r["worth"])
     for lo, hi, label in (("storm_dmg_min", "storm_dmg_max", "Storm damage"),
                           ("typhoon_dmg_min", "typhoon_dmg_max", "Typhoon damage")):

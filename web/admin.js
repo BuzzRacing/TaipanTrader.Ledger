@@ -191,7 +191,9 @@ async function boot() {
     (sec.groups || []).forEach(g => g.fields.forEach(f => { FIELD[f.path] = f; }));
     (sec.tables || []).forEach(t => { COL[t.path] = {}; t.columns.forEach(c => { COL[t.path][c.key] = c; }); });
   });
-  $("#gname").textContent = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
+  const gameName = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
+  $("#gname").textContent = gameName;
+  document.title = gameName + " · Command Center";
   draw();
   refreshDirty();
   if (!polling) { polling = true; pollLive(); }
@@ -449,12 +451,13 @@ function liveSection() {
   const L = LIVE, ports = CFG.ports, goods = CFG.goods;
   const pname = k => ports[k] ? ports[k].name : k;
   const gname = k => goods[k] ? goods[k].name : k;
-  const phase = { lobby: "Lobby, waiting to start", port: "In progress", ended: "Finished" }[L.phase] || L.phase;
+  const phase = L.start_at ? "Opening in progress"
+    : { lobby: "Lobby, waiting to start", port: "In progress", ended: "Finished" }[L.phase] || L.phase;
   const stats = [["Status", phase], ["Date", L.date], ["Months left", L.turns_left], ["Length", L.years + " years"],
                  ["Players", L.players.filter(p => p.present).length + " of " + L.players.length + " connected"]]
     .map(s => `<div class="stat"><span>${s[0]}</span><b>${esc(s[1])}</b></div>`).join("");
   const controls = `<section class="card"><h2>Controls</h2><div class="row" style="margin-top:0">
-      ${L.phase === "lobby" ? '<button type="button" class="primary" data-g="start">Start the game</button>' : ""}
+      ${L.phase === "lobby" && !L.start_at ? '<button type="button" class="primary" data-g="start">Cue opening</button>' : ""}
       ${L.phase === "port" ? '<button type="button" class="primary" data-g="force">End the turn now</button><button type="button" class="confirm" data-g="finish">Finish the game now</button>' : ""}
       <span class="unit"><input type="number" id="gyears" min="1" max="100" value="${L.years}" style="width:5rem"><i>years</i></span>
       <button type="button" data-g="years">Set length</button>
@@ -502,7 +505,8 @@ async function pollLive() {
   if (res.ok) {
     LIVE = res;
     const on = res.players.filter(p => p.present).length;
-    const phase = { lobby: "Lobby", port: "In progress", ended: "Finished" }[res.phase] || res.phase;
+    const phase = res.start_at ? "Opening"
+      : { lobby: "Lobby", port: "In progress", ended: "Finished" }[res.phase] || res.phase;
     $("#status").dataset.phase = res.phase;
     $("#status").innerHTML = `<span class="st-phase">${esc(phase)}</span>` +
       (res.phase === "lobby" ? "" : `<span class="st-item"><b>${esc(res.date)}</b></span><span class="st-item"><b>${esc(res.turns_left)}</b> months left</span>`) +

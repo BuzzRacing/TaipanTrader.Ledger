@@ -18,6 +18,29 @@
    Needs from player.js: S, D, ui, act(), render(), portName(), pct(). */
 "use strict";
 
+/* A hot tip: a boom foretold by the Registrar at home or by a port's own officer elsewhere
+   (engine _hot_tip; tp.by is "registrar" or "officer"). Shown at the desk when it is given (atDesk) and afterwards under Port > Arrival and in the Price Book until the boom is over. */
+function hotWhen(n) { return n <= 1 ? t("l.when.next") : t("l.when.months", { n }); }
+function hotTipHtml(tp, atDesk) {
+  if (!tp || !D.goods[tp.good] || !D.ports[tp.port]) return "";
+  const goods = D.goods[tp.good].name, where = portName(tp.port), home = portName(tp.home || S.me.home);
+  /* At the desk her own words say it all, so no small-print recap under them. */
+  let note = "";
+  if (atDesk) { /* nothing */ }
+  else if (S.turn < tp.lands) note = `<b>${te("hot.soon", { where, when: hotWhen(tp.lands - S.turn) })}</b> · ${te("hot.from", { home })}`;
+  else {
+    const left = tp.ends - S.turn + 1;
+    note = `<b>${te("hot.on", { where })}</b> · ${te(left === 1 ? "hot.left" : "hot.left_n", { n: left })}`;
+  }
+  const away = tp.by === "officer";
+  const head = atDesk ? (away ? te("customs.hot_head_port", { who: tp.who || home }) : te("customs.hot_head"))
+    : (away ? te("hot.head_port", { port: home }) : te("hot.head"));
+  return `<aside class="cx-tip hot" aria-label="${head}">
+      <span class="cx-tip-art" aria-hidden="true">${Media.html("cargo", tp.good, "icon", "cx-tip-img", (D.graphics.goods || {})[tp.good], { mode: "fixed" })}</span>
+      <div><p class="eyebrow">${head}</p><p class="cx-tip-say">${esc(tp.text || "")}</p>
+      ${note ? `<small>${note}</small>` : ""}</div></aside>`;
+}
+
 const Customs = (() => {
   const pick = {};          // role -> id of the picture last shown
   let shownState = null;    // the mood her picture is showing now
@@ -185,11 +208,10 @@ const Customs = (() => {
   function tipHtml(c) {
     const tp = c.tip;
     if (!tp || !D.goods[tp.good] || !D.ports[tp.port]) return "";
-    const words = { goods: D.goods[tp.good].name, where: portName(tp.port), price: money(tp.price) };
+    if (tp.hot) return hotTipHtml(tp, true);
     return `<aside class="cx-tip" aria-label="${te("customs.tip_head")}">
       <span class="cx-tip-art" aria-hidden="true">${Media.html("cargo", tp.good, "icon", "cx-tip-img", (D.graphics.goods || {})[tp.good], { mode: "fixed" })}</span>
-      <div><p class="eyebrow">${te("customs.tip_head")}</p><p class="cx-tip-say">${esc(tp.text || "")}</p>
-      <small>${te("customs.tip_note", words)}</small></div></aside>`;
+      <div><p class="eyebrow">${te("customs.tip_head")}</p><p class="cx-tip-say">${esc(tp.text || "")}</p></div></aside>`;
   }
 
   function oddsBar(c, n) {

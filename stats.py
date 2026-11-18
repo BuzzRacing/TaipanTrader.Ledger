@@ -197,7 +197,7 @@ def _walk(events, ps):
                 row = {"turn": turn, "date": e.get("date") or _date(turn), "cash": f["cash"], "bank": f["bank"],
                        "debt": f["debt"], "worth": f["worth"], "port": f["port"], "ships": len(f.get("ships") or ()),
                        "guns": f.get("guns", 0), "hold": f.get("hold", 0), "used": f.get("used", 0),
-                       "rep": f.get("rep") or {}, "rank": engine.rank_for(f["worth"])}
+                       "rep": f.get("rep") or {}, "rank": f.get("rank", engine.rank_for(f["worth"]))}
                 if hh.months and hh.months[-1]["turn"] == turn:
                     hh.months[-1] = row
                 else:
@@ -668,7 +668,14 @@ def _voyage(gid, pid, running, meta, game):
                      "turn": max(turns) if turns else 0, "ended": ended, "running": bool(running and not ended),
                      "reveal": reveal, "players": len(ps)},
             "me": me, "rivals": rivals,
-            "place": 1 + [r["id"] for r in standing].index(pid)}
+            "place": _final_place(events, pid) or 1 + [r["id"] for r in standing].index(pid)}
+
+
+def _final_place(events, pid):
+    """The place recorded when the books closed. Months sailed in free play afterwards never change it."""
+    over = next((e for e in events if e.get("type") == "game_over"), None)
+    ids = [q.get("id") for q in (over or {}).get("standings") or []]
+    return 1 + ids.index(pid) if pid in ids else None
 
 
 # --------------------------------------------------------------- career --
@@ -794,3 +801,44 @@ def players_seen():
             if n:
                 names.setdefault(n.lower(), n)
     return sorted(names.values(), key=str.lower)
+
+
+# ------------------------------------------------- market pulse backfill --
+def backfill_market(game):
+    """Once per saved game: fill the market keepers' price book (s["price_hist"]) and each house's best
+    sale per port (p["best_sale"]) from the journal, for games played before the engine kept them.
+    Safe to call on any game; does nothing once done or when there is no journal."""
+    s = game.s
+    if s.get("market_backfilled") or s.get("phase") == "lobby":
+        return False
+    gid = s.get("game_id")
+    data = _read(gid) if gid else None
+    if not data:
+        s["market_backfilled"] = True
+        return False
+    events = data["events"]
+    first = {}
+    for e in events:
+        if e.get("cat") == "snapshot" and e.get("prices") and e.get("phase") != "lobby":
+            first.setdefault(e.get("turn", 0), e["prices"])
+    have = {r.get("turn") for r in s.get("price_hist", [])}
+    rows = [{"turn": t, "prices": first[t]} for t in sorted(first) if t not in have and t <= s.get("turn", 0)]
+    if rows:
+        merged = sorted(rows + list(s.get("price_hist", [])), key=lambda r: r["turn"])
+        s["price_hist"] = merged[-(engine.HIST_MONTHS + 1):]
+    ps = _players(events, data["colors"])
+    houses = _walk(events, ps)[0] if ps else {}
+    for pid, p in s.get("players", {}).items():
+        h = houses.get(pid)
+        if h is None:
+            continue
+        best = p.setdefault("best_sale", {})
+        for t in h.trades:
+            if t.get("side") != "sell" or not t.get("port") or (t.get("profit") or 0) <= 0:
+                continue
+            old = best.get(t["port"])
+            if not old or old.get("profit", 0) < t["profit"]:
+                best[t["port"]] = {"profit": int(t["profit"]), "good": t["good"], "qty": int(t["qty"]),
+                                   "turn": int(t["turn"])}
+    s["market_backfilled"] = True
+    return True

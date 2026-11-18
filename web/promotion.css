@@ -1,0 +1,131 @@
+/* SeaTrader: the promotion ceremony (promotion.css, drawn by syncPromotion() in player.js).
+   Redesigned 18 Nov 2026 after the sea battle reckoning: the port's harbour behind, the Mayor large
+   on the left with her words, and an ivory letter of commission on the right with the rank's seal in
+   a slow brass sunburst. Overrides the older .fleet-promotion box in deck.css. */
+
+@font-face { font-family: "Ceremony Title"; src: url("/fonts/uncial-antiqua-latin-e93ce65c.woff2") format("woff2"); font-display: block; }
+
+.fleet-promotion.pr {
+  --figures: "Consolas", "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --paper: #f1e3c5; --paper-2: #e6d2a8; --ink: #2a1b14; --ink-2: #5b4130;
+  position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: clamp(.8rem, 3vw, 2.4rem);
+  box-sizing: border-box; border: 0; border-radius: 0; background: var(--deck-night); color: var(--deck-ivory); overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr) min(36rem, 52%); align-items: center;
+  animation: prIn .6s ease-out both;
+}
+.fleet-promotion.pr:not([open]) { display: none; }
+.fleet-promotion.pr::backdrop { background: var(--deck-night); }
+@keyframes prIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* the harbour, pushed back */
+.pr-scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.8) brightness(.6) blur(1px); transform: scale(1.03); }
+.pr-shade { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 85% at 28% 45%, transparent 0%, color-mix(in srgb, var(--deck-night) 50%, transparent) 62%, color-mix(in srgb, var(--deck-night) 92%, transparent) 100%),
+    linear-gradient(90deg, transparent 30%, color-mix(in srgb, var(--deck-night) 75%, transparent) 62%, color-mix(in srgb, var(--deck-night) 88%, transparent) 100%); }
+
+/* the Mayor */
+.pr-who { position: absolute; left: 0; top: 0; bottom: 0; width: min(50vw, 46rem); margin: 0; }
+.pr-who > img { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%;
+  -webkit-mask-image: linear-gradient(90deg, #000 58%, transparent 97%); mask-image: linear-gradient(90deg, #000 58%, transparent 97%);
+  animation: prWho 1s ease-out both; }
+@keyframes prWho { from { opacity: 0; transform: translateX(-3%); } to { opacity: 1; transform: none; } }
+.pr-line { position: absolute; left: clamp(.6rem, 2.8vw, 2.2rem); bottom: clamp(.6rem, 2.8vw, 2.2rem); width: min(27rem, 88%);
+  padding: .9rem 1.2rem 1rem; border: 1px solid color-mix(in srgb, var(--deck-brass) 55%, transparent); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--deck-night) 84%, transparent); box-shadow: 0 .8rem 2.5rem rgba(0, 0, 0, .55); animation: prUp .6s .5s ease-out both; }
+.pr-line header { display: flex; align-items: center; gap: .6rem; margin-bottom: .4rem; font: .95rem/1.1 var(--special); letter-spacing: .08em; color: var(--brass-hi); }
+.pr-say { flex: none; display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -.4rem 0; padding: 0; border-radius: 50%;
+  background: var(--deck-oxblood); border: 1px solid var(--deck-brass); color: var(--deck-ivory); cursor: pointer; }
+.pr-say svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pr-say:hover { background: color-mix(in srgb, var(--deck-oxblood) 80%, #fff); }
+.pr-line p { margin: 0; font: italic clamp(1.05rem, 1.7vw, 1.3rem)/1.35 var(--serif); color: var(--deck-ivory); }
+@keyframes prUp { from { opacity: 0; transform: translateY(.8rem); } to { opacity: 1; transform: none; } }
+
+/* the letter of commission */
+.pr-card { grid-column: 2; position: relative; display: flex; flex-direction: column; align-items: center; gap: .55rem; text-align: center;
+  max-height: 100%; overflow-y: auto; scrollbar-width: thin; box-sizing: border-box; padding: clamp(1.2rem, 3vw, 2.2rem) clamp(1.1rem, 3vw, 2.4rem) clamp(1rem, 2.4vw, 1.8rem);
+  color: var(--ink); border-radius: 3px;
+  background: radial-gradient(ellipse at 50% 30%, var(--paper) 0%, var(--paper) 45%, var(--paper-2) 100%);
+  border: 1px solid var(--deck-brass); outline: 2px solid color-mix(in srgb, var(--deck-brass) 55%, transparent); outline-offset: -10px;
+  box-shadow: 0 0 0 5px var(--deck-lacquer), 0 0 0 6px color-mix(in srgb, var(--deck-brass) 60%, transparent), 0 2rem 5rem rgba(0, 0, 0, .75);
+  animation: prCard .7s .15s cubic-bezier(.2, 1.2, .4, 1) both; }
+@keyframes prCard { from { opacity: 0; transform: translateY(1.2rem) scale(.97); } to { opacity: 1; transform: none; } }
+.pr-ribbon { position: absolute; top: -6px; right: clamp(1.4rem, 4vw, 2.6rem); width: 2.4rem; height: 4.6rem; pointer-events: none;
+  background: linear-gradient(90deg, #6a1e22, var(--deck-oxblood) 40%, #8f2c30 60%, #6a1e22);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); box-shadow: 0 2px 6px rgba(0, 0, 0, .4); }
+.pr-eyebrow { margin: 0; padding-inline: 2.6rem; font: .95rem/1.25 var(--special); letter-spacing: .14em; color: var(--ink-2); }
+.pr-card h2 { margin: 0; font: 700 clamp(1.2rem, 2.2vw, 1.5rem)/1.2 var(--serif); letter-spacing: .02em; color: var(--deck-oxblood); }
+.pr-card h2::before, .pr-card h2::after { content: "❧"; display: inline-block; margin: 0 .55rem; font-weight: 400; color: var(--deck-brass); }
+.pr-card h2::before { transform: scaleX(-1); }
+
+.pr-seal { position: relative; display: grid; place-items: center; width: clamp(6.5rem, 12vw, 9rem); aspect-ratio: 1; margin: .3rem 0 .1rem; }
+.pr-rays { position: absolute; inset: -22%; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--deck-brass) 55%, transparent) 0deg 5deg, transparent 5deg 15deg);
+  -webkit-mask-image: radial-gradient(circle, #000 30%, transparent 70%); mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+  animation: prSpin 40s linear infinite, prFade 1s .5s ease-out both; }
+.pr-ring { position: absolute; inset: 2%; border-radius: 50%; border: 2px solid var(--deck-brass);
+  box-shadow: 0 0 0 4px var(--paper), 0 0 0 5px color-mix(in srgb, var(--deck-brass) 55%, transparent), 0 .6rem 1.4rem rgba(42, 27, 20, .35); }
+.pr-seal img, .pr-noseal { position: relative; width: 88%; height: 88%; object-fit: contain; animation: prSeal .7s .45s cubic-bezier(.2, 1.6, .4, 1) both; }
+.pr-noseal { display: grid; place-items: center; border-radius: 50%; background: var(--deck-jade); color: var(--deck-brass); font-size: 3rem; }
+.pr-seal::after { content: ""; position: absolute; inset: 6%; border-radius: 50%; pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 246, 220, .55) 48%, transparent 60%) no-repeat; background-size: 250% 100%;
+  animation: prGleam 4.5s 1.4s ease-in-out infinite; }
+@keyframes prSpin { to { transform: rotate(360deg); } }
+@keyframes prFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes prSeal { from { opacity: 0; transform: scale(1.7) rotate(-20deg); } to { opacity: 1; transform: none; } }
+@keyframes prGleam { 0% { background-position: 120% 0; } 35%, 100% { background-position: -120% 0; } }
+
+/* the game's name, in its own lettering (wordmark.css), inked onto the letter */
+.pr-brand { margin: -.2rem 0 .1rem; padding-inline: 2.8rem; font: normal clamp(1.5rem, 2.8vw, 2.1rem)/1.1 "Ceremony Title", Georgia, serif;
+  letter-spacing: -.02em; color: var(--deck-oxblood); text-shadow: 0 1px 0 rgba(255, 255, 255, .55); }
+.pr-brand:empty { display: none; }
+.pr-brand::after { content: "◆"; display: block; margin: .15rem auto 0; width: min(16rem, 80%); font: .7rem/1 Georgia, serif; color: var(--deck-brass);
+  background: linear-gradient(90deg, transparent, var(--deck-brass) 30%, transparent 46%, transparent 54%, var(--deck-brass) 70%, transparent) center / 100% 1px no-repeat; }
+
+.pr-to { margin: .15rem 0 0; font: 700 clamp(1.15rem, 2vw, 1.4rem)/1.2 var(--serif); color: var(--ink); }
+.pr-house { margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+  font: 700 clamp(1.05rem, 1.9vw, 1.3rem)/1.2 var(--special); letter-spacing: normal; color: var(--deck-oxblood); }
+.pr-house .crest { width: 2.4rem; height: 2.4rem; object-fit: contain; border-radius: 6px; flex: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px color-mix(in srgb, var(--deck-brass) 70%, transparent); }
+.pr-hereby { margin: .1rem 0 0; font: italic 1rem/1.3 var(--serif); color: var(--ink-2); }
+/* the new rank, in the game's title lettering, plain black ink */
+.pr-rank { margin: .1rem 0 0; font: normal clamp(1.7rem, 3.2vw, 2.4rem)/1.15 "Ceremony Title", Georgia, serif; letter-spacing: -.01em;
+  color: #000; animation: prUp .6s .7s ease-out both; }
+
+.pr-figs { align-self: stretch; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .5rem 0 0; padding: .7rem 0;
+  border-block: 1px solid color-mix(in srgb, var(--deck-brass) 70%, transparent); }
+.pr-figs > div + div { border-left: 1px solid color-mix(in srgb, var(--deck-brass) 45%, transparent); }
+.pr-figs dt { font: .8rem/1.2 var(--special); letter-spacing: .08em; color: var(--ink-2); }
+.pr-figs dd { margin: .2rem 0 0; font: 600 1.15rem/1.2 var(--figures); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
+.pr-figs dd small { display: block; font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+.pr-figs > div:last-child dd { font-family: var(--serif); font-weight: 700; }
+.pr-figs > div:last-child dd small { font-family: var(--figures); }
+
+.pr-card footer { align-self: stretch; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: .4rem; }
+.pr-sign { margin: 0; text-align: left; display: flex; flex-direction: column; }
+.pr-sign span { font: italic 1.2rem/1.1 var(--serif); color: var(--ink); border-bottom: 1px solid var(--ink-2); padding: 0 .4rem .15rem 0; }
+.pr-sign small { margin-top: .2rem; font: .78rem/1.2 var(--special); letter-spacing: .08em; color: var(--ink-2); }
+.pr-card footer button { margin-left: auto; min-height: 3.2rem; padding: 0 1.6rem; font: 700 1.15rem/1 var(--sans); color: var(--deck-ivory);
+  background: linear-gradient(180deg, #8f2c30, #6a1e22); border: 2px solid var(--deck-brass); border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px color-mix(in srgb, var(--deck-brass) 55%, transparent), 0 .4rem 1rem rgba(42, 27, 20, .35); cursor: pointer; }
+.pr-card footer button:hover { background: linear-gradient(180deg, #a3363b, #7b2428); }
+.pr-card footer button:disabled { opacity: .6; cursor: progress; }
+.fleet-promotion.pr .fleet-promotion-error { color: var(--deck-oxblood); font-weight: 700; }
+
+/* upright screens: the letter at the foot, the Mayor faded behind, her words above it */
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .fleet-promotion.pr { display: flex; flex-direction: column; justify-content: flex-end; gap: .9rem; overflow-y: auto; }
+  .pr-who { position: static; width: auto; }
+  .pr-who > img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; z-index: 0;
+    -webkit-mask-image: linear-gradient(0deg, transparent 30%, #000 75%); mask-image: linear-gradient(0deg, transparent 30%, #000 75%); }
+  .pr-line { position: relative; z-index: 1; left: auto; bottom: auto; width: auto; }
+  .pr-card { position: relative; z-index: 1; width: 100%; max-height: none; overflow: visible; }
+}
+@media (max-height: 560px) {
+  .pr-seal { width: 5.5rem; }
+  .pr-rank { font-size: 1.6rem; }
+  .pr-line p { display: none; }
+  .pr-hereby, .pr-brand::after { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fleet-promotion.pr, .pr-who > img, .pr-line, .pr-card, .pr-rays, .pr-seal img, .pr-noseal, .pr-seal::after, .pr-rank { animation: none; }
+}

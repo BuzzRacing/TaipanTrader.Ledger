@@ -987,7 +987,7 @@ document.addEventListener("visibilitychange", () => { if (ui.visible && !documen
   try {
     const info = await loadInfo();
     D = info.data;
-    document.title = t("st.title") + " · " + [D.brand.title_a, D.brand.title_b].filter(Boolean).join(" ");
+    document.title = t("st.title") + " · " + brandName(D.brand);
   } catch (e) {
     return message(te("ui.no_server"));
   }

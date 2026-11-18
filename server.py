@@ -182,6 +182,16 @@ def git_commit():
         return ""
 
 
+def backfill_market(game):
+    """The Market tab's price book and best sales for games saved before they were kept (stats.py)."""
+    try:
+        if stats.backfill_market(game):
+            journal.log("INFO", "server", "Market price book filled in from the journal ({} months)".format(
+                len(game.s.get("price_hist", []))))
+    except Exception as e:                  # never let a history fill-in stop the game
+        journal.log("WARNING", "server", "Could not fill in the market price book: {!r}".format(e))
+
+
 class Hub:
     """Holds the one running game and wakes every screen when it changes."""
 
@@ -279,6 +289,17 @@ class Hub:
         self.version += 1
         self.cond.notify_all()
 
+    def cue_start(self):
+        state = self.game.s
+        if state["phase"] != "lobby":
+            raise GameError(engine.tx("e.host_start"))
+        if not state["players"]:
+            raise GameError("Nobody has joined yet.")
+        if not state.get("start_at"):
+            state["start_at"] = time.time() + 11
+            self.changed()
+        return engine.tx("m.intro")
+
     def save(self):
         os.makedirs(SAVES, exist_ok=True)
         tmp = SAVE_FILE + ".tmp"
@@ -288,6 +309,13 @@ class Hub:
 
     def view(self, pid):
         v = self.game.view(pid, self.present())
+        v["game_id"] = self.game.s["game_id"]
+        v["server_time"] = time.time()
+        if v["phase"] == "lobby":
+            v["start_at"] = self.game.s.get("start_at")
+        if v["phase"] == "ended" or self.game.s.get("free_play"):
+            v["ended_at"] = self.game.s.get("ended_at")
+            v["voyage_story"] = self.game.voyage_story()
         v["join_url"] = self.join_url
         v["cfg"] = self.cfg_version
         # Who reads each line aloud, with a link to the audio (made only when a screen asks for it).
@@ -296,6 +324,10 @@ class Hub:
                       "news": voice.PLAN.lines(v.get("news"), "news", 14)}
         if me.get("battle") or me.get("fights"):
             v["voice"]["battle"] = self._battle_voice(me)
+        promo = me.get("promotion") or {}
+        if promo.get("text"):
+            # The Mayor's congratulations on a promotion (strings m.promote.N), read by the Mayor.
+            v["voice"]["promotion"] = voice.PLAN.lines([promo["text"]], "log", port=promo.get("port"))
         if me.get("battle"):
             _key, deadline, secs = self._deadline(pid, self.game.s["players"][pid], time.time())
             me["battle"]["secs_left"] = round(max(0.0, deadline - time.time()), 1)
@@ -314,7 +346,10 @@ class Hub:
             # The Port Authority officer's greeting, read by the officer of that port. At a captain's home
             # port the Registrar reads her welcome home and then her price tip (her own lines, cast.py).
             said = [cu["welcome"]] + ([cu["tip"]["text"]] if (cu.get("tip") or {}).get("text") else [])
-            v["voice"]["customs"] = voice.PLAN.lines(said, "log", port=cu.get("port"))
+            plans = voice.PLAN.lines(said, "log", port=cu.get("port"))
+            if plans and not cu.get("aloud", True):
+                plans[0] = None                  # a quiet landing: her greeting is shown, not read (her tip still is)
+            v["voice"]["customs"] = plans
         return v
 
     def reload_settings(self, langs_saved=()):
@@ -333,6 +368,7 @@ class Hub:
         self.last_seen = {}
         self.clock = {}
         journal.open_game(game, reason, *settings_now(), kind=kind)
+        backfill_market(game)
         self.changed()
 
     def ticker(self):
@@ -340,11 +376,22 @@ class Hub:
         seen = self.present()
         last = time.time()
         while True:
-            time.sleep(3)
             try:
                 with self.cond:
-                    now = self.present()
                     t = time.time()
+                    start_at = self.game.s.get("start_at")
+                    if start_at and start_at <= t:
+                        if self.game.s["phase"] == "lobby" and self.game.s["players"]:
+                            self.game.admin("start", {})
+                        else:
+                            self.game.s.pop("start_at", None)
+                        self.changed()
+                        start_at = None
+                    if t < last + 3:
+                        until = min(last + 3, start_at) if start_at else last + 3
+                        self.cond.wait(max(0, until - time.time()))
+                        continue
+                    now = self.present()
                     if self.game.s["phase"] in ("port", "sea"):
                         gid = self.game.s.get("game_id")
                         seated = [(self.game.s["players"][pid]["captain"], gid) for pid in now
@@ -366,6 +413,7 @@ class Hub:
                         self.cond.notify_all()
             except Exception:                       # never let the watcher die; write it down instead
                 crash("The turn watcher hit an error")
+                time.sleep(3)
 
 
 HUB = None
@@ -607,6 +655,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._file("index.html")
         if path == "/board":
             return self._file("board.html")
+        if path == "/design/ceremony-preview.html":
+            with open(os.path.join(ROOT, "design", "ceremony-preview.html"), "rb") as preview:
+                return self._send(200, preview.read(), "text/html; charset=utf-8")
         if path == "/admin":
             return self._file("admin.html")
         if path == "/stats":
@@ -688,6 +739,10 @@ class Handler(BaseHTTPRequestHandler):
                         archive_save()
                         HUB.replace_game(Game(), "new game started by the host, {}".format(who), kind="game_start")
                         msg = engine.tx("m.new_game")
+                    elif body.get("type") == "start":
+                        if HUB.game.host_id(present) != pid:
+                            raise GameError(engine.tx("e.host_start"))
+                        msg = HUB.cue_start()
                     else:
                         msg = HUB.game.act(pid, body, present)
                         HUB.changed()
@@ -832,6 +887,7 @@ class Handler(BaseHTTPRequestHandler):
             with HUB.cond:
                 v = HUB.game.admin_view(HUB.present())
                 v.update({"ok": True, "saves": list_saves(), "cfg": HUB.cfg_version, "join_url": HUB.join_url,
+                          "start_at": HUB.game.s.get("start_at"),
                           "uptime": int(time.time() - STARTED)})
                 return self._send(200, v)
         if what == "captains":
@@ -1072,8 +1128,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, {"ok": True, "msg": "Save restored. Players rejoin on the devices they used."})
                 if op == "force":
                     body["present"] = sorted(HUB.present())   # captains at a screen fight their own battles
-                msg = HUB.game.admin(op, body)
-                HUB.changed()
+                if op == "start":
+                    msg = HUB.cue_start()
+                else:
+                    msg = HUB.game.admin(op, body)
+                    HUB.changed()
             return self._send(200, {"ok": True, "msg": msg})
         self._send(404, {"ok": False, "error": "Not found"})
 
@@ -1493,6 +1552,7 @@ def main():
 
     HUB = Hub(game, join_url)
     journal.open_game(game, reason, *settings_now(), kind=kind)
+    backfill_market(game)
     try:
         httpd = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     except OSError as e:

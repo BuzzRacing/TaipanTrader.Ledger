@@ -508,6 +508,65 @@ def test_hull_only_when_no_guns_aboard():
     assert sh["guns0"] == sh["guns1"] == 0 and (sh["lost"] or sh["hull1"] < hull0)
 
 
+def _win(g, present):
+    """Fight every round until the enemy is sunk (sure hits, enemy never hits back)."""
+    while g.s["phase"] == "sea":
+        for pid in g.s["order"]:
+            p = g.s["players"][pid]
+            if p.get("battle"):
+                g.act(pid, {"type": "sea", "choice": "fight"}, present)
+
+
+def test_a_won_fight_takes_their_cargo():
+    """Winning takes a hodge-podge of stolen cargo: sometimes scraps, sometimes a great haul; only
+    what fits in the hold, at no cost to the house, and shown on the reckoning."""
+    setup(battle__parley=False, pirates__gun_hit=1.0, pirates__hit=0.0)
+    tiers, kinds = {}, set()
+    for seed in range(1, 41):
+        g = new_game(seed=seed, names=("Ann",), guns=20, cargo={"rice": 5})
+        p = g.s["players"]["p1"]
+        before = dict(p["cargo"])
+        assert sail(g, present=g.s["order"]) is not None
+        _win(g, g.s["order"])
+        f = p["fights"][-1]
+        assert f["outcome"] == "won", f["outcome"]
+        tiers[f["prize_tier"]] = tiers.get(f["prize_tier"], 0) + 1
+        got = {c["good"]: c["qty"] for c in f["prize"]}
+        assert got, "a win always brings something aboard when there is room"
+        for gd, q in got.items():
+            kinds.add(gd)
+            assert p["cargo"].get(gd, 0) >= before.get(gd, 0) + q - 0, (gd, q)
+        assert g.used(p) <= g.capacity(p)
+        assert p["basis"].get("rice", 0) <= GOODS["rice"]["base"] + 1e-9, "plunder only lowers what the cargo cost"
+        assert any(fr["moment"] == "victory" and "cap" in fr for fr in f["beat"]["frames"][-1:])
+        assert "plundered" not in books(p) and "prize" not in books(p), "no silver changes hands"
+        json.dumps(f)
+    assert len(tiers) >= 3, tiers
+    assert tiers.get("scraps", 0) > tiers.get("haul", 0), tiers
+    assert len(kinds) >= 5, kinds
+
+
+def test_prize_only_what_fits():
+    setup(battle__parley=False, pirates__gun_hit=1.0, pirates__hit=0.0)
+    g = new_game(names=("Ann",), guns=20, cargo={"rice": 1})
+    p = g.s["players"]["p1"]
+    p["cargo"]["rice"] = g.capacity(p)            # the hold is already full
+    sail(g, present=g.s["order"])
+    _win(g, g.s["order"])
+    f = p["fights"][-1]
+    assert f["outcome"] == "won" and not f["prize"] and f["prize_left"] > 0
+    assert g.used(p) == g.capacity(p)
+
+
+def test_prize_can_be_switched_off():
+    setup(battle__parley=False, battle__prize=False, pirates__gun_hit=1.0, pirates__hit=0.0)
+    g = new_game(names=("Ann",), guns=20, cargo={"rice": 5})
+    p = g.s["players"]["p1"]
+    sail(g, present=g.s["order"])
+    _win(g, g.s["order"])
+    assert p["fights"][-1]["prize"] == [] and p["cargo"] == {"rice": 5}
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in tests:
@@ -515,3 +574,50 @@ if __name__ == "__main__":
         print("ok", fn.__name__)
     engine.configure(config.defaults())
     print("OK: sea battle checks passed ({} tests)".format(len(tests)))
+
+
+def _barque_with_cannons(g, pid, cannons, guns=0):
+    p = g.s["players"][pid]
+    p["ships"] = [dict(g._new_ship("barque", guns=guns), cannons=cannons)]
+    p["ships"][0]["hull"] *= 20
+    return p
+
+
+def test_a_cannon_fires_like_ten_guns():
+    """One cannon and no guns: ten shots a round, and sure hits sink six two-hit junks in one round."""
+    setup(pirates__gun_hit=1.0, pirates__hit=0.0)
+    g = new_game(guns=0)
+    g.s["players"]["p2"]["protect"] = 5
+    R["liyuen"]["protect_save"] = 1.0
+    p1 = _barque_with_cannons(g, "p1", cannons=1)
+    p1["cargo"] = {"rice": 10}
+    p1["basis"] = {"rice": GOODS["rice"]["base"]}
+    assert sail(g, present=["p1", "p2"])
+    v = g.battle_view(p1)
+    assert v["can_fight"] and v["guns"] == 10 and v["cannons"] == 1 and v["gun_count"] == 0, v
+    while p1.get("battle") and p1["battle"]["stage"] == "parley":
+        g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+    g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+    assert p1["fights"][-1]["outcome"] == "won", p1["fights"][-1]
+    assert p1["fights"][-1]["rounds"] <= 2
+
+
+def test_cannons_can_be_shot_away():
+    setup(battle__gun_loss=1.0, battle__gun_loss_two=0.0, pirates__hit=1.0, pirates__gun_hit=0.0)
+    g = new_game(guns=0)
+    g.s["players"]["p2"]["protect"] = 5
+    R["liyuen"]["protect_save"] = 1.0
+    p1 = _barque_with_cannons(g, "p1", cannons=3)
+    assert sail(g, present=["p1", "p2"])
+    before = dict(books(p1))
+    while p1.get("battle") and p1["battle"]["stage"] == "parley":
+        g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1", "p2"])
+    assert p1["ships"][0]["cannons"] == 0
+    lost = round(books(p1).get("ships_lost", 0) - before.get("ships_lost", 0), 2)
+    assert lost == round(-3 * engine.cannon_price() * R["fleet"]["gun_resale"], 2), lost
+    if p1.get("battle"):
+        assert not g.battle_view(p1)["can_fight"]
+        g.fight_out(["p1", "p2"], pick=lambda v: "run")
+    sh = p1["fights"][-1]["ships"][0]
+    assert sh["cannons0"] == 3 and sh["cannons1"] == 0
+    assert engine.tx("l.cannons_lost", n=3, s="s") in p1["log"]

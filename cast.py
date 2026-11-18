@@ -462,7 +462,7 @@ for _who, _keys in {
     # The words still show on screen. Admin > Cast & Voices can hand them back to a reader.
     "": ["m.sail", "m.stay", "m.slip",
          # The Registrar's log line is the receipt; she says the tip itself at the desk.
-         "l.registrar_logged"] + [
+         "l.registrar_logged", "l.registrar_hot_logged", "l.officer_hot_logged"] + [
          # The Mayor's Parlour (decision 3): small thanks are text only; the log line is the receipt.
          "m.gift.cool", "m.gift.gracious", "l.gift"]
         + ["m.gift.{}.{}".format(t, i) for t in ("cool", "gracious") for i in range(10)],
@@ -484,13 +484,17 @@ for _who, _keys in {
     # The Mayor and the Tax collector speak only when they catch a captain (owner's decision).
     # The Mayor's Parlour: she thanks a Warm or Delighted gift aloud (decision 3).
     "mayor": ["l.slip_caught", "m.gift.warm", "m.gift.delighted"]
-             + ["m.gift.{}.{}".format(t, i) for t in ("warm", "delighted") for i in range(10)],
+             + ["m.gift.{}.{}".format(t, i) for t in ("warm", "delighted") for i in range(10)]
+             # Her congratulations on a promotion (18 Nov 2026).
+             + [k for k in strings.EN if k.startswith("m.promote.")],
     # The Port Authority: every line is read by the officer of the port the house is in
     # (voice.Planner, OFFICER_KEYS); "taxlady" is her stand-in when a line has no port.
     "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_home", "l.customs_empty", "l.customs_paid", "l.customs_bought",
                 "l.customs_caught", "m.customs_clean", "m.customs_over", "m.customs_bought", "m.customs_caught",
                 "m.customs_bribe_refused", "m.customs_buyback", "e.customs_first", "e.customs_bribe_cost",
-                "e.customs_nothing_back"] + [k for k in strings.EN if k.startswith("l.customs_welcome.")],
+                "e.customs_nothing_back"] + [k for k in strings.EN if k.startswith("l.customs_welcome.")]
+               # A hot tip from a port's own officer (engine _hot_tip), read by the officer of that port.
+               + [k for k in strings.EN if k.startswith("l.officer_hot.")],
     "crier": ["n.opening", "n.start_one", "n.start_many", "n.game_over", "n.scarce", "n.glut", "n.wrecked",
               "m.begin", "m.new_game"],
 }.items():
@@ -499,7 +503,8 @@ for _who, _keys in {
 OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_DEFAULTS.items() if _w == "taxlady")
 # The Registrar's own lines (Mrs. Marlowe, at each captain's home port). Set after OFFICER_KEYS so they
 # are always hers, never handed to the officer of the port she is standing in.
-for _k in ["l.registrar_home.{}".format(i) for i in range(15)] + ["l.registrar_tip.{}".format(i) for i in range(10)]:
+for _k in ["l.registrar_home.{}".format(i) for i in range(15)] + ["l.registrar_tip.{}".format(i) for i in range(10)] \
+        + ["l.registrar_hot.{}".format(i) for i in range(10)]:
     LINE_DEFAULTS[_k] = "taxlady"
 
 # Short spoken versions of lines with amounts in them. The screen still shows the
@@ -558,8 +563,10 @@ SAY = {
     "e.protect_content": "{pirate} is content for now.",
     "e.protect_cost": "{pirate} asks more than you can pay.",
     "m.years": "Game length set.",
-    "m.bought": "Bought {good}.",
-    "m.sold": "Sold {good}.",
+    # A soft opening word first, so the clip ramps in instead of starting on a hard "B" or "S".
+    "m.bought": "Approved. Bought {good}.",
+    "m.sold": "Approved. Sold {good}.",
+    "m.sold_store": "Approved. Sold {good} from the hold and warehouse.",
     "m.deposited": "Silver deposited.",
     "m.withdrew": "Silver withdrawn.",
     "m.borrowed": "The loan is yours. Mind the interest.",

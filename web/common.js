@@ -65,10 +65,14 @@ function brandName(b) {
   return [b.title_a, b.title_b].filter(Boolean).join(" ");
 }
 
+/* The game's logo: its name from Brand > Title, in the gilded Ceremony Title lettering of the opening
+   animation (wordmark.css). There is no picture logo any more, so Graphics > Logo is not used here. */
+function wordmarkHtml(name) {
+  return `<span class="st-wordmark"><span class="st-wordmark-title">${esc(name)}</span>` +
+    `<span class="st-wordmark-rule" aria-hidden="true">◆</span></span>`;
+}
 function brandHtml(D) {
-  const b = D.brand;
-  if (D.graphics.logo) return `<img class="logo" src="${esc(D.graphics.logo)}" alt="${esc(brandName(b))}">`;
-  return `${esc(b.title_a)} <span>${esc(b.title_b)}</span>`;
+  return wordmarkHtml(brandName(D.brand));
 }
 
 /* Saved Captains' pictures for the seats at the table (Admin > Captains, Media Library): the Captain's

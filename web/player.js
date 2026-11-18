@@ -155,6 +155,8 @@ function maxBuy(good) {
 
 const portName = k => D.ports[k] ? D.ports[k].name : k;
 const guns = () => S.me.ships.reduce((n, s) => n + s.guns, 0);
+const cannons = () => S.me.ships.reduce((n, s) => n + (s.cannons || 0), 0);
+const cannonSlots = () => D.cannon_slots || 2;
 const pct = (x, digits) => (x * 100).toFixed(digits == null ? 1 : digits).replace(/\.0+$/, "");
 
 function riskLabel(a, b) {
@@ -171,6 +173,8 @@ function sailIcon(kind) {
     distance: '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2.1 4.9-4.9 2.1 2.1-4.9 4.9-2.1Z"/>',
     intel: '<path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.4"/>',
     standing: '<path d="M12 2.5 20 6v5.8c0 4.7-3.2 7.7-8 9.7-4.8-2-8-5-8-9.7V6l8-3.5Z"/><path d="m9 12 2 2 4-4"/>',
+    best: '<path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/>',
+    danger: '<path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.2 3 5.3V18h8v-2.7c1.8-1.1 3-2.9 3-5.3a7 7 0 0 0-7-7Z"/><circle cx="9.3" cy="10.5" r="1.4"/><circle cx="14.7" cy="10.5" r="1.4"/><path d="M10 18v3M14 18v3"/>',
   };
   return `<svg class="dest-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[kind] || paths.distance}</svg>`;
 }
@@ -183,6 +187,53 @@ function voyageRisk(a, b, level) {
   const pirate = r.pirate_chance * distance * (S.me.protect > 0 ? 1 - r.protect_save : 1);
   const lord = S.me.protect > 0 ? 0 : r.lord_chance * distance;
   return Math.min(.99, 1 - (1 - storm) * (1 - pirate) * (1 - lord));
+}
+
+/* The Danger monitor: the chance of a pirate fight on this run, the same pirate and pirate-lord rolls the
+   engine makes at sea (engine.py voyage stages 1 and 2), storms left out. Protection halves the pirate
+   roll and keeps the lord's fleet off you entirely. */
+function pirateRisk(a, b) {
+  const r = D.voyage_risk || { risk_min: .6, risk_max: 1.8, risk_div: 350, pirate_chance: .18, lord_chance: .06, protect_save: .5 };
+  const distance = Math.max(r.risk_min, Math.min(r.risk_max, Chart.distance(D, a, b) / r.risk_div));
+  const pirate = Math.min(1, r.pirate_chance * distance) * (S.me.protect > 0 ? 1 - r.protect_save : 1);
+  const lord = S.me.protect > 0 ? 0 : Math.min(1, r.lord_chance * distance);
+  return 1 - (1 - pirate) * (1 - lord);
+}
+
+/* Best price: of the prices the house knows for a port (the ledger's last visit, or a newer Registrar
+   tip), the cargo dearest against its usual price there (goods base x the port's mod). Banned cargo is
+   left out. Null when nothing is known. */
+function bestPrice(k) {
+  const me = S.me, known = me.known[k], tips = (me.tips || {})[k] || {}, bans = S.bans?.[k] || [];
+  const mods = (D.ports[k] && D.ports[k].mods) || {};
+  let best = null;
+  Object.keys(D.goods).forEach(g => {
+    if (bans.includes(g)) return;
+    let price = known?.prices?.[g], turn = known ? known.turn : null;
+    const tp = tips[g];
+    if (tp && Number.isFinite(tp.price) && (turn == null || tp.turn >= turn)) { price = tp.price; turn = tp.turn; }
+    if (!Number.isFinite(price)) return;
+    const normal = (D.goods[g].base || 0) * (mods[g] == null ? 1 : mods[g]);
+    if (!(normal > 0)) return;
+    const over = price / normal - 1;
+    if (!best || over > best.over) best = { g, price, normal, over, age: Math.max(0, S.turn - turn) };
+  });
+  return best;
+}
+
+/* The house's standing as five rising heat bars, red to green, lit up to its tier: the masthead's
+   standing plaque, shared by the plaque and the Sail cards. */
+const STANDING_HEAT = [4, 26, 44, 78, 122];
+const standingTier = rep => Math.min(4, Math.floor(Math.max(0, Math.min(100, Math.round(rep || 0))) / 20));
+const standingHeat = i => `hsl(${STANDING_HEAT[i]} 72% ${i === 2 ? 50 : 46}%)`;
+function standingHeatSvg(rep, label, cls) {
+  const tier = standingTier(rep);
+  const bars = STANDING_HEAT.map((_, i) => {
+    const h = 6 + i * 3;
+    return `<rect x="${(i * 10.4).toFixed(1)}" y="${18 - h}" width="8.6" height="${h}" rx="1.6" ` +
+      (i <= tier ? `fill="${standingHeat(i)}"` : `class="off"`) + `/>`;
+  }).join("");
+  return `<svg class="${cls || "plq-heat"}" viewBox="0 0 50 18" role="img" aria-label="${label}" focusable="false" style="--heat:${standingHeat(tier)}">${bars}</svg>`;
 }
 
 function newGameControl() {
@@ -215,7 +266,7 @@ function deckFrame() {
   if (!deck) {
     forget();
     app.innerHTML = `<div class="deck" id="deck">
-      <header class="dk-top" data-r="top"></header>
+      <header class="dk-top has-voy" data-r="top"></header>
       <nav class="dk-nav" data-r="nav"></nav>
       <main class="dk-main"><div class="dk-pane" data-r="pane"></div></main>
       <aside class="dk-side"><div class="dk-stage" id="stageSlot"></div><div class="dk-dyn" data-r="side"></div></aside>
@@ -228,6 +279,7 @@ function deckFrame() {
 
 function render() {
   if (!D || !S) return;
+  Ceremony.sync(S, D, app);
   const active = document.activeElement;
   const focusId = active && active.id && active.id.startsWith("in_") ? active.id : null;
   const caret = focusId ? active.selectionStart : null;
@@ -238,9 +290,11 @@ function render() {
   off.hidden = online;
 
   const inGame = S.me && S.phase !== "lobby" && S.phase !== "ended";
+  let portOverlay = false;
   document.body.classList.toggle("ingame", !!inGame);
   if (inGame) {
     const deck = deckFrame(), parts = gameScreen();
+    portOverlay = !!parts.over;
     deck.classList.toggle("locked", !!S.me.ready);
     deck.dataset.tab = ui.tally ? "tally" : ui.tab;
     ["top", "nav", "pane", "side", "over"].forEach(k => {
@@ -256,12 +310,14 @@ function render() {
     region("solo", html);
   }
   syncTally(inGame);
+  syncPromotion(inGame, S.phase === "ended" || (inGame && S.phase === "port" && !portOverlay));
 
   if (focusId) {
     const el = document.getElementById(focusId);
     if (el && el !== document.activeElement) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) { /* ignore */ } }
   }
   deckArt(inGame);
+  Pulse.sync(inGame && ui.tab === "market" && !ui.tally);
   markSpeaking();
   if (typeof Battle !== "undefined") Battle.sync();
 }
@@ -313,7 +369,7 @@ const STAGE_WOMEN = {
 };
 /* Stage titles until the server is restarted with the current strings.py. */
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {},
-  { "bar.welcome": "Welcome to", "bar.came.sailed": "in from {from}", "bar.came.stayed": "a month at anchor", "bar.came.wrecked": "back after the wreck",
+  { "stat.weapons": "Weapons", "stat.weapons_tip": "{guns} guns / {cannons} cannons", "bar.welcome": "Welcome to", "bar.came.sailed": "in from {from}", "bar.came.stayed": "a month at anchor", "bar.came.wrecked": "back after the wreck",
     "ledger.taxlady": "Tax collector of {port}, keeper of the ledger", "chart.mayor": "Mayor of {port}",
     "chart.current": "CURRENT PORT", "chart.destination": "DESTINATION", "chart.route_warning": "ROUTE WARNING", "chart.route_forecast": "Route forecast: {weather}",
     "deck.me": "Captain {name}: voices and options", "deck.speech": "Voices", "deck.speech_on": "Voices are on",
@@ -327,6 +383,11 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "clearance.title": "Outward clearance", "clearance.authority": "Port authority of {port}", "clearance.harbour": "A · Harbour account", "clearance.subtotal": "Harbour dues subtotal", "clearance.total": "Amount payable", "clearance.after": "Silver after filing: {amount}", "clearance.short": "Short by {amount}; the balance becomes debt.", "clearance.anchor": "Filed when the fleet sails · nothing is due while at anchor", "clearance.slip": "Night departure selected · caught: {caught}",
     "market.paid": "paid {paid} avg", "market.paid_tip": "You paid {paid} a unit on average for the {good} you hold, aboard and ashore. Selling one here now brings {price}.",
     "market.pl_up": "+{profit}", "market.pl_down": "−{profit}",
+    "market.all": "Trade all", "market.all_sell": "Sell {n}", "market.all_buy": "Buy {n}", "market.all_none": "Nothing to trade",
+    "market.all_sell_tip": "Sell all {n} {good} aboard now for {total}.", "market.all_buy_tip": "Buy as much {good} as silver and hold allow: {n} for {total}.",
+    "market.all_cargo": "Trade all cargo", "market.all_cargo_lined": "{n} trades lined up", "market.all_cargo_lined_1": "1 trade lined up",
+    "market.all_cargo_sell": "Sell everything aboard", "market.all_cargo_tip_lined": "Make every trade lined up on the bars now: sales first, then purchases.",
+    "market.all_cargo_tip_sell": "Sell every cargo aboard at this market (anything sealed in bond stays).", "market.all_cargo_done": "{n} trades done.",
     "market.pl_tip_up": "Profit of {profit} on this sale, against the {paid} a unit you paid on average.",
     "market.pl_tip_down": "Loss of {profit} on this sale, against the {paid} a unit you paid on average.",
     "dealer.pay": "You pay", "dealer.get": "You get", "dealer.units": "{n} units", "dealer.cut": "Dealer's cut",
@@ -334,6 +395,10 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "sail.easiest": "Easiest",
     "sail.hardest": "Hardest", "sail.route": "Route", "sail.weather": "Weather", "sail.distance": "Distance",
     "sail.intel": "Intel", "sail.standing": "Standing",
+    "sail.best": "Best price", "sail.best_none": "prices unknown",
+    "sail.best_tip": "{good} at {price} against a usual {normal} in {port} ({when}).",
+    "sail.danger": "Danger monitor", "sail.danger_tip": "{pct}% chance of a pirate fight on the way to {port}.",
+    "sail.danger_0": "low", "sail.danger_1": "moderate", "sail.danger_2": "high", "sail.danger_3": "severe",
     "dues.title": "Harbour dues", "dues.due": "Due when you sail", "dues.paid_on_leave": "Paid as you leave",
     "dues.after": "Silver {from} → {to} after dues", "dues.short": "You are {owed} short. It will go on your debt.",
     "dues.stay": "Nothing is due if you stay at anchor.", "dues.choice": "Leaving port", "dues.pay": "Pay the Mayor {total}",
@@ -350,7 +415,9 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "dues.wh": "Wharfage", "dues.wh_sub": "{n} units × {rate} per 100",
     "dues.standing_off": "Mayor's courtesy", "dues.standing_off_sub": "standing {n}: {rate} off",
     "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra",
-    "port.owe.grp_lender": "Moneylender", "port.owe.grp_collect": "Debt collectors", "port.owe.grp_port": "Leaving port", "port.owe.grp_bank": "Counting-house" });
+    "port.owe.grp_lender": "Moneylender", "port.owe.grp_collect": "Debt collectors", "port.owe.grp_port": "Leaving port", "port.owe.grp_bank": "Counting-house",
+    "voy.left": "{n} months left", "voy.left_1": "Final month", "voy.closed": "The books are closed",
+    "voy.close": "Books close {date}", "voy.seal": "終", "voy.aria": "Voyage: {date}. {left}. Books close {end}." });
 const womanPick = {};
 /* Cast members who are port women: while the Mayor or the Tax collector speaks, the stage shows the
    picture for the port the house is in (deck.js Stage asks for it), not one portrait for every port. */
@@ -503,7 +570,7 @@ function lobbyScreen() {
   const host = me.host
     ? `<h2>${te("lobby.host_title")}</h2><p>${te("lobby.length")}</p><div class="seg">${years}</div>
        <p class="muted">${te("lobby.turns", { years: S.years, turns: S.years * 12 })}</p>${level}
-       ${btn(te("lobby.start"), "start", "", "primary wide")}`
+       ${btn(te("ceremony.cue"), "start", "", "primary wide", !!S.start_at)}`
     : `<h2>${te("lobby.wait_title")}</h2><p class="muted">${te("lobby.wait", { years: S.years })}</p>${level}`;
   return masthead(esc(D.brand.tagline)) + `<main class="narrow">
     <section class="card">${host}</section>
@@ -522,7 +589,7 @@ function ordinal(n) {
   return te("race.ord_" + k, { n });
 }
 function standings() {
-  const list = S.players.slice().sort((a, b) => b.worth - a.worth);
+  const list = Ceremony.ranked(S);
   const lead = list.length ? list[0].worth : 0;
   let place = 0;
   const rows = list.map((p, i) => {
@@ -546,10 +613,13 @@ function standings() {
 }
 
 function endScreen() {
-  const top = S.players.slice().sort((a, b) => b.worth - a.worth)[0];
+  const top = Ceremony.ranked(S)[0];
   return masthead(te("end.sub", { date: S.date })) + `<main class="narrow">
     <section class="card"><h2>${te("end.title", { name: top.name, firm: top.firm })}</h2>${standings()}</section>
-    <section class="card">${btn(te("st.open_end"), "tally", "", "primary wide")}</section>
+    ${S.voyage_story ? `<section class="card">${Ceremony.story(S, D.ports)}</section>` : ""}
+    <section class="card">${btn(te("end.free_play"), "free_play", "", "primary wide")}
+      <p class="muted">${te("end.free_play_note")}</p></section>
+    <section class="card">${btn(te("st.open_end"), "tally", "", "ghost wide")}</section>
     <section class="card">${newGameControl() || `<p class="muted">${te("end.host_can")}</p>`}
       <p class="muted">${te("end.kept")}</p></section></main>`;
 }
@@ -561,35 +631,69 @@ function topHtml() {
   const dir = (to, from) => to > from ? " up" : to < from ? " dn" : "";
   // The debt clock: months until the moneylender's collectors next call, if nothing changes.
   const due = (me.collectors || {}).calls_in;
-  const stats = [["stat.silver", money(p.cash), "silver" + dir(p.cash, me.cash)], ["stat.bank", money(me.bank)],
-                 ["stat.debt", money(me.debt), (me.debt > 0 ? "bad" : "") + (due ? " due" : "") + (due === 1 ? " due-now" : ""), due ? ten("stat.debt_due", due) : ""],
-                 ["stat.worth", money(me.worth), "worth"], ["stat.hold", p.used + " / " + me.capacity, dir(p.used, me.used).trim()], ["stat.guns", guns()]]
-    .map(s => `<div class="plq ${s[2] || ""}"><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("") +
+  // Money plaques show a short figure ($112K, $1.25M) with the exact sum in the tooltip (s[4]).
+  const ms = n => [moneyShort(n), money(n)];
+  const cash = ms(p.cash), bank = ms(me.bank), debt = ms(me.debt), worth = ms(me.worth);
+  // Weapons: guns / cannons on one line (the full wording in the tooltip).
+  const cn = cannons();
+  const stats = [["stat.silver", cash[0], "silver" + dir(p.cash, me.cash), "", cash[1]], ["stat.bank", bank[0], "", "", bank[1]],
+                 ["stat.debt", debt[0], (me.debt > 0 ? "bad" : "") + (due ? " due" : "") + (due === 1 ? " due-now" : ""), due ? ten("stat.debt_due", due) : "", debt[1]],
+                 ["stat.worth", worth[0], "worth", "", worth[1]], ["stat.hold", p.used + " / " + me.capacity, dir(p.used, me.used).trim()],
+                 ["stat.weapons", guns() + " / " + cn, "guns", "", t("stat.weapons_tip", { guns: guns(), cannons: cn })]]
+    .map(s => `<div class="plq ${s[2] || ""}"${s[4] && s[4] !== s[1] ? ` title="${esc(s[4])}"` : ""}><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("") +
     standingPlaque((me.rep || {})[me.port]);
   return `<div class="dk-house${Faces.of(me).crest ? " has-crest" : ""}">${houseMark(me, "dk-crest")}
-      <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span>
-      <small>${te("bar.where", { port: esc(portName(me.port)), date: esc(S.date), months: S.turns_left })}</small></div></div>
+      <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span></div></div>
     ${portPlate()}
-    <div class="dk-stats">${stats}</div>`;
+    <div class="dk-stats">${stats}</div>
+    ${voyageRibbon()}`;
+}
+
+/* The voyage ribbon along the foot of the top bar, the full width of the screen, for the whole game:
+   a lacquer silk ribbon with brass hairlines, lit from the start date to this month by a fixed
+   jade > brass > oxblood gradient (so the colour at the leading edge says how late it is; the rest of
+   the gradient shows faintly ahead). Ticks mark the years (quarters in a 1-year game), a ship rides the
+   leading edge, and the oxblood seal at the right end is the day the books close. In the last
+   VOY_NEAR months each month gets a notch and the count turns brass; in the last VOY_END the count
+   turns oxblood and the seal pulses. Numbers come from the view: turn, years, turns_left. */
+const VOY_NEAR = 10, VOY_END = 3;
+const VOY_SHIP = `<svg viewBox="0 0 26 22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M1.5 15.2h23l-3.4 4.6H5.2z"/>` +
+  `<path fill="currentColor" d="M12.4 1.6h1.1v13.2h-1.1z"/><path fill="currentColor" opacity=".92" d="M14 2.6c4.6 1.4 7.6 5.3 8.4 11.4H14z"/>` +
+  `<path fill="currentColor" opacity=".8" d="M11.9 4.8c-3.4 1.2-5.7 4.2-6.4 9.2h6.4z"/>` +
+  `<path fill="none" stroke="#15100c" stroke-opacity=".45" stroke-width=".7" d="M14 5.6h4.4M14 8.6h6.4M14 11.4h7.6M11.9 7.6H8.4M11.9 10.8H6.6"/></svg>`;
+function voyageRibbon() {
+  const total = Math.max(1, Math.round((Number(S.years) || 1) * 12));
+  const turn = Math.min(total, Math.max(0, Number(S.turn) || 0));
+  const left = Math.max(0, S.turns_left != null ? Number(S.turns_left) : total - turn);
+  const pct = n => (n / total * 100).toFixed(3) + "%";
+  const step = total <= 12 ? 3 : total <= 240 ? 12 : 60;
+  let marks = "";
+  for (let m = step; m < total; m += step) marks += `<i class="voy-tick" style="left:${pct(m)}"></i>`;
+  if (left <= VOY_NEAR) for (let m = Math.max(1, total - VOY_NEAR); m < total; m++)
+    if (m % step) marks += `<i class="voy-notch" style="left:${pct(m)}"></i>`;
+  const label = n => `${te("mon." + (n % 12))} ${(Number(D.start_year) || 1860) + Math.floor(n / 12)}`;
+  const from = label(0), end = label(total - 1);
+  const free = !!S.free_play;
+  const count = free ? te("voy.free") : left === 0 ? te("voy.closed") : left === 1 ? te("voy.left_1") : te("voy.left", { n: left });
+  const close = free ? te("voy.free_sub", { date: end }) : te("voy.close", { date: end });
+  const stage = free ? " free" : left <= VOY_END ? " end" : left <= VOY_NEAR ? " near" : "";
+  const aria = te("voy.aria", { date: esc(S.date || ""), left: count, end });
+  return `<div class="dk-voy${stage}" role="img" aria-label="${aria}" title="${aria}">
+      <span class="voy-from">${from}</span>
+      <div class="voy-track" style="--p:${pct(turn)}"><div class="voy-silk"><i class="voy-ghost"></i><i class="voy-fill"></i>${marks}</div>
+        <i class="voy-ship">${VOY_SHIP}</i></div>
+      <span class="voy-seal" aria-hidden="true">${te("voy.seal")}</span>
+      <span class="voy-left"><b>${count}</b><small>${close}</small></span></div>`;
 }
 
 /* The seventh plaque: the house's standing in this port as a heat icon, no number. Five fat rising
    bars running red (hostile) to green (favoured), lit up to the standing's tier. No shield. The tier's
    name is in the tooltip and for screen readers. */
-const STANDING_HEAT = [4, 26, 44, 78, 122];
 function standingPlaque(rep) {
-  const r = Math.max(0, Math.min(100, Math.round(rep || 0)));
-  const tier = Math.min(4, Math.floor(r / 20));
+  const tier = standingTier(rep);
   const word = te("stat.standing_" + ["hostile", "cool", "neutral", "warm", "favoured"][tier]);
   const tip = te("stat.standing_tip", { port: esc(portName(S.me.port)), tier: word });
-  const heat = i => `hsl(${STANDING_HEAT[i]} 72% ${i === 2 ? 50 : 46}%)`;
-  const bars = STANDING_HEAT.map((_, i) => {
-    const h = 6 + i * 3;
-    return `<rect x="${(i * 10.4).toFixed(1)}" y="${18 - h}" width="8.6" height="${h}" rx="1.6" ` +
-      (i <= tier ? `fill="${heat(i)}"` : `class="off"`) + `/>`;
-  }).join("");
-  const svg = `<svg class="plq-heat" viewBox="0 0 50 18" role="img" aria-label="${tip}" focusable="false">${bars}</svg>`;
-  return `<div class="plq standing tier-${tier}" title="${tip}" style="--heat:${heat(tier)}"><span>${te("stat.standing")}</span><b>${svg}</b></div>`;
+  return `<div class="plq standing tier-${tier}" title="${tip}" style="--heat:${standingHeat(tier)}"><span>${te("stat.standing")}</span><b>${standingHeatSvg(rep, tip)}</b></div>`;
 }
 
 /* The port the fleet lies in, between the house name and the plaques: "Welcome to" over the port's
@@ -599,6 +703,18 @@ function portPlate() {
   const key = !last ? "" : last.wrecked ? "wrecked" : last.sailed ? "sailed" : "stayed";
   const came = key ? `<small>${te("bar.came." + key, { from: esc(portName(last.from)) })}</small>` : "";
   return `<div class="dk-port"><span>${te("bar.welcome")}</span><b>${esc(portName(me.port))}</b>${came}</div>`;
+}
+
+/* Short money for the masthead plaques: exact below $10,000, then $12.5K / $112K, $1.25M / $12.5M / $125M,
+   and B past a billion. Three significant figures at most, so a plaque never grows past "$999K". */
+function moneyShort(n) {
+  const v = Math.round(Number(n) || 0), a = Math.abs(v), sign = v < 0 ? "-" : "";
+  if (a < 10000) return money(v);
+  const [div, unit] = a >= 1e9 ? [1e9, "B"] : a >= 1e6 ? [1e6, "M"] : [1e3, "K"];
+  const x = a / div, dp = x >= 100 ? 0 : x >= 10 ? 1 : 2;
+  let s = (Math.floor(x * 10 ** dp + 1e-6) / 10 ** dp).toFixed(dp);
+  if (dp) s = s.replace(/\.?0+$/, "");
+  return sign + CUR + s + unit;
 }
 
 /* Silver and hold after every trade lined up on the market bars (the live ones, before Buy/Sell). */
@@ -635,10 +751,138 @@ function gameScreen() {
   const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
   // The Mayor's side column is one outward-clearance document: harbour charges and the cargo declaration.
   // On the Port tab the race standings sit in the side column under the port art.
-  const side = ui.tab === "market" ? dealerCard() : ui.tab === "chart" ? clearanceLedger()
+  const side = ui.tab === "market" ? dealerCard() + Pulse.card() : ui.tab === "chart" ? clearanceLedger()
+    : ui.tab === "fleet" ? captainCommission(me)
     : ui.tab === "port" ? `<section class="card pt-race pt-race-side"><h2>${te("port.race.title")}</h2>${portRace()}</section>` : "";
   // The Port Authority's desk comes first in a new port (after the month's log is read).
   return { top, nav, pane, side, over: fighting ? "" : report || Customs.html() };
+}
+
+function rankSeal(rankId) {
+  const art = Media.choose("rank", rankId, "badge", { mode: "fixed", strict: true });
+  return art ? `<img class="fleet-rank-seal" src="${esc(art.u)}" alt="">` : "";
+}
+
+function captainCommission(me) {
+  const portrait = Faces.of(me).portrait;
+  const { next_rank: next, qualified_rank: qualified } = me;
+  const status = qualified ? te("fleet.rank_earned", { rank: qualified })
+    : next ? te("fleet.rank_next", { rank: next.title }) : te("fleet.rank_max");
+  const note = qualified ? me.port === me.home ? te("fleet.rank_customs")
+    : te("fleet.rank_return", { port: portName(me.home) })
+    : next ? te("fleet.rank_goal", { worth: money(me.worth), goal: money(next.worth) }) : "";
+  return `<section class="fleet-commission" aria-label="${te("fleet.commission")}">
+    ${portrait ? `<img class="fleet-captain-portrait" src="${esc(portrait)}" alt="">` : ""}
+    <div class="fleet-commission-label">${te("fleet.commission")}</div>
+    <div class="fleet-rank-identity">${rankSeal(me.rank_id)}<div>
+      <h2>${te("fleet.captain", { name: me.name })}</h2><strong>${esc(me.rank)}</strong>
+    </div></div>
+    <dl><div><dt>${te("fleet.captain_worth")}</dt><dd>${esc(money(me.worth))}</dd></div>
+      <div><dt>${te("fleet.captain_ships")}</dt><dd>${me.ships.length}</dd></div>
+      <div><dt>${te("fleet.captain_home")}</dt><dd>${esc(portName(me.home))}</dd></div></dl>
+    <div class="fleet-rank-progress"><b>${status}</b>${note ? `<small>${note}</small>` : ""}</div>
+  </section>`;
+}
+
+/* The promotion: a full-screen ceremony (redesigned 18 Nov 2026, after the sea battle reckoning).
+   The port's harbour picture behind, the Mayor large on the left with her words, and an ivory
+   letter of commission on the right: the rank's seal in a slow brass sunburst, the new rank in the
+   title font, the captain's worth and ships, the next rank to aim for, and Continue. Styles in
+   promotion.css. New wording keys fall back to English until strings.py has them. */
+const tfb = (key, fb, vars) => T[key] == null ? esc(t(fb, vars)) : te(key, vars);
+function promotionArt(port) {
+  const pick = (role, opts) => Media.choose("port", port, role, Object.assign({ strict: true, slot: "promo" }, opts || {}));
+  const mayor = pick("mayor", { mode: "fixed" })
+    || (Media.items("port", port, "mayor", false).filter(i => i.r.includes("mayor"))[0]) || null;
+  const scene = pick("arrival") || pick("banner") || null;
+  return { mayor: mayor && mayor.t === "image" ? mayor.u : "", scene: scene && scene.t === "image" ? scene.u
+    : (((D.graphics || {}).ports || {})[port] || "") };
+}
+function syncPromotion(inGame, canShow) {
+  const promotion = canShow && S.me && S.me.promotion;
+  let dialog = app.querySelector(".fleet-promotion");
+  if (!promotion) {
+    if (dialog) dialog.remove();
+    return;
+  }
+  const key = S.game_id + ":" + promotion.id;
+  if (dialog && dialog.dataset.promotion === key) return;
+  if (dialog) dialog.remove();
+  const me = S.me, port = portName(promotion.port);
+  const art = promotionArt(promotion.port);
+  const badge = Media.choose("rank", promotion.rank_id, "badge", { mode: "fixed", strict: true });
+  const next = me.next_rank && me.next_rank.title !== promotion.title ? me.next_rank : null;
+  const mayorLabel = te("fleet.promotion_mayor", { port });
+  const said = promotion.text || t("fleet.promotion_quote", { name: me.name, rank: promotion.title });
+  const clip = ((S.voice || {}).promotion || [])[0] || null;
+  const crest = typeof houseMark === "function" ? houseMark(me, "pr-crest") : "";
+  dialog = document.createElement("dialog");
+  dialog.className = "fleet-promotion pr";
+  dialog.dataset.promotion = key;
+  dialog.setAttribute("aria-labelledby", "fleet-promotion-title");
+  dialog.innerHTML = `
+    ${art.scene ? `<img class="pr-scene" src="${esc(art.scene)}" alt="">` : ""}<div class="pr-shade" aria-hidden="true"></div>
+    <figure class="pr-who${art.mayor ? "" : " nopic"}">
+      ${art.mayor ? `<img src="${esc(art.mayor)}" alt="${mayorLabel}">` : ""}
+      <figcaption class="pr-line"><header>${clip && typeof Voice !== "undefined"
+          ? `<button type="button" class="pr-say" data-pr="say" aria-label="${tfb("fleet.promotion_say", "Hear her again")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button>` : ""}
+        <span>${mayorLabel}</span></header>
+        <p>“${esc(said)}”</p></figcaption>
+    </figure>
+    <section class="pr-card">
+      <span class="pr-ribbon" aria-hidden="true"></span>
+      <div class="pr-brand" aria-hidden="true">${esc(typeof brandName === "function" && D.brand ? brandName(D.brand) : "")}</div>
+      <p class="pr-eyebrow">${tfb("fleet.promotion_order", "By order of the {mayor}", { mayor: t("fleet.promotion_mayor", { port }) })}</p>
+      <h2 id="fleet-promotion-title">${te("fleet.promotion_title")}</h2>
+      <div class="pr-seal"><span class="pr-rays" aria-hidden="true"></span><span class="pr-ring" aria-hidden="true"></span>
+        ${badge ? `<img src="${esc(badge.u)}" alt="">` : `<span class="pr-noseal" aria-hidden="true">★</span>`}</div>
+      <p class="pr-to">${tfb("fleet.promotion_to", "Captain {name}", { name: me.name })}</p>
+      ${me.firm ? `<p class="pr-house">${crest}<span>${tfb("fleet.promotion_house", "of {firm}", { firm: me.firm })}</span></p>` : ""}
+      <p class="pr-hereby">${tfb("fleet.promotion_commissioned", "is hereby commissioned")}</p>
+      <p class="pr-rank">${esc(promotion.title)}</p>
+      <dl class="pr-figs">
+        <div><dt>${te("fleet.captain_worth")}</dt><dd>${esc(money(me.worth))}</dd></div>
+        <div><dt>${te("fleet.captain_ships")}</dt><dd>${me.ships.length}</dd></div>
+        <div><dt>${tfb("fleet.promotion_next", "Next commission")}</dt><dd>${next
+          ? `${esc(next.title)} <small>${esc(money(next.worth))}</small>` : tfb("fleet.promotion_top", "The highest there is")}</dd></div>
+      </dl>
+      <footer>
+        <p class="pr-sign"><span>${mayorLabel}</span><small>${esc(port)}${S.date ? " · " + esc(S.date) : ""}</small></p>
+        <button type="button" class="primary" data-pr="go" autofocus>${te(inGame ? "fleet.promotion_continue" : "fleet.promotion_done")} <span aria-hidden="true">&rarr;</span></button>
+      </footer>
+      <div class="fleet-promotion-error" role="alert"></div>
+    </section>`;
+  // The Mayor says her congratulations as the ceremony opens, and again from the speaker button.
+  const sayIt = () => {
+    if (!clip || typeof Voice === "undefined") return;
+    Voice.drop("promotion");
+    Voice.say([Object.assign({ tag: "promo:" + key, text: said }, clip)], { group: "promotion" });
+  };
+  const again = dialog.querySelector("[data-pr=say]");
+  if (again) again.addEventListener("click", sayIt);
+  dialog.addEventListener("cancel", e => e.preventDefault());
+  const button = dialog.querySelector("[data-pr=go]");
+  button.addEventListener("click", async () => {
+    if (typeof Voice !== "undefined") Voice.drop("promotion");
+    const error = dialog.querySelector(".fleet-promotion-error");
+    error.textContent = "";
+    button.disabled = true;
+    const result = await post("/api/act", { token, type: "promotion_ack", id: promotion.id });
+    if (!result.ok) {
+      button.disabled = false;
+      error.textContent = result.error;
+      return;
+    }
+    if (S.me && S.game_id + ":" + (S.me.promotion || {}).id === key) S.me.promotion = null;
+    if (inGame && S.phase === "port") {
+      ui.tab = "fleet";
+      ui.tally = false;
+    }
+    render();
+  });
+  app.appendChild(dialog);
+  dialog.showModal();
+  setTimeout(sayIt, 900);
 }
 
 /* The captain button at the foot of the rail: the Captain's portrait from the Media Library, square and
@@ -667,6 +911,18 @@ function meButton() {
     `${face}<span>${esc(name)}</span></button></div>`;
 }
 
+/* Her hot tip's log line (l.registrar_hot_logged) carries a brass "Hot tip" badge, here and in Port > Log.
+   Log lines are plain text, so it is found by the wording's fixed opening. */
+const HOT_FLAME = `<svg viewBox="0 0 16 16" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M8.6 1c.3 2.2-1 3.4-2.1 4.6C5.4 6.8 4.5 8 4.5 9.8A3.6 3.6 0 0 0 8 13.5a3.6 3.6 0 0 0 3.5-3.7c0-1.3-.6-2.3-1.2-3 .1 1-.3 1.8-1 2.1.3-2.6-.4-5.6-1.7-7.9zM8 15a5 5 0 0 1-5-5c0-2.4 1.3-3.9 2.4-5.1C6.6 3.6 7.6 2.6 7 0c3.3 1.6 5.5 5.3 5.5 9.8A4.9 4.9 0 0 1 8 15z"/></svg>`;
+function isHotLog(line) {
+  // The Registrar's (at home) and a port officer's (anywhere else) hot-tip log lines.
+  return ["l.registrar_hot_logged", "l.officer_hot_logged"].some(k => {
+    const head = ((typeof T !== "undefined" && T[k]) || "").split("{")[0];
+    return !!head && String(line).startsWith(head);
+  });
+}
+const hotBadge = line => isHotLog(line) ? `<span class="hot-badge">${HOT_FLAME}${te("hot.badge")}</span> ` : "";
+
 function logModal() {
   const port = S.me.port;
   const art = Media.html("port", port, "arrival", "cl-art-media", "", { strict: true, video: true })
@@ -679,7 +935,7 @@ function logModal() {
     return `<div class="cl-entry${face ? " has-face" : ""}" data-voice-tag="log:${S.turn}:${i}">
       ${face ? `<span class="cl-portrait">${face}</span>` : ""}
       <div><div class="cl-reader"><span><i aria-hidden="true">${DECK_ICONS.speech_on}</i>${te("log.reading")}</span>${who ? `<b>${esc(who.name)}</b>` : ""}</div>
-      <p>${esc(line)}</p></div></div>`;
+      <p${isHotLog(line) ? ' class="hot-line"' : ""}>${hotBadge(line)}${esc(line)}</p></div></div>`;
   }).join("");
   return `<div class="veil cl-veil"><section class="modal captains-log${art ? " has-art" : ""}" role="dialog" aria-labelledby="cl-title cl-date">
     ${art ? `<div class="cl-art" aria-hidden="true">${art}</div>` : ""}
@@ -734,6 +990,82 @@ function tradeButton(g, tr) {
     <small>${money(total)}</small></button><span class="mk-pl-slot">${plTag}</span></div>`;
 }
 
+/* TRADE ALL (18 Nov 2026). The row's "Trade all" button does the whole thing in one click, ignoring the
+   bar: with this cargo aboard it sells all of it (bonded units stay); with none aboard it buys as much
+   as silver and free hold allow right now. Other rows' lined-up trades are not counted: they have not
+   happened yet. */
+function maxBuyNow(g) {
+  const me = S.me, free = Math.max(0, me.capacity - me.used);
+  let lo = 0, hi = free;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (quote(g, mid, "buy") <= me.cash) lo = mid; else hi = mid - 1;
+  }
+  return lo;
+}
+function allOf(g) {
+  const have = S.me.cargo[g] || 0, sealed = Math.min(have, (S.me.bond || {})[g] || 0), sellable = have - sealed;
+  if (sellable > 0) return { side: "sell", qty: sellable };
+  const n = maxBuyNow(g);
+  return n > 0 ? { side: "buy", qty: n } : { side: "", qty: 0 };
+}
+function tradeAllButton(g) {
+  const a = allOf(g);
+  if (!a.side || S.me.ready) return `<button type="button" class="mk-all" disabled><b>${te("market.all")}</b><small>${te("market.all_none")}</small></button>`;
+  const total = quote(g, a.qty, a.side), n = a.qty.toLocaleString();
+  const tip = te(a.side === "sell" ? "market.all_sell_tip" : "market.all_buy_tip", { n, good: esc(D.goods[g].name), total: money(total) });
+  return `<button type="button" class="mk-all ${a.side}" data-act="trade_all" data-good="${g}" title="${tip}">
+    <b>${te("market.all")}</b><small>${te(a.side === "sell" ? "market.all_sell" : "market.all_buy", { n })}</small></button>`;
+}
+
+/* The header's "Trade all cargo": with trades lined up on the bars it makes all of them at once; with
+   none lined up it sells everything aboard. */
+function linedUp() {
+  const me = S.me, out = [];
+  if (me.ready || !D.goods) return out;
+  Object.keys(D.goods).forEach(g => {
+    if (ui.vals["t_" + g] == null) return;
+    const tr = tradeOf(g);
+    if (tr.side) out.push({ g, side: tr.side, qty: tr.qty });
+  });
+  return out;
+}
+function sellAllList() {
+  const me = S.me, out = [];
+  Object.keys(D.goods).forEach(g => {
+    const have = me.cargo[g] || 0, sealed = Math.min(have, (me.bond || {})[g] || 0);
+    if (have - sealed > 0) out.push({ g, side: "sell", qty: have - sealed });
+  });
+  return out;
+}
+function tradeAllCargoButton() {
+  const lined = linedUp(), list = lined.length ? lined : sellAllList();
+  const sub = lined.length ? ten("market.all_cargo_lined", lined.length) : te("market.all_cargo_sell");
+  const tip = te(lined.length ? "market.all_cargo_tip_lined" : "market.all_cargo_tip_sell");
+  return `<button type="button" class="mk-allcargo${lined.length ? " lined" : ""}" data-act="trade_all_cargo" title="${tip}"${list.length && !S.me.ready ? "" : " disabled"}>
+    <b>${te("market.all_cargo")}</b><small>${sub}</small></button>`;
+}
+async function runTrades(list) {
+  if (ui.busy || !list.length) return;
+  ui.busy = true;
+  // Sales first so their silver and hold are there for the purchases.
+  list = list.filter(x => x.side === "sell").concat(list.filter(x => x.side === "buy"));
+  let done = 0, last = null;
+  for (const x of list) {
+    const res = await post("/api/act", { token, type: x.side, good: x.g, qty: x.qty });
+    last = res;
+    if (!res.ok) break;
+    delete ui.vals["t_" + x.g];
+    done++;
+  }
+  ui.busy = false;
+  if (last && !last.ok) toast(last.error, true);
+  else if (done === 1) toast(last.msg);
+  else toast(t("market.all_cargo_done", { n: done }));
+  if (last && last.voice) Voice.say([Object.assign({ text: last.ok ? last.msg : last.error }, last.voice)], { group: "msg", replace: "msg" });
+  render();
+}
+
 /* What the house paid for a cargo on average (engine p["basis"], hold and warehouse together), or
    null when the server has no record. Profit on a sale is the silver it brings less that average
    times the units, the same sum the Tax collector uses. Unknown cost shows nothing. */
@@ -762,13 +1094,16 @@ function haveHtml(tr) {
 function marketRow(g) {
   const me = S.me, good = D.goods[g], tr = tradeOf(g);
   const tag = good.contraband ? ` <span class="tag">${te("tag.contraband")}</span>` : "";
-  return `<tr data-good="${g}" class="${tr.side}">
-    <td class="mk-ico">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
-    <td class="mk-name"><b>${esc(good.name)}</b>${tag}</td>
+  const held = Pulse.pinned && Pulse.good === g ? " mp-held" : "";
+  const tip = te("pulse.row_tip", { good: good.name });
+  return `<tr data-good="${g}" class="${tr.side}${held}">
+    <td class="mk-ico" data-act="pulse_pin" data-good="${g}" title="${tip}">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
+    <td class="mk-name" data-act="pulse_pin" data-good="${g}" title="${tip}"><b>${esc(good.name)}</b>${tag}</td>
     <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${tr.sealed ? `<small class="mk-sealed">${te("market.sealed", { n: tr.sealed.toLocaleString() })}</small>` : ""}${paidHtml(g)}</td>
     <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
       value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"${tr.sealed ? ` title="${te("market.sealed_block", { n: tr.sealed.toLocaleString(), good: good.name, port: portName(me.port) })}"` : ""}></td>
-    <td class="mk-do">${tradeButton(g, tr)}</td></tr>`;
+    <td class="mk-do">${tradeButton(g, tr)}</td>
+    <td class="mk-alltd">${tradeAllButton(g)}</td></tr>`;
 }
 
 function marketTab() {
@@ -777,9 +1112,10 @@ function marketTab() {
   const rows = Object.keys(D.goods).map(marketRow).join("");
   return `<section class="card mk" style="--n:${Object.keys(D.goods).length}">
     <header class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
-      <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span></header>
+      <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span>
+      <span class="mk-allslot">${tradeAllCargoButton()}</span></header>
     ${banned ? `<p class="note bad">${te("market.banned")}</p>` : ""}
-    <table class="mk-table"><thead><tr><th colspan="2">${te("col.cargo")}</th><th class="n">${te("col.price")} · ${te("col.aboard")}</th><th class="mk-scale"><span>${te("btn.sell")}</span><span>${te("btn.buy")}</span></th><th></th></tr></thead>
+    <table class="mk-table"><thead><tr><th colspan="2">${te("col.cargo")}</th><th class="n">${te("col.price")} · ${te("col.aboard")}</th><th class="mk-scale"><span>${te("btn.sell")}</span><span>${te("btn.buy")}</span></th><th></th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></section>`;
 }
 
@@ -796,8 +1132,155 @@ function dragRow(g) {
   region("top", topHtml());
   const hold = app.querySelector(".mk-head .mk-hold");
   if (hold) hold.innerHTML = te("market.hold_short", { used: pending().used, cap: S.me.capacity });
-  region("side", dealerCard());
+  const allSlot = app.querySelector(".mk-head .mk-allslot");
+  if (allSlot) allSlot.innerHTML = tradeAllCargoButton();
+  // Only the dealer's card changes while dragging; the market pulse under it keeps running.
+  const card = app.querySelector(".dk-dyn .dl-card");
+  if (card) card.outerHTML = dealerCard();
 }
+
+/* ------------------------------------------------------------ market pulse -- */
+/* Under the dealer's card: the market keeper's own price book for this port (engine market_view,
+   12 months of month-start prices, every month, not only the ones the house was here) with the live
+   price as the last point. Idle, it roams the cargoes moving most this month plus any boom or crash
+   running here, one every few seconds, the line morphing from one to the next. Tapping a cargo's
+   picture or name in the trade list holds that cargo on the chart; tapping the chart lets it roam
+   again. Two small tiles: this month's biggest riser and faller here, and the house's most
+   profitable single sale in this port. The card's markup is fixed; Pulse.paint() fills it in place
+   so the side column is not redrawn every few seconds. */
+const Pulse = {
+  good: null, pinned: false, timer: null, ys: null, anim: 0, sig: "",
+  SECONDS: 4.5,
+  book() { return (S.me && S.me.market) || { hist: [], windfalls: {}, best: null }; },
+  /* Month-start prices before this month, oldest first, then the price now. */
+  series(g) {
+    const rows = this.book().hist.filter(r => r.turn < S.turn && r.prices[g] != null);
+    return rows.map(r => ({ v: r.prices[g], d: r.date })).concat([{ v: S.me.prices[g], d: S.date }]);
+  },
+  /* This month's change: the price now against last month's opening price here. */
+  change(g) {
+    const rows = this.book().hist.filter(r => r.turn < S.turn && r.prices[g] != null);
+    const was = rows.length ? rows[rows.length - 1].prices[g] : null;
+    return was ? S.me.prices[g] / was - 1 : null;
+  },
+  goods() { return Object.keys(D.goods).filter(g => S.me.prices[g] != null); },
+  /* What it roams when nobody is holding a cargo: booms and crashes first, then the three biggest moves. */
+  roster() {
+    const wf = this.book().windfalls || {}, all = this.goods();
+    const moved = all.filter(g => this.change(g) != null).sort((a, b) => Math.abs(this.change(b)) - Math.abs(this.change(a)));
+    const pick = all.filter(g => wf[g]).concat(moved.length ? moved : all.slice().sort((a, b) => S.me.prices[b] - S.me.prices[a]));
+    return pick.filter((g, i) => pick.indexOf(g) === i).slice(0, Math.max(3, all.filter(g => wf[g]).length + 2));
+  },
+  movers() {
+    const ch = this.goods().map(g => [g, this.change(g)]).filter(x => x[1] != null && Math.abs(x[1]) >= 0.005);
+    if (!ch.length) return null;
+    ch.sort((a, b) => b[1] - a[1]);
+    const up = ch[0][1] > 0 ? ch[0] : null, down = ch[ch.length - 1][1] < 0 ? ch[ch.length - 1] : null;
+    return { up, down };
+  },
+  /* The card's fixed frame plus the two tiles (they change only with the month or a sale). */
+  card() {
+    const me = S.me;
+    if (!me || !D.goods) return "";
+    const mv = this.movers(), best = this.book().best;
+    const mover = (x, cls) => x ? `<div class="mp-mv ${cls}"><span>${esc(D.goods[x[0]].name)}</span><b>${x[1] > 0 ? "▲ +" : "▼ −"}${pct(Math.abs(x[1]), 0)}%</b></div>` : "";
+    const movers = mv ? mover(mv.up, "up") + mover(mv.down, "down") : `<p class="mp-none">${te("pulse.no_movers")}</p>`;
+    const bestHtml = best && D.goods[best.good]
+      ? `<b class="mp-best-v">+${money(best.profit)}</b><small>${te("pulse.best_line", { qty: best.qty.toLocaleString(), good: D.goods[best.good].name, date: best.date })}</small>`
+      : `<p class="mp-none">${te("pulse.best_none")}</p>`;
+    return `<section class="mp-card" id="mpCard">
+      <header class="mp-head"><span>${te("pulse.title")}</span><b class="mp-name" data-mp="name"></b></header>
+      <div class="mp-now"><b class="mp-price" data-mp="price"></b><span class="mp-delta" data-mp="delta"></span><em class="mp-tag" data-mp="tag" hidden></em></div>
+      <div class="mp-plot" data-act="pulse_free" role="img" data-mp="plot">
+        <svg viewBox="0 0 300 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="mpFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".32"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+          <line class="mp-base" x1="0" x2="300" y1="50" y2="50" vector-effect="non-scaling-stroke" data-mp="base"/>
+          <path class="mp-area" fill="url(#mpFill)" data-mp="area"/>
+          <path class="mp-line" vector-effect="non-scaling-stroke" data-mp="line"/>
+        </svg><i class="mp-dot" data-mp="dot"></i></div>
+      <div class="mp-axis"><span data-mp="from"></span><em data-mp="hint"></em><span data-mp="to"></span></div>
+      <div class="mp-tiles"><div class="mp-tile"><small>${te("pulse.movers")}</small>${movers}</div>
+        <div class="mp-tile best"><small>${te("pulse.best")}</small>${bestHtml}</div></div></section>`;
+  },
+  /* Called after every render: start or stop roaming, and fill a freshly drawn card. */
+  sync(on) {
+    if (!on) { clearInterval(this.timer); this.timer = null; return; }
+    const el = document.getElementById("mpCard");
+    if (!el) return;
+    const goods = this.goods();
+    if (!this.good || !goods.includes(this.good)) { this.good = this.roster()[0] || goods[0]; this.pinned = false; }
+    const sig = S.turn + "|" + S.me.port + "|" + (S.me.prices[this.good] || 0);
+    if (!el.dataset.painted || sig !== this.sig) this.paint(el.dataset.painted && sig !== this.sig);
+    if (!this.timer) this.timer = setInterval(() => this.roam(), this.SECONDS * 1000);
+  },
+  roam() {
+    if (this.pinned || ui.drag || ui.tab !== "market" || document.hidden || !document.getElementById("mpCard")) return;
+    const list = this.roster();
+    if (!list.length) return;
+    this.good = list[(list.indexOf(this.good) + 1) % list.length];
+    this.paint(true);
+  },
+  pin(g) {
+    if (!D.goods[g]) return;
+    const moved = this.good !== g;
+    this.good = g; this.pinned = true;
+    if (moved) requestAnimationFrame(() => this.paint(true));
+  },
+  free() {
+    this.pinned = false;
+    requestAnimationFrame(() => this.roam());
+  },
+  /* Fill the card for this.good; glide the line from where it was when animate is true. */
+  paint(animate) {
+    const el = document.getElementById("mpCard");
+    if (!el || !this.good) return;
+    const g = this.good, good = D.goods[g], pts = this.series(g);
+    const q = k => el.querySelector('[data-mp="' + k + '"]');
+    this.sig = S.turn + "|" + S.me.port + "|" + (S.me.prices[g] || 0);
+    el.dataset.painted = "1";
+    const now = pts[pts.length - 1].v, ch = this.change(g), wf = (this.book().windfalls || {})[g];
+    const name = q("name");
+    if (name.textContent !== good.name) { name.textContent = good.name; name.style.animation = "none"; void name.offsetWidth; name.style.animation = ""; }
+    q("price").textContent = money(now);
+    const delta = q("delta");
+    delta.textContent = ch == null ? te("pulse.first") : (ch >= 0 ? "▲ +" : "▼ −") + pct(Math.abs(ch), 0) + "%";
+    delta.className = "mp-delta " + (ch == null ? "" : ch >= 0 ? "up" : "down");
+    const tag = q("tag");
+    tag.hidden = !wf; tag.className = "mp-tag " + (wf || ""); tag.textContent = wf ? te("pulse." + wf) : "";
+    q("from").textContent = pts[0].d || "";
+    q("to").textContent = pts.length > 1 ? (S.date || "") : "";
+    q("hint").textContent = te(this.pinned ? "pulse.pinned" : "pulse.roam");
+    q("plot").setAttribute("aria-label", te("pulse.aria", { good: good.name, port: portName(S.me.port), price: money(now), n: pts.length }));
+    el.classList.toggle("down", ch != null && ch < 0);
+    el.classList.toggle("boom", wf === "boom");
+    el.classList.toggle("crash", wf === "crash");
+    // Scale: the cargo's own low-to-high, padded, so a quiet cargo still shows its ripples.
+    const vs = pts.map(p => p.v), lo = Math.min(...vs), hi = Math.max(...vs), span = (hi - lo) || hi * 0.04 || 1;
+    const target = vs.map(v => 90 - (v - lo) / span * 80);
+    const first = vs[0], baseY = 90 - (first - lo) / span * 80;
+    const from = this.ys && animate && !matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? target.map((_, i) => this.ys[Math.round(i * (this.ys.length - 1) / Math.max(1, target.length - 1))]) : target;
+    const draw = ys => {
+      const n = ys.length, x = i => n > 1 ? i * 300 / (n - 1) : 300;
+      const d = ys.map((y, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y.toFixed(1)).join(" ");
+      q("line").setAttribute("d", n > 1 ? d : "M0 " + ys[0].toFixed(1) + " L300 " + ys[0].toFixed(1));
+      q("area").setAttribute("d", (n > 1 ? d : "M0 " + ys[0].toFixed(1) + " L300 " + ys[0].toFixed(1)) + " L300 100 L0 100 Z");
+      const dot = q("dot");
+      dot.style.left = "100%"; dot.style.top = ys[n - 1] + "%";
+      this.ys = ys;
+    };
+    q("base").setAttribute("y1", baseY.toFixed(1)); q("base").setAttribute("y2", baseY.toFixed(1));
+    cancelAnimationFrame(this.anim);
+    if (from === target) { draw(target); return; }
+    const t0 = performance.now(), ms = 750;
+    const step = now2 => {
+      const k = Math.min(1, (now2 - t0) / ms), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      draw(target.map((y, i) => from[i] + (y - from[i]) * e));
+      if (k < 1) this.anim = requestAnimationFrame(step);
+    };
+    this.anim = requestAnimationFrame(step);
+  },
+};
 
 /* The dealer's card under the market keeper on the stage: standing and margin in this port, and what
    the lined-up trades cost. "You pay" is the silver for every planned buy, "You get" the silver for
@@ -947,6 +1430,14 @@ function portArrival() {
   return `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>${right}`;
 }
 
+/* The Registrar's hot tips still to come or still running: kept on screen so the captain can act on
+   them without having to remember what she said (customs.js hotTipHtml). */
+function hotTipsCard() {
+  const list = (S.me.hot_tips || []).filter(tp => tp.ends >= S.turn);
+  if (!list.length) return "";
+  return `<section class="card hot-tips">${list.map(tp => hotTipHtml(tp, false)).join("")}</section>`;
+}
+
 /* ---- The Mayor's Parlour: once per visit, a purse of silver for standing in this port.
    Standing gained = cap x (1 - e^(-gift / appetite)) x headroom (engine.py Game.gift_gain, mirrored
    here so the slider shows the result as it moves). me.gift carries the rule's numbers. */
@@ -1079,6 +1570,14 @@ function portTodo() {
   if (repair) {
     const low = Math.min(...me.ships.map(s => Math.round(100 * s.hull / D.ships[s.type].hull)));
     items.push(["warn", te(D.ports[me.port].shipyard ? "port.todo.repair_yard" : "port.todo.repair", { hull: low, cost: money(repair) }), go("fleet", te("tab.fleet"))]);
+  }
+  // Out of silver with one ship: the shipyard will swap her for a junk and the difference in silver.
+  const td = me.trade_down;
+  if (td && !me.ready && me.cash + me.bank < 1000) {
+    const yardHere = D.ports[me.port].shipyard;
+    items.push(["warn", te(yardHere ? "port.todo.broke_yard" : "port.todo.broke",
+      { name: esc(td.name), junk: esc(td.junk), value: money(td.value), yards: esc(D.yards.join(", ")) }),
+      yardHere ? go("fleet", te("tab.fleet")) : go("chart", te("tab.chart"))]);
   }
   const storms = Object.keys(S.weather || {}).filter(r => S.weather[r] >= 3);
   if (storms.length) items.push(["warn", te("port.todo.typhoon", { seas: storms.map(r => (D.regions[r] || {}).name || r).join(", ") }), go("chart", te("tab.chart"))]);
@@ -1234,7 +1733,7 @@ function portOwe() {
 /* ---- Log */
 function portLog() {
   const me = S.me, bk = me.books || {};
-  const lines = list => `<ol class="pt-entries">${list.map(l => `<li>${esc(l)}</li>`).join("")}</ol>`;
+  const lines = list => `<ol class="pt-entries">${list.map(l => `<li${isHotLog(l) ? ' class="hot-line"' : ""}><span>${hotBadge(l)}${esc(l)}</span></li>`).join("")}</ol>`;
   const read = `<button type="button" class="primary pt-read" data-act="relog">${DECK_ICONS.speech_on}<span>${te("port.log.read")}</span></button>`;
   const now = (me.log || []).length ? `<section class="card pt-logcard">
       <header class="pt-cardhead"><h2>${te("port.log.now", { date: esc(bk.last ? bk.last.date : S.date) })}</h2>${read}</header>
@@ -1394,12 +1893,21 @@ function portServices() {
 /* ---------------------------------------------------------------- fleet -- */
 /* Compact ship cards (picture left, name, hull bar, gun pips, slim buttons) and a shipyard table
    built on the same row pattern as the market: picture cell, name, numbers, one button. */
-function gunPips(guns, slots) {
-  return Array.from({ length: slots }, (_, j) => `<i class="${j < guns ? "on" : ""}"></i>`).join("");
+/* Cannons come first, each one pip twice as wide (it fills cannon_slots mounts), then the guns, then empty mounts. */
+function gunPips(guns, slots, cannons) {
+  const cs = cannonSlots(), c = cannons || 0;
+  const empty = Math.max(0, slots - guns - cs * c);
+  return `<i class="on cn"></i>`.repeat(c) + `<i class="on"></i>`.repeat(guns) + `<i></i>`.repeat(empty);
+}
+
+function mountsLine(s, spec) {
+  if (!s.cannons) return `${s.guns}/${spec.slots}`;
+  return `${s.cannons} ${esc(t("tag.cannons"))} + ${s.guns} · ${te("fleet.mounts", { used: s.guns + cannonSlots() * s.cannons, slots: spec.slots })}`;
 }
 
 function shipCard(s, i, yard) {
   const me = S.me, spec = D.ships[s.type], p = Math.round(100 * s.hull / spec.hull);
+  const free = s.free != null ? s.free : spec.slots - s.guns - cannonSlots() * (s.cannons || 0);
   const fix = s.repair
     ? btn(te("fleet.repair", { cost: money(s.repair) }), "repair", `data-i="${i}"`, "fl-btn")
     : `<span class="fl-ok">${te("fleet.seaworthy")}</span>`;
@@ -1411,10 +1919,15 @@ function shipCard(s, i, yard) {
       <div class="fl-stat"><span class="fl-lbl">${te("col.hull")}</span>
         <div class="hull"><i style="width:${p}%" class="${p < 35 ? "low" : ""}"></i></div><span class="fl-v">${s.hull}/${spec.hull}</span></div>
       <div class="fl-stat"><span class="fl-lbl">${te("col.guns")}</span>
-        <span class="fl-pips">${gunPips(s.guns, spec.slots)}</span><span class="fl-v">${s.guns}/${spec.slots}</span></div>
-      <div class="fl-acts">${btn(te("fleet.gun_short", { price: money(D.gun_price) }), "gun", `data-i="${i}"`, "fl-btn", s.guns >= spec.slots)}
+        <span class="fl-pips">${gunPips(s.guns, spec.slots, s.cannons)}</span><span class="fl-v">${mountsLine(s, spec)}</span></div>
+      <div class="fl-acts">${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${esc(t("fleet.gun_tip", { price: money(D.gun_price) }))}"`, "fl-btn", free < 1 || me.cash < D.gun_price)}
+        ${spec.cannons ? btn(te("fleet.cannon_short"), "cannon", `data-i="${i}" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}"`, "fl-btn", free < cannonSlots() || me.cash < D.cannon_price) : ""}
+        ${s.guns ? btn(te("fleet.sell_gun"), "sellgun", `data-i="${i}" title="${esc(t("fleet.sell_gun_tip", { value: money(Math.floor(D.gun_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}
+        ${s.cannons ? btn(te("fleet.sell_cannon"), "sellcannon", `data-i="${i}" title="${esc(t("fleet.sell_cannon_tip", { value: money(Math.floor(D.cannon_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}
         ${fix}
-        ${yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "fl-btn ghost", me.ships.length < 2) : ""}</div>
+        ${yard && me.ships.length < 2 && me.trade_down
+          ? btn(te("fleet.trade_down", { value: money(me.trade_down.value) }), "tradedown", `title="${esc(t("fleet.trade_down_tip", { junk: me.trade_down.junk, hold: me.trade_down.hold, guns: me.trade_down.guns, value: money(me.trade_down.value) }))}"`, "fl-btn ghost")
+          : yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "fl-btn ghost", me.ships.length < 2) : ""}</div>
     </div></article>`;
 }
 
@@ -1423,7 +1936,7 @@ function yardRow(k) {
   const cant = me.cash < s.price || me.ships.length >= D.max_fleet;
   return `<tr class="${cant ? "dim" : ""}">
     <td class="yd-ico">${Media.html("ship", k, "card", "yd-img", D.graphics.ships[k], { slot: "yard" })}</td>
-    <td class="yd-name"><b>${esc(s.name)}</b>${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}</td>
+    <td class="yd-name"><b>${esc(s.name)}</b>${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}${s.cannons ? `<span class="tag" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}">${te("tag.cannons")}</span>` : ""}</td>
     <td class="n">${s.hold}</td><td class="n">${s.hull}</td><td class="n">${s.slots}</td>
     <td class="n yd-price">${money(s.price)}</td>
     <td class="yd-do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "fl-btn primary", cant)}</td></tr>`;
@@ -1463,24 +1976,39 @@ function chartTab() {
   const maxScore = routes.length ? routes[routes.length - 1].score : 1;
   const list = routes.map((route, i) => {
     const { k, p, wx, score } = route;
-    const known = me.known[k];
-    const seen = known ? (S.turn - known.turn === 0 ? te("chart.seen_now") : te("chart.seen_ago", { n: S.turn - known.turn })) : te("chart.unknown");
+    const best = bestPrice(k);
+    const bestPct = best ? Math.round(best.over * 100) : 0;
+    const bestText = best ? `${esc(D.goods[best.g].name)} ${bestPct >= 0 ? "+" : "−"}${Math.abs(bestPct)}%` : te("sail.best_none");
+    const bestTip = best ? esc(t("sail.best_tip", { good: D.goods[best.g].name, price: money(best.price), normal: money(best.normal),
+      port: p.name, when: bookSeen(best.age) })) : "";
+    const danger = pirateRisk(me.port, k), dangerPct = Math.round(danger * 100);
+    const dangerTier = danger < .12 ? 0 : danger < .22 ? 1 : danger < .32 ? 2 : 3;
+    const rep = Math.round(me.rep[k] || 0);
+    const repTip = te("dealer.standing_tip", { rep });
     const heat = maxScore > minScore ? (score - minScore) / (maxScore - minScore) : 0;
     const rankLabel = i === 0 ? te("sail.easiest") : i === routes.length - 1 ? te("sail.hardest") : `${te("sail.route")} ${i + 1}`;
     const weatherKind = ["calm", "fair", "squalls", "typhoon"][wx] || "calm";
     const isHome = k === myHome();
+    const facilities = [
+      p.shipyard && te("sail.facility.shipyard"),
+      (p.bank || isHome) && te("sail.facility.bank"),
+      (p.warehouse || isHome) && te("sail.facility.warehouse"),
+    ].filter(Boolean);
+    const label = [esc(p.name), ...(isHome ? [te("sail.home_port")] : []), rankLabel, ...facilities].join(", ");
     return `<button type="button" class="dest sail-card ${dest === k ? "on" : ""}${isHome ? " home" : ""}" data-act="dest" data-port="${k}"
-      style="--risk-hue:${Math.round(118 * (1 - heat))};--risk-level:${Math.round(score * 100)}%" aria-label="${esc(p.name)}${isHome ? ", " + te("sail.home_port") : ""}, ${rankLabel}">
+      style="--risk-hue:${Math.round(118 * (1 - heat))};--risk-level:${Math.round(score * 100)}%" aria-label="${label}">
       <span class="dest-art">${Media.html("port", k, "banner", "dest-img", D.graphics.ports[k], { slot: "sail:" + k, mode: "fixed" })}
         ${S.crackdown.includes(k) ? `<span class="dest-ban tag bad">${te("tag.ban")}</span>` : ""}
         ${isHome ? `<span class="dest-home">\u2693 ${te("sail.home_port")}</span>` : ""}
         <span class="dest-title"><b>${esc(p.name)}</b><span class="dest-pct">${Math.round(score * 100)}%</span></span></span>
       <span class="dest-data">
         <span class="dest-stat wx${wx}">${sailIcon(weatherKind)}<span><small>${te("sail.weather")}</small><strong>${esc(D.weather[wx])}</strong></span></span>
-        <span class="dest-stat">${sailIcon("distance")}<span><small>${te("sail.distance")}</small><strong>${esc(riskLabel(me.port, k))}</strong></span></span>
-        <span class="dest-stat">${sailIcon("intel")}<span><small>${te("sail.intel")}</small><strong>${seen}</strong></span></span>
-        <span class="dest-stat">${sailIcon("standing")}<span><small>${te("sail.standing")}</small><strong>${Math.round(me.rep[k])}/100</strong></span></span>
-      </span></button>`;
+        <span class="dest-stat dz${dangerTier}" title="${te("sail.danger_tip", { pct: dangerPct, port: esc(p.name) })}">${sailIcon("danger")}<span><small>${te("sail.danger")}</small><strong>${dangerPct}% · ${te("sail.danger_" + dangerTier)}</strong></span></span>
+        <span class="dest-stat${best ? (bestPct > 0 ? " best-up" : " best-down") : ""}"${best ? ` title="${bestTip}"` : ""}>${sailIcon("best")}<span><small>${te("sail.best")}</small><strong>${bestText}</strong></span></span>
+        <span class="dest-stat" title="${repTip}">${sailIcon("standing")}<span><small>${te("sail.standing")}</small><strong class="dest-rep" style="--heat:${standingHeat(standingTier(rep))}">${standingHeatSvg(rep, repTip, "dest-heat")}<em>${rep}</em></strong></span></span>
+      </span>
+      ${facilities.length ? `<span class="dest-facilities">${facilities.map(name => `<span>${name}</span>`).join("")}</span>` : ""}
+      </button>`;
   }).join("");
   return `<section class="card">
       <div class="sail-guide sail-guide-top"><span><b>${te("sail.risk_title")}</b></span>
@@ -1488,7 +2016,7 @@ function chartTab() {
       <div class="dests">${list}</div>
       <div class="sail-map">${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id, focusRoute: true })}</div></section>
     <section class="card"><h2>${te("orders.title")}</h2>
-      <div class="seg">${btn(te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
+      <div class="seg">${btn(cannons() ? te("orders.fight_cannons", { guns: guns(), cannons: cannons() }) : te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
       ${protectionNote()}
       ${slipChoice()}
       <div class="row">${btn(dest ? te("sail.go", { port: portName(dest) }) : te("sail.choose"), "sail", "", "primary wide", !dest || me.ready)}</div>
@@ -1701,7 +2229,7 @@ function ledgerTab() {
       ${bookButton(te("ledger.voyage"), "view", "voyage", ui.bookView === "voyage", "book-toggle")}
       ${bookButton(te("ledger.all"), "view", "all", ui.bookView === "all", "book-toggle")}</div>`;
   const view = { signals: bookSignals, voyage: bookVoyages, all: bookTable }[ui.bookView];
-  return `<section class="card book">${view(goods, ports, banner)}</section>
+  return `${hotTipsCard()}<section class="card book">${view(goods, ports, banner)}</section>
     ${me.host ? `<section class="card host-bar"><h2>${te("host.title")}</h2><div class="host-actions">` +
       btn(te("host.end_month"), "force", "", "slim") + newGameControl() + "</div></section>" : ""}`;
 }
@@ -1802,6 +2330,8 @@ app.addEventListener("click", async e => {
     case "cap_back": ui.capSel = ""; ui.vals.pin = ""; return render();
     case "cap_join": return doJoinCaptain();
     case "tab": ui.tab = d.tab; ui.tally = false; return render();
+    case "pulse_pin": Pulse.pin(d.good); return render();
+    case "pulse_free": Pulse.free(); return render();
     case "book_view": case "book_good": case "book_port": case "book_mode": case "book_route":
       return bookSelect(d.act.slice(5), d.value);
     case "book_chart":
@@ -1836,6 +2366,15 @@ app.addEventListener("click", async e => {
       if (await act(tr.side, { good: d.good, qty: tr.qty })) { delete ui.vals["t_" + d.good]; render(); }
       return;
     }
+    case "trade_all": {
+      const a = allOf(d.good);
+      if (!a.side) return;
+      return runTrades([{ g: d.good, side: a.side, qty: a.qty }]);
+    }
+    case "trade_all_cargo": {
+      const lined = linedUp();
+      return runTrades(lined.length ? lined : sellAllList());
+    }
     case "service_transfer": {
       const tr = serviceTransfer(d.service, d.good);
       if (!tr.qty || S.me.ready) return;
@@ -1849,8 +2388,12 @@ app.addEventListener("click", async e => {
     case "depot": return act("depot", { op: d.op });
     case "sell_all": return act("sell", { good: d.good, src: "all" });
     case "gun": return act("buy_gun", { index: +d.i });
+    case "cannon": return act("buy_cannon", { index: +d.i });
+    case "sellgun": return act("sell_gun", { index: +d.i });
+    case "sellcannon": return act("sell_cannon", { index: +d.i });
     case "repair": return act("repair", { index: d.i === "all" ? "all" : +d.i });
     case "sellship": return act("sell_ship", { index: +d.i });
+    case "tradedown": return act("trade_down", {});
     case "buyship": return act("buy_ship", { ship: d.ship });
     case "dest": if (!S.me.ready) { ui.dest = d.port; render(); } return;
     case "orders": ui.orders = d.o; return render();
@@ -1864,9 +2407,13 @@ app.addEventListener("click", async e => {
     case "newgame_ask": ui.confirmNew = true; return render();
     case "newgame_no": ui.confirmNew = false; return render();
     case "newgame": ui.confirmNew = false; return act("new_game");
+    case "free_play": return act("free_play");
     default: if (d.act.startsWith("cx_")) return Customs.click(d);
   }
 });
+
+// The finale's "Continue free play" button (ceremony.js) carries the whole world on past the last month.
+window.addEventListener("ceremony:free-play", () => { if (S && S.me) act("free_play"); });
 
 /* ------------------------------------------------------------ the Tally Book -- */
 /* The Tally Book (stats.js at /stats?embed=1) opens inside this same window, never a new one.

@@ -1,0 +1,63 @@
+/* Crimson Ledger wordmark: the game's name, set in the Ceremony Title web font with the gilded
+   lettering from the opening animation (ceremony.css). The name comes from Brand > Title in the
+   settings, so renaming the game renames the logo everywhere. Used by brandHtml() (common.js) on the
+   join, lobby and end screens, and by the Logo card in Admin > Graphics. */
+@font-face {
+  font-family: "Ceremony Title";
+  src: url("/fonts/uncial-antiqua-latin-e93ce65c.woff2") format("woff2");
+  font-display: swap;
+}
+
+.st-wordmark {
+  display: inline-block;
+  max-width: 100%;
+  text-align: center;
+  filter: drop-shadow(0 3px 0 #5a3217) drop-shadow(0 6px 14px #07090e);
+}
+.st-wordmark-title {
+  display: block;
+  font: normal 1em/1.13 "Ceremony Title", Georgia, serif;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+  text-shadow: none;
+  background: linear-gradient(110deg, transparent 43%, #fff8dc 49%, transparent 55%) -35% 0 / 250% 100% no-repeat,
+    linear-gradient(#fff5d8 12%, #e6bd68 52%, #ac6e28 54%, #efd18e 78%, #ffd99b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1px #ffdfa173;
+  animation: st-wordmark-gild 2s .6s ease-out both;
+}
+.st-wordmark-rule {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  width: min(32rem, 72%);
+  margin: .3rem auto 0;
+  font: normal clamp(.8rem, .28em, 1.1rem)/1 Georgia, serif;
+  color: #f6cf80;
+}
+.st-wordmark-rule::before, .st-wordmark-rule::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, #e7bf72);
+}
+.st-wordmark-rule::after { transform: scaleX(-1); }
+
+/* On the player screens the masthead heading carries the wordmark. */
+.masthead h1 .st-wordmark { font-size: 1.12em; }
+
+@keyframes st-wordmark-gild { from { background-position: 135% 0, 0 0; } to { background-position: -35% 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .st-wordmark-title { animation: none; }
+}
+
+/* Admin > Graphics: the Logo card shows the wordmark over the opening animation's harbour. */
+.gx-art.gx-wordmark {
+  container-type: inline-size;
+  padding: 1rem;
+  background: radial-gradient(ellipse at 50% 45%, transparent 20%, #090d13c0 100%),
+    url("/assets/ceremony-harbor.png") center / cover, #15100c;
+}
+.gx-wordmark .st-wordmark { font-size: 10cqi; }

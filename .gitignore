@@ -44,3 +44,7 @@ config/media.json.tmp
 
 # Saved Captains (they hold the PINs)
 captains/
+
+# Agent file locks (live state, this machine only) and personal Claude settings
+.agent-locks/
+.claude/settings.local.json

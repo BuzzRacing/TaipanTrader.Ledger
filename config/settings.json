@@ -63,7 +63,7 @@
   "custom_css": ""
  },
  "graphics": {
-  "logo": "/uploads/historical-logo.svg",
+  "logo": "",
   "favicon": "/uploads/historical-favicon.svg",
   "masthead_bg": "/uploads/historical-masthead.webp",
   "page_bg": "/uploads/historical-page.webp",
@@ -143,30 +143,37 @@
  },
  "ranks": [
   {
+   "id": "debtor",
    "worth": -1000000000,
    "title": "Debtor"
   },
   {
+   "id": "clerk",
    "worth": 0,
    "title": "Clerk"
   },
   {
+   "id": "trader",
    "worth": 10000,
    "title": "Trader"
   },
   {
+   "id": "merchant",
    "worth": 50000,
    "title": "Merchant"
   },
   {
+   "id": "senior_merchant",
    "worth": 200000,
    "title": "Senior Merchant"
   },
   {
+   "id": "merchant_prince",
    "worth": 500000,
    "title": "Merchant Prince"
   },
   {
+   "id": "taipan",
    "worth": 1000000,
    "title": "Taipan"
   }
@@ -187,8 +194,8 @@
    "grace_seconds": 25
   },
   "start": {
-   "cash": 7000,
-   "debt": 2500,
+   "cash": 7500,
+   "debt": 2000,
    "ship": "junk",
    "guns": 2,
    "rep": 66,
@@ -227,7 +234,11 @@
    "mug_chance": 0.06,
    "mug_rep": 0.6,
    "mug_min": 0.07,
-   "mug_max": 0.15
+   "mug_max": 0.15,
+   "whrob_chance": 0.02,
+   "whrob_rep": 0.6,
+   "whrob_min": 0.1,
+   "whrob_max": 0.3
   },
   "fleet": {
    "max_fleet": 5,
@@ -235,6 +246,10 @@
    "gun_resale": 0.333,
    "ship_resale": 0.5,
    "warehouse_cap": 10000,
+   "depot_open_cost": 10000,
+   "depot_cap": 1000,
+   "depot_expand_cost": 100000,
+   "depot_expand_cap": 1000,
    "repair_base": 6.0,
    "repair_price_div": 4000,
    "repair_noyard": 1.3,
@@ -346,7 +361,39 @@
    "first_extra": 10,
    "voice_grace": 0,
    "gun_loss": 0.25,
-   "gun_loss_two": 0.25
+   "gun_loss_two": 0.25,
+   "prize": true,
+   "prize_lord_step": 1,
+   "prize_tiers": {
+    "scraps": {
+     "weight": 40,
+     "goods_min": 1,
+     "goods_max": 1,
+     "units_min": 1,
+     "units_max": 6
+    },
+    "modest": {
+     "weight": 35,
+     "goods_min": 2,
+     "goods_max": 3,
+     "value_min": 150,
+     "value_max": 400
+    },
+    "rich": {
+     "weight": 18,
+     "goods_min": 3,
+     "goods_max": 5,
+     "value_min": 400,
+     "value_max": 1000
+    },
+    "haul": {
+     "weight": 7,
+     "goods_min": 5,
+     "goods_max": 8,
+     "value_min": 1000,
+     "value_max": 2500
+    }
+   }
   },
   "dues": {
    "anchorage": 10.0,
@@ -379,7 +426,15 @@
   "registrar": {
    "enabled": true,
    "stale_months": 2,
-   "held_first": true
+   "held_first": true,
+   "hot_enabled": true,
+   "hot_home_chance": 0.5,
+   "hot_away_chance": 0.2,
+   "hot_every": 3,
+   "hot_lead": 1,
+   "hot_months": 2,
+   "hot_min": 3.0,
+   "hot_max": 6.0
   },
   "customs": {
    "enabled": true,
@@ -428,7 +483,9 @@
     "officer_saigon",
     "officer_shanghai",
     "officer_singapore"
-   ]
+   ],
+   "greet_aloud_min": 2,
+   "greet_aloud_max": 4
   }
  },
  "goods": {
@@ -608,6 +665,8 @@
    "lat": 22.3,
    "region": "china",
    "shipyard": true,
+   "bank": true,
+   "warehouse": true,
    "no_ban": false,
    "label_left": true,
    "dues": 1.0,
@@ -629,6 +688,8 @@
    "lat": 31.2,
    "region": "north",
    "shipyard": true,
+   "bank": true,
+   "warehouse": true,
    "no_ban": false,
    "label_left": true,
    "dues": 1.2,
@@ -651,6 +712,8 @@
    "lat": 32.75,
    "region": "north",
    "shipyard": false,
+   "bank": false,
+   "warehouse": false,
    "no_ban": false,
    "label_left": true,
    "dues": 1.4,
@@ -673,6 +736,8 @@
    "lat": 14.6,
    "region": "china",
    "shipyard": false,
+   "bank": false,
+   "warehouse": false,
    "no_ban": false,
    "label_left": false,
    "dues": 0.8,
@@ -693,6 +758,8 @@
    "lat": 10.8,
    "region": "china",
    "shipyard": false,
+   "bank": false,
+   "warehouse": false,
    "no_ban": false,
    "label_left": false,
    "dues": 0.9,
@@ -714,6 +781,8 @@
    "lat": 13.75,
    "region": "south",
    "shipyard": false,
+   "bank": false,
+   "warehouse": false,
    "no_ban": false,
    "label_left": true,
    "dues": 0.7,
@@ -735,6 +804,8 @@
    "lat": 1.35,
    "region": "south",
    "shipyard": true,
+   "bank": true,
+   "warehouse": true,
    "no_ban": false,
    "label_left": true,
    "dues": 0.6,
@@ -757,6 +828,8 @@
    "lat": -6.2,
    "region": "south",
    "shipyard": false,
+   "bank": false,
+   "warehouse": false,
    "no_ban": false,
    "label_left": false,
    "dues": 1.1,
@@ -780,6 +853,8 @@
    "lat": 22.6,
    "region": "bengal",
    "shipyard": true,
+   "bank": true,
+   "warehouse": true,
    "no_ban": true,
    "label_left": false,
    "dues": 1.3,
@@ -802,6 +877,8 @@
    "lat": 26.1,
    "region": "china",
    "shipyard": false,
+   "bank": false,
+   "warehouse": false,
    "no_ban": false,
    "label_left": true,
    "dues": 1.0,
@@ -854,6 +931,9 @@
  },
  "ship_names": [
   "White Pearl",
+  "Opium Moon",
+  "Pearl Diver",
+  "Ivory Queen",
   "Scarlet Tally",
   "Queen's Revenge",
   "Red Lantern",
@@ -865,31 +945,17 @@
   "Jasmine Smoke",
   "The Jewelry Box",
   "Dragon's Bride",
-  "Lucky Lacquer",
   "Silver Tongue",
   "Monsoon Bride",
   "Typhoon Lily",
   "Black Widow",
   "Sea Viper",
   "Cobra Queen",
-  "Duchess of Malacca",
-  "Rose of Batavia",
   "Siam Princess",
   "Shanghai Sable",
   "Calcutta Pearl",
-  "Miss Behave",
-  "Salty Wench",
   "Sweet Revenge",
-  "Lady Evangeline",
-  "Mistress Margery",
-  "Lady Ambrosia",
-  "Sweet Seraphina",
-  "Contessa",
-  "Arabella",
-  "Opium Moon",
-  "Pearl Diver",
-  "Ivory Queen",
-  "Spice Empress"
+  "Sweet Seraphina"
  ],
  "journal": {
   "keep_games": 50,
@@ -1080,7 +1146,7 @@
    "home_port": "hongkong",
    "color": "#7a4a22",
    "portrait": "/uploads/portrait-shipwright-bc277b87.png",
-   "voice_id": "Mei",
+   "voice_id": "Yoona",
    "speaking_rate": 1.0,
    "delivery": "gruff, warm and teasing, a powerful craftswoman who loves timber more than most people",
    "catchphrase": "A ship is only as good as the woman who caulks her.",
@@ -1205,7 +1271,7 @@
    "home_port": "hongkong",
    "color": "#3f6e6a",
    "portrait": "/uploads/portrait-taxlady-6bbeb4a0.png",
-   "voice_id": "Seraphine",
+   "voice_id": "Yoona",
    "speaking_rate": 1.0,
    "delivery": "warm, teasing and conspiratorial; a widow who knows everyone's business and enjoys letting you in on a little of it",
    "catchphrase": "Welcome home, Captain. It's all written down.",

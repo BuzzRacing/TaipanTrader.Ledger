@@ -15,8 +15,8 @@
   display: flex; flex-direction: column; gap: .45rem; }
 .deck .modal.cx-desk { max-height: 100%; }
 .cx-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .4rem 1rem; padding-bottom: .7rem; border-bottom: 1px solid var(--edge-hi); }
-.deck .cx-head h2 { margin: .15rem 0; color: var(--deck-ivory); font: 400 clamp(1.9rem, 4vw, 2.75rem)/1.1 var(--sans); }
-.deck .cx-head .eyebrow { margin: 0; color: var(--brass-hi); font: 1.25rem var(--special); letter-spacing: normal; text-transform: none; }
+.deck .cx-head h2 { margin: .15rem 0; color: var(--deck-ivory); font: 400 clamp(1.9rem, 4vw, 2.75rem)/1.1 var(--title); }
+.deck .cx-head .eyebrow { margin: 0; color: var(--brass-hi); font: 1.25rem var(--title); letter-spacing: normal; text-transform: none; }
 .cx-title { margin: 0; color: var(--muted); font-style: italic; font-size: .9rem; }
 .cx-rate { text-align: right; padding: .35rem .7rem; border: 1px solid var(--edge-hi); border-radius: var(--radius);
   background: color-mix(in srgb, var(--deck-brass) 10%, transparent); white-space: nowrap; }
@@ -28,16 +28,29 @@
 .cx-say { margin: 0; padding: .5rem .75rem; font: 1.1rem/1.3 var(--sans);
   border-inline-start: 4px solid var(--edge-hi); background: color-mix(in srgb, var(--deck-night) 88%, transparent); border-radius: 0 5px 5px 0; }
 /* The Registrar's price tip (Hong Kong): one price from her register, under her greeting. */
-.cx-tip { display: flex; gap: .7rem; align-items: center; margin: 0; padding: .5rem .75rem; border-radius: var(--radius);
+.cx-tip { display: flex; gap: .9rem; align-items: center; margin: 0; padding: .6rem .75rem; border-radius: var(--radius);
   border: 1px dashed color-mix(in srgb, var(--deck-jade) 70%, var(--edge-hi)); background: color-mix(in srgb, var(--deck-jade) 14%, transparent); }
-.cx-tip-art { flex: 0 0 auto; width: 3rem; height: 3rem; border-radius: 50%; overflow: hidden; border: 1px solid var(--edge-hi); }
+/* The goods picture: a big square so the captain can see what the cargo is. */
+.cx-tip-art { flex: 0 0 auto; width: 8rem; height: 8rem; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--edge-hi);
+  box-shadow: 0 4px 12px #0008; }
 .cx-tip-art img, .cx-tip-art .cx-tip-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cx-tip .eyebrow { margin: 0; color: var(--jade-hi); font: 1rem var(--special); letter-spacing: normal; text-transform: none; }
+.cx-tip .eyebrow { margin: 0; color: var(--jade-hi); font: 1rem var(--title); letter-spacing: normal; text-transform: none; }
 .cx-tip-say { margin: .1rem 0; font-style: italic; }
 .cx-tip small { color: var(--muted); }
+.cx-tip.hot { border: 1px solid var(--deck-brass); background: color-mix(in srgb, var(--deck-brass) 16%, transparent); }
+.cx-tip.hot .eyebrow { color: var(--deck-brass); }
+.hot-tips { display: grid; gap: .5rem; }
+.pt-arrival > .hot-tips { grid-column: 1 / -1; }
+/* Her hot tip in the voyage log (Captain's log and Port > Log). */
+.hot-badge { display: inline-flex; align-items: center; gap: .25em; padding: .05em .45em; margin-inline-end: .2em;
+  border-radius: 999px; border: 1px solid var(--deck-brass); color: var(--deck-brass);
+  background: color-mix(in srgb, var(--deck-brass) 16%, transparent); font: 700 .8em/1.4 var(--sans);
+  letter-spacing: .03em; text-transform: uppercase; vertical-align: .1em; white-space: nowrap; }
+.hot-line { font-weight: 600; }
+.hot-tips h2 { margin: 0 0 .25rem; }
 .cx-tip[aria-current="true"] { border-style: solid; box-shadow: 0 0 0 1px var(--deck-jade); }
 .cx-desk.welcome .cx-tip { max-width: 65%; }
-@media (max-width: 760px) { .cx-desk.welcome .cx-tip { max-width: none; } }
+@media (max-width: 760px) { .cx-desk.welcome .cx-tip { max-width: none; } .cx-tip-art { width: 5.5rem; height: 5.5rem; } }
 .cx-tell { margin: 0; min-height: 1.4em; color: var(--brass-hi); font-family: var(--special, var(--serif)); font-size: .95rem; }
 .cx-desk[data-state="hungry"] .cx-tell { color: var(--blood-hi); }
 .cx-desk[data-state="over"] .cx-tell { color: var(--jade-hi); }

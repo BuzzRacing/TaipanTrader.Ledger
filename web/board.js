@@ -22,8 +22,9 @@ function portName(key) {
 
 function render() {
   if (!D || !S) return;
+  Ceremony.sync(S, D, app);
   const lobby = S.phase === "lobby", ended = S.phase === "ended", sea = S.phase === "sea";
-  const ranked = lobby ? S.players : S.players.slice().sort((a, b) => b.worth - a.worth);
+  const ranked = lobby ? S.players : Ceremony.ranked(S);
   const encounters = sea ? S.sea || [] : [];
   const fighting = new Set(encounters.map(fight => fight.id));
   const active = S.players.filter(p => p.present);
@@ -49,6 +50,7 @@ function render() {
   document.getElementById("board-turn").classList.toggle("br-battle", encounters.length > 0);
   update("board-turn", `
     <div><span class="br-label">${te(label)}</span><h2>${headline}</h2>${detail ? `<p>${detail}</p>` : ""}</div>
+    ${ended && S.voyage_story ? `<div class="br-voyage-story">${Ceremony.story(S, D.ports)}</div>` : ""}
     ${encounters.length ? `<ul class="br-encounters" tabindex="0">${encounters.map(fight => `
       <li><b>${esc(fight.firm)}</b><span>${te(fight.where ? "board.encounter" : "board.encounter_unknown",
         { port: fight.where, left: fight.left, n: fight.n, enemy: fight.enemy })}</span></li>`).join("")}</ul>` : ""}`);

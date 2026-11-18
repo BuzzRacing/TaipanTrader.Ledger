@@ -40,6 +40,8 @@ def _load_settings(gid, h):
 
 def _clean(state):
     s = copy.deepcopy(state)
+    for key in ("start_at", "ended_at"):
+        s.pop(key, None)
     for p in s.get("players", {}).values():
         p.pop("token", None)
     return s

@@ -14,7 +14,7 @@
 
   const e = s => esc(s);
   const GROUPS = [
-    ["brand", null, "Main artwork", "Logo, backgrounds and the chart. Shown across the join screen, lobby, player screens and harbor board.", "main"],
+    ["brand", null, "Main artwork", "Logo lettering, backgrounds and the chart. Shown across the join screen, lobby, player screens and harbor board.", "main"],
     ["port", "ports", "Port pictures", "Banner at the top of the market while a player is in that port.", "banner"],
     ["ship", "ships", "Ship pictures", "Fleet cards and the shipyard.", "card"],
     ["cargo", "goods", "Cargo pictures", "Beside each cargo in the market.", "icon"],
@@ -37,7 +37,7 @@
     const out = [];
     GROUPS.forEach(([kind, table, , , role]) => {
       if (kind === "brand") {
-        A.graphic_slots.forEach(([k, label, help]) => out.push({ key: "brand:" + k, kind, subject: k, role, label, help, path: "graphics." + k }));
+        A.graphic_slots.filter(([k]) => k !== "logo").forEach(([k, label, help]) => out.push({ key: "brand:" + k, kind, subject: k, role, label, help, path: "graphics." + k }));
       } else {
         const group = { port: "ports", ship: "ships", cargo: "goods" }[kind];
         Object.keys(CFG[table] || {}).forEach(k => out.push({ key: kind + ":" + k, kind, subject: k, role,
@@ -205,6 +205,21 @@
       </div></article>`;
   }
 
+  /* The logo is not a picture: it is the game's name (Brand > Title) set in the gilded Ceremony Title
+     lettering of the opening animation (wordmark.css), so this card shows it live, unsaved edits included. */
+  function logoCard() {
+    const name = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
+    return `<article class="gx-card gx-logo" id="gx-brand-logo">
+      <div class="gx-art gx-wordmark" style="aspect-ratio:3 / 1"><span class="st-wordmark"><span class="st-wordmark-title">${e(name)}</span><span class="st-wordmark-rule" aria-hidden="true">◆</span></span>
+        <span class="gx-badges"><b class="gx-b dim">web font · live</b></span></div>
+      <div class="gx-body">
+        <div class="gx-title"><h3>Logo</h3><span class="muted small">Ceremony Title lettering</span></div>
+        <p class="help">The game's name in the same gilded lettering as the opening animation, shown on the join screen, lobby and end screen.
+          It is drawn from the name in Settings, not from a picture, so renaming the game changes it everywhere.</p>
+        <div class="row gx-actions"><button type="button" data-gxnav="brand">Change the game's name (Brand)</button></div>
+      </div></article>`;
+  }
+
   function render() {
     if (!G.lib) {
       if (!G.loading) setTimeout(() => load(), 0);
@@ -220,9 +235,10 @@
     const jobs = running();
     const sections = GROUPS.map(([kind, , title, note]) => {
       const list = infos.filter(([s]) => s.kind === kind).filter(show);
-      if (!list.length) return "";
+      const logo = kind === "brand" && !G.filter ? logoCard() : "";
+      if (!list.length && !logo) return "";
       return `<section class="card gx-group"><div class="head"><h2>${e(title)}</h2><button type="button" class="link" data-medialib="${kind}:">all ${e(title.toLowerCase())} in the library</button></div>
-        <p class="help">${e(note)}</p><div class="gx-grid">${list.map(([s]) => card(s)).join("")}</div></section>`;
+        <p class="help">${e(note)}</p><div class="gx-grid">${logo}${list.map(([s]) => card(s)).join("")}</div></section>`;
     }).join("");
     return head("Graphics", "Every picture the game shows, linked to the Media Library. Uploads and regenerated pictures are filed under the slot they belong to, " +
         "so each slot knows its history and which newer pictures are waiting. Pick, then Save & apply.") +
@@ -283,6 +299,7 @@
     const el = ev.target.closest("button");
     if (!el || el.disabled) return;
     const d = el.dataset;
+    if (d.gxnav) { ev.preventDefault(); return go(d.gxnav); }
     if (d.gxuse !== undefined) { ev.preventDefault(); return use(d.gxuse, d.url); }
     if (d.gxsize) { G.size = d.gxsize; try { localStorage.setItem("st-gx-size", G.size); } catch (x) { /* storage off */ } return redraw(); }
     if (d.gxfilter !== undefined) { G.filter = d.gxfilter; return redraw(); }

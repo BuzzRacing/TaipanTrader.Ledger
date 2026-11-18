@@ -220,7 +220,8 @@ const Battle = (() => {
     const ships = me.ships.map(s => {
       const spec = D.ships[s.type] || { hull: s.hull, slots: s.guns, name: s.type };
       const pct = Math.max(0, Math.min(100, Math.round(100 * s.hull / spec.hull)));
-      const pips = Array.from({ length: spec.slots || 0 }, (_, j) => `<i class="${j < s.guns ? "on" : ""}"></i>`).join("");
+      const c = s.cannons || 0, empty = Math.max(0, (spec.slots || 0) - s.guns - (D.cannon_slots || 2) * c);
+      const pips = `<i class="on cn"></i>`.repeat(c) + `<i class="on"></i>`.repeat(s.guns) + `<i></i>`.repeat(empty);
       return `<li class="${pct <= 25 ? "low" : ""}"><b>${a(s.name)}</b><span class="sf-hull"><i style="width:${pct}%"></i></span>
         <small>${s.hull}/${spec.hull}</small><span class="sf-pips">${pips}</span></li>`;
     }).join("");
@@ -325,35 +326,129 @@ const Battle = (() => {
     $(".sf-cap").textContent = "";
     $(".sf-tell").textContent = "";
     $(".sf-who").hidden = true;
-    const gunsHit = s => s.guns0 != null && s.guns1 != null && s.guns1 < s.guns0;
-    const ships = f.ships.map(s => `<li class="${s.lost ? "lost" : (s.hull1 < s.hull0 || gunsHit(s)) ? "hit" : ""}"><b>${a(s.name)}</b>
-      <span>${s.lost ? te("battle.res.ship_lost") : te("battle.res.hull", { a: s.hull0, b: s.hull1 })
-        + (!s.lost && gunsHit(s) ? " · " + te("battle.res.guns", { a: s.guns0, b: s.guns1 }) : "")}</span></li>`).join("");
-    const cargo = f.cargo.length
-      ? f.cargo.map(c => `<li>${te("battle.res.cargo_line", { qty: c.qty, good: D.goods[c.good] ? D.goods[c.good].name : c.good, cost: money(c.cost) })}</li>`).join("")
-      : `<li class="none">${te(f.outcome === "wrecked" ? "battle.res.cargo_wreck" : "battle.res.cargo_none")}</li>`;
-    const rows = [
-      `<div><small>${te("battle.res.sunk")}</small><b>${te("battle.res.sunk_v", { sunk: f.sunk, n: f.n })}</b></div>`,
-      `<div><small>${te("battle.res.rounds")}</small><b>${f.rounds}</b></div>`,
-      f.booty ? `<div class="up"><small>${te("battle.res.booty")}</small><b>+${money(f.booty)}</b></div>` : "",
-      f.paid ? `<div class="dn"><small>${te("battle.res.paid_line")}</small><b>-${money(f.paid)}</b></div>` : "",
-    ].join("");
+    const out = $(".sf-result");
+    setHtml(out, reckoningHtml(f, more));
+    out.hidden = false;
+    const go = out.querySelector("[data-sf=ack]");
+    if (go && document.activeElement !== go && drawnKey !== f.id) { drawnKey = f.id; try { go.focus({ preventScroll: true }); } catch (e) { /* older browsers */ } }
+  }
+
+  /* ------------------------------------------------------------- the reckoning -- */
+  /* Redesigned 18 Nov 2026 (mockup "Crimson Ledger — Sea Battle Reckoning"): the last battle
+     picture fills the screen, Powder O'Rourke (whoever read the fight) stands large on the left
+     with her closing line, and the reckoning is a lacquer ledger card on the right: a wax seal
+     with the enemy sunk, the enemy line as junks (sunk ones listing under the waterline), hull
+     bars and gun pips for each ship, the cargo as a ledger with leaders, a stamp, and the net
+     figure on a double rule beside Make for port. */
+  const GOOD_MOOD = { won: 1, away: 1, broke_off: 1, paid: 1 };
+  const STAMP = { won: ["battle.res.stamp_won", "Prize"], plundered: ["battle.res.stamp_plundered", "Boarded"],
+    wrecked: ["battle.res.stamp_wrecked", "Lost"], retreated: ["battle.res.stamp_retreated", "Jettisoned"] };
+  /* Wording with a fallback, so the screen reads right before strings.py has the key. */
+  const tf = (key, fb, vars) => T[key] == null ? a(fb) : te(key, vars);
+  const goodName = g => D.goods[g] ? D.goods[g].name : g;
+  const SPEAKER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>';
+  const closing = {};              // fight id -> {clip, text, url}: the same face and line on every redraw
+
+  function closingFor(f) {
+    if (closing[f.id]) return closing[f.id];
+    const frames = f.beat.frames || [], clips = ((S.voice || {}).battle || {})[f.id] || [];
+    let i = frames.length - 1;
+    while (i >= 0 && !frames[i].say) i--;
+    const clip = i >= 0 ? clips[i] : null;
+    const cid = (clip && clip.c) || "bosun";
+    const c = typeof VS !== "undefined" && VS.cast ? VS.cast[cid] : null;
+    let url = "";
+    if (typeof Media !== "undefined") {
+      const mood = GOOD_MOOD[f.outcome] ? ["happy", "portrait"] : ["angry", "speaking"];
+      const o = { fresh: true, slot: "sfres" };
+      const item = Media.choose("persona", cid, mood[0], Object.assign({ strict: true }, o))
+        || Media.choose("persona", cid, mood[1], Object.assign({ strict: true }, o))
+        || Media.choose("persona", cid, "", o);
+      if (item && item.t === "image") url = item.u;
+    }
+    if (!url && c && c.portrait) url = c.portrait;
+    const text = i >= 0 ? (frames[i].say || frames[i].cap || "") : "";
+    return (closing[f.id] = { clip, cid, c, url, text, tag: "sfres:" + f.id });
+  }
+
+  function hullBar(s) {
+    const max = Math.max(1, s.max || s.hull0 || 1);
+    const now = s.lost ? 0 : Math.max(0, Math.min(max, s.hull1));
+    const was = Math.max(now, Math.min(max, s.hull0));
+    const pct = v => (100 * v / max).toFixed(1) + "%";
+    const low = now / max <= .25 ? " low" : "";
+    return `<span class="sf-rhull${low}" aria-hidden="true"><i class="now" style="width:${pct(now)}"></i><i class="gone" style="left:${pct(now)};width:${pct(was - now)}"></i></span>`;
+  }
+  function gunPips(s) {
+    if (s.lost) return "";
+    const g1 = s.guns1 || 0, g0 = Math.max(g1, s.guns0 || 0), c1 = s.cannons1 || 0, c0 = Math.max(c1, s.cannons0 || 0);
+    if (!g0 && !c0) return "";
+    const pips = `<i class="on cn"></i>`.repeat(c1) + `<i class="cn broke"></i>`.repeat(c0 - c1)
+      + `<i class="on"></i>`.repeat(g1) + `<i class="broke"></i>`.repeat(g0 - g1);
+    const lost = (g0 - g1) + (c0 - c1);
+    return `<span class="sf-rpips">${pips}${lost ? `<small>${a(lost)} ${tf("battle.res.smashed", "smashed")}</small>` : ""}</span>`;
+  }
+
+  function reckoningHtml(f, more) {
+    const won = f.outcome === "won", good = !!GOOD_MOOD[f.outcome];
+    const cannonsHit = s => s.cannons0 != null && s.cannons1 != null && s.cannons1 < s.cannons0;
+    const gunsHit = s => (s.guns0 != null && s.guns1 != null && s.guns1 < s.guns0) || cannonsHit(s);
     const hurt = f.ships.some(s => !s.lost && (s.hull1 < s.hull0 || gunsHit(s)));
-    setHtml($(".sf-result"), `<section class="sf-card o-${a(f.outcome)}" role="dialog" aria-labelledby="sfResTitle">
+
+    const ships = f.ships.map(s => `<li class="${s.lost ? "lost" : (s.hull1 < s.hull0 || gunsHit(s)) ? "hit" : ""}">
+        <div class="sf-rsh"><b>${a(s.name)}</b><span>${s.lost ? te("battle.res.ship_lost") : te("battle.res.hull", { a: s.hull0, b: s.hull1 })}</span></div>
+        ${hullBar(s)}${gunPips(s)}</li>`).join("");
+
+    const line = (qty, good, fig, cls) => `<li><span><b>${a(qty)}</b> ${a(goodName(good))}</span><i></i><em class="${cls}">${fig}</em></li>`;
+    const usePrize = won && !f.cargo.length;
+    const list = usePrize
+      ? ((f.prize || []).map(c => line(c.qty, c.good, money(c.worth), "up")).join("")
+          + (f.prize_left ? `<li class="left">${te("battle.res.prize_left", { qty: f.prize_left })}</li>` : "")
+          || `<li class="none">${te("battle.res.prize_none")}</li>`)
+      : (f.cargo.length ? f.cargo.map(c => line(c.qty, c.good, "-" + money(c.cost), "dn")).join("")
+          : `<li class="none">${te(f.outcome === "wrecked" ? "battle.res.cargo_wreck" : "battle.res.cargo_none")}</li>`);
+    const st = STAMP[f.outcome];
+    const showStamp = st && (f.outcome !== "won" || (f.prize || []).length) && (f.outcome !== "plundered" || f.cargo.length);
+    const stamp = showStamp ? `<span class="sf-stamp" aria-hidden="true">${tf(st[0], st[1])}</span>` : "";
+
+    const n = Math.max(0, f.n || 0), showN = Math.min(n, 24), down = Math.round(showN * (f.sunk || 0) / Math.max(1, n));
+    const fleet = n ? `<div class="sf-rjunks" role="img" aria-label="${te("battle.res.sunk_v", { sunk: f.sunk, n: f.n })}">
+        ${Array.from({ length: showN }, (_, i) => `<i class="${i < down ? "down" : ""}">${JUNK}</i>`).join("")}</div>` : "";
+
+    const rows = [
+      `<div><small>${te("battle.res.rounds")}</small><b>${a(f.rounds)}</b></div>`,
+      f.booty ? `<div class="up"><small>${te("battle.res.booty")}</small><b>+${money(f.booty)}</b></div>` : "",
+      f.prize_worth ? `<div class="gold"><small>${te("battle.res.prize_worth")}</small><b>${money(f.prize_worth)}</b></div>` : "",
+      f.paid ? `<div class="dn"><small>${te("battle.res.paid_line")}</small><b>-${money(f.paid)}</b></div>` : "",
+      !won && f.cargo.length ? `<div class="dn"><small>${te("battle.res.cargo")}</small><b>-${money(f.cargo.reduce((t, c) => t + c.cost, 0))}</b></div>` : "",
+    ].join("");
+
+    const cl = closingFor(f);
+    const who = cl.c ? `<figure class="sf-rwho${cl.url ? "" : " nopic"}" style="--who:${a(cl.c.color || "var(--deck-brass)")}">
+        ${cl.url ? `<img src="${a(cl.url)}" alt="">` : ""}
+        ${cl.text ? `<figcaption class="sf-rline"><header>${cl.clip && typeof Voice !== "undefined"
+            ? `<button type="button" class="sf-rsay" data-sf="say" data-id="${a(f.id)}" aria-label="${tf("battle.res.say", "Hear it again")}">${SPEAKER}</button>`
+            : `<span class="sf-rsay">${SPEAKER}</span>`}
+          <span>${a(cl.c.name)}${cl.c.title ? " · " + a(cl.c.title) : ""}</span></header>
+          <p>“${a(cl.text)}”</p></figcaption>` : ""}
+      </figure>` : "";
+
+    return `${who}<section class="sf-card o-${a(f.outcome)}${good ? " good" : " bad"}" role="dialog" aria-labelledby="sfResTitle">
+      ${n ? `<div class="sf-seal" aria-hidden="true"><b>${a(f.sunk)}/${a(f.n)}</b><small>${tf("battle.res.seal", "sunk")}</small></div>` : ""}
       <header><p class="eyebrow">${a(f.n + " " + f.enemy)}${f.where ? " · " + te("battle.off", { port: f.where }) : ""}</p>
         <h2 id="sfResTitle">${te("battle.res." + f.outcome)}</h2></header>
-      <div class="sf-rows">${rows}</div>
+      ${fleet}
+      ${rows ? `<div class="sf-rows">${rows}</div>` : ""}
       <div class="sf-cols">
         <div><h3>${te("battle.res.ships")}</h3><ul class="sf-rships">${ships}</ul></div>
-        <div><h3>${te("battle.res.cargo")}</h3><ul class="sf-rcargo">${cargo}</ul></div>
+        <div class="sf-rledger"><h3>${te(usePrize ? "battle.res.prize" : "battle.res.cargo")}</h3><ul class="sf-rcargo${usePrize ? " sf-rprize" : ""}">${list}</ul>${stamp}</div>
       </div>
-      <p class="sf-net ${f.net > 0 ? "up" : f.net < 0 ? "dn" : ""}"><span>${te("battle.res.net")}</span><b>${f.net > 0 ? "+" : ""}${money(f.net)}</b></p>
       <p class="sf-note">${f.outcome === "wrecked" ? te("battle.res.wreck_note") : hurt ? te("battle.res.repairs") : ""}${more ? " " + te("battle.res.next") : ""}</p>
-      <footer><button type="button" class="primary" data-sf="ack" data-id="${a(f.id)}">${more ? te("battle.btn.next") : te("battle.res.port")} <span aria-hidden="true">&rarr;</span></button></footer>
-    </section>`);
-    $(".sf-result").hidden = false;
-    const go = $(".sf-result [data-sf=ack]");
-    if (go && document.activeElement !== go && drawnKey !== f.id) { drawnKey = f.id; try { go.focus({ preventScroll: true }); } catch (e) { /* older browsers */ } }
+      <footer>
+        <p class="sf-net ${f.net > 0 ? "up" : f.net < 0 ? "dn" : ""}"><span>${te("battle.res.net")}</span><b>${f.net > 0 ? "+" : ""}${money(f.net)}</b></p>
+        <button type="button" class="primary" data-sf="ack" data-id="${a(f.id)}">${more ? te("battle.btn.next") : te("battle.res.port")} <span aria-hidden="true">&rarr;</span></button>
+      </footer>
+    </section>`;
   }
 
   /* No fight of our own, but the month is waiting for somebody else's. */
@@ -434,6 +529,14 @@ const Battle = (() => {
     }
     if (el.disabled) return;
     const what = el.dataset.sf;
+    if (what === "say") {
+      const cl = closing[el.dataset.id];
+      if (cl && cl.clip && typeof Voice !== "undefined") {
+        Voice.drop("battle");
+        Voice.say([Object.assign({ tag: cl.tag, text: cl.text }, cl.clip)], { group: "battle" });
+      }
+      return;
+    }
     if (what === "ack") {
       acked.add(el.dataset.id);
       try { sessionStorage.setItem("seatrader_fights", JSON.stringify(Array.from(acked).slice(-40))); } catch (err) { /* private browsing */ }

@@ -14,7 +14,7 @@
   };
   const $ = id => document.getElementById(id);
   const e = s => esc(s);
-  const KIND_ORDER = ["persona", "captain", "house", "port", "ship", "cargo", "service", "scene", "brand", "reference", "other"];
+  const KIND_ORDER = ["persona", "captain", "rank", "house", "port", "ship", "cargo", "service", "scene", "brand", "reference", "other"];
   const ASPECT_FOR = { persona: "3:4", captain: "3:4", house: "1:1", port: "16:9", ship: "3:2", cargo: "1:1", service: "16:9", scene: "16:9", brand: "16:9", reference: "1:1", other: "1:1" };
 
   /* --------------------------------------------------------- helpers -- */

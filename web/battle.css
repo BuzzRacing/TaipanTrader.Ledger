@@ -106,6 +106,8 @@
 .sf-pips { grid-column: 1 / -1; display: flex; gap: 3px; margin-bottom: .1rem; }
 .sf-pips i { width: 9px; height: 5px; border-radius: 2px; background: color-mix(in srgb, var(--deck-ivory) 16%, transparent); }
 .sf-pips i.on { background: var(--deck-brass); }
+.sf-pips i.cn { width: 21px; }
+.sf-pips i.cn.on { background: #c8743a; }
 .sf-stake { margin: .4rem 0 0; padding-top: .35rem; border-top: 1px solid var(--edge); font-size: .85rem; }
 .sf-stake small { display: block; color: var(--muted); font-size: .7rem; }
 
@@ -148,35 +150,117 @@
 #seafight[data-mode="wait"] .sf-mid { display: none; }
 
 /* --------------------------------------------------------------- reckoning -- */
-.sf-result { position: absolute !important; inset: 0; z-index: 3 !important; display: grid; place-items: center; padding: clamp(.6rem, 3vw, 2rem);
-  background: color-mix(in srgb, var(--deck-night) 55%, transparent); animation: sfIn .5s ease-out both; }
+/* Redesigned 18 Nov 2026 (mockup "Crimson Ledger — Sea Battle Reckoning"): the battle picture
+   behind, the reader of the fight (Powder) large on the left with her closing line, and a lacquer
+   ledger card on the right. Fonts: --title for the outcome, --special for labels, --figures for
+   every amount. */
+.sf-result { --figures: "Consolas", "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  position: absolute !important; inset: 0; z-index: 3 !important; display: grid; grid-template-columns: minmax(0, 1fr) min(46rem, 58%);
+  align-items: center; padding: clamp(.6rem, 3vw, 2.2rem); overflow: hidden;
+  background: radial-gradient(ellipse 70% 85% at 28% 45%, transparent 0%, color-mix(in srgb, var(--deck-night) 55%, transparent) 62%, color-mix(in srgb, var(--deck-night) 92%, transparent) 100%),
+    linear-gradient(90deg, transparent 32%, color-mix(in srgb, var(--deck-night) 78%, transparent) 60%, color-mix(in srgb, var(--deck-night) 90%, transparent) 100%);
+  animation: sfIn .5s ease-out both; }
 .sf-result[hidden] { display: none; }
-.sf-card { width: min(42rem, 100%); max-height: 100%; display: flex; flex-direction: column; gap: .7rem; padding: clamp(.9rem, 2.6vw, 1.6rem); overflow: hidden;
-  border: 1px solid var(--edge-hi); border-radius: calc(var(--radius) * 1.5); background: color-mix(in srgb, var(--deck-night) 92%, transparent);
-  box-shadow: 0 1.4rem 4rem rgba(0, 0, 0, .7); }
-.sf-card header { text-align: center; border-bottom: 1px solid var(--edge-hi); padding-bottom: .55rem; }
-.sf-card .eyebrow { margin: 0; color: var(--muted); font: .95rem var(--special); letter-spacing: normal; text-transform: none; }
-.sf-card h2 { margin: .1rem 0 0; font: 400 clamp(2.1rem, 6vw, 3.4rem)/1.05 var(--serif); color: var(--brass-hi); }
-.sf-card.o-won h2, .sf-card.o-away h2, .sf-card.o-broke_off h2 { color: var(--jade-hi); }
-.sf-card.o-plundered h2, .sf-card.o-wrecked h2 { color: var(--blood-hi); }
-.sf-rows { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
-.sf-rows > div { flex: 1 1 7rem; padding: .35rem .6rem; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass-2); text-align: center; }
-.sf-rows small, .sf-net span { display: block; font-size: .72rem; color: var(--muted); }
-.sf-rows b { font: 400 1.35rem var(--serif); font-variant-numeric: tabular-nums; }
-.sf-rows .up b, .sf-net.up b { color: var(--jade-hi); } .sf-rows .dn b, .sf-net.dn b { color: var(--blood-hi); }
-.sf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-.sf-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; font-size: .92rem; }
-.sf-rships li { display: flex; justify-content: space-between; gap: .6rem; }
-.sf-rships li span { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sf-rships li.hit span { color: var(--brass-hi); } .sf-rships li.lost span, .sf-rships li.lost b { color: var(--blood-hi); }
-.sf-rcargo li.none { color: var(--muted); }
-.sf-net { margin: 0; display: flex; justify-content: space-between; align-items: baseline; padding: .45rem .7rem; border: 1px solid var(--edge-hi); border-radius: var(--radius);
-  background: color-mix(in srgb, var(--deck-brass) 9%, transparent); }
-.sf-net span { font-size: .9rem; }
-.sf-net b { font: 400 1.7rem var(--serif); font-variant-numeric: tabular-nums; }
-.sf-note { margin: 0; min-height: 1.2em; font-size: .85rem; color: var(--muted); text-align: center; }
-.sf-card footer { display: flex; justify-content: center; }
-.sf-card footer button { font-size: 1.15rem; padding: .6rem 1.6rem; }
+
+/* the reader of the fight */
+.sf-rwho { position: absolute; left: 0; bottom: 0; top: 0; width: min(47vw, 44rem); margin: 0; pointer-events: none; }
+.sf-rwho > img { position: absolute; left: -1%; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 8%;
+  -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent 97%); mask-image: linear-gradient(90deg, #000 60%, transparent 97%);
+  filter: drop-shadow(0 0 2.5rem rgba(0, 0, 0, .6)); animation: sfWhoIn .9s ease-out both; }
+@keyframes sfWhoIn { from { opacity: 0; transform: translateX(-3%); } to { opacity: 1; transform: none; } }
+.sf-rline { position: absolute; left: clamp(.6rem, 2.8vw, 2.2rem); bottom: clamp(.6rem, 2.8vw, 2.2rem); width: min(27rem, 90%); pointer-events: auto;
+  padding: .9rem 1.2rem 1rem; border: 1px solid color-mix(in srgb, var(--deck-brass) 55%, transparent); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--deck-night) 84%, transparent); box-shadow: 0 .8rem 2.5rem rgba(0, 0, 0, .55); }
+.sf-rline header { display: flex; align-items: center; gap: .6rem; margin-bottom: .4rem; font: .95rem/1.1 var(--special); letter-spacing: .06em; color: var(--brass-hi); }
+.sf-rsay { flex: none; display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -.4rem 0; padding: 0; border-radius: 50%;
+  background: var(--deck-oxblood); border: 1px solid var(--deck-brass); color: var(--deck-ivory); cursor: pointer; }
+.sf-rsay svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+button.sf-rsay:hover { background: color-mix(in srgb, var(--deck-oxblood) 80%, #fff); }
+.sf-rline p { margin: 0; font: italic clamp(1.05rem, 1.7vw, 1.3rem)/1.35 var(--serif); color: var(--deck-ivory); }
+
+/* the ledger card */
+.sf-card { grid-column: 2; position: relative; width: 100%; max-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: .8rem;
+  padding: clamp(1rem, 2.4vw, 1.9rem) clamp(1rem, 2.6vw, 2.3rem); overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--deck-brass) 60%, transparent); outline: 1px solid color-mix(in srgb, var(--deck-brass) 22%, transparent); outline-offset: 5px;
+  border-radius: 3px; background: linear-gradient(180deg, color-mix(in srgb, var(--deck-lacquer) 94%, transparent), color-mix(in srgb, var(--deck-night) 96%, transparent));
+  box-shadow: 0 1.8rem 5rem rgba(0, 0, 0, .7); }
+.sf-card::before, .sf-card::after { content: ""; position: absolute; width: 1.3rem; height: 1.3rem; border: 2px solid var(--deck-brass); pointer-events: none; }
+.sf-card::before { top: -7px; left: -7px; border-width: 2px 0 0 2px; }
+.sf-card::after { bottom: -7px; right: -7px; border-width: 0 2px 2px 0; }
+.sf-card header { padding-right: 6.5rem; }
+.sf-card .eyebrow { margin: 0; font: .95rem/1.2 var(--special); letter-spacing: .1em; color: var(--brass-hi); }
+.sf-card h2 { margin: .1rem 0 0; font: 400 clamp(2.6rem, 6vw, 4.6rem)/1 var(--title); color: var(--brass-hi); text-shadow: 0 2px 0 var(--deck-night); }
+.sf-card.good h2 { color: var(--jade-hi); text-shadow: 0 0 1.8rem color-mix(in srgb, var(--deck-jade) 60%, transparent), 0 2px 0 var(--deck-night); }
+.sf-card.bad h2 { color: var(--blood-hi); text-shadow: 0 0 1.8rem color-mix(in srgb, var(--deck-oxblood) 75%, transparent), 0 2px 0 var(--deck-night); }
+
+.sf-seal { position: absolute; top: clamp(.9rem, 2vw, 1.6rem); right: clamp(.9rem, 2vw, 2rem); width: 5.6rem; height: 5.6rem; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(-12deg);
+  background: radial-gradient(circle at 38% 34%, #a83a3e 0%, var(--deck-oxblood) 55%, #561519 100%);
+  box-shadow: 0 .25rem .9rem rgba(0, 0, 0, .6), inset 0 0 0 4px color-mix(in srgb, var(--deck-ivory) 18%, transparent); animation: sfSeal .5s .35s cubic-bezier(.2, 1.6, .4, 1) both; }
+.sf-card.bad .sf-seal { background: radial-gradient(circle at 38% 34%, #4a5f6e 0%, var(--deck-storm) 55%, #1f3140 100%); }
+@keyframes sfSeal { from { opacity: 0; transform: rotate(-30deg) scale(1.6); } to { opacity: 1; transform: rotate(-12deg) scale(1); } }
+.sf-seal b { font: 600 1.55rem/1 var(--figures); color: var(--deck-ivory); }
+.sf-seal small { font: .75rem/1.2 var(--special); letter-spacing: .2em; color: var(--deck-ivory); }
+
+.sf-rjunks { --j: clamp(1.4rem, 2.6vw, 2.1rem); display: flex; flex-wrap: wrap; gap: .1rem .35rem; padding: .45rem .7rem .3rem;
+  border-block: 1px solid color-mix(in srgb, var(--deck-brass) 30%, transparent);
+  background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--deck-storm) 35%, transparent) 100%); }
+.sf-rjunks i { width: var(--j); height: var(--j); display: block; }
+.sf-rjunks svg { width: 100%; height: 100%; fill: color-mix(in srgb, var(--deck-oxblood) 75%, #b5532e); stroke: var(--blood-hi); stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; }
+.sf-rjunks i.down { opacity: .45; transform: translateY(22%) rotate(16deg); filter: grayscale(.7); }
+.sf-rjunks i.down svg { stroke: var(--jade-hi); }
+
+.sf-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: .6rem; }
+.sf-rows > div { padding: .45rem .8rem; border: 1px solid color-mix(in srgb, var(--deck-brass) 32%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--deck-night) 50%, transparent); }
+.sf-rows small, .sf-net span { display: block; font: .8rem/1.2 var(--special); letter-spacing: .06em; color: var(--muted); }
+.sf-rows b { font: 600 1.45rem/1.2 var(--figures); font-variant-numeric: tabular-nums; color: var(--deck-ivory); }
+.sf-rows .up b, .sf-net.up b { color: var(--jade-hi); } .sf-rows .dn b, .sf-net.dn b { color: var(--blood-hi); } .sf-rows .gold b { color: var(--brass-hi); }
+
+.sf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.sf-cols h3 { margin: 0 0 .55rem; padding-bottom: .3rem; border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 35%, transparent);
+  font: 700 1rem/1.2 var(--special); letter-spacing: .08em; color: var(--brass-hi); }
+.sf-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.sf-rships { gap: .85rem !important; }
+.sf-rships li { display: grid; gap: .3rem; }
+.sf-rsh { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
+.sf-rsh b { font: 700 1.1rem/1.2 var(--serif); color: var(--deck-ivory); }
+.sf-rsh span { font: .85rem var(--figures); color: var(--muted); white-space: nowrap; }
+.sf-rships li.lost b { color: var(--blood-hi); text-decoration: line-through; text-decoration-thickness: 2px; }
+.sf-rships li.lost .sf-rsh span { font-family: var(--special); letter-spacing: .14em; color: var(--blood-hi); }
+.sf-rhull { position: relative; display: block; height: .6rem; border-radius: 2px; overflow: hidden; background: #0b0806; border: 1px solid color-mix(in srgb, var(--deck-brass) 35%, transparent); }
+.sf-rhull i { position: absolute; top: 0; bottom: 0; transition: width 1s .4s ease-out; }
+.sf-rhull i.now { left: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 60%, #8fd6bd), var(--deck-jade)); }
+.sf-rhull.low i.now { background: linear-gradient(180deg, #d0a24a, #a8742a); }
+.sf-rhull i.gone { background: repeating-linear-gradient(135deg, var(--deck-oxblood) 0 4px, #4a1518 4px 8px); }
+.sf-rpips { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+.sf-rpips i { width: .55rem; height: .55rem; border-radius: 50%; box-sizing: border-box; border: 1.5px solid color-mix(in srgb, var(--deck-brass) 50%, transparent); }
+.sf-rpips i.on { background: var(--deck-brass); border-color: var(--deck-brass); }
+.sf-rpips i.cn { border-radius: 2px; }
+.sf-rpips i.broke { border-color: var(--blood-hi); }
+.sf-rpips small { margin-left: .35rem; font: .8rem var(--figures); color: var(--blood-hi); }
+
+.sf-rledger { display: flex; flex-direction: column; }
+#seafight[data-mode="result"] .sf-top, #seafight[data-mode="result"] .sf-enemy { visibility: hidden; }
+.sf-rcargo li { display: flex; align-items: flex-end; font-size: 1rem; }
+.sf-rcargo li b { font: 600 1em var(--figures); color: var(--deck-ivory); }
+.sf-rcargo li > i { flex: 1 1 auto; margin: 0 .45rem .3rem; border-bottom: 1px dotted color-mix(in srgb, var(--deck-brass) 45%, transparent); }
+.sf-rcargo li em { font: normal 600 1em var(--figures); white-space: nowrap; }
+.sf-rcargo li em.up { color: var(--jade-hi); } .sf-rcargo li em.dn { color: var(--blood-hi); }
+.sf-rcargo li.none { color: var(--muted); font-style: italic; }
+.sf-rcargo li.left { margin-top: .2rem; padding: .4rem .6rem; border: 1px dashed color-mix(in srgb, var(--blood-hi) 60%, transparent); border-radius: 3px; color: var(--blood-hi); font-size: .92rem; }
+.sf-stamp { align-self: flex-end; margin: .9rem .4rem .3rem 0; transform: rotate(-9deg); padding: .25rem .8rem; border: 2px solid color-mix(in srgb, var(--blood-hi) 75%, transparent);
+  border-radius: 3px; font: 700 1rem/1.2 var(--special); letter-spacing: .22em; text-transform: uppercase; color: color-mix(in srgb, var(--blood-hi) 90%, transparent);
+  pointer-events: none; animation: sfStamp .35s .7s cubic-bezier(.3, 1.8, .5, 1) both; }
+@keyframes sfStamp { from { opacity: 0; transform: rotate(-9deg) scale(1.8); } to { opacity: 1; transform: rotate(-9deg) scale(1); } }
+
+.sf-note { margin: 0; min-height: 1.2em; font-size: .9rem; font-style: italic; color: var(--muted); }
+.sf-card footer { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding-top: .8rem; border-top: 3px double color-mix(in srgb, var(--deck-brass) 60%, transparent); }
+.sf-net { margin: 0; display: flex; flex-direction: column; }
+.sf-net b { font: 600 clamp(1.8rem, 3.4vw, 2.5rem)/1.05 var(--figures); font-variant-numeric: tabular-nums; color: var(--deck-ivory); }
+.sf-card footer button { margin-left: auto; min-height: 3.4rem; padding: 0 1.8rem; font: 700 1.25rem/1 var(--sans); color: var(--deck-ivory);
+  background: linear-gradient(180deg, #8f2c30, #6a1e22); border: 2px solid var(--deck-brass); border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--deck-night), 0 0 0 4px color-mix(in srgb, var(--deck-brass) 45%, transparent), 0 .5rem 1.4rem rgba(0, 0, 0, .5); }
+.sf-card footer button:hover { background: linear-gradient(180deg, #a3363b, #7b2428); }
 
 /* While the fight is up the deck underneath is out of reach (and out of the tab order). */
 body.seafighting #app { visibility: hidden; }
@@ -189,6 +273,11 @@ body.seafighting #app { visibility: hidden; }
   .sf-fleet ul { grid-template-columns: 1fr 1fr; column-gap: .9rem; }
   .sf-btns.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sf-cols { grid-template-columns: 1fr; }
+  .sf-result { display: flex; flex-direction: column; justify-content: flex-end; overflow-y: auto; }
+  .sf-rwho { position: static; width: auto; }
+  .sf-rwho > img { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: .45;
+    -webkit-mask-image: linear-gradient(0deg, transparent 25%, #000 75%); mask-image: linear-gradient(0deg, transparent 25%, #000 75%); }
+  .sf-rline { position: static; width: auto; margin: 0 0 1rem; }
   .sf-mid { --pw: clamp(8rem, 30vw, 15rem); }
   .sf-mid:has(.sf-who:not([hidden]):not(.nopic)) { padding-inline: calc(var(--pw) + 4vw) 0; }
 }
@@ -202,10 +291,13 @@ body.seafighting #app { visibility: hidden; }
   #seafight .sf-btn { min-height: 3.4rem; }
   .sf-junks { --j: 1.3rem; }
   .sf-card { gap: .4rem; padding: .7rem; }
-  .sf-card h2 { font-size: 1.8rem; }
+  .sf-card h2 { font-size: 1.9rem; }
+  .sf-seal { width: 3.6rem; height: 3.6rem; } .sf-seal b { font-size: 1rem; }
+  .sf-rjunks, .sf-rpips, .sf-rline p { display: none; }
+  .sf-rows b { font-size: 1.1rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #seafight, .sf-result, .sf-cap.in, .sf-who, .sf-who .sf-face.on, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
+  #seafight, .sf-result, .sf-rwho > img, .sf-seal, .sf-stamp, .sf-cap.in, .sf-who, .sf-who .sf-face.on, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
   .sf-pic, .sf-junks i, .sf-hull i { transition: none; }
 }
 
@@ -213,3 +305,6 @@ body.seafighting #app { visibility: hidden; }
 .sf-wait li .crest.sf-crest { float: left; width: 2.6rem; height: 2.6rem; margin: .05rem .7rem 0 0; border-radius: 6px;
   box-shadow: 0 0 0 1.5px var(--who, var(--deck-brass)), 0 2px 6px rgba(0, 0, 0, .55); }
 .sf-wait li::after { content: ""; display: block; clear: both; }
+
+/* Prize cargo taken from a won fight */
+.sf-rprize li:not(.none) { color: var(--jade-hi); }

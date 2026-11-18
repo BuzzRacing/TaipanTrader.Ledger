@@ -99,6 +99,9 @@ KINDS = {
     "captain": {"label": "Captains", "one": "Captain", "subjects": "captains",
                 "roles": [["portrait", "Captain's portrait: join screen and Admin > Captains (the starred one is shown)"]],
                 "default_role": "portrait"},
+    "rank": {"label": "Rank Badges", "one": "Rank", "subjects": "ranks",
+             "roles": [["badge", "Fleet card and promotion announcement (the starred image is shown)"]],
+             "default_role": "badge"},
     "house": {"label": "Houses", "one": "House", "subjects": "houses",
               "roles": [["crest", "House crest: join screen and Admin > Captains (the starred one is shown)"]],
               "default_role": "crest"},
@@ -123,6 +126,7 @@ BRAND_SLOTS = [["logo", "Logo"], ["favicon", "Browser tab icon"], ["masthead_bg"
 RULE_DEFAULTS = {
     "persona": {"mode": "random", "seconds": 7, "video_chance": 35},
     "captain": {"mode": "fixed", "seconds": 30, "video_chance": 0},
+    "rank": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "house": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "port": {"mode": "random", "seconds": 14, "video_chance": 0},
     "ship": {"mode": "random", "seconds": 14, "video_chance": 0},
@@ -410,6 +414,7 @@ def subjects(cfg):
     except Exception:
         caps, houses = [], []
     return {"persona": chars, "captain": caps, "house": houses, "port": names("ports"), "ship": names("ships"), "cargo": names("goods"),
+            "rank": [[rank["id"], rank["title"]] for rank in cfg.get("ranks", [])],
             "service": [list(s) for s in SERVICES], "scene": [list(s) for s in SCENES], "brand": [list(s) for s in BRAND_SLOTS], "reference": [], "other": []}
 
 
@@ -497,6 +502,12 @@ def _migrate(lib, cfg):
     lib["items"] = sorted(by_url.values(), key=lambda i: (i["kind"], i["subject"], i["url"]))
     for it in lib["items"]:
         it["primary"] = it["url"] in used
+    for rank in (cfg or {}).get("ranks", []):
+        url = "/assets/rank-badges/{}.png".format(rank["id"])
+        if _exists(url):
+            it = _make_item(url, "rank", rank["id"], ["badge"], source="config", title=rank["title"] + " rank badge")
+            it["primary"] = True
+            lib["items"].append(it)
     _scan_media_dir(lib)
 
 
