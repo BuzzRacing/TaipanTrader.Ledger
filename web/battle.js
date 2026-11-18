@@ -106,15 +106,56 @@ const Battle = (() => {
   }
 
   /* ------------------------------------------------------------- playing a beat -- */
+  /* The speaker: a tall portrait on the left of the caption. It shows every picture that persona
+     has in the media library, shuffled, crossfading to the next every few seconds while they talk.
+     Each new line starts on a different picture from the one the last line ended on. */
+  const WHO_ROTATE_MS = 3200;
+  let whoTimer = null;
+  const whoLast = {};             // persona -> last picture url shown
+  function shuffled(list, notFirst) {
+    const out = list.slice();
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    if (out.length > 1 && out[0] === notFirst) out.push(out.shift());
+    return out;
+  }
   function speakerChip(clip) {
     const who = $(".sf-who");
+    clearInterval(whoTimer);
+    whoTimer = null;
     const c = clip && typeof VS !== "undefined" && VS.cast ? VS.cast[clip.c] : null;
     if (!c) { who.hidden = true; return; }
-    const art = (typeof Media !== "undefined" && Media.speaker(clip.c, "sf-face")) ||
-      (c.portrait ? `<img class="sf-face" src="${a(c.portrait)}" alt="">` : "");
+    let urls = typeof Media !== "undefined" ? Media.items("persona", clip.c, "", false).map(i => i.u) : [];
+    urls = Array.from(new Set(urls));
+    if (!urls.length && c.portrait) urls = [c.portrait];
+    urls = shuffled(urls, whoLast[clip.c]);
     who.style.setProperty("--who", c.color || "var(--deck-brass)");
-    who.innerHTML = `${art}<div><b>${a(c.name)}</b><span>${a(c.title || "")}</span></div>`;
+    const frame = urls.length
+      ? `<div class="sf-frame"><img class="sf-face on" src="${a(urls[0])}" alt="">${urls.length > 1 ? '<img class="sf-face" alt="">' : ""}</div>`
+      : "";
+    who.innerHTML = `${frame}<div class="sf-plate"><b>${a(c.name)}</b><span>${a(c.title || "")}</span></div>`;
+    who.classList.toggle("nopic", !urls.length);
     who.hidden = false;
+    if (urls.length) whoLast[clip.c] = urls[0];
+    if (urls.length < 2) return;
+    let i = 0;
+    whoTimer = setInterval(() => {
+      if (who.hidden || !who.isConnected) { clearInterval(whoTimer); whoTimer = null; return; }
+      i = (i + 1) % urls.length;
+      const url = urls[i], faces = who.querySelectorAll(".sf-face");
+      const on = who.querySelector(".sf-face.on"), off = Array.from(faces).find(x => x !== on);
+      if (!on || !off) return;
+      const pre = new Image();
+      pre.onload = () => {
+        off.src = url;
+        off.classList.add("on");
+        on.classList.remove("on");
+        whoLast[clip.c] = url;
+      };
+      pre.src = url;
+    }, WHO_ROTATE_MS);
   }
 
   function frameStep() {

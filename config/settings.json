@@ -187,16 +187,16 @@
    "grace_seconds": 25
   },
   "start": {
-   "cash": 3500,
-   "debt": 5000,
+   "cash": 7000,
+   "debt": 2500,
    "ship": "junk",
    "guns": 2,
-   "rep": 50,
+   "rep": 66,
    "home_rep": 60,
    "where": "random"
   },
   "captains": {
-   "typed": true
+   "typed": false
   },
   "market": {
    "spread_base": 0.04,
@@ -207,7 +207,7 @@
    "reversion": 0.3,
    "vol_mult": 1.0,
    "start_spread": 0.15,
-   "rep_per_value": 5000,
+   "rep_per_value": 3500,
    "rep_trade_cap": 2.0,
    "worth_cargo": 0.9
   },
@@ -255,11 +255,19 @@
    "ban_chance": 0.15,
    "ban_min_turns": 3,
    "ban_max_turns": 5,
-   "ban_price_mult": 1.5
+   "ban_price_mult": 1.5,
+   "windfall_chance": 0.12,
+   "windfall_pair_chance": 0.1,
+   "crash_min": 0.02,
+   "crash_max": 0.12,
+   "boom_min": 2.5,
+   "boom_max": 15.0,
+   "windfall_min_turns": 1,
+   "windfall_max_turns": 2
   },
   "contraband": {
-   "seize_chance": 0.03,
-   "seize_banned": 0.55,
+   "seize_chance": 0.02,
+   "seize_banned": 0.45,
    "seize_rep_relief": 0.003,
    "fine_per_unit": 300,
    "rep_penalty": 15.0
@@ -427,8 +435,8 @@
   "opium": {
    "name": "Opium",
    "family_name": "Fireworks",
-   "base": 4200.0,
-   "vol": 0.16,
+   "base": 6200.0,
+   "vol": 0.2,
    "depth": 60,
    "contraband": true,
    "ban_odds": 0.0
@@ -436,8 +444,8 @@
   "gold": {
    "name": "Gold",
    "family_name": "",
-   "base": 2400.0,
-   "vol": 0.05,
+   "base": 3400.0,
+   "vol": 0.1,
    "depth": 90,
    "contraband": false,
    "ban_odds": 0.5
@@ -445,8 +453,8 @@
   "silk": {
    "name": "Silk",
    "family_name": "",
-   "base": 520.0,
-   "vol": 0.1,
+   "base": 1520.0,
+   "vol": 0.3,
    "depth": 160,
    "contraband": false,
    "ban_odds": 0.0
@@ -454,8 +462,8 @@
   "porcelain": {
    "name": "Porcelain",
    "family_name": "",
-   "base": 230.0,
-   "vol": 0.08,
+   "base": 850.0,
+   "vol": 0.4,
    "depth": 250,
    "contraband": false,
    "ban_odds": 0.0
@@ -463,8 +471,8 @@
   "arms": {
    "name": "Arms",
    "family_name": "Ironware",
-   "base": 160.0,
-   "vol": 0.1,
+   "base": 433.0,
+   "vol": 0.2,
    "depth": 250,
    "contraband": false,
    "ban_odds": 0.0
@@ -472,8 +480,8 @@
   "spices": {
    "name": "Spices",
    "family_name": "",
-   "base": 95.0,
-   "vol": 0.09,
+   "base": 177.0,
+   "vol": 0.1,
    "depth": 450,
    "contraband": false,
    "ban_odds": 0.0
@@ -481,8 +489,8 @@
   "tea": {
    "name": "Tea",
    "family_name": "",
-   "base": 70.0,
-   "vol": 0.08,
+   "base": 99.0,
+   "vol": 0.6,
    "depth": 500,
    "contraband": false,
    "ban_odds": 0.0
@@ -490,8 +498,8 @@
   "rice": {
    "name": "Rice",
    "family_name": "",
-   "base": 14.0,
-   "vol": 0.07,
+   "base": 40.0,
+   "vol": 0.2,
    "depth": 1200,
    "contraband": false,
    "ban_odds": 0.0
@@ -499,8 +507,8 @@
   "general": {
    "name": "General Cargo",
    "family_name": "",
-   "base": 9.0,
-   "vol": 0.07,
+   "base": 10.0,
+   "vol": 0.1,
    "depth": 1200,
    "contraband": false,
    "ban_odds": 0.0
@@ -804,7 +812,7 @@
  },
  "ships": {
   "junk": {
-   "name": "Junk",
+   "name": "Velvet Cutlass",
    "hold": 60,
    "hull": 100,
    "slots": 4,
@@ -812,15 +820,15 @@
    "fast": false
   },
   "lorcha": {
-   "name": "Lorcha",
+   "name": "Crimson Mistress",
    "hold": 120,
    "hull": 140,
    "slots": 8,
    "price": 9000,
-   "fast": false
+   "fast": true
   },
   "barque": {
-   "name": "Barque",
+   "name": "Black Orchid",
    "hold": 250,
    "hull": 200,
    "slots": 12,
@@ -828,7 +836,7 @@
    "fast": false
   },
   "clipper": {
-   "name": "Clipper",
+   "name": "Scarlet Widow",
    "hold": 180,
    "hull": 160,
    "slots": 10,
@@ -836,7 +844,7 @@
    "fast": true
   },
   "indiaman": {
-   "name": "East Indiaman",
+   "name": "Blood Moon",
    "hold": 500,
    "hull": 320,
    "slots": 24,
@@ -845,31 +853,43 @@
   }
  },
  "ship_names": [
-  "Morning Cloud",
-  "Jade Heron",
-  "Lucky Star",
-  "Sea Witch",
-  "Golden Carp",
-  "Lady Hughes",
-  "Red Rover",
-  "Water Dragon",
-  "Flying Cloud",
-  "Pearl of Canton",
-  "Falcon",
-  "Nemesis",
-  "Lotus Wind",
-  "Black Joke",
-  "Sylph",
-  "Cowasjee",
-  "Ariel",
-  "Taeping",
-  "Fiery Cross",
-  "Mandarin",
-  "Eastern Queen",
-  "Kestrel",
-  "Tiger Tail",
-  "Silver Moon",
-  "Antelope"
+  "White Pearl",
+  "Scarlet Tally",
+  "Queen's Revenge",
+  "Red Lantern",
+  "Crimson Purse",
+  "Jade Empress",
+  "Plum Blossom",
+  "Silk Serpent",
+  "Pearl River Rose",
+  "Jasmine Smoke",
+  "The Jewelry Box",
+  "Dragon's Bride",
+  "Lucky Lacquer",
+  "Silver Tongue",
+  "Monsoon Bride",
+  "Typhoon Lily",
+  "Black Widow",
+  "Sea Viper",
+  "Cobra Queen",
+  "Duchess of Malacca",
+  "Rose of Batavia",
+  "Siam Princess",
+  "Shanghai Sable",
+  "Calcutta Pearl",
+  "Miss Behave",
+  "Salty Wench",
+  "Sweet Revenge",
+  "Lady Evangeline",
+  "Mistress Margery",
+  "Lady Ambrosia",
+  "Sweet Seraphina",
+  "Contessa",
+  "Arabella",
+  "Opium Moon",
+  "Pearl Diver",
+  "Ivory Queen",
+  "Spice Empress"
  ],
  "journal": {
   "keep_games": 50,
@@ -1049,7 +1069,7 @@
     "charm": 7,
     "greed": 7
    },
-   "portrait_prompt": "An unmistakably adult Cantonese woman (age 45), voluptuous comprador and merchant pirate queen in a busy godown of tea chests and silk bales, fitted storm-blue Qing-era jacket with jade fastenings, neckline loosened in the humid heat, trousers, jade bangle, abacus under one arm and writing brush in hand, confident sensual appraising look, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+   "portrait_prompt": "An unmistakably adult Cantonese woman (age 45), heavy-set, full-figured and voluptuous comprador and merchant pirate queen in a busy godown of tea chests and silk bales, fitted storm-blue Qing-era jacket with jade fastenings, neckline loosened in the humid heat, trousers, jade bangle, abacus under one arm and writing brush in hand, confident sensual appraising look, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   },
   "shipwright": {
    "name": "Tang Wai-lin",
@@ -1099,7 +1119,7 @@
     "charm": 2,
     "greed": 1
    },
-   "portrait_prompt": "An unmistakably adult English woman (age 39), fierce customs inspector and blue-coated revenue queen on a crowded Shanghai wharf, fitted storm-blue uniform coat with brass buttons worn over a black silk corset and daring neckline, pith helmet under one arm, manifest clipboard and boarding pistol, crates opened behind her, stern sensual glare, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+   "portrait_prompt": "An unmistakably adult English woman (age 39), tall and powerfully muscular, strawberry-blonde hair in a tight braid, fierce customs inspector and blue-coated revenue queen on a crowded Shanghai wharf, fitted storm-blue uniform coat with brass buttons worn over a black silk corset and daring neckline, pith helmet under one arm, manifest clipboard and boarding pistol, crates opened behind her, stern sensual glare, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   },
   "crier": {
    "name": "Tilly Marsh",
@@ -1174,7 +1194,7 @@
     "charm": 6,
     "greed": 7
    },
-   "portrait_prompt": "An unmistakably adult woman (age 47), the Mayor of a treaty port behind a teak harbour-office desk, ledger and iron strongbox before her, gold chain of office over a fitted pirate frock coat and corset, harbour lanterns through the window behind, cool appraising smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+   "portrait_prompt": "An unmistakably adult Black Swahili woman from Zanzibar (age 47), tall, full-figured and commanding, deep brown skin, hair wrapped high in an oxblood silk headwrap with heavy gold hoops, the Mayor of a treaty port behind a teak harbour-office desk, ledger and iron strongbox before her, gold chain of office over a fitted pirate frock coat and corset, harbour lanterns through the window behind, cool appraising smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   },
   "taxlady": {
    "name": "Mrs. Evelyn Marlowe",
@@ -1224,7 +1244,7 @@
     "charm": 8,
     "greed": 3
    },
-   "portrait_prompt": "An unmistakably adult English woman (age 44), the languid widowed Port Authority officer of Singapore lounging in a rattan chair on a shaded colonial wharf office veranda, loosened white muslin gown slipping from one shoulder over a lace corset, a glass of gin sweating in one hand and a customs stamp dangling forgotten from the other, ceiling fan and palms, heavy-lidded amused bedroom gaze, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+   "portrait_prompt": "An unmistakably adult English woman (age 44), soft, plump and voluptuous, honey-blonde curls coming loose, the languid widowed Port Authority officer of Singapore lounging in a rattan chair on a shaded colonial wharf office veranda, loosened white muslin gown slipping from one shoulder over a lace corset, a glass of gin sweating in one hand and a customs stamp dangling forgotten from the other, ceiling fan and palms, heavy-lidded amused bedroom gaze, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   },
   "officer_manila": {
    "name": "Doña Inés Villaraza",
@@ -1424,7 +1444,7 @@
     "charm": 8,
     "greed": 10
    },
-   "portrait_prompt": "An unmistakably adult English woman (age 46), the ruthless Port Authority officer of Calcutta at a mahogany desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying overhead, a sweet venomous smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
+   "portrait_prompt": "An unmistakably adult English woman (age 46), heavyset and statuesque with an imposing bosom, platinum-blonde hair piled high, the ruthless Port Authority officer of Calcutta at a mahogany desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying overhead, a sweet venomous smile, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text"
   },
   "officer_hongkong": {
    "name": "Senhora Isabel Rebelo",

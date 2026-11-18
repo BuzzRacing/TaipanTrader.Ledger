@@ -160,7 +160,7 @@ CHARACTERS = {
         "vice": "Cannot resist a bargain, a dare or a silk blouse cut scandalously well.",
         "secret": "Her 'late husband' handed her the business on purpose and lives happily in Macau as a painter.",
         "stats": {"cunning": 9, "nerve": 6, "charm": 7, "greed": 7},
-        "portrait_prompt": "An {adult} Cantonese woman (age 45), voluptuous comprador and merchant pirate queen in a "
+        "portrait_prompt": "An {adult} Cantonese woman (age 45), heavy-set, full-figured and voluptuous comprador and merchant pirate queen in a "
                            "busy godown of tea chests and silk bales, fitted storm-blue Qing-era jacket with jade "
                            "fastenings, neckline loosened in the humid heat, trousers, jade bangle, abacus under one "
                            "arm and writing brush in hand, confident sensual appraising look, {style}",
@@ -196,7 +196,7 @@ CHARACTERS = {
         "vice": "Immaculate uniforms, filthy language and smugglers bold enough to make inspection interesting.",
         "secret": "She lets one charming smuggler escape each New Year, then spends twelve months pretending it was clerical error.",
         "stats": {"cunning": 7, "nerve": 8, "charm": 2, "greed": 1},
-        "portrait_prompt": "An {adult} English woman (age 39), fierce customs inspector and blue-coated revenue queen "
+        "portrait_prompt": "An {adult} English woman (age 39), tall and powerfully muscular, strawberry-blonde hair in a tight braid, fierce customs inspector and blue-coated revenue queen "
                            "on a crowded Shanghai wharf, fitted storm-blue uniform coat with brass buttons worn over "
                            "a black silk corset and daring neckline, pith helmet under one arm, manifest clipboard and "
                            "boarding pistol, crates opened behind her, stern sensual glare, {style}",
@@ -296,7 +296,7 @@ _OFFICERS = {
         vice="Gin by noon, young first mates by sunset.",
         secret="She is not as drunk as she looks. Every lie she lets slide goes in a little book, for later.",
         stats={"cunning": 4, "nerve": 4, "charm": 8, "greed": 3},
-        prompt="An {adult} English woman (age 44), the languid widowed Port Authority officer of Singapore lounging in a "
+        prompt="An {adult} English woman (age 44), soft, plump and voluptuous, honey-blonde curls coming loose, the languid widowed Port Authority officer of Singapore lounging in a "
                "rattan chair on a shaded colonial wharf office veranda, loosened white muslin gown slipping from one "
                "shoulder over a lace corset, a glass of gin sweating in one hand and a customs stamp dangling forgotten "
                "from the other, ceiling fan and palms, heavy-lidded amused bedroom gaze, {style}"),
@@ -422,7 +422,7 @@ _OFFICERS = {
         vice="Rubies, gossip, and the sound of a strongbox closing on someone else's silver.",
         secret="Two of the three husbands were captains who under-declared.",
         stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 10},
-        prompt="An {adult} English woman (age 46), the ruthless Port Authority officer of Calcutta at a mahogany "
+        prompt="An {adult} English woman (age 46), heavyset and statuesque with an imposing bosom, platinum-blonde hair piled high, the ruthless Port Authority officer of Calcutta at a mahogany "
                "desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, "
                "long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying "
                "overhead, a sweet venomous smile, {style}"),

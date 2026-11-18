@@ -34,7 +34,7 @@ _CACHE_MAX = 64
 
 # Actions whose silver change counts as a cost or income line in "where the silver went".
 ACTION_LINES = {"buy_gun": "guns", "repair": "repairs", "buy_ship": "ships_bought", "sell_ship": "ships_sold",
-                "protection": "protection", "gift": "gift"}
+                "protection": "protection", "gift": "gift", "depot": "depot"}
 
 
 # ------------------------------------------------------------- reading --
@@ -299,6 +299,13 @@ def _walk(events, ps):
             b, d = e.get("bank") or [0, 0], e.get("debt") or [0, 0]
             h.line("bank_interest", b[1] - b[0])
             h.line("loan_interest", -(d[1] - d[0]))
+            continue
+        if typ == "wh_robbed":
+            v = h.lose(e.get("lost"), "wh_robbed", turn)
+            h.perils["robbed"] += 1
+            h.perils["robbed_value"] += v
+            h.line("wh_robbed", -v)
+            h.events.append({"turn": turn, "kind": "robbed", "value": int(round(v))})
             continue
         if typ == "robbed":
             lost = int(e.get("lost") or 0)

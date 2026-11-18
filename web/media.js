@@ -3,7 +3,8 @@
    while the game is family-friendly, nothing tagged NSFW is in it. This file picks which picture or
    clip to show for a persona, port, ship, cargo or scene, and keeps rotating it by the library's rules:
 
-     random   a new pick each time it comes on screen (or each spoken line, for a persona)
+     random   a new pick each time it comes on screen (or each spoken line, for a persona: from all
+              of that persona's pictures and clips, not just the ones tagged "speaking")
      shuffle  a new random pick every N seconds, never the same twice in a row
      rotate   the next one in order every N seconds
      fixed    always the starred (primary) item
@@ -177,12 +178,15 @@ const Media = (() => {
       }));
       return out;
     },
-    /* The picture or clip for a persona reading a line: a fresh pick for every line. */
+    /* The picture or clip for a persona reading a line: a fresh pick for every line, from every
+       picture and clip that persona has in the library, whatever its roles (portrait, speaking,
+       angry, idle...). Weights and the video chance still apply, and the same item is never picked
+       twice in a row. A line read in a mood the library has pictures for keeps to those. */
     speaker(cid, cls, mood) {
       if (mood && has("persona", cid, mood, { video: true, strict: true })) {
         return html("persona", cid, mood, cls || "", "", { video: true, fresh: true, strict: true, slot: "speak" });
       }
-      return html("persona", cid, "speaking", cls || "", "", { video: true, fresh: true, slot: "speak" });
+      return html("persona", cid, "", cls || "", "", { video: true, fresh: true, slot: "speak" });
     },
     options: () => L.options || {},
     family: () => !!L.family,

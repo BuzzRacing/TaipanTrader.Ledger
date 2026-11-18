@@ -66,12 +66,30 @@
 @keyframes sfCap { from { opacity: 0; transform: translateY(.6rem) scale(.97); } to { opacity: 1; transform: none; } }
 .sf-cap:empty { display: none; }
 .sf-tell { margin: 0; max-width: 46ch; font: italic 1.1rem/1.3 var(--sans); color: var(--brass-hi); text-shadow: 0 1px 3px #000; min-height: 1.4em; }
-.sf-who { display: flex; align-items: center; gap: .6rem; padding: .3rem .9rem .3rem .3rem; border: 1px solid var(--who, var(--deck-brass)); border-radius: 99px;
-  background: var(--glass); text-align: left; }
+/* The speaker: a tall portrait to the left of the caption, crossfading through that persona's
+   pictures, with a name plate across its foot. The caption keeps the centre. */
+.sf-mid { --pw: clamp(9rem, 21vw, 21rem); }
+.sf-mid:has(.sf-who:not([hidden]):not(.nopic)) { padding-inline: calc(var(--pw) + 3vw); }
+.sf-who { position: absolute; left: clamp(.2rem, 1.5vw, 1.4rem); bottom: 0; width: var(--pw); max-height: 100%; aspect-ratio: 2 / 3;
+  display: flex; flex-direction: column; justify-content: flex-end; text-align: left; cursor: default;
+  animation: sfWho .6s cubic-bezier(.2, .8, .2, 1) both; }
 .sf-who[hidden] { display: none; }
-.sf-who .sf-face { width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover; object-position: 50% 18%; border: 2px solid var(--who, var(--deck-brass)); }
-.sf-who b { display: block; font: 1rem/1.1 var(--serif); }
-.sf-who span { display: block; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+@keyframes sfWho { from { opacity: 0; transform: translateX(-1.2rem); } to { opacity: 1; transform: none; } }
+.sf-frame { position: absolute; inset: 0; overflow: hidden; border-radius: calc(var(--radius) * 1.3);
+  border: 2px solid var(--who, var(--deck-brass)); background: var(--deck-night);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .7), 0 0 0 1px rgba(0, 0, 0, .6), inset 0 0 0 1px color-mix(in srgb, var(--deck-ivory) 12%, transparent); }
+.sf-frame::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 52%, color-mix(in srgb, var(--deck-night) 85%, transparent) 84%, var(--deck-night) 100%); }
+.sf-who .sf-face { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 16%;
+  opacity: 0; transition: opacity .9s ease-in-out; }
+.sf-who .sf-face.on { opacity: 1; animation: sfFace 7s ease-out both; }
+@keyframes sfFace { from { transform: scale(1.07); } to { transform: scale(1); } }
+.sf-plate { position: relative; padding: .55rem .75rem .65rem; border-left: 3px solid var(--who, var(--deck-brass)); margin: 0 .5rem .6rem; }
+.sf-who b { display: block; font: clamp(1rem, 1.6vw, 1.35rem)/1.1 var(--serif); color: #fff6e3; text-shadow: 0 1px 3px #000; }
+.sf-who span { display: block; margin-top: .2rem; font-size: clamp(.6rem, .9vw, .72rem); letter-spacing: .08em; text-transform: uppercase; color: var(--brass-hi); text-shadow: 0 1px 2px #000; }
+/* No picture at all: the old small plate above the caption. */
+.sf-who.nopic { position: static; width: auto; aspect-ratio: auto; padding: .3rem .9rem; border: 1px solid var(--who, var(--deck-brass)); border-radius: 99px; background: var(--glass); }
+.sf-who.nopic .sf-plate { margin: 0; padding: 0; border: 0; }
 
 /* ---------------------------------------------------- the fleet and the buttons -- */
 .sf-foot { display: grid; grid-template-columns: minmax(13rem, 1fr) minmax(0, 2.6fr); gap: clamp(.6rem, 2vw, 1.4rem); align-items: end; }
@@ -171,11 +189,14 @@ body.seafighting #app { visibility: hidden; }
   .sf-fleet ul { grid-template-columns: 1fr 1fr; column-gap: .9rem; }
   .sf-btns.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sf-cols { grid-template-columns: 1fr; }
+  .sf-mid { --pw: clamp(8rem, 30vw, 15rem); }
+  .sf-mid:has(.sf-who:not([hidden]):not(.nopic)) { padding-inline: calc(var(--pw) + 4vw) 0; }
 }
 @media (max-height: 560px) {
   #seafight { gap: .25rem; padding-top: .4rem; padding-bottom: .4rem; }
   .sf-cap { font-size: clamp(1.4rem, 6vh, 2.4rem); }
   .sf-tell { font-size: .9rem; }
+  .sf-mid { --pw: clamp(6rem, 16vw, 10rem); }
   .sf-fleet { padding: .35rem .5rem; }
   .sf-fleet h3, .sf-pips, .sf-enemy p { display: none; }
   #seafight .sf-btn { min-height: 3.4rem; }
@@ -184,7 +205,7 @@ body.seafighting #app { visibility: hidden; }
   .sf-card h2 { font-size: 1.8rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #seafight, .sf-result, .sf-cap.in, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
+  #seafight, .sf-result, .sf-cap.in, .sf-who, .sf-who .sf-face.on, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
   .sf-pic, .sf-junks i, .sf-hull i { transition: none; }
 }
 

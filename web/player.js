@@ -279,8 +279,14 @@ function deckArt(inGame) {
   Ambient.set(list);
   if (!inGame) return;
   Stage.mount(document.getElementById("stageSlot"));
-  // At the Port Authority's desk the officer is already in the popup, so the stage shows the port.
+  // At the Port Authority's desk the stage shows the officer too, in a different picture from the
+  // popup's (customs.js Customs.stage); with no second picture of her, it shows the port.
   const cxOpen = Customs.isOpen() && !document.querySelector(".captains-log");
+  if (cxOpen) {
+    const cx = Customs.stage();
+    document.getElementById("deck").classList.toggle("woman", !!cx);
+    if (cx) { Stage.idle(cx.key, cx.html, cx.name, cx.note); return; }
+  }
   // In the Mayor's Parlour the stage shows the port's Mayor.
   const woman = cxOpen ? null : mayorOpen() ? STAGE_WOMEN.chart : STAGE_WOMEN[ui.tab];
   const womanImg = woman ? stageWomanHtml(me.port, woman.role) : "";
@@ -349,8 +355,9 @@ const womanPick = {};
 /* Cast members who are port women: while the Mayor or the Tax collector speaks, the stage shows the
    picture for the port the house is in (deck.js Stage asks for it), not one portrait for every port. */
 const PORT_SPEAKERS = { mayor: "mayor", taxlady: "taxlady" };
-/* While the Port Authority's desk is open the officer is already shown in the popup: when she speaks,
-   the stage keeps the port pictures and only her words go on the plate (deck.js Stage.talk). */
+/* While the Port Authority's desk is open the stage already shows the officer (a different picture
+   from the popup's): when she speaks, the stage keeps that picture and only her words go on the plate
+   (deck.js Stage.talk). */
 function stageKeepsPort(cid) {
   return /^officer_|^taxlady$/.test(cid || "") && Customs.isOpen();
 }
@@ -505,12 +512,37 @@ function lobbyScreen() {
     ${th("join.board_url", { url: "<b>" + esc(S.join_url) + "/board</b>" })}</p></main>`;
 }
 
+/* The race: one ledger line per House, richest first. The top three wear gold, silver and bronze
+   medals; everyone below gets a plain engraved ring. Equal fortunes share a place. Each line shows the
+   crest, the House and its captain, where it lies and how many ships, then net worth with the gap to
+   the leader underneath. */
+const ORD = typeof Intl !== "undefined" && Intl.PluralRules ? new Intl.PluralRules("en", { type: "ordinal" }) : null;
+function ordinal(n) {
+  const k = ORD ? ORD.select(n) : "other";
+  return te("race.ord_" + k, { n });
+}
 function standings() {
-  const rows = S.players.slice().sort((a, b) => b.worth - a.worth).map((p, i) =>
-    `<tr class="${p.id === S.me.id ? "me" : ""}"><td>${i + 1}</td>` +
-    `<td>${houseMark(p)}<span class="hname">${esc(p.firm)}</span><br><span class="muted">${esc(p.name)}</span> <span class="rankname">${esc(p.rank)}</span></td>` +
-    `<td>${esc(portName(p.port))}</td><td class="n">${p.ships}</td><td class="n">${money(p.worth)}</td></tr>`).join("");
-  return `<table class="grid"><thead><tr><th></th><th>${te("col.house")}</th><th>${te("col.port")}</th><th class="n">${te("col.ships")}</th><th class="n">${te("col.worth")}</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const list = S.players.slice().sort((a, b) => b.worth - a.worth);
+  const lead = list.length ? list[0].worth : 0;
+  let place = 0;
+  const rows = list.map((p, i) => {
+    if (i === 0 || p.worth !== list[i - 1].worth) place = i + 1;
+    const medal = ["", "gold", "silver", "bronze"][place] || "";
+    const me = p.id === S.me.id;
+    const gap = lead - p.worth;
+    const sub = place === 1
+      ? (list.length > 1 && list[1].worth < p.worth ? te("race.lead_by", { gap: money(p.worth - list[1].worth) }) : te("race.leader"))
+      : te("race.behind", { gap: money(gap) });
+    return `<li class="race-row${medal ? " " + medal : ""}${me ? " me" : ""}">
+      <span class="medal${medal ? " " + medal : ""}" title="${esc(ordinal(place))}" aria-label="${esc(ordinal(place))}"><b>${place}</b></span>
+      <span class="race-crest">${houseMark(p)}</span>
+      <span class="race-who"><b class="hname">${esc(p.firm)}</b>${me ? `<em class="race-you">${te("race.you")}</em>` : ""}
+        <span class="race-capt">${esc(p.name)} <span class="rankname">${esc(p.rank)}</span></span>
+        <small class="race-where">${esc(portName(p.port))} · ${esc(ten("race.ships", p.ships))}</small></span>
+      <span class="race-worth"><small>${te("col.worth")}</small><b class="${p.worth < 0 ? "down" : ""}">${money(p.worth)}</b><small>${sub}</small></span>
+    </li>`;
+  }).join("");
+  return `<ol class="race">${rows}</ol>`;
 }
 
 function endScreen() {
@@ -716,7 +748,7 @@ function profitOf(g, qty, total) {
 
 /* "paid 412 avg" under the price, jade when one unit sold here now beats it, oxblood when it does not. */
 function paidHtml(g) {
-  const paid = paidFor(g), have = (S.me.cargo[g] || 0) + ((S.me.wh || {})[g] || 0);
+  const paid = paidFor(g), have = (S.me.cargo[g] || 0) + ((S.me.stored || S.me.wh || {})[g] || 0);
   if (paid === null || !have) return "";
   const one = quote(g, 1, "sell");
   return `<span class="mk-paid ${one >= paid ? "up" : "down"}" title="${te("market.paid_tip", { paid: money(paid), good: esc(D.goods[g].name), price: money(one) })}">${te("market.paid", { paid: money(paid) })}</span>`;
@@ -862,9 +894,9 @@ function clearanceLedger() {
    The figures come from the account book the server keeps (me.books, engine.py _book). */
 const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
-  ["port", ["dues", "gift", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
+  ["port", ["dues", "gift", "depot", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
   ["money", ["interest", "bank_interest"]],
-  ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed"]],
+  ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed", "wh_robbed"]],
 ];
 const plTotal = lines => Object.values(lines || {}).reduce((a, b) => a + b, 0);
 const signed = n => (n > 0 ? "+" : "") + money(n);
@@ -872,9 +904,13 @@ const tone = n => n > 0.5 ? "up" : n < -0.5 ? "down" : "";
 /* "1 month" / "3 months": a key with "_1" after it is used for exactly one. */
 const ten = (key, n, vars) => te(n === 1 && T[key + "_1"] != null ? key + "_1" : key, Object.assign({ n, months: n }, vars || {}));
 
+/* Services: the full set at home; elsewhere only where the port has a bank counter or warehouses to let. */
 function portViews() {
-  return ["arrival", "accounts", "log", "news"].concat(S.me.port === myHome() ? ["services"] : []);
+  const me = S.me, here = me.port === myHome() || me.bank_here || (me.wh_here && me.wh_here !== "none");
+  return ["arrival", "accounts", "log", "news"].concat(here ? ["services"] : []);
 }
+const portViewLabel = v => v === "services" && S.me.port !== myHome()
+  ? te("port.view.services_here", { port: esc(portName(S.me.port)) }) : te("port.view." + v);
 
 function portTab() {
   // A new month always opens on Arrival.
@@ -882,7 +918,7 @@ function portTab() {
   const views = portViews();
   if (!views.includes(ui.portView)) ui.portView = "arrival";
   const seg = `<nav class="pt-tabs" role="tablist" aria-label="${te("port.views")}">${views.map(v =>
-    `<button type="button" role="tab" class="pt-tab${ui.portView === v ? " on" : ""}" data-act="port_view" data-v="${v}" aria-selected="${ui.portView === v}"><span>${te("port.view." + v)}</span>${portBadge(v)}</button>`).join("")}</nav>`;
+    `<button type="button" role="tab" class="pt-tab${ui.portView === v ? " on" : ""}" data-act="port_view" data-v="${v}" aria-selected="${ui.portView === v}"><span>${portViewLabel(v)}</span>${portBadge(v)}</button>`).join("")}</nav>`;
   const body = { arrival: portArrival, accounts: portAccounts, log: portLog, news: portNews, services: portServices }[ui.portView]();
   return `<div class="pt">${seg}<div class="pt-view pt-${ui.portView}">${body}</div></div>`;
 }
@@ -1211,9 +1247,13 @@ function portLog() {
 
 /* ---- News */
 function portNews() {
-  const news = (S.news || []).map(n => {
-    const at = n.indexOf(": ");
-    return at > 0 && at < 14 ? `<li><span class="pt-when">${esc(n.slice(0, at))}</span><span>${esc(n.slice(at + 2))}</span></li>` : `<li><span class="pt-when"></span><span>${esc(n)}</span></li>`;
+  /* Heat: the server sends 0..1 per headline (its importance, cooled by its age in months); hot items
+     glow amber-to-crimson behind the text and fade back to plain as the weeks pass. */
+  const heat = S.news_heat || [];
+  const news = (S.news || []).map((n, i) => {
+    const at = n.indexOf(": "), h = Math.max(0, Math.min(1, +heat[i] || 0));
+    const hot = h > 0.04 ? ` class="pt-hot${h >= 0.8 ? " pt-blaze" : ""}" style="--heat:${h.toFixed(3)}"` : "";
+    return at > 0 && at < 14 ? `<li${hot}><span class="pt-when">${esc(n.slice(0, at))}</span><span>${esc(n.slice(at + 2))}</span></li>` : `<li${hot}><span class="pt-when"></span><span>${esc(n)}</span></li>`;
   }).join("");
   const bans = Object.keys(S.bans || {}).map(k => `<tr><td>${esc(portName(k))}</td><td class="n">${(S.bans[k] || []).map(g => `<span class="pt-chip down">${esc(D.goods[g] ? D.goods[g].name : g)}</span>`).join("")}</td></tr>`).join("");
   const here = (D.ports[S.me.port] || {}).region;
@@ -1254,7 +1294,7 @@ function serviceTransfer(k, g) {
   } else {
     const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
     [left, right, out, into] = ["load", "store", Math.min(me.wh[g] || 0, me.capacity - me.used),
-      Math.min(me.cargo[g] || 0, me.wh_cap - whUsed)];
+      Math.min((me.cargo[g] || 0) - ((me.bond || {})[g] || 0), me.wh_cap - whUsed)];
   }
   const key = g ? "w_" + g : k;
   const have = Math.max(0, Math.floor(out)), max = have + Math.max(0, Math.floor(into));
@@ -1303,27 +1343,52 @@ function serviceCard(art, title, info, body) {
 }
 
 function portServices() {
-  const me = S.me;
-  const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
-  const goods = Object.keys(D.goods).filter(g => (me.cargo[g] || 0) + (me.wh[g] || 0) > 0);
-  const warehouse = goods.map(g => {
-    const name = esc(D.goods[g].name);
-    return `<div class="pt-service-good"><div class="pt-service-stock"><b>${name}</b>
-      <span>${te("col.aboard")} <b>${(me.cargo[g] || 0).toLocaleString()}</b> ·
-        ${te("col.in_store")} <b>${(me.wh[g] || 0).toLocaleString()}</b></span></div>
-      ${serviceSlider("wh", name, g)}</div>`;
-  }).join("") || `<p class="muted">${te("wh.empty")}</p>`;
-  const agent = me.protect > D.renew_at ? te("agent.content", { months: me.protect })
-    : me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none");
-  const tribute = me.protect > D.renew_at ? "" : btn(te("agent.pay", { cost: money(me.protect_cost) }),
-    "protection", "", "primary", me.ready || me.protect_cost > me.cash);
-  return serviceCard("bank", te("bank.title"), te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) }),
-    serviceSlider("bank", te("bank.title")))
-    + serviceCard("lender", te("loan.title"), te("loan.info", { debt: money(me.debt), rate: pct(D.loan_rate, 2), room: money(me.loan_room) }),
-      serviceSlider("loan", te("loan.title")))
-    + serviceCard("warehouse", te("wh.title"), te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(),
-      hold_used: me.used, hold: me.capacity }), warehouse)
-    + serviceCard("agent", te("agent.title"), agent, tribute);
+  const me = S.me, home = me.port === myHome(), port = esc(portName(me.port));
+  const locked = me.ready, dr = me.depot_rules || {};
+  let out = "";
+  if (home || me.bank_here) {
+    out += serviceCard("bank", te("bank.title"), te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) })
+      + (home ? "" : " " + te("bank.one_account")), serviceSlider("bank", te("bank.title")));
+  }
+  if (home) {
+    out += serviceCard("lender", te("loan.title"), te("loan.info", { debt: money(me.debt), rate: pct(D.loan_rate, 2), room: money(me.loan_room) }),
+      serviceSlider("loan", te("loan.title")));
+  }
+  if (me.wh_here === "closed") {
+    out += serviceCard("warehouse", te("wh.offer_title"), te("wh.offer", { port, cost: money(dr.open), cap: (dr.cap || 0).toLocaleString() }),
+      `<div class="pt-actions">${btn(te("wh.open", { cost: money(dr.open) }), "depot", 'data-op="open"', "primary", locked || dr.open > me.cash)}</div>`);
+  } else if (me.wh_here === "home" || me.wh_here === "open") {
+    const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
+    const goods = Object.keys(D.goods).filter(g => (me.cargo[g] || 0) + (me.wh[g] || 0) > 0);
+    const warehouse = goods.map(g => {
+      const name = esc(D.goods[g].name);
+      const sellable = (me.wh[g] || 0) + Math.max(0, (me.cargo[g] || 0) - ((me.bond || {})[g] || 0));
+      const sellAll = (me.wh[g] || 0) > 0 && sellable > 0 && Number.isFinite(me.prices[g])
+        ? btn(te("wh.sell_all", { qty: sellable.toLocaleString(), gain: money(quote(g, sellable, "sell")) }), "sell_all",
+          `data-good="${g}" title="${te("wh.sell_all_tip")}"`, "pt-sellall", locked) : "";
+      return `<div class="pt-service-good"><div class="pt-service-stock"><b>${name}</b>
+        <span>${te("col.aboard")} <b>${(me.cargo[g] || 0).toLocaleString()}</b> ·
+          ${te("col.in_store")} <b>${(me.wh[g] || 0).toLocaleString()}</b></span>${sellAll}</div>
+        ${serviceSlider("wh", name, g)}</div>`;
+    }).join("") || `<p class="muted">${te("wh.empty")}</p>`;
+    // What sits in the house's other warehouses, so nothing is forgotten in a far port.
+    const others = Object.entries(Object.assign(home ? {} : { [myHome()]: { goods: me.wh_home || {} } }, me.wh_away || {}))
+      .filter(([k, d]) => k !== me.port && Object.keys(d.goods || {}).length)
+      .map(([k, d]) => esc(portName(k)) + " (" + Object.entries(d.goods).map(([g, q]) => q.toLocaleString() + " " + esc(D.goods[g] ? D.goods[g].name : g)).join(", ") + ")");
+    const expand = me.wh_here === "open"
+      ? `<div class="pt-actions">${btn(te("wh.expand", { qty: (dr.add || 0).toLocaleString(), cost: money(dr.expand) }), "depot", 'data-op="expand"', "pt-go", locked || dr.expand > me.cash)}</div>` : "";
+    out += serviceCard("warehouse", home ? te("wh.title") : te("wh.title_away", { port }),
+      te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(), hold_used: me.used, hold: me.capacity })
+      + (others.length ? " " + te("wh.elsewhere", { list: others.join("; ") }) : ""), warehouse + expand);
+  }
+  if (home) {
+    const agent = me.protect > D.renew_at ? te("agent.content", { months: me.protect })
+      : me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none");
+    const tribute = me.protect > D.renew_at ? "" : btn(te("agent.pay", { cost: money(me.protect_cost) }),
+      "protection", "", "primary", me.ready || me.protect_cost > me.cash);
+    out += serviceCard("agent", te("agent.title"), agent, tribute);
+  }
+  return out;
 }
 
 /* ---------------------------------------------------------------- fleet -- */
@@ -1781,6 +1846,8 @@ app.addEventListener("click", async e => {
       return;
     }
     case "protection": return act("protection");
+    case "depot": return act("depot", { op: d.op });
+    case "sell_all": return act("sell", { good: d.good, src: "all" });
     case "gun": return act("buy_gun", { index: +d.i });
     case "repair": return act("repair", { index: d.i === "all" ? "all" : +d.i });
     case "sellship": return act("sell_ship", { index: +d.i });

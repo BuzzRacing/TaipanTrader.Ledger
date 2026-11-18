@@ -11,12 +11,19 @@
    in a role she shows a different one each time her mood changes. A port without its own uses its
    plain "Tax lady" pictures, then Hong Kong's, then the officer's profile picture.
 
+   While her desk is open the right-hand stage shows her too, in a different picture from the popup's
+   (and from the small one beside her greeting): the stage draws from every picture of her this port has,
+   so two or three pictures of her are enough. With only one picture of her, the stage keeps the port.
+
    Needs from player.js: S, D, ui, act(), render(), portName(), pct(). */
 "use strict";
 
 const Customs = (() => {
   const pick = {};          // role -> id of the picture last shown
   let shownState = null;    // the mood her picture is showing now
+  const onScreen = { art: "", greet: "", stage: "" };   // picture URLs showing now, so none repeat
+  const stagePick = {};     // visit key -> URL of her picture on the stage
+  const srcOf = h => { const m = /src="([^"]+)"/.exec(h || ""); return m ? m[1].replace(/&amp;/g, "&") : ""; };
 
   const cu = () => (S && S.me && S.me.customs) || null;
   const key = c => c.port + ":" + S.turn;
@@ -114,18 +121,23 @@ const Customs = (() => {
     if (!list.length) list = pool(D.home || "hongkong", "taxlady");
     if (!list.length) {
       const html = Media.html("persona", c.officer, "portrait", cls, ((VS.cast || {})[c.officer] || {}).portrait || "", { slot: "cx" });
+      onScreen.art = srcOf(html);
       return html || `<i class="stg-mono">${esc((c.name || "?").split(/\s+/).map(w => w[0]).slice(0, 2).join(""))}</i>`;
     }
     const memo = state + ":" + key(c);
     let it = list.find(i => i.id === pick[memo]);
     if (!it) {
       // A new mood (or a new visit) shows a new picture, never the one she wore last.
+      // Never the picture the stage is showing beside her either.
       const last = pick.last;
-      const choices = list.length > 1 ? list.filter(i => i.id !== last) : list;
+      let choices = list.filter(i => i.id !== last && i.u !== onScreen.stage);
+      if (!choices.length) choices = list.filter(i => i.u !== onScreen.stage);
+      if (!choices.length) choices = list;
       it = choices[Math.floor(Math.random() * choices.length)];
       pick[memo] = it.id;
     }
     pick.last = it.id;
+    onScreen.art = it.u;
     const u = esc(it.u);
     return it.t === "video"
       ? `<video class="${cls}" src="${u}" muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`
@@ -161,6 +173,7 @@ const Customs = (() => {
 
   function greeting(c) {
     const portrait = Media.html("persona", c.officer, "portrait", "cl-face", ((VS.cast || {})[c.officer] || {}).portrait, { strict: true });
+    onScreen.greet = srcOf(portrait);
     return `<blockquote class="cx-say${portrait ? " has-face" : ""}">
       ${portrait ? `<span class="cl-portrait">${portrait}</span>` : ""}
       <div><div class="cl-reader"><span><i aria-hidden="true">${DECK_ICONS.speech_on}</i>${te("log.reading")}</span><b>${esc(c.name)}</b></div>${esc(c.welcome)}</div>
@@ -379,16 +392,49 @@ const Customs = (() => {
     return false;
   }
 
-  /* Her face for the current mood (kept for callers; the right-hand stage now shows the port while
-     the desk is open, since she is already in the popup). */
+  /* Every picture of her, best first: this port's tax-lady pictures (any of her moods), her own
+     persona pictures (any role), her profile picture. Borrowed ones (her home port's, Hong Kong's, any
+     port's plain "Tax lady") come second and are only used when none of her own is free. */
+  function herPictures(c) {
+    const seen = new Set(), own = [], borrowed = [];
+    const add = (out, i) => { if (i && i.u && !seen.has(i.u)) { seen.add(i.u); out.push(i); } };
+    const lady = i => i.r.some(r => r === "taxlady" || r.startsWith("taxlady_"));
+    Media.items("port", [c.port], "", true).filter(lady).forEach(i => add(own, i));
+    if (c.officer) Media.items("persona", [c.officer], "", true).forEach(i => add(own, i));
+    const prof = ((VS.cast || {})[c.officer] || {}).portrait;
+    if (prof) add(own, { id: prof, u: prof, t: "image", r: [] });
+    [D.home || "hongkong", "hongkong"].concat(Object.keys(D.ports || {})).forEach(p =>
+      Media.items("port", [p], "taxlady", true).filter(i => i.r.includes("taxlady")).forEach(i => add(borrowed, i)));
+    return { own, borrowed };
+  }
+
+  /* Her picture on the right-hand stage while the desk is open: one pick per visit, never the picture
+     in the popup or beside her greeting. Null when no other picture of her is free (the stage then
+     keeps the port). */
   function stage() {
     const c = cu();
-    if (!c) return null;
-    const state = shownState || "welcome";
-    return { key: "cx:" + key(c) + ":" + state, html: face(c, state), name: c.name, note: c.title };
+    if (!c || S.me.ready) { onScreen.stage = ""; return null; }
+    const { own, borrowed } = herPictures(c);
+    const busy = u => u === onScreen.art || u === onScreen.greet;
+    const k = key(c);
+    let it = own.concat(borrowed).find(i => i.u === stagePick[k] && !busy(i.u));
+    if (!it) {
+      let free = own.filter(i => !busy(i.u));
+      if (!free.length) free = borrowed.filter(i => !busy(i.u));
+      if (!free.length) { onScreen.stage = ""; delete stagePick[k]; return null; }
+      it = free[Math.floor(Math.random() * free.length)];
+      stagePick[k] = it.u;
+    }
+    onScreen.stage = it.u;
+    const u = esc(it.u), cls = "stg-img stg-keeper stg-taxlady";
+    const html = it.t === "video"
+      ? `<video class="${cls}" src="${u}" muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`
+      : `<img class="${cls}" src="${u}" alt="">`;
+    return { key: "cx:" + k + ":" + it.u, html, name: c.name, note: c.title };
   }
+  /* Her mood changed the popup's picture: if it now matches the stage's, the stage picks another. */
   function showOnStage() {
-    // The stage keeps the port pictures while the desk is open: nothing to swap when her mood changes.
+    if (typeof deckArt === "function") deckArt(true);
   }
 
   /* Her greeting is read aloud once per visit, by the officer of that port, the moment her desk opens:

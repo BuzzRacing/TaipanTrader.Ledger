@@ -950,17 +950,17 @@ body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; t
 .book-quotes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .7rem; padding-top: .65rem; border-top: 1px solid var(--rule); }
 .book-quotes b { display: block; font-size: 1.2rem; }
 .book-plan .book-toggle { margin-top: .7rem; }
-.book-table-scroll { overflow: auto; max-height: min(40rem, 70dvh); border: 1px solid var(--edge); border-radius: var(--radius); }
+.book-table-scroll { overflow: auto; max-height: min(60rem, 82dvh); margin-top: .5rem; border: 1px solid var(--edge); border-radius: var(--radius); }
 .book-table-scroll:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
 .book-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-.book-table :is(th, td) { padding: .22rem .45rem; border-bottom: 1px solid var(--rule); line-height: 1.15; }
-.book-table thead th { position: sticky; top: 0; z-index: 2; min-width: 6rem; padding: .18rem; background: var(--deck-lacquer); vertical-align: bottom; }
-.book-table th:first-child { position: sticky; left: 0; width: 9rem; min-width: clamp(6.5rem, 18vw, 9rem); text-align: left; border-right: 1px solid var(--edge); }
-.book-table thead th:first-child { z-index: 3; padding: .2rem .45rem; font: 400 .72rem/1 var(--special); letter-spacing: .08em; text-transform: uppercase; color: var(--brass-hi); }
+.book-table :is(th, td) { padding: .6rem .9rem; border-bottom: 1px solid var(--rule); line-height: 1.3; }
+.book-table thead th { position: sticky; top: 0; z-index: 2; min-width: 7.5rem; padding: .45rem .4rem; background: var(--deck-lacquer); vertical-align: bottom; }
+.book-table th:first-child { position: sticky; left: 0; width: 12rem; min-width: clamp(8rem, 20vw, 12rem); text-align: left; border-right: 1px solid var(--edge); }
+.book-table thead th:first-child { z-index: 3; padding: .45rem .9rem; font: 400 .8rem/1 var(--special); letter-spacing: .08em; text-transform: uppercase; color: var(--brass-hi); }
 .book-table tbody th { z-index: 1; background: var(--deck-night); white-space: nowrap; }
-.book-table tbody th b { font: 400 .92rem/1.1 var(--serif); }
-.book-table tbody th small { display: inline; margin-left: .3rem; font-size: .72rem; }
-.book-table td { text-align: right; white-space: nowrap; font: .84rem/1.15 Consolas, monospace; font-variant-numeric: tabular-nums; }
+.book-table tbody th b { font: 400 1.05rem/1.2 var(--serif); }
+.book-table tbody th small { display: inline; margin-left: .55rem; font-size: .8rem; }
+.book-table td { text-align: right; white-space: nowrap; font: .98rem/1.3 Consolas, monospace; font-variant-numeric: tabular-nums; }
 .book-table tr.here td { background: color-mix(in srgb, var(--deck-brass) 12%, var(--deck-night)); }
 .book-table tr.here th { background: var(--deck-lacquer); color: var(--brass-hi); border-left: 2px solid var(--deck-brass); }
 .book-table tr.here td.base { color: var(--brass-hi); font-weight: 700; }
@@ -973,16 +973,16 @@ body.player .book button.book-route { display: grid; gap: .15rem; width: 100%; t
 .book-table td.good.hot { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-good) 70%, #fff); }
 .book-table td.poor.hot { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-poor) 70%, #fff); }
 .book-table td.blocked { color: var(--muted); background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(255, 255, 255, .04) 5px 10px), var(--deck-night); }
-.book-ban { font-style: normal; color: var(--blood-hi); margin-right: .3rem; }
+.book-ban { font-style: normal; color: var(--blood-hi); margin-right: .45rem; }
 .book-table tbody tr:hover :is(td, th) { filter: brightness(1.18); }
-.book-table .book-cargo-tile { aspect-ratio: auto; height: clamp(4.75rem, 8vw, 7rem); }
+.book-table .book-cargo-tile { aspect-ratio: auto; height: clamp(5.5rem, 9vw, 8rem); }
 /* One-line heat legend; the long caveat lives in its tooltip. */
-.book-heat-key { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .45rem; font: 400 .74rem/1 var(--special); letter-spacing: .05em; color: var(--muted); cursor: help; }
-.book-heat-key .k { width: 1.5rem; height: .6rem; border-radius: 2px; --heat: .45; }
+.book-heat-key { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; padding: .35rem .1rem; font: 400 .82rem/1 var(--special); letter-spacing: .05em; color: var(--muted); cursor: help; }
+.book-heat-key .k { width: 1.9rem; height: .75rem; border-radius: 2px; --heat: .45; }
 .book-heat-key .k.hot { --heat: 1; }
 .book-heat-key .k.good { background: color-mix(in srgb, var(--book-jade) calc(var(--heat) * 62%), var(--deck-night)); }
 .book-heat-key .k.poor { background: color-mix(in srgb, var(--book-oxblood) calc(var(--heat) * 58%), var(--deck-night)); }
-.book-heat-key .k + span { margin-right: .35rem; }
+.book-heat-key .k + span { margin-right: .7rem; }
 .book-heat-info { color: var(--brass-hi); margin-left: auto; }
 
 /* Slim branded segmented switch (Market Signals · Voyage Brief · All Prices). */
@@ -1350,6 +1350,24 @@ body.player .pt-seg button[aria-pressed="true"] { color: var(--deck-night);
 .pt-news-list li:last-child { border-bottom: 0; }
 .pt-news-list li.muted { display: block; }
 .pt-when { font: 400 .74rem/1.2 var(--special); letter-spacing: .06em; color: var(--deck-brass); }
+/* News heat map: --heat 0..1 from the server. Colour runs brass (warm) to crimson (hot); strength and the
+   left ember bar scale with heat, so a headline cools to plain over two or three months. */
+.pt-news-list li.pt-hot {
+  --heat-c: color-mix(in srgb, #d23a24 calc(var(--heat) * 100%), var(--deck-brass));
+  position: relative; margin: 0 -.6rem; padding-left: .6rem; padding-right: .6rem; border-radius: 4px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--heat-c) calc(var(--heat) * 55%), transparent) 0%,
+    color-mix(in srgb, var(--heat-c) calc(var(--heat) * 22%), transparent) 55%,
+    transparent 100%);
+  box-shadow: inset calc(2px + var(--heat) * 4px) 0 0 color-mix(in srgb, var(--heat-c) calc(35% + var(--heat) * 65%), transparent);
+  transition: background .6s ease, box-shadow .6s ease;
+}
+.pt-news-list li.pt-hot .pt-when { color: color-mix(in srgb, var(--deck-ivory) calc(var(--heat) * 100%), var(--deck-brass)); }
+.pt-news-list li.pt-blaze span:last-child { font-weight: 700; }
+.pt-news-list li.pt-blaze::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 14px color-mix(in srgb, #d23a24 50%, transparent); animation: pt-ember 3.2s ease-in-out infinite; }
+@keyframes pt-ember { 0%, 100% { opacity: .25; } 50% { opacity: .85; } }
+@media (prefers-reduced-motion: reduce) { .pt-news-list li.pt-blaze::after { animation: none; opacity: .5; } }
 .pt-wx { display: inline-block; min-width: 5.5rem; padding: .15rem .6rem; border-radius: 999px; text-align: center; font: 700 .8rem/1.2 var(--sans); border: 1px solid; }
 .pt-wx.wx0, .pt-wx.wx1 { color: var(--jade-hi); border-color: color-mix(in srgb, var(--jade-hi) 45%, transparent); background: color-mix(in srgb, var(--deck-jade) 25%, transparent); }
 .pt-wx.wx2 { color: var(--brass-hi); border-color: color-mix(in srgb, var(--deck-brass) 55%, transparent); background: color-mix(in srgb, var(--deck-brass) 14%, transparent); }
@@ -1420,7 +1438,6 @@ body.player .pt-transfer-action button { min-height: 0; height: 2.1rem; min-widt
 body.player .pt-transfer-action:not([data-side=""]) button:not(:disabled) { color: #fff6e3; border-color: color-mix(in srgb, var(--deck-brass) 75%, transparent);
   background: linear-gradient(180deg, color-mix(in srgb, var(--deck-oxblood) 78%, #ff9b84 10%), var(--deck-oxblood) 55%, color-mix(in srgb, var(--deck-oxblood) 70%, #000)); }
 .pt-service-body > button.primary { align-self: flex-start; margin-top: auto; }
-.pt-race .grid { margin-bottom: .5rem; }
 
 /* The race card lives in the side column under the port art (player.js gameScreen()). The stage gives
    up 15rem of height for it; with many houses the card scrolls inside its own box. */
@@ -1430,11 +1447,6 @@ body.player .pt-transfer-action:not([data-side=""]) button:not(:disabled) { colo
 .pt-race-side { margin: 0; padding: .55rem .75rem .65rem; }
 .pt-race-side h2 { margin-bottom: .3rem; }
 .pt-race-side > p { margin: 0 0 .35rem; font-size: .88rem; }
-.pt-race-side .grid { font-size: .86rem; }
-.pt-race-side .grid th, .pt-race-side .grid td { padding: .25rem .3rem; }
-.pt-race-side .grid th:nth-child(4), .pt-race-side .grid td:nth-child(4) { display: none; }   /* ships: no room beside the art */
-/* The race under the port art: each House's crest sits large, on its own line above the House name. */
-.pt-race-side .grid td .crest { display: block; width: 3.75rem; height: 3.75rem; margin: 0 0 .3rem; }
 @media (orientation: portrait), (max-aspect-ratio: 1/1) {
   .deck[data-tab="port"] .dk-side { flex-direction: row; justify-content: center; align-items: stretch; }
   .deck[data-tab="port"] .dk-stage { width: auto; height: 100cqh; max-width: 55cqw; }
@@ -1542,3 +1554,68 @@ body.player .pt-mayor button.mp-give { min-height: 0; height: 2.35rem; padding: 
 .dk-nav .dk-face.face span { max-width: none; color: #fff; }
 .dk-me.open .dk-face.face .dk-tabimg { box-shadow: 0 0 0 2px var(--brass-hi), 0 0 14px color-mix(in srgb, var(--deck-brass) 70%, transparent); }
 .dk-me.open .dk-face.face::after { background: transparent; }
+
+/* Away-port warehouses: "Sell all" (hold and store together) beside a cargo's stock line. */
+body.player .pt button.pt-sellall { flex: none; margin-left: auto; padding: .2rem .6rem; font-size: .82em; line-height: 1.2;
+  color: var(--deck-night, #1a120c); background: linear-gradient(180deg, #f3d27a, #c9963d); border: 1px solid var(--brass-hi, #f3d27a);
+  border-radius: 999px; font-weight: 700; cursor: pointer; }
+body.player .pt button.pt-sellall:hover:not(:disabled) { filter: brightness(1.08); }
+body.player .pt button.pt-sellall:disabled { opacity: .45; cursor: default; }
+
+/* ------------------------------------------------------------ the race (player.js standings()) --
+   One ledger line per House: medal · crest · House and captain · net worth. Gold, silver and bronze
+   for the top three, a plain engraved ring below that. Used beside the port art and on the end screen. */
+ol.race { list-style: none; margin: 0 0 .55rem; padding: 0; display: grid; gap: .4rem; }
+.race-row { position: relative; display: grid; grid-template-columns: 2.3rem 3.2rem minmax(0, 1fr) auto; align-items: center; gap: .65rem;
+  padding: .5rem .7rem .5rem .6rem; border: 1px solid var(--rule); border-radius: 6px;
+  background: color-mix(in srgb, var(--deck-night) 45%, transparent); }
+.race-row.gold { border-color: color-mix(in srgb, #e9c25a 55%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, #e9c25a 16%, transparent), color-mix(in srgb, var(--deck-night) 45%, transparent) 70%); }
+.race-row.silver { border-color: color-mix(in srgb, #cfd6dd 35%, transparent); }
+.race-row.bronze { border-color: color-mix(in srgb, #c27a45 40%, transparent); }
+.race-row.me { box-shadow: inset 3px 0 0 var(--brass-hi); }
+
+/* The medal: a struck disc on a short ribbon. Places 4+ get a plain ring with no ribbon. */
+.medal { box-sizing: border-box; position: relative; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 50%; flex: none;
+  margin-top: .45rem; color: var(--deck-ivory); border: 2px solid color-mix(in srgb, var(--deck-brass) 45%, transparent);
+  background: color-mix(in srgb, var(--deck-night) 70%, transparent); }
+.medal b { font: 700 1.05rem/1 var(--serif); position: relative; z-index: 1; }
+.medal.gold, .medal.silver, .medal.bronze { border: 0; color: #2a1a0c;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), inset 0 0 0 4px rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.55); }
+.medal.gold   { background: radial-gradient(circle at 32% 28%, #fff4c2, #f0c84a 38%, #b98617 75%, #7d5608); }
+.medal.silver { background: radial-gradient(circle at 32% 28%, #ffffff, #d9dee3 38%, #9aa3ab 75%, #5f676e); }
+.medal.bronze { background: radial-gradient(circle at 32% 28%, #ffd9b5, #d08a4f 38%, #9a5a2a 75%, #5e3315); color: #2a1206; }
+.medal.gold::before, .medal.silver::before, .medal.bronze::before { content: ""; position: absolute; left: 50%; top: -.75rem; width: 1.3rem; height: 1rem;
+  transform: translateX(-50%); z-index: -1; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 55%, 0 100%);
+  background: linear-gradient(90deg, var(--deck-oxblood) 0 33%, var(--deck-ivory) 33% 66%, var(--deck-oxblood) 66%); }
+.medal.silver::before { background: linear-gradient(90deg, var(--deck-storm) 0 33%, var(--deck-ivory) 33% 66%, var(--deck-storm) 66%); }
+.medal.bronze::before { background: linear-gradient(90deg, var(--deck-jade) 0 33%, var(--deck-ivory) 33% 66%, var(--deck-jade) 66%); }
+.race-row { isolation: isolate; }
+
+.race-crest .crest { display: block; width: 3.2rem; height: 3.2rem; margin: 0; border-radius: 50%; }
+.race-crest { display: grid; place-items: center; }
+.race-crest .chip { display: block; width: 1.4rem; height: 2.6rem; margin: 0; border-radius: 2px 2px 50% 50% / 2px 2px 22% 22%; }
+.race-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.race-who .hname { font: 400 1.08rem/1.15 var(--serif); color: var(--deck-ivory); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-row.gold .race-who .hname { color: #f6dc8a; }
+.race-you { display: inline-block; align-self: flex-start; margin: .15rem 0 .05rem; padding: .05rem .45rem; border-radius: 999px; font: 600 .66rem/1.3 var(--sans);
+  font-style: normal; letter-spacing: .08em; text-transform: uppercase; color: var(--deck-night); background: var(--brass-hi); }
+.race-capt { font-size: .86rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.race-capt .rankname { font-variant: small-caps; }
+.race-where { font-size: .78rem; color: color-mix(in srgb, var(--deck-ivory) 72%, transparent); margin-top: .1rem; }
+.race-worth { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; white-space: nowrap; }
+.race-worth > small:first-child { font-family: var(--special); font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--deck-brass) 80%, var(--deck-ivory)); }
+.race-worth b { font: 700 1.2rem/1.2 var(--serif); color: var(--deck-ivory); font-variant-numeric: tabular-nums; }
+.race-worth b.down { color: var(--blood-hi); }
+.race-worth > small:last-child { font-size: .74rem; color: var(--muted); }
+.race-row.gold .race-worth > small:last-child { color: #f0d27a; }
+
+/* Tight side column: drop the crest size and the worth caption a touch. */
+.pt-race-side ol.race { gap: .35rem; }
+.pt-race-side .race-row { gap: .55rem; padding: .45rem .6rem .45rem .5rem; }
+@container pane (max-width: 340px) {
+  .race-row { grid-template-columns: 2.3rem 2.6rem minmax(0, 1fr) auto; }
+  .race-crest .crest { width: 2.6rem; height: 2.6rem; }
+  .race-worth > small:first-child { display: none; }
+}
