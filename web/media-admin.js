@@ -7,6 +7,7 @@
 
   const M = {
     lib: null, loading: false, kind: "persona", subject: "", role: "", type: "", nsfw: "", review: false, q: "",
+    sort: (() => { try { return localStorage.getItem("ml.sort") || "new"; } catch (_) { return "new"; } })(),
     sel: new Set(), last: null, genOpen: false, rulesOpen: false, jobs: [], jobsOpen: (() => { try { return localStorage.getItem("ml.jobsOpen") === "1"; } catch (_) { return false; } })(), poll: null, uploads: [],
     gen: { roles: [], aspect: "3:4", count: 2, nsfw: "auto", prompt: "", tags: "", forKey: "" },
     rulesDraft: null, timers: {},
@@ -49,8 +50,21 @@
       if (M.review && i.reviewed) return false;
       if (q && ![i.title, i.subject, i.url, i.tags.join(" "), i.prompt].join(" ").toLowerCase().includes(q)) return false;
       return true;
-    }).sort((a, b) => (a.subject || "").localeCompare(b.subject || "") || (b.primary - a.primary) || String(b.added).localeCompare(String(a.added)));
+    }).sort(SORTS[M.sort] || SORTS.new);
   }
+
+  // Sort orders for the grid (Anthony, 17 Nov 2026: newest first to start). "added" is "YYYY-MM-DD HH:MM";
+  // items with no date (old scanned files) go last on Newest and first on Oldest.
+  const byAdded = (a, b) => String(b.added || "").localeCompare(String(a.added || ""));
+  const byName = (a, b) => String(a.title || a.url || "").localeCompare(String(b.title || b.url || ""));
+  const SORTS = {
+    new: (a, b) => byAdded(a, b) || byName(a, b),
+    old: (a, b) => byAdded(b, a) || byName(a, b),
+    subject: (a, b) => (a.subject || "").localeCompare(b.subject || "") || (b.primary - a.primary) || byAdded(a, b),
+    primary: (a, b) => (b.primary - a.primary) || byAdded(a, b),
+    title: (a, b) => byName(a, b) || byAdded(a, b),
+  };
+  const SORT_NAMES = [["new", "Newest first"], ["old", "Oldest first"], ["subject", "By subject"], ["primary", "★ primary first"], ["title", "Title A–Z"]];
 
   function patchSaved(fn) {
     // The server changed a setting directly: keep this page's copy of the settings in step.
@@ -140,6 +154,7 @@
         `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n.split(":")[0])}</option>`).join("")}</select></label>` : ""}
       <label>Type<select data-mlf="type"><option value="">Pictures & video</option><option value="image"${M.type === "image" ? " selected" : ""}>Pictures</option><option value="video"${M.type === "video" ? " selected" : ""}>Video</option></select></label>
       <label>Rating<select data-mlf="nsfw"><option value="">All</option><option value="sfw"${M.nsfw === "sfw" ? " selected" : ""}>Family-friendly only</option><option value="nsfw"${M.nsfw === "nsfw" ? " selected" : ""}>NSFW only</option><option value="off"${M.nsfw === "off" ? " selected" : ""}>Switched off</option></select></label>
+      <label>Sort<select data-mlf="sort">${SORT_NAMES.map(([k, n]) => `<option value="${k}"${k === M.sort ? " selected" : ""}>${n}</option>`).join("")}</select></label>
       ${reviewButton()}
       <label class="ml-grow">Search<input type="search" id="mlq" data-mlf="q" value="${e(M.q)}" placeholder="tag, title, prompt…"></label>
       <div class="ml-actions">
@@ -260,10 +275,10 @@
     const style = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
     const name = subjectName(kind, subject);
     if (kind === "scene" && BATTLE_ENEMY[subject]) return battlePrompt(subject, role, style);
-    if (kind === "port" && role === "keeper") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, who runs a trading stall in the ${name} market in 1860, looking straight into the camera with a slow, knowing, inviting half-smile and heavy-lidded bedroom eyes, ${w.hair}, ${w.dress}, bare skin glowing with humid heat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, sensual private-release glamour, ${style}`; }
-    if (kind === "port" && role === "shipmaster") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry, dangerous ${w.who}, the ship master who rules the ${name} shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, ${w.hair}, ${w.dress}, a brass spyglass in one gloved hand, sweat-sheened skin, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release glamour, ${style}`; }
-    if (kind === "port" && role === "mayor") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, a former pirate queen who is now the lady mayor of ${name} in 1860 and keeps the town's ledger and collects its taxes, seated at a heavy teak desk and looking straight into the camera with a sly, appraising, seductive half-smile, as if she already knows what you owe her and how you will pay, direct eye contact, ${w.hair}, ${w.dress}, worn open at the throat and shoulders, a gold mayor's chain of office across her bare décolletage, a quill in one ringed hand, an open leather-bound ledger, a brass strongbox spilling silver dollars, tax seals and a cutlass hung on the wall behind her, warm candle and lantern glow, harbour window haze, shallow depth of field, she is the centre of the frame, sensual private-release glamour, ${style}`; }
-    if (kind === "port" && role === "taxlady") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, the tax collector who works the ${name} waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless, teasing smile and one raised eyebrow, direct eye contact, ${w.hair}, ${w.dress}, a jade customs seal on a cord resting against her bare skin, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release glamour, ${style}`; }
+    if (kind === "port" && role === "keeper") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, who runs a trading stall in the ${name} market in 1860, looking straight into the camera with a slow, knowing, inviting half-smile and heavy-lidded bedroom eyes, ${w.hair}, ${w.dress}, bare skin glowing with humid heat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
+    if (kind === "port" && role === "shipmaster") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry, dangerous ${w.who}, the ship master who rules the ${name} shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, ${w.hair}, ${w.dress}, a brass spyglass in one gloved hand, sweat-sheened skin, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
+    if (kind === "port" && role === "mayor") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, a former pirate queen who is now the lady mayor of ${name} in 1860 and keeps the town's ledger and collects its taxes, seated at a heavy teak desk and looking straight into the camera with a sly, appraising, seductive half-smile, as if she already knows what you owe her and how you will pay, direct eye contact, ${w.hair}, ${w.dress}, worn open at the throat and shoulders, a gold mayor's chain of office across her bare décolletage, a quill in one ringed hand, an open leather-bound ledger, a brass strongbox spilling silver dollars, tax seals and a cutlass hung on the wall behind her, warm candle and lantern glow, harbour window haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
+    if (kind === "port" && role === "taxlady") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, the tax collector who works the ${name} waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless, teasing smile and one raised eyebrow, direct eye contact, ${w.hair}, ${w.dress}, a jade customs seal on a cord resting against her bare skin, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
     if (kind === "port") return `The port of ${name} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, ${style}`;
     if (kind === "ship") return `A ${name} under full sail on the South China Sea, 1860s, detailed rigging and weathered hull, ${style}`;
     if (kind === "cargo") return `Still life of ${name} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, ${style}`;
@@ -615,6 +630,7 @@
     if (d.mlf) {
       M[d.mlf] = el.type === "checkbox" ? el.checked : el.value;
       if (d.mlf === "upNsfw") return;
+      if (d.mlf === "sort") { try { localStorage.setItem("ml.sort", M.sort); } catch (_) {} }
       if (d.mlf === "subject") { M.role = ""; M.gen.forKey = ""; }
       M.sel.clear();
       if (d.mlf === "q") { clearTimeout(M.timers.q); M.timers.q = setTimeout(redraw, 220); return; }
