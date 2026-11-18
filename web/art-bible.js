@@ -336,12 +336,12 @@
     const setG = key => (c, url) => { c.graphics = c.graphics || {}; c.graphics[key] = url; };
     const setGroup = (group, key) => (c, url) => { c.graphics = c.graphics || {}; c.graphics[group] = c.graphics[group] || {}; c.graphics[group][key] = url; };
 
-    define("surf_logo", { title: "Logo / wordmark", aspect: "16:5", size: "1600 × 500 PNG", kicker: "16:5 transparent", current: G.logo, apply: setG("logo"), negative: neg,
-      notes: "No baked background. Test at 320 px wide and on dark teak. The game name itself is set in Uncial Antiqua, so the art is the emblem only.",
-      prompt: "Crimson Ledger emblem artwork for a wide wordmark: an engraved antique-brass maritime crest combining a compass rose, a furled square sail and a merchant's balance in a horizontal cartouche, on a plain pure-black ground for easy cut-out, crisp silhouette, no lettering, readable at 320 pixels wide. " + recipeStyle });
+    define("surf_logo", { title: "Logo / wordmark", aspect: "16:5", size: "1600 × 500 PNG", kicker: "16:5 transparent", current: G.logo, apply: setG("logo"), negative: neg.replace("text, logo, caption, border, signature, watermark", "caption, signature, watermark"),
+      notes: "No baked background. Test at 320 px wide and on dark teak. Include the approved CRIMSON LEDGER wordmark beside the merchant-house seal.",
+      prompt: "Crimson Ledger emblem artwork for a wide wordmark: an antique-brass three-masted Chinese trading junk with oxblood battened sails above an open ivory merchant ledger and jade waves, circular brass rim, emblem left of stacked engraved brass lettering CRIMSON LEDGER, transparent background, readable at 320 pixels wide. " + recipeStyle });
     define("surf_favicon", { title: "Browser icon", aspect: "1:1", size: "512 × 512 PNG", kicker: "1:1", current: G.favicon, apply: setG("favicon"), negative: neg,
-      notes: "One brass mark: coin, sail or ST monogram. Must read at 32 px.",
-      prompt: "A single antique-brass trade coin stamped with a full-bellied square sail, centered on plain black, bold simple silhouette, high contrast, no lettering, designed to read at 32 pixels. " + recipeStyle });
+      notes: "Approved merchant-house seal on an oxblood lacquer tile. Test at 32 px.",
+      prompt: "Approved merchant-house seal: antique-brass three-masted Chinese trading junk with oxblood battened sails above an open ivory merchant ledger and jade wave, dark jade enamel, rounded oxblood lacquer tile, bold silhouette, no lettering, designed to read at 32 pixels. " + recipeStyle });
     define("surf_masthead", { title: "Title masthead", aspect: "3:1", size: "2400 × 800 WebP", kicker: "3:1", current: G.masthead_bg, apply: setG("masthead_bg"), negative: neg,
       notes: "Dark left/center title-safe zone; subject may occupy outer third.",
       prompt: "Wide title banner of Victoria Harbour, Hong Kong, 1860 at golden hour: junks and a clipper at anchor, green hills in humid haze, a lantern-lit veranda rail in the outer right third, the left and center two-thirds dark and quiet for title lettering, no foreground face, no text. " + recipeStyle });
@@ -494,7 +494,7 @@
         <div class="ab-exlist">${["surf_logo", "surf_favicon", "surf_masthead", "surf_page", "surf_board", "surf_chart"].map(slot => card(slot, false)).join("")}</div>
         <details class="ab-details"><summary>All specs as a table</summary><div class="scroll"><table class="ab-spec"><thead><tr><th>Asset</th><th>Master size</th><th>Shape</th><th>Composition and delivery</th></tr></thead><tbody>
           ${spec("Logo / wordmark", "1600 × 500 PNG", "16:5 transparent", "No baked background. Test at 320 px wide and on dark teak.")}
-          ${spec("Browser icon", "512 × 512 PNG", "1:1", "One brass mark: coin, sail or ST monogram. Must read at 32 px.")}
+          ${spec("Browser icon", "512 × 512 PNG", "1:1", "Approved merchant-house seal on an oxblood lacquer tile. Test at 32 px.")}
           ${spec("Title masthead", "2400 × 800 WebP", "3:1", "Dark left/center title-safe zone; subject may occupy outer third.")}
           ${spec("Player background", "2560 × 1440 WebP", "16:9", "Low contrast under cards, detail at edges, no face behind text.")}
           ${spec("Harbor board background", "3840 × 2160 WebP", "16:9", "Readable from across a room; center kept quiet for game state.")}

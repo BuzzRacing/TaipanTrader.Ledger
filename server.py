@@ -479,6 +479,33 @@ def crash(what, **data):
     return msg
 
 
+LOOPBACK = ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+TRUSTED_FILE = os.path.join(ROOT, "config", "trusted_admin.txt")
+TRUSTED_DEFAULT = ("192.168.1.213",)   # BIGBOX, the dev PC
+_trusted_cache = {"mtime": None, "addrs": frozenset(TRUSTED_DEFAULT)}
+
+
+def trusted_admin():
+    """Addresses that open the Admin page without a password. One per line in
+    config/trusted_admin.txt (# starts a comment); BIGBOX's address when the file is missing."""
+    try:
+        mtime = os.path.getmtime(TRUSTED_FILE)
+    except OSError:
+        return frozenset(TRUSTED_DEFAULT)
+    if mtime != _trusted_cache["mtime"]:
+        addrs = set()
+        try:
+            with open(TRUSTED_FILE, encoding="utf-8") as f:
+                for line in f:
+                    line = line.split("#", 1)[0].strip()
+                    if line:
+                        addrs.add(line)
+        except OSError:
+            addrs = set(TRUSTED_DEFAULT)
+        _trusted_cache.update(mtime=mtime, addrs=frozenset(addrs))
+    return _trusted_cache["addrs"]
+
+
 def device(headers):
     """A short name for the device from its browser's User-Agent."""
     ua = headers.get("User-Agent", "")
@@ -606,11 +633,31 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeDecodeError):
             return {}
 
+    def _forwarded(self):
+        """The visitor's address as passed on by a proxy on this same machine (Caddy on the Pi), else ''.
+        Only believed when the request really arrived from this machine, so nobody on the network can
+        fake it by sending the header straight to the game's port."""
+        if self.client_address[0] not in LOOPBACK:
+            return ""
+        raw = self.headers.get("X-Forwarded-For", "")
+        last = raw.split(",")[-1].strip() if raw else ""
+        return last[7:] if last.startswith("::ffff:") else last
+
+    def _addr(self):
+        """The real address of whoever sent this request, even when it came through the proxy."""
+        return self._forwarded() or self.client_address[0]
+
     def _local(self):
-        return self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+        """True only for this very machine (not a visitor coming through the proxy)."""
+        return self.client_address[0] in LOOPBACK and not self._forwarded()
+
+    def _trusted(self):
+        """This machine, or a computer listed in config/trusted_admin.txt (BIGBOX by default):
+        the Admin page opens for these without a password."""
+        return self._local() or self._addr() in trusted_admin()
 
     def _via(self):
-        return {"address": self.client_address[0], "device": device(self.headers)}
+        return {"address": self._addr(), "device": device(self.headers)}
 
     def _guard(self, method, handler):
         """Run a request; if it fails unexpectedly, write down why instead of dying quietly."""
@@ -619,7 +666,7 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionError):
             pass
         except Exception:
-            msg = crash("{} {} failed".format(method, urlparse(self.path).path), address=self.client_address[0])
+            msg = crash("{} {} failed".format(method, urlparse(self.path).path), address=self._addr())
             try:
                 self._send(500, {"ok": False, "error": "The game server hit an error. It has been written to the "
                                  "Captain's Report. ({})".format(msg[-160:])})
@@ -627,7 +674,7 @@ class Handler(BaseHTTPRequestHandler):
                 pass
 
     def _admin_ok(self):
-        if self._local():
+        if self._trusted():
             return True
         cookie = self.headers.get("Cookie", "")
         m = re.search(r"(?:^|;\s*)st_admin=([A-Za-z0-9_-]+)", cookie)
@@ -706,7 +753,7 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if path == "/api/voice/floor":
                 once = body.get("clip") if body.get("once") else ""
-                return self._send(200, dict(voicefloor.FLOOR.ask(self.client_address[0], body.get("id"),
+                return self._send(200, dict(voicefloor.FLOOR.ask(self._addr(), body.get("id"),
                                                                  body.get("op"), once), ok=True))
             if path == "/api/join":
                 if body.get("captain"):
@@ -766,7 +813,7 @@ class Handler(BaseHTTPRequestHandler):
     def _join_captain(self, body):
         """Join (or take back a seat) as a saved Captain: PIN checked first, then the House chosen."""
         try:
-            c, h = captains.verify(body.get("captain"), body.get("pin"), body.get("house"), self.client_address[0])
+            c, h = captains.verify(body.get("captain"), body.get("pin"), body.get("house"), self._addr())
         except captains.CaptainError as e:
             journal.note("rejected", "join", "A Captain's PIN was refused: {}".format(e), via=self._via(),
                          error=str(e))
@@ -879,7 +926,7 @@ class Handler(BaseHTTPRequestHandler):
                     "lang": {code: config.load_lang(code) for code in config.list_langs()},
                     "presets": config.list_dir(config.PRESET_DIR),
                     "backups": list(reversed(config.list_dir(config.BACKUP_DIR))),
-                    "local": self._local(), "has_password": config.has_password(),
+                    "local": self._trusted(), "has_password": config.has_password(),
                     "join_url": HUB.join_url, "cast": self._cast_info(),
                     "server": {"python": platform.python_version(), "system": platform.system(),
                                "folder": ROOT, "started": int(STARTED)}})
@@ -1092,7 +1139,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": not errors, "config": cfg, "errors": errors[:40],
                                     "error": "That backup has problems." if errors else ""})
         if what == "password":
-            if not self._local() and not config.check_password(body.get("current")):
+            if not self._trusted() and not config.check_password(body.get("current")):
                 time.sleep(1)
                 return self._send(200, {"ok": False, "error": "Enter the current password to change it from another device."})
             new = str(body.get("password") or "")
@@ -1446,7 +1493,7 @@ class Handler(BaseHTTPRequestHandler):
                 HUB.cond.notify_all()
                 name = HUB.game.s["players"][pid]["name"]
                 journal.note("players", "connect", "{} connected a screen from {} ({}); {} open".format(
-                    name, self.client_address[0], device(self.headers), HUB.conns[pid]), pid=pid, who=name,
+                    name, self._addr(), device(self.headers), HUB.conns[pid]), pid=pid, who=name,
                     via=self._via(), screens=HUB.conns[pid])
             elif token:
                 journal.log("WARN", "players", "A screen connected with a seat that is not in this game", **self._via())
@@ -1486,8 +1533,8 @@ class Handler(BaseHTTPRequestHandler):
                     p = HUB.game.s["players"].get(pid)
                     if p:
                         journal.note("players", "disconnect", "{} closed a screen at {}; {} open".format(
-                            p["name"], self.client_address[0], HUB.conns[pid]), pid=pid, who=p["name"],
-                            address=self.client_address[0], screens=HUB.conns[pid])
+                            p["name"], self._addr(), HUB.conns[pid]), pid=pid, who=p["name"],
+                            address=self._addr(), screens=HUB.conns[pid])
 
 
 def lan_address():
@@ -1507,6 +1554,7 @@ def main():
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--new", action="store_true", help="archive the saved game and start a fresh one")
     ap.add_argument("--archive-only", action="store_true", help="archive the saved game and exit")
+    ap.add_argument("--join-url", help="the address shown to players, e.g. http://sea.trade (default: this machine's IP and port)")
     ap.add_argument("--admin-password", help="set the admin password (for the Admin page on other devices) and exit")
     args = ap.parse_args()
 
@@ -1527,7 +1575,7 @@ def main():
     media.sync_from_config(engine.CFG)
     media.on_change(_media_changed)
     media.JOBS.start(imagegen.generate_image, lambda level, msg: journal.log(level, "media", msg))
-    join_url = "http://{}:{}".format(lan_address(), args.port)
+    join_url = (args.join_url or "").strip().rstrip("/") or "http://{}:{}".format(lan_address(), args.port)
     voicefloor.FLOOR.add_own(lan_address())
     journal.log("INFO", "server", "Server starting on port {} ({}, Python {}, code {})".format(
         args.port, platform.system(), platform.python_version(), git_commit() or "unversioned"),

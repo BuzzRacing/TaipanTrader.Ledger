@@ -7,18 +7,26 @@ rem
 rem By default the game server runs on this computer and is started if needed.
 rem To use a server on another machine (for example a Raspberry Pi), put its
 rem address on one line in server_address.txt next to this file, e.g.
-rem   192.168.1.50:8765
+rem   sea.trade        (the Pi, through its proxy)
+rem   192.168.1.69:8765
+rem Launch_Dev.bat always opens the copy on this computer instead.
 setlocal
 cd /d "%~dp0"
 set "PORT=8765"
 set "HOST=localhost:%PORT%"
 set "REMOTE="
-if exist "server_address.txt" set /p HOST=<"server_address.txt"
+rem The Pi's address. The launcher sends sea.trade straight there, so this PC never
+rem depends on its own DNS lookup (which can leak to the public sea.trade at GoDaddy).
+set "PI_IP=192.168.1.69"
+rem ST_DEV is set by Launch_Dev.bat: always use the copy on this computer.
+if not defined ST_DEV if exist "server_address.txt" set /p HOST=<"server_address.txt"
 set "HOST=%HOST: =%"
 set "HOST=%HOST:http://=%"
 if "%HOST:~-1%"=="/" set "HOST=%HOST:~0,-1%"
+rem A bare IP or localhost gets the game port added; a name like sea.trade is used as it is
+rem (the Pi's proxy answers it on the normal web port).
 echo %HOST%| find ":" >nul
-if errorlevel 1 set "HOST=%HOST%:%PORT%"
+if errorlevel 1 (echo %HOST%| findstr /r /i "^[0-9] ^localhost$" >nul && set "HOST=%HOST%:%PORT%")
 if /i not "%HOST:~0,9%"=="localhost" if not "%HOST:~0,4%"=="127." set "REMOTE=1"
 
 set "PAGE="
@@ -26,6 +34,11 @@ set "PROFILE=player"
 if /i "%~1"=="board" set "PAGE=board"
 if /i "%~1"=="board" set "PROFILE=board"
 if /i "%~1"=="admin" set "PAGE=admin"
+if defined ST_DEV set "PROFILE=dev-%PROFILE%"
+set "PIN_DNS="
+set "PIN_CURL="
+if /i "%HOST%"=="sea.trade" set "PIN_DNS=--host-resolver-rules="MAP sea.trade %PI_IP%""
+if /i "%HOST%"=="sea.trade" set "PIN_CURL=--resolve sea.trade:80:%PI_IP%"
 set "URL=http://%HOST%/%PAGE%"
 
 call :ping
@@ -50,8 +63,10 @@ timeout /t 1 /nobreak >nul
 goto wait
 
 :open
-if /i "%PAGE%"=="admin" start "" "%URL%"
-if /i "%PAGE%"=="admin" goto end
+if /i "%PAGE%"=="admin" if not defined PIN_DNS start "" "%URL%"
+if /i "%PAGE%"=="admin" if not defined PIN_DNS goto end
+rem Admin on the Pi opens in its own ordinary Edge window, also pinned to the Pi.
+if /i "%PAGE%"=="admin" set "PROFILE=admin"
 set "EDGE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
 if not exist "%EDGE%" set "EDGE=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 if exist "%EDGE%" goto edge
@@ -62,11 +77,13 @@ start "" "%URL%"
 goto end
 
 :edge
-start "" "%EDGE%" --kiosk "%URL%" --edge-kiosk-type=fullscreen --no-first-run --autoplay-policy=no-user-gesture-required --user-data-dir="%~dp0.browser\%PROFILE%"
+if /i "%PAGE%"=="admin" (start "" "%EDGE%" %PIN_DNS% --no-first-run --user-data-dir="%~dp0.browser\admin" "%URL%" & goto end)
+start "" "%EDGE%" %PIN_DNS% --kiosk "%URL%" --edge-kiosk-type=fullscreen --no-first-run --autoplay-policy=no-user-gesture-required --user-data-dir="%~dp0.browser\%PROFILE%"
 goto end
 
 :chrome
-start "" "%CHROME%" --kiosk "%URL%" --no-first-run --autoplay-policy=no-user-gesture-required --user-data-dir="%~dp0.browser\%PROFILE%"
+if /i "%PAGE%"=="admin" (start "" "%CHROME%" %PIN_DNS% --no-first-run --user-data-dir="%~dp0.browser\admin" "%URL%" & goto end)
+start "" "%CHROME%" %PIN_DNS% --kiosk "%URL%" --no-first-run --autoplay-policy=no-user-gesture-required --user-data-dir="%~dp0.browser\%PROFILE%"
 goto end
 
 :unreachable
@@ -95,6 +112,12 @@ pause
 exit /b 1
 
 :ping
+rem curl first: it ignores the Windows proxy settings that can send sea.trade out to the internet.
+where curl.exe >nul 2>nul
+if errorlevel 1 goto pingps
+curl.exe -s -f -o nul --noproxy "*" %PIN_CURL% --max-time 3 http://%HOST%/api/info
+exit /b %errorlevel%
+:pingps
 powershell -NoProfile -Command "try { $null = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 http://%HOST%/api/info; exit 0 } catch { exit 1 }"
 exit /b %errorlevel%
 

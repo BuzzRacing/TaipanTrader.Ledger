@@ -1,6 +1,6 @@
 @echo off
 rem Archives the current game into the saves folder and starts a fresh one.
-if exist "%~dp0server_address.txt" (
+if not defined ST_DEV if exist "%~dp0server_address.txt" (
   echo The game runs on another machine, listed in server_address.txt.
   echo To change it, use the host's new game button on the Ledger tab.
   pause

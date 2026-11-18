@@ -1,6 +1,6 @@
 @echo off
 rem Saves the game and stops the SeaTrader server.
-if exist "%~dp0server_address.txt" (
+if not defined ST_DEV if exist "%~dp0server_address.txt" (
   echo The game runs on another machine, listed in server_address.txt.
   echo To change it, stop it there.
   pause

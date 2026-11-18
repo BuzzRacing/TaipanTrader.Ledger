@@ -58,6 +58,8 @@ async function loadInfo() {
   document.title = brandName(d.brand) + (document.body.classList.contains("board") ? " · " + t("board.houses") : "");
   const fav = document.getElementById("fav");
   if (fav) fav.href = d.graphics.favicon || "data:,";
+  const touch = document.getElementById("touch-icon");
+  if (touch) touch.href = d.graphics.favicon || "data:,";
   return info;
 }
 
@@ -65,14 +67,9 @@ function brandName(b) {
   return [b.title_a, b.title_b].filter(Boolean).join(" ");
 }
 
-/* The game's logo: its name from Brand > Title, in the gilded Ceremony Title lettering of the opening
-   animation (wordmark.css). There is no picture logo any more, so Graphics > Logo is not used here. */
-function wordmarkHtml(name) {
-  return `<span class="st-wordmark"><span class="st-wordmark-title">${esc(name)}</span>` +
-    `<span class="st-wordmark-rule" aria-hidden="true">◆</span></span>`;
-}
 function brandHtml(D) {
-  return wordmarkHtml(brandName(D.brand));
+  const name = brandName(D.brand);
+  return D.graphics.logo ? `<img class="logo" src="${esc(D.graphics.logo)}" alt="${esc(name)}">` : wordmarkHtml(name);
 }
 
 /* Saved Captains' pictures for the seats at the table (Admin > Captains, Media Library): the Captain's

@@ -47,7 +47,7 @@ const Ceremony = (() => {
     const after = (target, next) => { timer = setTimeout(next, Math.max(0, target - (performance.now() - clock))); };
 
     if (kind === "opening") {
-      frame.innerHTML = `<div class="wordmark"><h1 class="title">${esc(brandName(data.brand))}</h1>
+      frame.innerHTML = `<div class="wordmark"><h1 class="title">${brandHtml(data)}</h1>
         <div class="rule" aria-hidden="true">◆</div></div>
         <p class="place">${te("ceremony.opening")}</p><p class="cue" role="status"></p>`;
       const cue = frame.querySelector(".cue");
@@ -109,8 +109,8 @@ const Ceremony = (() => {
     if (scene && sceneKey === key) {
       if (opening) {
         const heading = scene.querySelector(".wordmark h1");
-        const name = brandName(data.brand);
-        if (heading.textContent !== name) heading.textContent = name;
+        const markup = brandHtml(data);
+        if (heading.innerHTML !== markup) heading.innerHTML = markup;
       }
       return;
     }

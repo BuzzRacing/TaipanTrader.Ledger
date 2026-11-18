@@ -102,9 +102,16 @@ function refreshDirty() {
 }
 /* Header emblem and browser tab icon follow Graphics > Browser icon (the Art Bible's brass mark). */
 function brandMark() {
-  const url = (CFG && CFG.graphics && CFG.graphics.favicon) || "/uploads/historical-favicon.svg";
+  const url = (CFG && CFG.graphics && CFG.graphics.favicon) || "/assets/branding/crimson-ledger-icon-v01.png";
   if ($("#gmark").getAttribute("src") !== url) $("#gmark").src = url;
   if ($("#favicon").getAttribute("href") !== url) $("#favicon").href = url;
+  const logo = CFG?.graphics?.logo || "";
+  const name = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
+  $("#glogo").hidden = !logo;
+  $("#gname").hidden = !!logo;
+  $("#gmark").hidden = !!logo;
+  $("#glogo").alt = name;
+  if (logo && $("#glogo").getAttribute("src") !== logo) $("#glogo").src = logo;
 }
 window.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); if (!$("#save").disabled && !$("#save").hidden) $("#save").click(); }

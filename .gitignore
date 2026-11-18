@@ -48,3 +48,6 @@ captains/
 # Agent file locks (live state, this machine only) and personal Claude settings
 .agent-locks/
 .claude/settings.local.json
+
+# Reports written by the Pi scripts (Pi_Check, Move_To_Pi, Deploy_To_Pi, Pi_SeaTrade_Name)
+pi/*_report.txt

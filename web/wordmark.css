@@ -1,7 +1,4 @@
-/* Crimson Ledger wordmark: the game's name, set in the Ceremony Title web font with the gilded
-   lettering from the opening animation (ceremony.css). The name comes from Brand > Title in the
-   settings, so renaming the game renames the logo everywhere. Used by brandHtml() (common.js) on the
-   join, lobby and end screens, and by the Logo card in Admin > Graphics. */
+/* Reusable HTML text logo, also used when the Graphics artwork slot is empty. */
 @font-face {
   font-family: "Ceremony Title";
   src: url("/fonts/uncial-antiqua-latin-e93ce65c.woff2") format("woff2");
@@ -53,11 +50,11 @@
   .st-wordmark-title { animation: none; }
 }
 
-/* Admin > Graphics: the Logo card shows the wordmark over the opening animation's harbour. */
-.gx-art.gx-wordmark {
-  container-type: inline-size;
-  padding: 1rem;
-  background: radial-gradient(ellipse at 50% 45%, transparent 20%, #090d13c0 100%),
-    url("/assets/ceremony-harbor.png") center / cover, #15100c;
-}
-.gx-wordmark .st-wordmark { font-size: 10cqi; }
+
+.masthead .logo { width: min(82vw, 560px); max-width: 100%; height: auto; max-height: none; margin: 0 auto; object-fit: contain; }
+.br-brand .logo { width: auto; max-height: clamp(40px, 7.2vh, 75px); margin: 0; }
+#gx-brand-logo .gx-art { background: #15100c; }
+
+.gx-text-preview { container-type: inline-size; padding: 1.25rem; background: radial-gradient(ellipse at center, #30231a, #15100c); }
+.gx-text-preview .st-wordmark { font-size: clamp(1.5rem, 8cqi, 5rem); }
+.gx-text-logo textarea { width: 100%; margin-top: .5rem; resize: vertical; }

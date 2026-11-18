@@ -684,3 +684,7 @@ button.cv-generate:hover:not(:disabled) { border-color: #f0c971; background: lin
 .gx-cand i { position: absolute; left: .25rem; top: .25rem; font-style: normal; font-size: .66rem; font-weight: 700; padding: .05rem .35rem; border-radius: 3px; background: var(--green); color: #10140f; }
 .gx-cand.saved i { background: var(--brass); }
 .gx-nocand { font-size: .8rem; }
+
+.brand-logo { display: block; width: clamp(190px, 22vw, 280px); max-width: 100%; height: auto; max-height: 74px; object-fit: contain; object-position: left center; }
+.brand-logo[hidden], .brand-emblem[hidden], #gname[hidden] { display: none; }
+@media (max-width: 600px) { .brand-logo { width: min(65vw, 230px); max-height: 58px; } }

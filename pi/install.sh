@@ -4,10 +4,12 @@
 #
 #   cd ~/SeaTrader && bash pi/install.sh          # port 8765
 #   bash pi/install.sh 9000                       # another port
+#   bash pi/install.sh 8765 http://sea.trade      # port + the address shown to players
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${1:-8765}"
+JOIN_URL="${2:-}"
 RUN_AS="${SUDO_USER:-$(id -un)}"
 PY="$(command -v python3 || true)"
 
@@ -34,7 +36,7 @@ Wants=network-online.target
 [Service]
 User=$RUN_AS
 WorkingDirectory=$DIR
-ExecStart="$PY" -u "$DIR/server.py" --port $PORT
+ExecStart="$PY" -u "$DIR/server.py" --port $PORT${JOIN_URL:+ --join-url $JOIN_URL}
 Restart=on-failure
 RestartSec=3
 

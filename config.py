@@ -66,8 +66,8 @@ DEFAULTS = {
         "custom_css": "",
     },
     "graphics": {
-        "logo": "",  # retired: the logo is the game's name in the Ceremony Title lettering (web/wordmark.css)
-        "favicon": "/uploads/historical-favicon.svg",
+        "logo": "/assets/branding/crimson-ledger-logo-v01.png",
+        "favicon": "/assets/branding/crimson-ledger-icon-v01.png",
         "masthead_bg": "/uploads/historical-masthead.webp",
         "page_bg": "/uploads/historical-page.webp",
         "board_bg": "/uploads/historical-board.webp",
@@ -833,7 +833,7 @@ SECTIONS = [
 ]
 
 GRAPHIC_SLOTS = [
-    ["logo", "Logo", "Not a picture: the logo is the game's name (Brand > Title) in the gilded Ceremony Title lettering of the opening animation."],
+    ["logo", "Logo", "Transparent wide logo used on the join screen, lobby, opening, harbor board and admin header. Include the game name in the artwork."],
     ["favicon", "Browser tab icon", "A small square image."],
     ["masthead_bg", "Title banner background", "Behind the title on the join and lobby screens."],
     ["page_bg", "Player screen background", "Behind the cards on every player screen. Subtle textures work best."],

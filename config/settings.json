@@ -63,8 +63,8 @@
   "custom_css": ""
  },
  "graphics": {
-  "logo": "",
-  "favicon": "/uploads/historical-favicon.svg",
+  "logo": "/assets/branding/crimson-ledger-logo-v01.png",
+  "favicon": "/assets/branding/crimson-ledger-icon-v01.png",
   "masthead_bg": "/uploads/historical-masthead.webp",
   "page_bg": "/uploads/historical-page.webp",
   "board_bg": "/uploads/historical-board.webp",

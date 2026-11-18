@@ -14,7 +14,7 @@
 
   const e = s => esc(s);
   const GROUPS = [
-    ["brand", null, "Main artwork", "Logo lettering, backgrounds and the chart. Shown across the join screen, lobby, player screens and harbor board.", "main"],
+    ["brand", null, "Main artwork", "Logo, game icon, backgrounds and the chart. Shown across the join screen, lobby, player screens and harbor board.", "main"],
     ["port", "ports", "Port pictures", "Banner at the top of the market while a player is in that port.", "banner"],
     ["ship", "ships", "Ship pictures", "Fleet cards and the shipyard.", "card"],
     ["cargo", "goods", "Cargo pictures", "Beside each cargo in the market.", "icon"],
@@ -37,7 +37,7 @@
     const out = [];
     GROUPS.forEach(([kind, table, , , role]) => {
       if (kind === "brand") {
-        A.graphic_slots.filter(([k]) => k !== "logo").forEach(([k, label, help]) => out.push({ key: "brand:" + k, kind, subject: k, role, label, help, path: "graphics." + k }));
+        A.graphic_slots.forEach(([k, label, help]) => out.push({ key: "brand:" + k, kind, subject: k, role, label, help: k === "logo" ? "Transparent wide logo used on the join screen, lobby, opening, harbor board and admin header. Include the game name in the artwork." : help, path: "graphics." + k }));
       } else {
         const group = { port: "ports", ship: "ships", cargo: "goods" }[kind];
         Object.keys(CFG[table] || {}).forEach(k => out.push({ key: kind + ":" + k, kind, subject: k, role,
@@ -51,6 +51,8 @@
 
   function defaultPrompt(s) {
     const n = s.label;
+    if (s.kind === "brand" && s.subject === "logo") return 'Crimson Ledger primary logo, antique brass three-masted trading junk with oxblood battened sails over an open ivory merchant ledger and jade wave, emblem left of stacked engraved gold lettering CRIMSON LEDGER, transparent background, wide 3:1 composition, lacquer black, oxblood, antique brass and jade palette, no other text';
+    if (s.kind === "brand" && s.subject === "favicon") return 'Crimson Ledger square game icon, antique brass three-masted trading junk with oxblood battened sails over an open ivory merchant ledger and jade wave, dark jade enamel, rounded oxblood lacquer tile, bold silhouette, no text';
     if (s.kind === "port") return `The port of ${n} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, wide banner composition, ${STYLE}`;
     if (s.kind === "ship") return `A ${n} under full sail on the South China Sea, 1860s, detailed rigging and weathered hull, ${STYLE}`;
     if (s.kind === "cargo") return `Still life of ${n} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, ${STYLE}`;
@@ -205,18 +207,18 @@
       </div></article>`;
   }
 
-  /* The logo is not a picture: it is the game's name (Brand > Title) set in the gilded Ceremony Title
-     lettering of the opening animation (wordmark.css), so this card shows it live, unsaved edits included. */
-  function logoCard() {
+  function textLogoCard() {
     const name = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
-    return `<article class="gx-card gx-logo" id="gx-brand-logo">
-      <div class="gx-art gx-wordmark" style="aspect-ratio:3 / 1"><span class="st-wordmark"><span class="st-wordmark-title">${e(name)}</span><span class="st-wordmark-rule" aria-hidden="true">◆</span></span>
-        <span class="gx-badges"><b class="gx-b dim">web font · live</b></span></div>
+    const markup = wordmarkHtml(name);
+    return `<article class="gx-card gx-text-logo" id="gx-brand-text-logo">
+      <div class="gx-art gx-text-preview" style="aspect-ratio:3 / 1">${markup}</div>
       <div class="gx-body">
-        <div class="gx-title"><h3>Logo</h3><span class="muted small">Ceremony Title lettering</span></div>
-        <p class="help">The game's name in the same gilded lettering as the opening animation, shown on the join screen, lobby and end screen.
-          It is drawn from the name in Settings, not from a picture, so renaming the game changes it everywhere.</p>
-        <div class="row gx-actions"><button type="button" data-gxnav="brand">Change the game's name (Brand)</button></div>
+        <div class="gx-title"><h3>HTML text logo</h3><span class="muted small">Live text · gilded lettering</span></div>
+        <p class="help">The reusable text version, with gilded Ceremony Title lettering. It follows the game name in Brand and stays selectable and sharp at any size.</p>
+        <p class="help">Include <code>/wordmark.css</code> wherever you paste this HTML. In game pages, <code>wordmarkHtml(name)</code> from <code>/wordmark.js</code> produces the same treatment. Set the surrounding font size to scale it.</p>
+        <label class="gx-label" for="gx-wordmark-html">Reusable HTML</label>
+        <textarea id="gx-wordmark-html" class="code" rows="4" readonly spellcheck="false">${e(markup)}</textarea>
+        <div class="row gx-actions"><button type="button" data-gxcopytext="1">Copy HTML</button><button type="button" data-gxnav="brand">Change the game's name (Brand)</button></div>
       </div></article>`;
   }
 
@@ -235,10 +237,9 @@
     const jobs = running();
     const sections = GROUPS.map(([kind, , title, note]) => {
       const list = infos.filter(([s]) => s.kind === kind).filter(show);
-      const logo = kind === "brand" && !G.filter ? logoCard() : "";
-      if (!list.length && !logo) return "";
+      if (!list.length) return "";
       return `<section class="card gx-group"><div class="head"><h2>${e(title)}</h2><button type="button" class="link" data-medialib="${kind}:">all ${e(title.toLowerCase())} in the library</button></div>
-        <p class="help">${e(note)}</p><div class="gx-grid">${logo}${list.map(([s]) => card(s)).join("")}</div></section>`;
+        <p class="help">${e(note)}</p><div class="gx-grid">${kind === "brand" && !G.filter ? textLogoCard() : ""}${list.map(([s]) => card(s)).join("")}</div></section>`;
     }).join("");
     return head("Graphics", "Every picture the game shows, linked to the Media Library. Uploads and regenerated pictures are filed under the slot they belong to, " +
         "so each slot knows its history and which newer pictures are waiting. Pick, then Save & apply.") +
@@ -299,6 +300,18 @@
     const el = ev.target.closest("button");
     if (!el || el.disabled) return;
     const d = el.dataset;
+    if (d.gxcopytext) {
+      const source = document.getElementById("gx-wordmark-html");
+      try {
+        await navigator.clipboard.writeText(source.value);
+        toast("Text logo HTML copied.");
+      } catch (error) {
+        source.focus();
+        source.select();
+        toast("Clipboard unavailable. The HTML is selected; press Ctrl+C to copy.", true);
+      }
+      return;
+    }
     if (d.gxnav) { ev.preventDefault(); return go(d.gxnav); }
     if (d.gxuse !== undefined) { ev.preventDefault(); return use(d.gxuse, d.url); }
     if (d.gxsize) { G.size = d.gxsize; try { localStorage.setItem("st-gx-size", G.size); } catch (x) { /* storage off */ } return redraw(); }

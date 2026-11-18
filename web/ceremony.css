@@ -198,3 +198,5 @@
   }
 @keyframes ceremony-appear { from { opacity: 0; transform: translateY(.6rem); } to { opacity: 1; transform: none; } }
 @keyframes ceremony-tick { from { opacity: .85; transform: scale(1.12); } to { opacity: 1; transform: none; } }
+
+.ceremony .wordmark .logo { display: block; width: min(80vw, 880px); height: auto; max-height: 32vh; object-fit: contain; margin: 0 auto; }

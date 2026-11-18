@@ -406,60 +406,6 @@
    "replaces": ""
   },
   {
-   "id": "m9785e45676",
-   "url": "/uploads/historical-favicon.svg",
-   "type": "image",
-   "kind": "brand",
-   "subject": "favicon",
-   "roles": [
-    "main"
-   ],
-   "tags": [
-    "graphics"
-   ],
-   "nsfw": false,
-   "reviewed": true,
-   "enabled": true,
-   "primary": true,
-   "weight": 3,
-   "title": "",
-   "prompt": "",
-   "seed": null,
-   "width": 0,
-   "height": 0,
-   "bytes": 8859,
-   "source": "config",
-   "added": "2026-11-16 18:40",
-   "replaces": ""
-  },
-  {
-   "id": "m282264f146",
-   "url": "/uploads/historical-logo.svg",
-   "type": "image",
-   "kind": "brand",
-   "subject": "logo",
-   "roles": [
-    "main"
-   ],
-   "tags": [
-    "graphics"
-   ],
-   "nsfw": false,
-   "reviewed": true,
-   "enabled": true,
-   "primary": true,
-   "weight": 3,
-   "title": "",
-   "prompt": "",
-   "seed": null,
-   "width": 0,
-   "height": 0,
-   "bytes": 10655,
-   "source": "config",
-   "added": "2026-11-16 18:40",
-   "replaces": ""
-  },
-  {
    "id": "mfe9929de0a",
    "url": "/uploads/historical-masthead.webp",
    "type": "image",
@@ -10575,6 +10521,214 @@
    "source": "generated",
    "added": "2026-11-18 07:52",
    "replaces": ""
+  },
+  {
+   "id": "m81e9725282",
+   "url": "/assets/branding/crimson-ledger-logo-v01.png",
+   "type": "image",
+   "kind": "brand",
+   "subject": "logo",
+   "roles": [
+    "main"
+   ],
+   "tags": [
+    "graphics",
+    "approved",
+    "branding"
+   ],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": true,
+   "weight": 3,
+   "title": "Crimson Ledger - Merchant-house logo",
+   "prompt": "Approved merchant-house seal: three oxblood battened junk sails, antique brass hull and rim, open ivory ledger, jade waves. Transparent horizontal CRIMSON LEDGER engraved brass wordmark.",
+   "seed": null,
+   "width": 2167,
+   "height": 726,
+   "bytes": 2069759,
+   "source": "generated",
+   "added": "2026-11-18 10:08",
+   "replaces": ""
+  },
+  {
+   "id": "m1eef99cc65",
+   "url": "/assets/branding/crimson-ledger-icon-v01.png",
+   "type": "image",
+   "kind": "brand",
+   "subject": "favicon",
+   "roles": [
+    "main"
+   ],
+   "tags": [
+    "graphics",
+    "approved",
+    "branding"
+   ],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": true,
+   "weight": 3,
+   "title": "Crimson Ledger - Merchant-house icon",
+   "prompt": "Approved merchant-house seal: three oxblood battened junk sails, antique brass hull and rim, open ivory ledger, jade waves. Square oxblood lacquer game icon, no text.",
+   "seed": null,
+   "width": 1254,
+   "height": 1254,
+   "bytes": 3006125,
+   "source": "generated",
+   "added": "2026-11-18 10:08",
+   "replaces": ""
+  },
+  {
+   "id": "m87e5924732",
+   "url": "/media/persona/banker/persona-banker-5fd19989.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "banker",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset that is open at the front exposing her naked breasts and nipples, steel spectacles, pinned auburn hair, leather gloves, silver dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": 261064986591867,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2232702,
+   "source": "generated",
+   "added": "2026-11-18 11:26",
+   "replaces": ""
+  },
+  {
+   "id": "mb6ebd69ace",
+   "url": "/media/persona/banker/persona-banker-29c8848e.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "banker",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset that is open at the front exposing her naked breasts and nipples, steel spectacles, pinned auburn hair, leather gloves, towers of gold dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": 99803020740548,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2255286,
+   "source": "generated",
+   "added": "2026-11-18 11:26",
+   "replaces": ""
+  },
+  {
+   "id": "mc2257e61c4",
+   "url": "/media/persona/banker/persona-banker-debdcca0.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "banker",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset that is open at the front exposing her naked breasts and nipples, steel spectacles, pinned auburn hair, leather gloves, towers of gold dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": 121366990446293,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2217640,
+   "source": "generated",
+   "added": "2026-11-18 11:27",
+   "replaces": ""
+  },
+  {
+   "id": "m2ae41d3881",
+   "url": "/media/persona/banker/persona-banker-4184ba70.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "banker",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset that is open at the front exposing her naked breasts and nipples, steel spectacles, pinned auburn hair, leather gloves, towers of gold dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": 247011073068041,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2209048,
+   "source": "generated",
+   "added": "2026-11-18 11:27",
+   "replaces": ""
+  },
+  {
+   "id": "mc1baf0ccdf",
+   "url": "/media/persona/banker/persona-banker-fb3277b1.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "banker",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset that is open at the front exposing her naked breasts and nipples, steel spectacles, pinned auburn hair, leather gloves, towers of gold dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": 28044494203065,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2271530,
+   "source": "generated",
+   "added": "2026-11-18 11:27",
+   "replaces": ""
+  },
+  {
+   "id": "m2cb1ed7a24",
+   "url": "/media/persona/banker/persona-banker-e1b5377d.png",
+   "type": "image",
+   "kind": "persona",
+   "subject": "banker",
+   "roles": [
+    "portrait"
+   ],
+   "tags": [],
+   "nsfw": true,
+   "reviewed": false,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "",
+   "prompt": "An unmistakably adult Scottish woman (age 52), statuesque chief cashier and financial pirate queen behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat over a burgundy silk corset that is open at the front exposing her naked breasts and nipples, steel spectacles, pinned auburn hair, leather gloves, towers of gold dollars and ledger, cool appraising gaze charged with restrained erotic authority, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, private-release adult erotic glamour, 3:4 portrait, hands visible, original face and garment design, no text",
+   "seed": 161965711254320,
+   "width": 1024,
+   "height": 1360,
+   "bytes": 2193263,
+   "source": "generated",
+   "added": "2026-11-18 11:27",
+   "replaces": ""
   }
  ],
  "rules": {
@@ -10649,11 +10803,11 @@
  },
  "slots": {
   "brand:logo": {
-   "url": "",
-   "item": "",
-   "since": "2026-11-18 08:24",
-   "bytes": 0,
-   "mtime": 0,
+   "url": "/assets/branding/crimson-ledger-logo-v01.png",
+   "item": "m81e9725282",
+   "since": "2026-11-18 10:08",
+   "bytes": 2069759,
+   "mtime": 1795025204,
    "history": [
     {
      "at": "2026-11-16 19:57",
@@ -10675,15 +10829,22 @@
      "to": "",
      "item": "",
      "how": "removed"
+    },
+    {
+     "at": "2026-11-18 10:08",
+     "from": "",
+     "to": "/assets/branding/crimson-ledger-logo-v01.png",
+     "item": "m81e9725282",
+     "how": "generated"
     }
    ]
   },
   "brand:favicon": {
-   "url": "/uploads/historical-favicon.svg",
-   "item": "m9785e45676",
-   "since": "2026-11-17 06:05",
-   "bytes": 8859,
-   "mtime": 1794924313,
+   "url": "/assets/branding/crimson-ledger-icon-v01.png",
+   "item": "m1eef99cc65",
+   "since": "2026-11-18 10:08",
+   "bytes": 3006125,
+   "mtime": 1795025275,
    "history": [
     {
      "at": "2026-11-16 19:57",
@@ -10698,6 +10859,13 @@
      "to": "/uploads/historical-favicon.svg",
      "item": "m9785e45676",
      "how": "file"
+    },
+    {
+     "at": "2026-11-18 10:08",
+     "from": "/uploads/historical-favicon.svg",
+     "to": "/assets/branding/crimson-ledger-icon-v01.png",
+     "item": "m1eef99cc65",
+     "how": "generated"
     }
    ]
   },
