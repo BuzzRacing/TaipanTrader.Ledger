@@ -16,7 +16,6 @@ let reloading = false;
 const ui = { tab: "port", vals: {}, dest: null, orders: null, seenTurn: null, busy: false, confirmNew: false,
              spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false, meOpen: false,
              tally: false, tallyShown: false, tallyTurn: null,
-             bookView: "signals", bookGood: null, bookPort: null, bookMode: "buy", bookRoute: null,
              portView: "arrival", portTurn: null, plRange: "voyage" };
 let VS = {};             // voice settings: who is in the cast, what this screen reads aloud
 const app = document.getElementById("app");
@@ -158,11 +157,6 @@ const guns = () => S.me.ships.reduce((n, s) => n + s.guns, 0);
 const cannons = () => S.me.ships.reduce((n, s) => n + (s.cannons || 0), 0);
 const cannonSlots = () => D.cannon_slots || 2;
 const pct = (x, digits) => (x * 100).toFixed(digits == null ? 1 : digits).replace(/\.0+$/, "");
-
-function riskLabel(a, b) {
-  const d = Chart.distance(D, a, b);
-  return t(d < 260 ? "chart.short" : d < 480 ? "chart.long" : "chart.far");
-}
 
 function sailIcon(kind) {
   const paths = {
@@ -403,14 +397,12 @@ function deckArt(inGame) {
 }
 
 /* The women on the stage: while the Market tab is open, the keeper behind the stalls; while the
-   Fleet tab is open, the ship master; while the Ledger tab is open, the tax lady, who keeps the
-   books; while the Set sail tab is open, the town's lady mayor, who sees the ships off. Media Library > Ports > (port) pictures
+   Fleet tab is open, the ship master; while the Set sail tab is open, the town's lady mayor, who sees the ships off. Media Library > Ports > (port) pictures
    with the "Market keeper", "Ship master", "Mayor" or "Tax lady" role; a port without its own borrows one from another port. One pick per port
    visit, so she does not flicker on redraws. */
 const STAGE_WOMEN = {
   market: { role: "keeper", title: "market.title" },
   fleet: { role: "shipmaster", title: "fleet.master" },
-  // Ledger (the price book) has no stage: the side column is hidden so the table gets the room.
   chart: { role: "mayor", title: "chart.mayor" },
 };
 /* Stage titles until the server is restarted with the current strings.py. */
@@ -421,6 +413,9 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "deck.me": "Captain {name}: voices and options", "deck.speech": "Voices", "deck.speech_on": "Voices are on",
     "deck.speech_off": "Voices are off", "deck.speech_none": "Voices are turned off for this game",
     "deck.options": "Options", "deck.options_soon": "Options are not built yet.",
+    "host.end_short": "End month", "host.new_short": "New game", "host.new_yes_short": "Yes, new game", "host.new_no_short": "Keep playing",
+    "market.best": "Best known: {port} ≈ +{pct}% · {when}", "market.best_now": "seen this month", "market.best_ago": "{n} mo ago",
+    "market.best_tip": "{good} should fetch about {price} a unit in {port} when you land, after the dealer's cut there. Buying one here costs {cost}. {when}; old prices drift back toward normal, and this allows for that. Harbour dues and the Port Authority's tax are not counted.",
     "ledger.here": "you are here", "ledger.blank": "No prices yet. Visit to fill this page.",
     "ledger.key_lo": "cheapest seen", "ledger.key_hi": "dearest seen",
     "ledger.tip_lo": "Cheapest {cargo} you have seen", "ledger.tip_hi": "Dearest {cargo} you have seen",
@@ -487,14 +482,13 @@ function stageFace(cid) {
 /* The tab rail shows a picture instead of an icon: the same woman the stage shows for that tab where
    there is one (Market: the market keeper, Fleet: the ship master, Ledger: the tax lady, Set sail: the
    mayor), the port the house is in for Port (and for Set sail without a mayor), and a cast member's
-   profile picture for the rest (Ledger without a tax lady: the crier, Advice: the first mate, Tally Book:
+   profile picture for the rest (Advice: the first mate, Tally Book:
    the bookmaker). Repaint any of them in the Media Library and the tab follows. The SVG
    icon is the fallback when there is no picture at all. */
 const TAB_FACES = {
   market: { woman: "keeper", cast: "comprador" },
   fleet: { woman: "shipmaster", cast: "shipwright" },
   port: { port: true },
-  ledger: { woman: "taxlady", cast: "crier" },
   advice: { cast: "narrator" },
   tally: { cast: "bookmaker" },
   chart: { woman: "mayor", port: true },
@@ -790,13 +784,13 @@ function gameScreen() {
   if (!fighting && ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
   const top = topHtml();
-  const nav = ["port", "market", "ledger", "fleet", "chart"].map(k =>
+  const nav = ["port", "market", "fleet", "chart"].map(k =>
     `<button type="button" class="${!ui.tally && ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
     `${tabFace(k)}<span>${te("tab." + k)}</span></button>`).join("") +
     `<button type="button" class="dk-tally${ui.tally ? " on" : ""}${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-pressed="${ui.tally}" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
     `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
     `<i class="dk-gap"></i>` + meButton();
-  const pane = { market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, ledger: ledgerTab }[ui.tab]();
+  const pane = ({ market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab }[ui.tab] || portTab)();
   // The Mayor's side column is one outward-clearance document: harbour charges and the cargo declaration.
   // On the Port tab the race standings sit in the side column under the port art.
   const side = ui.tab === "market" ? dealerCard() + Pulse.card() : ui.tab === "chart" ? clearanceLedger()
@@ -972,6 +966,23 @@ function syncPromotion(inGame, canShow) {
    tabs). Without a portrait: their initials on the house colour, with their name under it. Tapping it opens
    a small fly-out beside it (above it in portrait) with Voices on/off and Options. Tapping outside it
    or pressing Escape closes it. */
+/* The host's two controls (End the month now, start a new game), in the captain fly-out since the Ledger
+   tab they sat under was removed (19 Nov 2026). Starting a new game asks first: the two buttons turn into
+   "Yes, new game" and "Keep playing". Nothing for players who are not the host. */
+const HOST_ICONS = {
+  force: '<svg viewBox="0 0 24 24"><path d="M5 5l8 7-8 7zM13 5l8 7-8 7z"/></svg>',
+  newgame: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>',
+  keep: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+function hostFly() {
+  if (!S.me.host) return "";
+  const b = (act, icon, label, tip, cls = "") =>
+    `<button type="button" class="dk-host${cls}" data-act="${act}" title="${te(tip)}">${HOST_ICONS[icon]}<span>${te(label)}</span></button>`;
+  return `<i class="dk-fly-rule" aria-hidden="true"></i>` + (ui.confirmNew
+    ? b("newgame", "newgame", "host.new_yes_short", "host.new_confirm", " bad") + b("newgame_no", "keep", "host.new_no_short", "host.new_no")
+    : b("force", "force", "host.end_short", "host.end_month") + b("newgame_ask", "newgame", "host.new_short", "host.new_ask"));
+}
+
 function meButton() {
   const me = S.me, open = !!ui.meOpen;
   const name = me.name || me.firm || "";
@@ -986,7 +997,8 @@ function meButton() {
       : `<button type="button" class="${muted ? "" : "on"}" data-act="speech" aria-pressed="${!muted}" title="${te(muted ? "deck.speech_off" : "deck.speech_on")}">` +
         `${DECK_ICONS[muted ? "speech_off" : "speech_on"]}<span>${te("deck.speech")}</span></button>`;
     fly = `<div class="dk-fly" role="menu">${voice}` +
-      `<button type="button" data-act="options" title="${te("deck.options_soon")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button></div>`;
+      `<button type="button" data-act="options" title="${te("deck.options_soon")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button>` +
+      hostFly() + `</div>`;
   }
   return `<div class="dk-me${open ? " open" : ""}" style="--house:${COLORS[me.color % 8]}">${fly}` +
     `<button type="button" class="dk-face${portrait ? " face" : ""}" data-act="me" aria-haspopup="menu" aria-expanded="${open}" aria-label="${te("deck.me", { name })}" title="${te("deck.me", { name })}">` +
@@ -1173,6 +1185,46 @@ function haveHtml(tr) {
   return (tr.side ? `<s>${tr.have.toLocaleString()}</s> → ` : "") + th("market.aboard", { n: `<b class="mk-at">${tr.at.toLocaleString()}</b>` });
 }
 
+/* Best known port for one cargo (moved here from the Ledger tab, 19 Nov 2026). The same sums as
+   bestPrice() on the Set sail cards, turned round to go cargo by cargo: the last price the house saw in
+   each other port (or a newer Registrar tip) is pulled back toward that port's normal price once for
+   every month since it was seen plus one for the voyage (rules.market.reversion), then the dealer's cut
+   there at your standing is taken off. Compared with buying one here now. Ports where the cargo is
+   banned are skipped. Harbour dues and the Port Authority's tax are not counted. Null when no port
+   is known to pay more. */
+function bestPortFor(g) {
+  const me = S.me;
+  if (!Number.isFinite(me.prices[g])) return null;
+  const cost = quote(g, 1, "buy");
+  if (!(cost > 0)) return null;
+  const mk = D.market || { reversion: .3, spread_base: .04, spread_swing: .03 };
+  let best = null;
+  Object.keys(D.ports).forEach(k => {
+    if (k === me.port || (S.bans?.[k] || []).includes(g)) return;
+    const known = me.known[k], tp = ((me.tips || {})[k] || {})[g];
+    let price = known?.prices?.[g], turn = known ? known.turn : null;
+    if (tp && Number.isFinite(tp.price) && (turn == null || tp.turn >= turn)) { price = tp.price; turn = tp.turn; }
+    if (!Number.isFinite(price)) return;
+    const mods = D.ports[k].mods || {}, normal = (D.goods[g].base || 0) * (mods[g] == null ? 1 : mods[g]);
+    if (!(normal > 0)) return;
+    const age = Math.max(0, S.turn - turn);
+    const expect = normal * (1 + (price / normal - 1) * Math.pow(1 - mk.reversion, age + 1));
+    const rep = me.rep?.[k] ?? 50;
+    const net = expect * (1 - Math.max(0, mk.spread_base - mk.spread_swing * (rep - 50) / 50));
+    const gain = net / cost - 1;
+    if (!best || gain > best.gain) best = { k, gain, age, net, cost };
+  });
+  return best && Math.round(best.gain * 100) >= 1 ? best : null;
+}
+
+function bestHtml(g) {
+  const b = bestPortFor(g);
+  if (!b) return "";
+  const when = b.age === 0 ? t("market.best_now") : t("market.best_ago", { n: b.age });
+  const tip = te("market.best_tip", { good: D.goods[g].name, port: portName(b.k), price: money(Math.round(b.net)), cost: money(b.cost), when: bookSeen(b.age) });
+  return `<small class="mk-best${b.age >= 4 ? " old" : ""}" title="${tip}">${te("market.best", { port: esc(portName(b.k)), pct: Math.round(b.gain * 100), when: esc(when) })}</small>`;
+}
+
 function marketRow(g) {
   const me = S.me, good = D.goods[g], tr = tradeOf(g);
   const tag = good.contraband ? ` <span class="tag">${te("tag.contraband")}</span>` : "";
@@ -1183,7 +1235,7 @@ function marketRow(g) {
   const hotTag = hot ? ` <span class="hot-badge mk-hot">${HOT_FLAME}${te("hot.badge")}</span>` : "";
   return `<tr data-good="${g}" class="${tr.side}${held}"${hot ? ' data-hot="1"' : ""}>
     <td class="mk-ico" data-act="pulse_pin" data-good="${g}" title="${tip}">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
-    <td class="mk-name" data-act="pulse_pin" data-good="${g}" title="${tip}"><b>${esc(good.name)}</b>${tag}${hotTag}</td>
+    <td class="mk-name" data-act="pulse_pin" data-good="${g}" title="${tip}"><b>${esc(good.name)}</b>${tag}${hotTag}${hot ? "" : bestHtml(g)}</td>
     <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${tr.sealed ? `<small class="mk-sealed">${te("market.sealed", { n: tr.sealed.toLocaleString() })}</small>` : ""}${paidHtml(g)}</td>
     <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
       value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"${tr.sealed ? ` title="${te("market.sealed_block", { n: tr.sealed.toLocaleString(), good: good.name, port: portName(me.port) })}"` : ""}></td>
@@ -1513,14 +1565,6 @@ function portArrival() {
   const right = mayorOpen() ? mayorParlour()
     : `<section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>`;
   return `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>${right}`;
-}
-
-/* The Registrar's hot tips still to come or still running: kept on screen so the captain can act on
-   them without having to remember what she said (customs.js hotTipHtml). */
-function hotTipsCard() {
-  const list = (S.me.hot_tips || []).filter(tp => tp.ends >= S.turn);
-  if (!list.length) return "";
-  return `<section class="card hot-tips">${list.map(tp => hotTipHtml(tp, false)).join("")}</section>`;
 }
 
 /* The live hot tip, pinned in brass across the top of the Port and Market screens from the month it
@@ -2232,209 +2276,14 @@ function slipChoice() {
     ${slip ? `<p class="muted du-slipnote">${te("dues.slip_note", { pct: Math.round((r.slip_caught == null ? .35 : r.slip_caught) * 100), caught, rep: r.slip_rep == null ? 10 : r.slip_rep, port: esc(portName(me.port)) })}</p>` : ""}`;
 }
 
-/* --------------------------------------------------------------- ledger -- */
-function bookPrice(price) {
-  return CUR + price.toLocaleString("en-US", { maximumFractionDigits: 2 });
-}
-
+/* ---------------------------------------------------------- price ages -- */
+/* How long ago a remembered price was seen (Set sail's "Best" and the Market's best-known line).
+   The Ledger tab (the Price Book) that used to share it was removed on 19 Nov 2026. */
 function bookSeen(age) {
   if (age === null) return t("ledger.unknown");
   if (age === 0) return t("ledger.fresh");
   const when = age === 1 ? t("ledger.month") : t("ledger.months", { n: age });
   return age >= 4 ? t("ledger.old", { age: when }) : when;
-}
-
-function bookButton(label, action, value, selected, cls = "") {
-  return `<button type="button" class="${cls}" data-act="book_${action}" data-value="${esc(value)}" aria-pressed="${selected}">${label}</button>`;
-}
-
-function bookCargoTile(g) {
-  const art = Media.html("cargo", g, "icon", "book-cargo-art", (D.graphics.goods || {})[g], { mode: "fixed" });
-  const aboard = S.me.cargo[g] || 0;
-  return `<span class="book-cargo-tile">${art}<span class="book-cargo-name">${esc(D.goods[g].name)}</span>
-    <span class="book-cargo-count" aria-hidden="true">${aboard.toLocaleString()}</span><span class="book-cargo-quantity">${te("ledger.aboard", { n: aboard })}</span></span>`;
-}
-
-function bookSignals(goods, ports, banner) {
-  const me = S.me, g = goods.includes(ui.bookGood) ? ui.bookGood : goods[0];
-  const local = me.prices[g], name = D.goods[g].name, home = portName(me.port);
-  const rows = ports.map(p => ({ ...p, price: p.prices[g] }));
-  const selected = rows.find(p => p.key === ui.bookPort) || rows.find(p => !p.here && Number.isFinite(p.price)) || rows[0];
-  const scale = Math.max(1, ...rows.filter(p => Number.isFinite(p.price) && Number.isFinite(local)).map(p => Math.abs(p.price - local)));
-  const cargo = goods.map(key => bookButton(bookCargoTile(key), "good", key, key === g, "book-cargo")).join("");
-  const chart = rows.map(p => {
-    const known = Number.isFinite(p.price), gap = known && Number.isFinite(local) ? p.price - local : 0;
-    const width = Math.abs(gap) / scale * 50;
-    const bars = `<span class="book-axis${known ? "" : " unknown"}" aria-hidden="true">${known ? `<span class="book-bar ${gap < 0 ? "lower" : "higher"}"
-      data-book-port="${esc(p.key)}" style="left:${gap < 0 ? 50 - width : 50}%;width:${width}%;--strength:${(width / 50).toFixed(2)}"></span>` : ""}</span>`;
-    const when = p.here ? t("ledger.here") : !known ? t("ledger.unknown")
-      : p.tip && p.tip[g] != null ? t("ledger.tip") + " · " + bookSeen(p.tip[g]) : bookSeen(p.age);
-    const ban = p.bans.includes(g) ? ` · ${te("ledger.banned")}` : "";
-    return bookButton(`<span><b>${esc(portName(p.key))}</b><small class="${p.age >= 4 ? "book-old" : ""}">${esc(when)}${ban}</small></span>${bars}
-      <strong>${known ? esc(bookPrice(p.price)) : "—"}</strong>`, "port", p.key, p === selected, `book-port${p.here ? " here" : ""}`);
-  }).join("");
-  const gap = selected.price - local;
-  let detail;
-  if (selected.bans.includes(g)) detail = t("ledger.banned");
-  else if (!Number.isFinite(selected.price)) detail = t("ledger.unknown");
-  else if (selected.here) detail = t("ledger.live") + " · " + t("ledger.unit", { price: bookPrice(local) });
-  else if (!Number.isFinite(local)) detail = t("ledger.no_baseline");
-  else if (Math.abs(gap) < .005) detail = t("ledger.equal", { port: home });
-  else detail = t(gap < 0 ? "ledger.lower" : "ledger.higher", { gap: bookPrice(Math.abs(gap)) });
-  return `${banner}
-    <div class="book-cargo-grid" role="group" aria-label="${te("ledger.cargo")}">${cargo}</div>
-    <div class="book-comparison">
-      <div class="book-key">
-        <span>${esc(home)} <b>${Number.isFinite(local) ? esc(bookPrice(local)) : "—"}</b></span>
-        <span class="book-key-axis"><span>${te("ledger.cheaper")}</span><span>${te("ledger.dearer")}</span></span>
-      </div>
-      <div class="book-ports" role="group" aria-label="${te("ledger.port")}">${chart}</div>
-      <div class="book-detail" aria-live="polite">
-        <div><strong>${esc(name)} · ${esc(portName(selected.key))}</strong>
-          ${selected.here ? "" : `<small>${esc(riskLabel(me.port, selected.key))} · ${esc(!Number.isFinite(selected.price) ? t("ledger.unknown")
-            : selected.tip && selected.tip[g] != null ? t("ledger.tip") + " · " + bookSeen(selected.tip[g]) : bookSeen(selected.age))}</small>`}</div>
-        <p>${esc(detail)}</p>
-      </div>
-    </div>`;
-}
-
-function bookVoyages(goods, ports, banner) {
-  const me = S.me, buying = ui.bookMode === "buy";
-  const local = Object.fromEntries(goods.filter(g => Number.isFinite(me.prices[g]) && !ports[0].bans.includes(g) &&
-    (buying ? me.capacity > me.used && quote(g, 1, "buy") <= me.cash : me.cargo[g] > 0))
-    .map(g => [g, quote(g, 1, buying ? "buy" : "sell")]));
-  const options = ports.filter(p => !p.here && p.age !== null).flatMap(p => {
-    const trades = Object.keys(local).filter(g => !p.bans.includes(g) && Number.isFinite(p.prices[g]) && p.prices[g] - local[g] >= .005)
-      .map(g => ({ g, price: p.prices[g], gap: p.prices[g] - local[g], tipped: p.tip && p.tip[g] != null,
-                   age: p.tip && p.tip[g] != null ? p.tip[g] : p.age }))
-      .sort((a, b) => b.gap - a.gap);
-    return trades.length ? [{ ...p, ...trades[0] }] : [];
-  }).sort((a, b) => (a.age >= 4) - (b.age >= 4) || b.gap - a.gap || a.age - b.age);
-  const route = options.find(p => p.key === ui.bookRoute) || options[0];
-  const mode = `<div class="book-controls" role="group" aria-label="${te("ledger.intent")}">
-    ${bookButton(te("ledger.buy"), "mode", "buy", buying, "book-toggle")}
-    ${bookButton(te("ledger.sell"), "mode", "sell", !buying, "book-toggle")}</div>`;
-  if (!route) return `${banner}${mode}<p class="book-detail">${te("ledger.none")}</p>`;
-  const summary = p => t("ledger.route_age", { port: portName(p.key), age: bookSeen(p.age), distance: riskLabel(me.port, p.key) });
-  const gap = p => t(buying ? "ledger.buy_gap" : "ledger.sell_gap", { gap: bookPrice(p.gap) });
-  const list = options.map(p => bookButton(`<strong>${esc(portName(p.key))} · ${esc(D.goods[p.g].name)}</strong>
-    <small>${esc((p.tipped ? t("ledger.tip") + " · " : "") + bookSeen(p.age))}</small><span class="book-gain">+${esc(bookPrice(p.gap))} / unit</span>`,
-    "route", p.key, p === route, "book-route")).join("");
-  return `${banner}${mode}<div class="book-voyage">
-    <div class="book-routes" role="group" aria-label="${te("ledger.routes")}">${list}</div>
-    <section class="book-detail book-plan">
-      <div aria-live="polite"><div class="book-plan-head">${bookCargoTile(route.g)}<div><h3>${te(buying ? "ledger.buy_route" : "ledger.sell_route", { cargo: D.goods[route.g].name, port: portName(route.key) })}</h3>
-      <small>${esc(summary(route))}</small></div></div>
-      <div class="book-quotes"><div><small>${te(buying ? "ledger.buy_here" : "ledger.sell_here")}</small><b>${esc(bookPrice(local[route.g]))}</b></div>
-      <div><small>${te("ledger.seen_bid")}</small><b>${esc(bookPrice(route.price))}</b></div></div>
-      <p class="book-gain">+${esc(gap(route))}</p></div>
-      ${btn(te("ledger.open_chart"), "book_chart", `data-value="${esc(route.key)}"`, "book-toggle", me.ready)}
-    </section></div>`;
-}
-
-function bookTable(goods, ports, banner) {
-  /* Heat map: each cell is shaded by how far the destination's last posted price sits above (green)
-     or below (red) the cost to buy one unit here. Strength grows with the gap, saturating at ±50%,
-     so a glance separates really bad, bad, good and really good. The exact gap is in the tooltip. */
-  const me = S.me;
-  const buyCosts = Object.fromEntries(goods.filter(g => Number.isFinite(me.prices[g]))
-    .map(g => [g, quote(g, 1, "buy")]));
-  const headings = goods.map(g => `<th scope="col">${bookCargoTile(g)}</th>`).join("");
-  const rows = ports.map(p => {
-    const seen = p.here ? t("ledger.here") : bookSeen(p.age);
-    const cells = goods.map(g => {
-      const cost = buyCosts[g], price = p.here ? cost : p.prices[g];
-      let label = "", tone = "", heat = 0, pct = "";
-      if (p.bans.includes(g)) { label = "banned"; tone = "blocked"; }
-      else if (ports[0].bans.includes(g)) { label = "banned_here"; tone = "blocked"; }
-      else if (Number.isFinite(price)) {
-        if (p.here) { label = "buy_cost"; tone = "base"; }
-        else if (!Number.isFinite(cost) || cost <= 0) label = "no_baseline";
-        else {
-          const r = (price - cost) / cost;
-          heat = Math.min(1, Math.abs(r) / .5);
-          pct = (r >= 0 ? "+" : "−") + Math.round(Math.abs(r) * 100) + "%";
-          label = r > 0 ? "good_buy" : "dont_buy";
-          tone = r > 0 ? (r >= .25 ? "good hot" : "good") : (r <= -.25 ? "poor hot" : "poor");
-        }
-      }
-      const tipped = !p.here && p.tip && p.tip[g] != null;
-      const tip = [tipped ? t("ledger.tip") + " · " + bookSeen(p.tip[g]) : "", label ? t("ledger." + label) : "", pct].filter(Boolean).join(" · ");
-      const style = heat ? ` style="--heat:${(.22 + heat * .78).toFixed(2)}"` : "";
-      const mark = tone === "blocked" ? '<i class="book-ban" aria-hidden="true">⊘</i>' : "";
-      return `<td class="${tone}${tipped ? " tipped" : ""}"${style}${tip ? ` title="${esc(tip)}" aria-label="${esc((Number.isFinite(price) ? bookPrice(price) + " · " : "") + tip)}"` : ""}>${mark}${
-        Number.isFinite(price) ? esc(bookPrice(price)) : `<span aria-label="${te("ledger.unknown")}">—</span>`}</td>`;
-    }).join("");
-    return `<tr class="${p.here ? "here" : ""}"><th scope="row" title="${esc(seen)}"><b>${p.here ? "⚓ " : ""}${esc(portName(p.key))}</b>
-      <small class="${p.age >= 4 ? "book-old" : ""}">${esc(p.here ? t("ledger.now") : p.age === null ? "—" : t("ledger.ago", { n: p.age }))}</small></th>${cells}</tr>`;
-  }).join("");
-  const legend = `<div class="book-heat-key" id="book-table-note" title="${te("ledger.all_note")}">
-      <span class="k poor hot"></span><span>${te("ledger.heat_worst")}</span>
-      <span class="k poor"></span><span>${te("ledger.heat_bad")}</span>
-      <span class="k good"></span><span>${te("ledger.heat_good")}</span>
-      <span class="k good hot"></span><span>${te("ledger.heat_best")}</span>
-      <span class="book-heat-info" aria-hidden="true">ⓘ</span></div>`;
-  return `${banner}${legend}
-    <div class="book-table-scroll" role="region" aria-label="${te("ledger.all")}" aria-describedby="book-table-note" tabindex="0">
-      <table class="book-table" aria-label="${te("ledger.all")}">
-        <thead><tr><th scope="col">${te("col.port")}</th>${headings}</tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-}
-
-function ledgerTab() {
-  const me = S.me, goods = Object.keys(D.goods);
-  const ports = [me.port, ...Object.keys(D.ports).filter(k => k !== me.port)].map(key => {
-    const here = key === me.port, known = me.known[key];
-    const bans = S.bans?.[key] || [];
-    // The Registrar's tips (Hong Kong): a price she gave for one cargo, newer than the last visit,
-    // fills that cargo's square; tip[g] is its age in months.
-    const prices = here ? me.prices : Object.assign({}, known?.prices || {}), tip = {};
-    if (!here) Object.entries((me.tips || {})[key] || {}).forEach(([g, tp]) => {
-      if (tp && Number.isFinite(tp.price) && (!known || tp.turn >= known.turn)) {
-        prices[g] = tp.price; tip[g] = Math.max(0, S.turn - tp.turn);
-      }
-    });
-    const tipAges = Object.values(tip);
-    return { key, here, bans, prices, tip,
-      age: here ? 0 : known ? Math.max(0, S.turn - known.turn) : tipAges.length ? Math.min(...tipAges) : null };
-  });
-  // No banner: the view switch is a slim segmented bar so the page's height goes to the prices.
-  const banner = `<div class="book-seg" role="group" aria-label="${te("ledger.view")}">
-      ${bookButton(te("ledger.signals"), "view", "signals", ui.bookView === "signals", "book-toggle")}
-      ${bookButton(te("ledger.voyage"), "view", "voyage", ui.bookView === "voyage", "book-toggle")}
-      ${bookButton(te("ledger.all"), "view", "all", ui.bookView === "all", "book-toggle")}</div>`;
-  const view = { signals: bookSignals, voyage: bookVoyages, all: bookTable }[ui.bookView];
-  return `${hotTipsCard()}<section class="card book">${view(goods, ports, banner)}</section>
-    ${me.host ? `<section class="card host-bar"><h2>${te("host.title")}</h2><div class="host-actions">` +
-      btn(te("host.end_month"), "force", "", "slim") + newGameControl() + "</div></section>" : ""}`;
-}
-
-function bookSelect(action, value) {
-  const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const prior = new Map();
-  if (action === "good" && motion) {
-    app.querySelectorAll(".book-bar").forEach(bar => {
-      const style = getComputedStyle(bar);
-      prior.set(bar.dataset.bookPort, { left: style.left, width: style.width });
-    });
-  }
-  switch (action) {
-    case "view": ui.bookView = value; break;
-    case "good": ui.bookGood = value; break;
-    case "port": ui.bookPort = value; break;
-    case "mode": ui.bookMode = value; ui.bookRoute = null; break;
-    case "route": ui.bookRoute = value; break;
-  }
-  render();
-  app.querySelectorAll(`[data-act="book_${action}"]`).forEach(button => {
-    if (button.dataset.value === value && document.activeElement !== button) button.focus({ preventScroll: true });
-  });
-  if (prior.size) app.querySelectorAll(".book-bar").forEach(bar => {
-    const from = prior.get(bar.dataset.bookPort);
-    if (from) bar.animate([from, { left: bar.style.left, width: bar.style.width }], { duration: 440, easing: "ease-out" });
-  });
 }
 
 /* --------------------------------------------------------------- events -- */
@@ -2509,15 +2358,6 @@ app.addEventListener("click", async e => {
     case "tab": ui.tab = d.tab; ui.tally = false; return render();
     case "pulse_pin": Pulse.pin(d.good); return render();
     case "pulse_free": Pulse.free(); return render();
-    case "book_view": case "book_good": case "book_port": case "book_mode": case "book_route":
-      return bookSelect(d.act.slice(5), d.value);
-    case "book_chart":
-      if (!S.me.ready && d.value !== S.me.port && D.ports[d.value]) {
-        ui.dest = d.value;
-        ui.tab = "chart";
-        return render();
-      }
-      return;
     case "tally": ui.tally = !ui.tally; ui.meOpen = false; return render();
     case "me": ui.meOpen = !ui.meOpen; return render();
     case "speech": Voice.setMuted(!Voice.muted()); return render();
@@ -2580,10 +2420,10 @@ app.addEventListener("click", async e => {
       return;
     case "stay": return act("sail", { dest: null, orders: ui.orders || S.me.orders });
     case "unsail": return act("unsail");
-    case "force": return act("force");
+    case "force": ui.meOpen = false; return act("force");
     case "newgame_ask": ui.confirmNew = true; return render();
     case "newgame_no": ui.confirmNew = false; return render();
-    case "newgame": ui.confirmNew = false; return act("new_game");
+    case "newgame": ui.confirmNew = false; ui.meOpen = false; return act("new_game");
     case "free_play": return act("free_play");
     case "ledger": return Ceremony.openLedger(S, D, app);
     default: if (d.act.startsWith("cx_")) return Customs.click(d);

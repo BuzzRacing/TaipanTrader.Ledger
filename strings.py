@@ -346,6 +346,10 @@ EN = {
     "host.new_confirm": "End this game for everyone and open a new one?",
     "host.new_yes": "Yes, new game",
     "host.new_no": "Keep playing",
+    "host.end_short": "End month",
+    "host.new_short": "New game",
+    "host.new_yes_short": "Yes, new game",
+    "host.new_no_short": "Keep playing",
 
     # --- in-game header ----------------------------------------------------
     "stat.silver": "Silver", "stat.bank": "Bank", "stat.debt": "Debt", "stat.worth": "Net worth",
@@ -413,6 +417,10 @@ EN = {
     "market.buy_n": "Buy {n} · {cost}",
     "market.sell_n": "Sell {n} · {cost}",
     "market.paid": "paid {paid} avg",
+    "market.best": "Best known: {port} ≈ +{pct}% · {when}",
+    "market.best_now": "seen this month",
+    "market.best_ago": "{n} mo ago",
+    "market.best_tip": "{good} should fetch about {price} a unit in {port} when you land, after the dealer's cut there. Buying one here costs {cost}. {when}; old prices drift back toward normal, and this allows for that. Harbour dues and the Port Authority's tax are not counted.",
     "market.paid_tip": "You paid {paid} a unit on average for the {good} you hold, aboard and ashore. Selling one here now brings {price}.",
     "market.pl_up": "+{profit}",
     "market.pl_down": "−{profit}",
