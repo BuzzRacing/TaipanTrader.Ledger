@@ -1602,7 +1602,7 @@ function clearanceLedger() {
 const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
   ["port", ["dues", "gift", "depot", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
-  ["money", ["interest", "bank_interest"]],
+  ["money", ["interest", "bank_interest", "contracts"]],
   ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed", "wh_robbed"]],
 ];
 const plTotal = lines => Object.values(lines || {}).reduce((a, b) => a + b, 0);
@@ -1613,7 +1613,7 @@ const ten = (key, n, vars) => te(n === 1 && T[key + "_1"] != null ? key + "_1" :
 
 /* Services: the full set at home; elsewhere only where the port has a bank counter or warehouses to let. */
 function portViews() {
-  const me = S.me, here = me.port === myHome() || me.bank_here || (me.wh_here && me.wh_here !== "none");
+  const me = S.me, here = me.port === myHome() || me.bank_here || (me.wh_here && me.wh_here !== "none") || !!me.shares;
   return ["arrival", "accounts", "log", "news"].concat(here ? ["services"] : []);
 }
 const portViewLabel = v => v === "services" && S.me.port !== myHome()
@@ -2157,6 +2157,9 @@ function portServices() {
       te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(), hold_used: me.used, hold: me.capacity })
       + (others.length ? " " + te("wh.elsewhere", { list: others.join("; ") }) : ""), warehouse + expand);
   }
+  if (me.commissions && (home || me.commissions.active.length)) out += commissionsCard(me);
+  if (home && me.estate) out += estateCard(me);
+  if (me.shares) out += sharesCard(me);
   if (home) {
     const agent = me.protect > D.renew_at ? te("agent.content", { months: me.protect })
       : me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none");
@@ -2165,6 +2168,66 @@ function portServices() {
     out += serviceCard("agent", te("agent.title"), agent, tribute);
   }
   return out;
+}
+
+/* Late game (19 Nov 2026): shares in the port the house is in, and the great house at home. */
+function sharesCard(me) {
+  const sh = me.shares, locked = me.ready, port = portName(sh.port);
+  const info = (sh.home ? te("shares.info_home", { port }) : te("shares.info", { port, total: sh.total, cut: pct(sh.cut, 0) }));
+  const rows = [
+    sh.home ? "" : te("shares.rate", { mine: pct(sh.my_rate, 2), base: pct(sh.base_rate, 2) }),
+    te("shares.held", { n: sh.here, total: sh.total }),
+    sh.left > 0 ? te("shares.left", { left: sh.left, total: sh.total, price: money(sh.price) }) : te("shares.none_left", { port }),
+    sh.patron_me ? te("shares.patron_me", { port }) : sh.patron ? te("shares.patron", { port, firm: sh.patron }) : te("shares.no_patron", { port }),
+    sh.holders.length ? te("shares.holders", { list: sh.holders.map(h => `${h.firm} ${h.n}`).join(", ") }) : "",
+  ].filter(Boolean).map(t => `<li>${t}</li>`).join("");
+  const mine = Object.entries(sh.mine || {});
+  const yours = mine.length ? `<p class="muted">${te("shares.yours", { list: mine.map(([k, n]) => `${portName(k)} ${n}`).join(", "), value: money(sh.value) })}</p>` : "";
+  const buttons = [
+    sh.left > 0 ? btn(te("shares.buy", { cost: money(sh.price) }), "shares", 'data-op="buy"', "primary", locked || sh.price > me.cash) : "",
+    sh.sell_back && sh.here > 0 ? btn(te("shares.sell", { gain: money(sh.back) }), "shares", 'data-op="sell"', "pt-go", locked) : "",
+  ].join("");
+  return serviceCard("shares", te("shares.title", { port }), info,
+    `<ul class="pt-share-facts">${rows}</ul>${yours}${buttons ? `<div class="pt-actions">${buttons}</div>` : ""}`);
+}
+
+function commissionsCard(me) {
+  const cm = me.commissions, home = portName(myHome()), locked = me.ready;
+  const one = (k, offer) => {
+    const cargo = k.kind !== "standing";
+    const prog = cargo ? te("contract.progress_cargo", { now: k.now.toLocaleString(), total: k.qty.toLocaleString() })
+      : te("contract.progress_standing", { now: k.now, total: k.target });
+    const share = cargo ? k.now / Math.max(1, k.qty) : Math.max(0, Math.min(1, k.now / Math.max(1, k.target)));
+    const acts = offer && cm.home
+      ? `<div class="pt-actions">${btn(te("contract.accept"), "contract", `data-op="accept" data-slot="${k.slot}"`, "primary", locked)}
+          ${btn(te("contract.decline"), "contract", `data-op="decline" data-slot="${k.slot}"`, "pt-go", locked)}</div>` : "";
+    return `<div class="pt-commission${offer ? " offer" : ""}">
+      <p class="pt-commission-head"><b>${te("contract.slot." + k.slot)}</b>${offer ? `<span class="tag">${te("contract.offered")}</span>` : ""}</p>
+      <p class="pt-commission-what">${esc(k.text)}</p>
+      ${offer ? "" : `<div class="pt-commission-bar"><i style="width:${Math.round(100 * share)}%"></i></div><small>${prog}</small>`}
+      <small>${te("contract.due", { date: k.due_date, months: k.months })} · ${te("contract.reward", { fee: money(k.fee), rep: Math.round(k.rep), home })}</small>
+      ${acts}</div>`;
+  };
+  const active = cm.active.map(k => one(k, false)).join("");
+  const offers = cm.home ? Object.values(cm.offers).map(k => one(k, true)).join("") : "";
+  const empty = !active && !offers ? `<p class="muted">${cm.home ? te("contract.none") : te("contract.home_only", { home })}</p>` : "";
+  const tl = cm.tally || {};
+  const tally = (tl.done || tl.missed) ? `<p class="muted">${te("contract.tally", { done: tl.done || 0, missed: tl.missed || 0, silver: money(tl.silver || 0) })}</p>` : "";
+  return serviceCard("mayor_work", te("contract.title"), cm.home ? te("contract.info", { home }) : te("contract.info_away", { home }),
+    active + offers + empty + tally);
+}
+
+function estateCard(me) {
+  const es = me.estate, home = portName(myHome()), locked = me.ready;
+  const nxt = es.next ? es.stages[es.next - 1] : null;
+  const info = es.stage ? te("estate.have", { stage: es.title, home, rob: pct(es.rob_cut, 0) }) : te("estate.none", { home });
+  const plan = `<ol class="pt-estate-path">${es.stages.map(st =>
+    `<li class="${st.stage <= es.stage ? "built" : ""}${st.stage === es.next ? " next" : ""}"><b>${esc(st.title)}</b> <span>${money(st.cost)}</span></li>`).join("")}</ol>`;
+  const body = nxt
+    ? `<p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}</p>
+       <div class="pt-actions">${btn(te("estate.build", { stage: nxt.title, cost: money(nxt.cost) }), "estate", "", "primary", locked || nxt.cost > me.cash)}</div>`
+    : `<p>${te("estate.done", { home })}</p>`;
+  return serviceCard("estate_" + es.stage, te("estate.title", { home }), info, plan + body);
 }
 
 /* ---------------------------------------------------------------- fleet -- */
@@ -2185,11 +2248,12 @@ function mountsLine(s, spec) {
 /* Three classes of ship (18 Nov 2026): merchantmen (cargo and guns, the line), escorts (guns only, the van)
    and cargo ships (hold only, the rear). The Fleet tab and the shipyard keep them apart, each with its own count
    and limit; escorts and cargo ships open once the line of merchantmen is full. */
-const CLASS_ORDER = ["trader", "escort", "cargo"];
+const CLASS_ORDER = ["flagship", "trader", "escort", "cargo"];
 const roleOf = k => ((D.ships[k] || {}).role) || "trader";
 function classInfo(role) {
   const c = (S.me.classes || {})[role];
   if (c) return c;
+  if (role === "flagship") return { n: 0, max: 0, unlock: 0, open: false };   // no flagship in this game's ships
   const r = (D.fleet_rules || {})[role] || { max: D.max_fleet, unlock: 0 };
   const n = S.me.ships.filter(s => roleOf(s.type) === role).length;
   const traders = S.me.ships.filter(s => roleOf(s.type) === "trader").length;
@@ -2222,7 +2286,8 @@ function shipCard(s, i, yard) {
     : `<span class="fl-ok">${te("fleet.seaworthy")}</span>`;
   const traders = me.ships.filter(x => roleOf(x.type) === "trader").length;
   const lastTrader = D.keep_trader !== false && role === "trader" && traders <= 1;
-  const line = role === "escort" ? `${esc(spec.name)} · ${te("fleet.no_hold")}`
+  const line = role === "flagship" ? te("fleet.flag_line", { type: spec.name, hold: spec.hold })
+    : role === "escort" ? `${esc(spec.name)} · ${te("fleet.no_hold")}`
     : role === "cargo" ? `${esc(spec.name)} · ${te("col.hold").toLowerCase()} ${spec.hold} · ${te("fleet.no_guns")}`
     : te("fleet.ship_line", { type: spec.name, hold: spec.hold });
   const guns = spec.slots > 0 ? `<div class="fl-stat"><span class="fl-lbl">${te("col.guns")}</span>
@@ -2251,9 +2316,12 @@ function shipCard(s, i, yard) {
 function yardRow(k) {
   const me = S.me, s = D.ships[k], c = classInfo(roleOf(k));
   const cant = me.cash < s.price || c.n >= c.max || !c.open;
-  return `<tr class="${cant ? "dim" : ""}">
+  // The flagship is named by her house as she is bought (blank: one from the name list).
+  const flagName = roleOf(k) === "flagship" && !cant
+    ? `<input type="text" class="yd-flagname" data-k="flagname" maxlength="28" value="${esc(ui.vals.flagname || "")}" placeholder="${te("yard.flag_name")}" aria-label="${te("yard.flag_name")}">` : "";
+  return `<tr class="${cant ? "dim" : ""}${roleOf(k) === "flagship" ? " yd-flag" : ""}">
     <td class="yd-ico">${Media.html("ship", k, "card", "yd-img", D.graphics.ships[k], { slot: "yard" })}</td>
-    <td class="yd-name"><b>${esc(s.name)}</b>${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}${s.cannons ? `<span class="tag" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}">${te("tag.cannons")}</span>` : ""}</td>
+    <td class="yd-name"><b>${esc(s.name)}</b>${flagName}${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}${s.cannons ? `<span class="tag" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}">${te("tag.cannons")}</span>` : ""}</td>
     <td class="n">${s.hold || "—"}</td><td class="n">${s.hull}</td><td class="n">${s.slots || "—"}</td>
     <td class="n yd-price">${money(s.price)}</td>
     <td class="yd-do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "fl-btn primary", cant)}</td></tr>`;
@@ -2275,6 +2343,7 @@ function fleetTab() {
     const mine = me.ships.map((s, i) => [s, i]).filter(([s]) => roleOf(s.type) === role);
     const c = classInfo(role);
     if (!mine.length && role !== "trader" && !c.open) return "";      // nothing to show until the line is full
+    if (!mine.length && role === "flagship") return "";               // her place shows once she is bought
     return `<div class="fl-class">${classHead(role, "header")}
       ${mine.length ? `<div class="fl-ships">${mine.map(([s, i]) => shipCard(s, i, yard)).join("")}</div>`
         : `<p class="muted fl-none">${te("class.none")}</p>`}</div>`;
@@ -2545,6 +2614,9 @@ app.addEventListener("click", async e => {
     }
     case "protection": return act("protection");
     case "depot": return act("depot", { op: d.op });
+    case "shares": return act("shares", { op: d.op, n: 1 });
+    case "estate": return act("estate", {});
+    case "contract": return act("contract", { op: d.op, slot: d.slot });
     case "sell_all": return act("sell", { good: d.good, src: "all" });
     case "gun": return act("buy_gun", { index: +d.i });
     case "cannon": return act("buy_cannon", { index: +d.i });
@@ -2554,7 +2626,12 @@ app.addEventListener("click", async e => {
     case "repair": return act("repair", { index: d.i === "all" ? "all" : +d.i });
     case "sellship": return act("sell_ship", { index: +d.i });
     case "tradedown": return act("trade_down", {});
-    case "buyship": return act("buy_ship", { ship: d.ship });
+    case "buyship": {
+      const flag = roleOf(d.ship) === "flagship";
+      const ok = await act("buy_ship", flag ? { ship: d.ship, name: (ui.vals.flagname || "").trim() } : { ship: d.ship });
+      if (ok && flag) { delete ui.vals.flagname; render(); }
+      return;
+    }
     case "dest": if (!S.me.ready) { ui.dest = d.port; render(); } return;
     case "orders": ui.orders = d.o; return render();
     case "slip": if (!S.me.ready) { ui.slip = d.s === "1"; render(); } return;

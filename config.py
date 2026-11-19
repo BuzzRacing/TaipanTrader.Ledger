@@ -123,10 +123,16 @@ DEFAULTS = {
         {"id": "senior_merchant", "worth": 200000, "title": "Senior Merchant"},
         {"id": "merchant_prince", "worth": 500000, "title": "Merchant Prince"},
         {"id": "taipan", "worth": 1000000, "title": "Taipan"},
+        # Ranks above Taipan (19 Nov 2026). "scales": the worth is for a game of rules.game.rank_years
+        # years and grows or shrinks with the game's length (a 5-year game halves it).
+        {"id": "tai_pan_china_seas", "worth": 25000000, "title": "Tai-Pan of the China Seas", "scales": True},
+        {"id": "merchant_lord", "worth": 50000000, "title": "Merchant Lord", "scales": True},
+        {"id": "hong_master", "worth": 100000000, "title": "Hong Master", "scales": True},
     ],
     "rules": {
         "game": {"start_year": 1860, "home": "hongkong", "max_players": 8,
-                 "lengths": [1, 2, 3, 5, 10], "default_years": 5, "grace_seconds": 25},
+                 "lengths": [1, 2, 3, 5, 10], "default_years": 5, "grace_seconds": 25,
+                 "rank_years": 10, "late_ranks_v1": False},
         "start": {"cash": 3500, "debt": 5000, "ship": "junk", "guns": 2, "rep": 50, "home_rep": 60,
                   "where": "random"},
         "captains": {"typed": False},
@@ -143,6 +149,7 @@ DEFAULTS = {
         # max_fleet counts merchantmen (ships with role "trader"). Escorts (guns, no hold) and cargo ships
         # (hold, no guns) have their own limits, and open once the house has escort_unlock merchantmen.
         "fleet": {"max_fleet": 5, "max_escorts": 5, "max_cargo": 5, "escort_unlock": 5, "cargo_unlock": 5,
+                  "flagship_unlock": 0, "flagship_deter": 0.4,
                   "keep_trader": True, "seeded_ships": [], "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
                   "cannon_cost": 7.5, "cannon_power": 2, "cannon_slots": 2,
                   "warehouse_cap": 10000, "depot_open_cost": 10000, "depot_cap": 1000,
@@ -232,6 +239,26 @@ DEFAULTS = {
         # booked into the market so it really lands. The Registrar gives one on hot_home_chance of
         # homecomings (otherwise her price tip); any other port's officer on hot_away_chance of arrivals.
         # Never two at once per house: none while a tip is still to come or still running.
+        # Late game (19 Nov 2026): port shares and the great house at home. Shares: a pool per port
+        # shared by every house; each share held cuts the Port Authority tax there by share_cut; the
+        # biggest holder is Patron of the port. They count in net worth at what was paid.
+        # The great house: three stages bought in turn at the home port; each raises home standing
+        # once (house_rep_N) and cuts the chance of being robbed ashore at home (house_rob_N).
+        "estates": {"shares_enabled": True, "shares_per_port": 10, "share_cut": 0.10,
+                    "share_price_per_pct": 100000, "share_price_min": 150000, "share_price_max": 400000,
+                    "share_sell_back": True,
+                    "house_enabled": True,
+                    "house_cost_1": 500000, "house_cost_2": 2000000, "house_cost_3": 6000000,
+                    "house_rep_1": 5, "house_rep_2": 8, "house_rep_3": 12,
+                    "house_rob_1": 0.3, "house_rob_2": 0.6, "house_rob_3": 0.9},
+        # The Mayor's commissions (late game, 19 Nov 2026): the home Mayor offers one yearly goal and one
+        # short contract at a time. Kinds: deliveries, supply runs to a port short of a cargo, and
+        # standing goals. Paid in silver and home standing; a missed one is only a missed chance.
+        "contracts": {"enabled": True, "short_min": 3, "short_max": 5, "supply_months": 3, "offer_months": 3,
+                      "hold_share_short": 0.35, "hold_share_year": 1.0, "min_qty": 10,
+                      "fee_share": 0.25, "fee_share_year": 0.35, "supply_mult": 1.5, "shortage_at": 1.35,
+                      "standing_short": 10, "standing_year": 25, "standing_fee": 0.0015,
+                      "rep_short": 3, "rep_year": 8},
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
                       "hot_enabled": True, "hot_home_chance": 0.5, "hot_away_chance": 0.2,
                       "hot_every": 3, "hot_lead": 1, "hot_months": 2, "hot_hold": True,
@@ -313,6 +340,10 @@ DEFAULTS = {
         # sails in the rear behind the escorts. Every hit on her sends cargo to the bottom.
         "countryship": {"name": "Country Ship", "hold": 750, "hull": 200, "slots": 0, "price": 120000, "fast": False,
                         "cannons": False, "role": "cargo"},
+        # The flagship (late game, 19 Nov 2026): one per house, outside the class limits. A big hold
+        # and heavy guns; pirates think twice (rules.fleet.flagship_deter); she always sinks last.
+        "flagship": {"name": "Flagship", "hold": 1500, "hull": 900, "slots": 48, "price": 2500000, "fast": False,
+                     "cannons": True, "role": "flagship"},
     },
     "ship_names": ["Morning Cloud", "Jade Heron", "Lucky Star", "Sea Witch", "Golden Carp", "Lady Hughes",
                    "Red Rover", "Water Dragon", "Flying Cloud", "Pearl of Canton", "Falcon", "Nemesis",
@@ -336,12 +367,12 @@ DEFAULTS = {
 
 # The three classes of ship (Ships > Class): merchantmen carry cargo and guns, escorts guns only,
 # cargo ships cargo only. SEEDED_SHIPS join saved settings once (see validate).
-SHIP_ROLES = ("trader", "escort", "cargo")
+SHIP_ROLES = ("trader", "escort", "cargo", "flagship")
 # Market depths shipped before 19 Nov 2026 (see the depth_v2 upgrade in normalise).
 OLD_DEPTHS = {"opium": 60, "gold": 90, "silk": 160, "porcelain": 250, "arms": 250, "spices": 450, "tea": 500,
               "rice": 1200, "general": 1200}
 
-SEEDED_SHIPS = ("gunboat", "countryship")
+SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
 
 # Paths whose whole value is replaced on save (rows can be deleted), not merged.
 WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "escort_names", "cargo_names", "difficulty.presets",
@@ -462,7 +493,10 @@ SECTIONS = [
           "help": "Captains receive their highest qualifying promotion at Home Port. Keep each badge ID the same when renaming its title.",
           "columns": [C("worth", "Net worth from", "int", min=-10**12, max=10**12),
                       C("title", "Title", "text", max=30),
-                      C("id", "Badge ID", "text", "Leave blank to create an ID from the title.", max=48)]},
+                      C("id", "Badge ID", "text", "Leave blank to create an ID from the title.", max=48),
+                      C("scales", "Grows with game length", "bool",
+                        "On: the worth is for a game of the 'Ranks are set for' length (Game Setup) and is scaled to "
+                        "each game's length, so a 5-year game halves it. Off: the same worth in every game.")]},
      ]},
     {"id": "game", "title": "Game Setup", "intro": "How a game starts and how long it runs.",
      "groups": [
@@ -481,6 +515,9 @@ SECTIONS = [
              F("rules.game.max_players", "Most players", "int", min=1, max=8),
              F("rules.game.lengths", "Game lengths offered (years)", "numlist", "The host picks one in the lobby.", min=1, max=50, integer=True),
              F("rules.game.default_years", "Length chosen by default", "int", min=1, max=50),
+             F("rules.game.rank_years", "Ranks are set for a game of (years)", "int",
+               "The top ranks marked 'Grows with game length' (Ratings > Player ranks) are worth their listed "
+               "amount in a game this long, and scale with each game's length.", min=1, max=50),
              F("rules.game.grace_seconds", "Seconds a dropped device still counts as present", "int", min=5, max=600)]},
          {"title": "Each player starts with", "fields": [
              F("rules.start.cash", "Silver", "int", min=0, max=10**9),
@@ -564,6 +601,11 @@ SECTIONS = [
              F("rules.fleet.escort_unlock", "Merchantmen needed before a shipyard sells escorts", "int",
                "Counted when buying. Escorts already bought stay if merchantmen are lost.", min=0, max=20),
              F("rules.fleet.cargo_unlock", "Merchantmen needed before a shipyard sells cargo ships", "int", min=0, max=20),
+             F("rules.fleet.flagship_unlock", "Merchantmen needed before a shipyard sells the flagship", "int",
+               "The flagship is any ship type of class Flagship (Ships). A house may own one, outside the limits above; "
+               "if she is sunk, a new one can be bought at full price.", min=0, max=20),
+             _pct("rules.fleet.flagship_deter", "Flagship: fewer pirate attacks while she sails",
+                  "40% means pirates (and the pirate queen's war junks) find the fleet 40% less often."),
              F("rules.fleet.keep_trader", "The last merchantman cannot be sold", "bool",
                "A fleet of only escorts or cargo ships cannot trade properly; keep one merchantman as the flagship."),
              F("rules.fleet.gun_price", "Price of a gun", "int", min=0, max=10**7),
@@ -602,6 +644,50 @@ SECTIONS = [
              _pct("rules.dues.slip_caught", "Slipping out at night: chance the harbour watch catches you"),
              F("rules.dues.slip_mult", "Caught slipping out: pay the bill this many times", "num", min=1, max=20, step=0.5),
              F("rules.dues.slip_rep", "Caught slipping out: standing lost in that port", "num", min=0, max=100, step=1)]},
+         {"title": "Port shares (late game)", "fields": [
+             F("rules.estates.shares_enabled", "Houses can buy shares in a port", "bool",
+               "Bought on the Port tab's Services in any port. Each share lowers that house's Port Authority tax there."),
+             F("rules.estates.shares_per_port", "Shares in each port", "int",
+               "One pool per port, shared by every house. The biggest holder is named Patron of the port.", min=1, max=100),
+             _pct("rules.estates.share_cut", "Tax cut for each share held",
+                  "10% with 10 shares a port means a house holding them all pays no tax there."),
+             F("rules.estates.share_price_per_pct", "Share price for each 1% of the port's base tax rate", "int",
+               "A port with a 2.5% base rate and 100,000 here prices a share at 250,000.", min=0, max=10**9),
+             F("rules.estates.share_price_min", "Cheapest share", "int", min=0, max=10**9),
+             F("rules.estates.share_price_max", "Dearest share", "int", min=0, max=10**9),
+             F("rules.estates.share_sell_back", "Shares can be sold back for what was paid", "bool")]},
+         {"title": "The great house at home (late game)", "fields": [
+             F("rules.estates.house_enabled", "Houses can build a great house at home", "bool",
+               "Three stages, bought in turn at the home port: Townhouse, Mansion, Palace. Counted in net worth at what was paid."),
+             F("rules.estates.house_cost_1", "Townhouse: price", "int", min=0, max=10**10),
+             F("rules.estates.house_cost_2", "Mansion: price", "int", min=0, max=10**10),
+             F("rules.estates.house_cost_3", "Palace: price", "int", min=0, max=10**10),
+             F("rules.estates.house_rep_1", "Townhouse: home standing gained", "num", min=0, max=100, step=1),
+             F("rules.estates.house_rep_2", "Mansion: home standing gained", "num", min=0, max=100, step=1),
+             F("rules.estates.house_rep_3", "Palace: home standing gained", "num", min=0, max=100, step=1),
+             _pct("rules.estates.house_rob_1", "Townhouse: cut in the chance of being robbed ashore at home"),
+             _pct("rules.estates.house_rob_2", "Mansion: cut in the chance of being robbed ashore at home"),
+             _pct("rules.estates.house_rob_3", "Palace: cut in the chance of being robbed ashore at home")]},
+         {"title": "The Mayor's commissions (late game)", "fields": [
+             F("rules.contracts.enabled", "The home Mayor offers yearly goals and contracts", "bool",
+               "One yearly goal and one short contract at a time, taken at home on the Port tab's Services. "
+               "Deliveries, supply runs to a port short of a cargo, and standing goals. A missed one costs nothing."),
+             F("rules.contracts.short_min", "Short contract: fewest months to finish", "int", min=1, max=24),
+             F("rules.contracts.short_max", "Short contract: most months to finish", "int", min=1, max=24),
+             F("rules.contracts.supply_months", "Supply run: months to finish", "int", min=1, max=24),
+             F("rules.contracts.offer_months", "An offer not taken is replaced after (months)", "int", min=1, max=24),
+             _pct("rules.contracts.hold_share_short", "Short delivery: cargo asked for, as a share of the fleet's hold", hi=5.0),
+             _pct("rules.contracts.hold_share_year", "Yearly delivery: cargo asked for, as a share of the fleet's hold", hi=10.0),
+             F("rules.contracts.min_qty", "Smallest delivery (units)", "int", min=1, max=10**6),
+             _pct("rules.contracts.fee_share", "Short delivery fee, as a share of the cargo's normal value", hi=5.0),
+             _pct("rules.contracts.fee_share_year", "Yearly delivery fee, as a share of the cargo's normal value", hi=5.0),
+             F("rules.contracts.supply_mult", "Supply run: fee x", "num", min=1, max=10, step=0.1),
+             F("rules.contracts.shortage_at", "A port is short of a cargo at (x its normal price)", "num", min=1, max=10, step=0.05),
+             F("rules.contracts.standing_short", "Short standing goal: points to gain", "int", min=1, max=100),
+             F("rules.contracts.standing_year", "Yearly standing goal: points to gain", "int", min=1, max=100),
+             _pct("rules.contracts.standing_fee", "Standing goal fee per point, as a share of the house's net worth", hi=0.1),
+             F("rules.contracts.rep_short", "Short contract done: home standing gained", "num", min=0, max=100, step=1),
+             F("rules.contracts.rep_year", "Yearly goal done: home standing gained", "num", min=0, max=100, step=1)]},
          {"title": "The Mayor's Parlour (a gift for standing)", "fields": [
              F("rules.gift.enabled", "Players can call on the Mayor with a gift", "bool",
                "Off: the Call on the Mayor row is hidden on the Port tab."),
@@ -773,7 +859,8 @@ SECTIONS = [
                       C("role", "Class", "select", "Merchantman: cargo and guns (the first line of the fleet). "
                         "Escort: guns only, sails in the van and takes the fire. Cargo ship: hold only, sails in "
                         "the rear. The limits for each class are under Rules > Fleet.", default="trader",
-                        options=[["trader", "Merchantman"], ["escort", "Escort"], ["cargo", "Cargo ship"]])]},
+                        options=[["trader", "Merchantman"], ["escort", "Escort"], ["cargo", "Cargo ship"],
+                                 ["flagship", "Flagship (one per house, outside the limits)"]])]},
      ],
      "groups": [
          {"title": "Ship names", "fields": [
@@ -1230,6 +1317,17 @@ def validate(raw):
         if int(bt.get("match_lord_ships_max", 0)) == 16:
             bt["match_lord_ships_max"] = DEFAULTS["rules"]["battle"]["match_lord_ships_max"]
         bt["match_v2"] = True
+
+    # Ranks above Taipan (19 Nov 2026): saved rank tables gain the three new top ranks once; deleting
+    # one afterwards sticks.
+    gm = cfg["rules"]["game"]
+    if not gm.get("late_ranks_v1"):
+        have = {r["id"] for r in cfg["ranks"]}
+        for rank in DEFAULTS["ranks"]:
+            if rank.get("scales") and rank["id"] not in have:
+                cfg["ranks"].append(copy.deepcopy(rank))
+        cfg["ranks"].sort(key=lambda r: r["worth"])
+        gm["late_ranks_v1"] = True
 
     # Ship types added in a later version (the escort and the cargo ship) join a saved Ships table
     # once; deleting one afterwards sticks.

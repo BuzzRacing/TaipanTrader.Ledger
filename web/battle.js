@@ -75,6 +75,11 @@ const Battle = (() => {
     const other = kind === "lord" ? "seafight_pirates" : "seafight_lord";
     const o = { video: true, fresh: true, mode: "random", slot: "seafight" };
     const strict = Object.assign({ strict: true }, o);
+    // The flagship's own battle set (Scenes > "Sea battle: the flagship"), when she is in the fight:
+    // most moments from her set, the rest from the enemy's, so both get seen.
+    const flag = (S.me.ships || []).some(s => ((D.ships[s.type] || {}).role) === "flagship");
+    const mine = flag && Math.random() < 0.6 && Media.choose("scene", "seafight_flagship", moment, strict);
+    if (mine) return mine;
     return Media.choose("scene", own, moment, strict) || Media.choose("scene", other, moment, strict)
       || Media.choose("scene", own, moment, o) || Media.choose("scene", other, moment, o)
       || Media.choose("scene", ["battle", "pirates"], "event", o)
@@ -273,7 +278,8 @@ const Battle = (() => {
   }
 
   /* The fleet in formation: van (escorts), line (merchantmen), rear (cargo ships). */
-  const ROLE_ORDER = ["escort", "trader", "cargo"], ROLE_LABEL = { escort: "battle.van", trader: "battle.line", cargo: "battle.rear" };
+  const ROLE_ORDER = ["escort", "trader", "flagship", "cargo"],
+    ROLE_LABEL = { escort: "battle.van", trader: "battle.line", flagship: "battle.flag", cargo: "battle.rear" };
   const roleOf = s => s.role || ((D.ships[s.type] || {}).role) || "trader";
   function fleetHtml() {
     const me = S.me;

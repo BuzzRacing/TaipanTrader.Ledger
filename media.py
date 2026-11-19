@@ -123,9 +123,14 @@ KINDS = {
 SCENES = [["title", "Title & lobby"], ["loading", "Loading / holding screen"], ["storm", "Storm"],
           ["typhoon", "Typhoon"], ["battle", "Sea battle"], ["pirates", "Pirates sighted"],
           ["seafight_pirates", "Sea battle: pirate junks"], ["seafight_lord", "Sea battle: war junks"],
+          ["seafight_flagship", "Sea battle: the flagship"],
           ["wreck", "Shipwreck"], ["seizure", "Customs seizure"], ["robbery", "Robbery"],
           ["victory", "Game over / winner"], ["voyage", "At sea"], ["market", "Trading"]]
-SERVICES = [["bank", "Merchants Bank"], ["lender", "Moneylender"], ["warehouse", "Warehouse"], ["agent", "Agent"]]
+SERVICES = [["bank", "Merchants Bank"], ["lender", "Moneylender"], ["warehouse", "Warehouse"], ["agent", "Agent"],
+            # Late game (19 Nov 2026): the harbour board's share office and each stage of the great house.
+            ["shares", "Port Shares"], ["estate_0", "Great House: empty plot"], ["estate_1", "Great House: Townhouse"],
+            ["estate_2", "Great House: Mansion"], ["estate_3", "Great House: Palace"],
+            ["mayor_work", "The Mayor's commissions"]]
 BRAND_SLOTS = [["logo", "Logo"], ["favicon", "Browser tab icon"], ["masthead_bg", "Title banner background"],
                ["admin_masthead_bg", "Command Center banner"],
                ["page_bg", "Player screen background"], ["board_bg", "Harbor board background"],

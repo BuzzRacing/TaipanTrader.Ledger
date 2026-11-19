@@ -487,7 +487,7 @@ for _who, _keys in {
     "mayor": ["l.slip_caught", "m.gift.warm", "m.gift.delighted"]
              + ["m.gift.{}.{}".format(t, i) for t in ("warm", "delighted") for i in range(10)]
              # Her congratulations on a promotion (18 Nov 2026).
-             + [k for k in strings.EN if k.startswith("m.promote.")],
+             + [k for k in strings.EN if k.startswith("m.promote.") or k.startswith("m.promote_top.")],
     # The Port Authority: every line is read by the officer of the port the house is in
     # (voice.Planner, OFFICER_KEYS); "taxlady" is her stand-in when a line has no port.
     "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_home", "l.customs_empty", "l.customs_paid", "l.customs_bought",

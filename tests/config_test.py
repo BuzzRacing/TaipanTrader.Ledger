@@ -73,7 +73,8 @@ if __name__ == "__main__":
                 "yards pct names turns ports how " + "a b buys dmg first last o off place players ran rank result sales sunk v visits when won " +
                 "total paid owed declared profit tax caught chance level from to after now cargo line goods value base "
                 "age distance gap net seas of right interest hits shots left round secs suggest junk old hold mark most tier Contraband bank contraband home lender pirate where winner "
-                "ships avg x posted sale have short odds saved lo hi").split()}), key
+                "ships avg x posted sale have short odds saved lo hi "
+                "cut mine rob stage held kind reward due goal target").split()}), key
     # 3b. random starts: every house in a different port, a different draw each game,
     #     and "home" puts everyone back in the home port
     assert config.validate({"rules": {"start": {"where": "the moon"}}})[1]
