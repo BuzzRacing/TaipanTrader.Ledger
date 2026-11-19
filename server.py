@@ -218,8 +218,29 @@ class Hub:
             # twice, because the captain is still reading the first one's reckoning.
             secs = bt["round_secs"] + bt["voice_grace"] + (
                 bt["first_extra"] * (2 if p.get("fights") else 1) if b["step"] == 0 else 0)
+            # The round's pictures play before the captain chooses (the bosun's line, then the enemy's
+            # answer). The clock must not run out while they play, or the round goes on standing orders
+            # and the captain never gets a turn (fixed 19 Nov 2026). Only a captain at a screen sees them.
+            if pid in self.present():
+                secs += self._beat_secs(b.get("beat"))
+            secs = round(secs, 1)
             cur = self.clock[pid] = (key, now + secs, secs)
         return cur
+
+    @staticmethod
+    def _beat_secs(beat):
+        """About how long the screen plays a fight's pictures (the same pace as web/battle.js): each
+        caption stays while its lines are read aloud, or long enough to read when nobody speaks."""
+        total = 0.0
+        for f in (beat or {}).get("frames") or []:
+            quiet = len(f.get("cap") or "") * 0.042 + 1.5
+            # Inworld reads about 13 characters a second (measured on saved clips, 19 Nov 2026); each line
+            # also waits a moment for its turn and the gap before it.
+            lines = (1 if f.get("say") else 0) + (1 if f.get("foe") else 0)
+            spoken = (len(f.get("say") or "") + len(f.get("foe") or "")) / 13.0 + 0.8 * lines
+            cap = 9.0 + (7.2 if f.get("say") and f.get("foe") else 0.0)
+            total += min(cap, max(quiet, spoken))
+        return min(60.0, total)
 
     def battle_tick(self):
         """Call with the lock held. When a captain's clock runs out the round is played on standing

@@ -1528,7 +1528,13 @@ class Game:
         self.s.setdefault("pending_news", []).append(line)
 
     def buyback_cost(self, res):
-        return int(math.ceil(res["paid"] * (1 + R["customs"]["buyback_premium"]) - 1e-9))
+        """Getting a line back from the Port Authority: her price plus her premium, but never less than
+        what those goods are worth on the market. A lowball she took at its word (even $0) can't be
+        undone for less than the cargo is worth."""
+        units, qty = int(res.get("units", 0) or 0), int(res.get("qty", 0) or 0)
+        worth = float(res.get("value", 0) or 0) * units / float(qty) if qty > 0 else 0.0
+        premium = res["paid"] * (1 + R["customs"]["buyback_premium"])
+        return int(math.ceil(max(premium, worth) - 1e-9))
 
     def _act_customs_buyback(self, p, a):
         cu = p.get("customs")
@@ -4088,6 +4094,8 @@ def static_data():
                             "pirate_chance": pi["chance"] * MULT["pirates"],
                             "lord_chance": ly["chance"] * MULT["pirates"],
                             "protect_save": ly["protect_save"]},
+            "market": {"reversion": R["market"]["reversion"], "spread_base": R["market"]["spread_base"],
+                       "spread_swing": R["market"]["spread_swing"]},
             "gun_price": f["gun_price"], "max_fleet": f["max_fleet"],
             "fleet_rules": {r: {"max": role_limit(r), "unlock": role_unlock(r)} for r in ROLES},
             "keep_trader": bool(f.get("keep_trader", True)),

@@ -62,7 +62,7 @@ def main():
         g.act("p1", {"type": "sell", "good": "tea", "qty": 1}, present=["p1"])
     assert seen > 20, seen
 
-    # 2. Declaring nothing at all: she buys it for nothing, or catches it; buy-back costs her price plus the premium.
+    # 2. Declaring nothing at all: she buys it for nothing, or catches it; buy-back costs her price plus the premium, never less than the goods are worth.
     outcomes = {}
     for seed in range(60):
         g, p = arrive(seed, "shanghai")
@@ -71,10 +71,14 @@ def main():
         g.act("p1", {"type": "customs_declare", "values": {ln["good"]: 0 for ln in p["customs"]["lines"]}}, present=["p1"])
         for r in p["customs"]["result"]["lines"]:
             outcomes[r["outcome"]] = outcomes.get(r["outcome"], 0) + 1
-            if r["units"] and r["paid"]:
+            if r["units"]:
                 held = p["cargo"].get(r["good"], 0)
                 cost = g.buyback_cost(r)
                 assert cost >= r["paid"]
+                # Never cheaper than the goods are worth: a $0 declaration can't be bought back for $0.
+                assert cost >= int(r["value"] * r["units"] / r["qty"]), (cost, r)
+                assert cost > 0, r
+                p["cash"] = max(p["cash"], cost)
                 g.act("p1", {"type": "customs_buyback", "good": r["good"]}, present=["p1"])
                 assert p["cargo"][r["good"]] == held + r["units"]
                 try:

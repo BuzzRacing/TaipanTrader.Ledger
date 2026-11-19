@@ -419,7 +419,8 @@
     const inUse = M.lib.in_use.includes(i.url);
     return `<div class="ml-tile${on ? " on" : ""}${i.enabled ? "" : " off"}${i.nsfw ? " nsfw" : ""}" data-mlitem="${e(i.id)}" tabindex="0">
       <div class="ml-art">${thumb(i, "ml-img")}
-        <span class="ml-badges">${i.primary ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? "<b>▶ video</b>" : ""}${i.nsfw ? '<b class="nsfw">NSFW</b>' : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span></div>
+        <span class="ml-badges">${i.primary ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? "<b>▶ video</b>" : ""}${i.nsfw ? '<b class="nsfw">NSFW</b>' : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span>
+        <button type="button" class="ml-quickdel" data-mlquickdel="${e(i.id)}" title="Delete (moves it to the media trash)" aria-label="Delete">🗑</button></div>
       <div class="ml-cap"><b>${e(i.title || subjectName(i.kind, i.subject))}</b>
         <small>${i.roles.length ? i.roles.map(r => e(roleName(i.kind, r))).join(", ") : "any role"}${i.tags.length ? " · " + i.tags.map(e).join(", ") : ""}</small></div></div>`;
   }
@@ -566,6 +567,15 @@
     if (d.mlreviewall) { M.review = true; M.kind = ""; M.subject = ""; M.role = ""; M.sel.clear(); M.gen.forKey = ""; return redraw(); }
     if (d.mlkind !== undefined) { M.kind = d.mlkind; M.subject = ""; M.role = ""; M.sel.clear(); M.gen.forKey = ""; return redraw(); }
     if (d.mlsubject !== undefined) { M.gen.forKey = ""; return goSubject(M.kind, d.mlsubject); }
+    if (d.mlquickdel) {
+      // Anthony, 19 Nov 2026: one-click delete from the grid. The file goes to web/media/_trash, not gone for good.
+      ev.preventDefault(); ev.stopPropagation();
+      el.disabled = true;
+      const res = await api("media/delete", { ids: [d.mlquickdel] });
+      toast(res.ok ? res.msg : res.error, !res.ok);
+      M.sel.delete(d.mlquickdel);
+      return load(true);
+    }
     if (d.mlitem) {
       if (t.closest("video") && el.querySelector("video") && ev.detail > 1) return;
       const id = d.mlitem, list = filtered().map(i => i.id);

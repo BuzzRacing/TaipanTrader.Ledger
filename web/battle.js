@@ -24,8 +24,11 @@
 const Battle = (() => {
   const MIN_FRAME_MS = 1500;      // a caption stays at least this long
   const PER_CHAR_MS = 42;         // plus reading time when nobody reads it aloud
-  const VOICE_START_MS = 2600;    // a line that has not started by now is not coming (muted, no voices)
-  const MAX_FRAME_MS = 9000;
+  // A line that has not started by now is not coming. A brand-new line is made by Inworld the first time
+  // it is asked for, which can take a few seconds on the Pi, so this allows for that (was 2600, which cut
+  // new lines off before they began; 19 Nov 2026). Muted or voices off, a picture does not wait at all.
+  const VOICE_START_MS = 5000;
+  const MAX_FRAME_MS = 9000;      // the longest one line may hold a picture once it has started
   const JUNK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2.5v12M11 3.5c3.2.6 5.6 2.6 6.4 6.2H11M11 6.2c-2.4.5-4 1.9-4.7 4.4H11M3.5 15.5h17l-2.4 4.2H6z"/></svg>';
 
   const root = document.createElement("div");
@@ -190,7 +193,9 @@ const Battle = (() => {
     $(".sf-tell").textContent = "";
     const clip = p.clips && p.clips[p.i];
     const foeClip = f.foe && p.foes ? p.foes[p.i] : null;
-    const ours = !!(clip && f.say), theirs = !!(foeClip && f.foe);
+    // Muted or voices off: nothing will be read, so the picture keeps reading pace and never waits for a voice.
+    const voiced = typeof Voice !== "undefined" && Voice.enabled() && !Voice.muted();
+    const ours = voiced && !!(clip && f.say), theirs = voiced && !!(foeClip && f.foe);
     p.tag = "sf:" + p.key + ":" + p.i;
     const foeTag = p.tag + ":foe";
     // the lines this picture waits for, in order: the bosun first, then the enemy's answer
@@ -206,7 +211,8 @@ const Battle = (() => {
       Voice.say([].concat(ours ? [Object.assign({ tag: p.tag, text: f.say }, clip)] : [],
         theirs ? [Object.assign({ tag: foeTag, text: f.foe }, foeClip)] : []), { group: "battle" });
     }
-    const maxMs = MAX_FRAME_MS + (ours && theirs ? MAX_FRAME_MS * .8 : 0);
+    // The cap allows for the wait before the first line starts, so a slow new line is not cut off mid-sentence.
+    const maxMs = (tags.length ? VOICE_START_MS : 0) + MAX_FRAME_MS + (ours && theirs ? MAX_FRAME_MS * .8 : 0);
     clearInterval(p.timer);
     p.timer = setInterval(() => {
       if (playing !== p) return clearInterval(p.timer);
@@ -238,6 +244,11 @@ const Battle = (() => {
     seen.add(key);
     if (playing) clearInterval(playing.timer);
     playing = { key, kind, frames: frames || [], clips: clips || [], foes: foes || [], i: 0, timer: null };
+    // Ask for every line of this round at once, so Inworld makes the later ones while the first is read
+    // (each line used to be asked for only when its picture came up, so each new one started late).
+    if (typeof Voice !== "undefined" && Voice.enabled() && !Voice.muted()) {
+      (clips || []).concat(foes || []).forEach(c => { if (c && c.u) fetch(c.u).catch(() => {}); });
+    }
     frameStep();
   }
 
@@ -297,7 +308,10 @@ const Battle = (() => {
   }
   function actsHtml(b) {
     const o = b.odds, exact = b.view === "exact", bar = b.view === "bar";
-    const off = sending || !!playing || b.auto;
+    // The buttons are live while the round's pictures play (19 Nov 2026): a captain may choose at any
+    // moment; choosing cuts the pictures short. Locking them until the pictures ended let the clock
+    // run out first, so the round went on standing orders and the captain never got a turn.
+    const off = sending || b.auto;
     const dump = Object.keys(b.dump || {}).map(g => `${b.dump[g]} ${a(D.goods[g] ? D.goods[g].name : g)}`).join(", ");
     const retreatSub = !b.dump_qty ? te("battle.odds.retreat_none")
       : exact && o ? te("battle.odds.retreat", { qty: b.dump_qty, points: o.retreat[2] })
@@ -593,6 +607,13 @@ const Battle = (() => {
   async function send(choice) {
     if (sending) return;
     sending = true;
+    if (playing && choice !== "say") {
+      // the captain chose before the pictures were done: stop them and the voices
+      clearInterval(playing.timer);
+      playing = null;
+      if (typeof Voice !== "undefined") Voice.drop("battle");
+      hideWho();
+    }
     sync();
     const res = await post("/api/act", { token, type: "sea", choice });
     sending = false;

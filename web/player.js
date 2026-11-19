@@ -174,6 +174,7 @@ function sailIcon(kind) {
     intel: '<path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.4"/>',
     standing: '<path d="M12 2.5 20 6v5.8c0 4.7-3.2 7.7-8 9.7-4.8-2-8-5-8-9.7V6l8-3.5Z"/><path d="m9 12 2 2 4-4"/>',
     best: '<path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/>',
+    run: '<path d="M4 8h14l-3.5-3.5M20 16H6l3.5 3.5"/>',
     danger: '<path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.2 3 5.3V18h8v-2.7c1.8-1.1 3-2.9 3-5.3a7 7 0 0 0-7-7Z"/><circle cx="9.3" cy="10.5" r="1.4"/><circle cx="14.7" cy="10.5" r="1.4"/><path d="M10 18v3M14 18v3"/>',
   };
   return `<svg class="dest-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[kind] || paths.distance}</svg>`;
@@ -200,12 +201,24 @@ function pirateRisk(a, b) {
   return 1 - (1 - pirate) * (1 - lord);
 }
 
-/* Best price: of the prices the house knows for a port (the ledger's last visit, or a newer Registrar
-   tip), the cargo dearest against its usual price there (goods base x the port's mod). Banned cargo is
-   left out. Null when nothing is known. */
+/* Best price: what each cargo should fetch in a port when you get there, worked out from the prices the
+   house knows (the ledger's last visit, or a newer Registrar tip). A known price is only a snapshot: every
+   month the market pulls it back toward normal (rules.market.reversion) and the voyage itself is one more
+   month, so the gap above normal is shrunk once for each month since it was seen plus one for the trip
+   (engine.py _move_markets runs before arrival). A foretold boom (a live hot tip that will still be running
+   when you land) holds its level and wins outright. "worth" means the expected gap beats the dealer's
+   margin at your standing there, so the trip should actually pay. Banned cargo is left out. Null when
+   nothing is known. */
 function bestPrice(k) {
   const me = S.me, known = me.known[k], tips = (me.tips || {})[k] || {}, bans = S.bans?.[k] || [];
   const mods = (D.ports[k] && D.ports[k].mods) || {};
+  const mk = D.market || { reversion: .3, spread_base: .04, spread_swing: .03 };
+  const rep = me.rep?.[k] ?? 50;
+  const margin = Math.max(0, mk.spread_base - mk.spread_swing * (rep - 50) / 50);
+  const arrive = S.turn + 1;
+  const hot = (me.hot_tips || []).find(tp => tp.port === k && D.goods[tp.good] && !bans.includes(tp.good)
+    && tp.over == null && tp.lands <= arrive && arrive <= tp.ends);
+  if (hot) return { g: hot.good, hot: true, worth: true, age: Math.max(0, S.turn - hot.turn), margin };
   let best = null;
   Object.keys(D.goods).forEach(g => {
     if (bans.includes(g)) return;
@@ -215,8 +228,39 @@ function bestPrice(k) {
     if (!Number.isFinite(price)) return;
     const normal = (D.goods[g].base || 0) * (mods[g] == null ? 1 : mods[g]);
     if (!(normal > 0)) return;
-    const over = price / normal - 1;
-    if (!best || over > best.over) best = { g, price, normal, over, age: Math.max(0, S.turn - turn) };
+    const age = Math.max(0, S.turn - turn);
+    const seen = price / normal - 1;
+    const over = seen * Math.pow(1 - mk.reversion, age + 1);
+    if (!best || over > best.over) best = { g, price, normal, seen, over, age, margin, worth: over > margin };
+  });
+  return best;
+}
+
+/* Trade run: the best cargo to buy here and carry to port k. Cost is what one unit costs here now, the
+   dealer's cut included (quote). The sale is the price known for k, drifted toward normal for its age plus
+   the voyage month (as bestPrice), less the dealer's cut at your standing there. Cargo banned here or there
+   is left out. Null when no price is known for k; gain may be negative when nothing from here pays. */
+function tradeRun(k) {
+  const me = S.me, known = me.known[k], tips = (me.tips || {})[k] || {};
+  const bansThere = S.bans?.[k] || [], bansHere = S.bans?.[me.port] || [];
+  const mods = (D.ports[k] && D.ports[k].mods) || {};
+  const mk = D.market || { reversion: .3, spread_base: .04, spread_swing: .03 };
+  const margin = Math.max(0, mk.spread_base - mk.spread_swing * ((me.rep?.[k] ?? 50) - 50) / 50);
+  let best = null;
+  Object.keys(D.goods).forEach(g => {
+    if (bansHere.includes(g) || bansThere.includes(g) || !Number.isFinite(me.prices?.[g])) return;
+    let price = known?.prices?.[g], turn = known ? known.turn : null;
+    const tp = tips[g];
+    if (tp && Number.isFinite(tp.price) && (turn == null || tp.turn >= turn)) { price = tp.price; turn = tp.turn; }
+    if (!Number.isFinite(price)) return;
+    const normal = (D.goods[g].base || 0) * (mods[g] == null ? 1 : mods[g]);
+    if (!(normal > 0)) return;
+    const age = Math.max(0, S.turn - turn);
+    const there = normal + (price - normal) * Math.pow(1 - mk.reversion, age + 1);
+    const sell = there * (1 - margin), buy = quote(g, 1, "buy");
+    if (!(buy > 0)) return;
+    const gain = sell / buy - 1;
+    if (!best || gain > best.gain) best = { g, buy, sell, gain, age };
   });
   return best;
 }
@@ -398,7 +442,11 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "sail.hardest": "Hardest", "sail.route": "Route", "sail.weather": "Weather", "sail.distance": "Distance",
     "sail.intel": "Intel", "sail.standing": "Standing",
     "sail.best": "Best price", "sail.best_none": "prices unknown",
-    "sail.best_tip": "{good} at {price} against a usual {normal} in {port} ({when}).",
+    "sail.best_tip": "{good} was {price} in {port} ({when}), {seen} against a usual {normal}. Markets drift back toward normal every month, so by the time you land expect about {expect}. The dealer there keeps about {margin}% at your standing.",
+    "sail.best_hot": "{good} \u2014 foretold boom", "sail.best_hot_tip": "A tip says {good} is booming in {port} when you land. The boom holds its price until it runs out.",
+    "sail.best_flat": "nothing above usual", "sail.best_seen": "seen {when}",
+    "sail.run": "Buy here \u2192 sell there", "sail.run_none": "nothing from here pays",
+    "sail.run_tip": "Buy {good} here for {buy} a unit (dealer's cut included). Sold in {port} it should fetch about {sell} a unit once the price has drifted and the dealer there takes his cut ({when}). Small buys only: big lots push the price against you.",
     "sail.danger": "Danger monitor", "sail.danger_tip": "{pct}% chance of a pirate fight on the way to {port}.",
     "sail.danger_0": "low", "sail.danger_1": "moderate", "sail.danger_2": "high", "sail.danger_3": "severe",
     "dues.title": "Harbour dues", "dues.due": "Due when you sail", "dues.paid_on_leave": "Paid as you leave",
@@ -700,12 +748,9 @@ function standingPlaque(rep) {
 }
 
 /* The port the fleet lies in, between the house name and the plaques: "Welcome to" over the port's
-   name, with where the fleet came from beside it. Replaces the old banner card on Port > Arrival. */
+   name. (The "in from {port}" line under it was dropped 19 Nov 2026.) */
 function portPlate() {
-  const me = S.me, last = (me.books || {}).last;
-  const key = !last ? "" : last.wrecked ? "wrecked" : last.sailed ? "sailed" : "stayed";
-  const came = key ? `<small>${te("bar.came." + key, { from: esc(portName(last.from)) })}</small>` : "";
-  return `<div class="dk-port"><span>${te("bar.welcome")}</span><b>${esc(portName(me.port))}</b>${came}</div>`;
+  return `<div class="dk-port"><span>${te("bar.welcome")}</span><b>${esc(portName(S.me.port))}</b></div>`;
 }
 
 /* Short money for the masthead plaques: exact below $10,000, then $12.5K / $112K, $1.25M / $12.5M / $125M,
@@ -1079,7 +1124,7 @@ function tradeAllCargoButton() {
   const lined = linedUp(), list = lined.length ? lined : sellAllList();
   const sub = lined.length ? ten("market.all_cargo_lined", lined.length) : te("market.all_cargo_sell");
   const tip = te(lined.length ? "market.all_cargo_tip_lined" : "market.all_cargo_tip_sell");
-  return `<button type="button" class="mk-allcargo${lined.length ? " lined" : ""}" data-act="trade_all_cargo" title="${tip}"${list.length && !S.me.ready ? "" : " disabled"}>
+  return `<button type="button" class="mk-allcargo${lined.length ? " lined" : list.length && !S.me.ready ? " sell" : ""}" data-act="trade_all_cargo" title="${tip}"${list.length && !S.me.ready ? "" : " disabled"}>
     <b>${te("market.all_cargo")}</b><small>${sub}</small></button>`;
 }
 async function runTrades(list) {
@@ -2094,10 +2139,24 @@ function chartTab() {
   const list = routes.map((route, i) => {
     const { k, p, wx, score } = route;
     const best = bestPrice(k);
-    const bestPct = best ? Math.round(best.over * 100) : 0;
-    const bestText = best ? `${esc(D.goods[best.g].name)} ${bestPct >= 0 ? "+" : "−"}${Math.abs(bestPct)}%` : te("sail.best_none");
-    const bestTip = best ? esc(t("sail.best_tip", { good: D.goods[best.g].name, price: money(best.price), normal: money(best.normal),
-      port: p.name, when: bookSeen(best.age) })) : "";
+    const signed = x => { const n = Math.round(x * 100); return `${n >= 0 ? "+" : "\u2212"}${Math.abs(n)}%`; };
+    const bestText = !best ? te("sail.best_none")
+      : best.hot ? te("sail.best_hot", { good: D.goods[best.g].name })
+      : Math.round(best.over * 100) <= 0 ? te("sail.best_flat")
+      : `${esc(D.goods[best.g].name)} \u2248 ${signed(best.over)}`;
+    const bestAge = best && !best.hot ? te("sail.best_seen", { when: bookSeen(best.age) }) : "";
+    const bestTip = !best ? "" : best.hot ? esc(t("sail.best_hot_tip", { good: D.goods[best.g].name, port: p.name }))
+      : esc(t("sail.best_tip", { good: D.goods[best.g].name, price: money(best.price), normal: money(best.normal),
+        port: p.name, when: bookSeen(best.age), seen: signed(best.seen), expect: signed(best.over),
+        margin: (best.margin * 100).toFixed(1) }));
+    const bestCls = !best ? "" : best.worth ? " best-up" : " best-flat";
+    const run = tradeRun(k);
+    const runPct = run ? Math.round(run.gain * 100) : 0;
+    const runHtml = !run ? "" : runPct <= 0
+      ? `<span class="dest-stat dest-run best-flat">${sailIcon("run")}<span><small>${te("sail.run")}</small><strong>${te("sail.run_none")}</strong></span></span>`
+      : `<span class="dest-stat dest-run best-up" title="${esc(t("sail.run_tip", { good: D.goods[run.g].name, buy: money(run.buy),
+          sell: money(Math.round(run.sell)), port: p.name, when: bookSeen(run.age) }))}">${sailIcon("run")}<span><small>${te("sail.run")}</small>
+          <strong>${esc(D.goods[run.g].name)}: ${money(run.buy)} \u2192 \u2248${money(Math.round(run.sell))} <b class="dest-gain">+${runPct}%</b></strong></span></span>`;
     const danger = pirateRisk(me.port, k), dangerPct = Math.round(danger * 100);
     const dangerTier = danger < .12 ? 0 : danger < .22 ? 1 : danger < .32 ? 2 : 3;
     const rep = Math.round(me.rep[k] || 0);
@@ -2121,8 +2180,9 @@ function chartTab() {
       <span class="dest-data">
         <span class="dest-stat wx${wx}">${sailIcon(weatherKind)}<span><small>${te("sail.weather")}</small><strong>${esc(D.weather[wx])}</strong></span></span>
         <span class="dest-stat dz${dangerTier}" title="${te("sail.danger_tip", { pct: dangerPct, port: esc(p.name) })}">${sailIcon("danger")}<span><small>${te("sail.danger")}</small><strong>${dangerPct}% · ${te("sail.danger_" + dangerTier)}</strong></span></span>
-        <span class="dest-stat${best ? (bestPct > 0 ? " best-up" : " best-down") : ""}"${best ? ` title="${bestTip}"` : ""}>${sailIcon("best")}<span><small>${te("sail.best")}</small><strong>${bestText}</strong></span></span>
         <span class="dest-stat" title="${repTip}">${sailIcon("standing")}<span><small>${te("sail.standing")}</small><strong class="dest-rep" style="--heat:${standingHeat(standingTier(rep))}">${standingHeatSvg(rep, repTip, "dest-heat")}<em>${rep}</em></strong></span></span>
+        <span class="dest-stat dest-best${bestCls}"${best ? ` title="${bestTip}"` : ""}>${sailIcon("best")}<span><small>${te("sail.best")}</small><strong>${bestText}</strong>${bestAge ? `<em class="dest-age">${bestAge}</em>` : ""}</span></span>
+        ${runHtml}
       </span>
       ${facilities.length ? `<span class="dest-facilities">${facilities.map(name => `<span>${name}</span>`).join("")}</span>` : ""}
       </button>`;

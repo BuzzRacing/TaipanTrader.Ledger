@@ -347,7 +347,13 @@ body.player button.or-pay { flex: none; white-space: nowrap; }
 .dest-stat.best-up strong { color: color-mix(in srgb, var(--jade-hi) 55%, var(--deck-ivory)); }
 .dest-stat { display: flex; align-items: center; min-width: 0; gap: .4rem; color: color-mix(in srgb, var(--deck-ivory) 76%, var(--deck-brass)); }
 .dest-stat > span { display: block; min-width: 0; }
-.dest-stat small, .dest-stat strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dest-stat small, .dest-stat strong { display: block; overflow-wrap: anywhere; }
+/* Best price gets the whole bottom row so the cargo, the expected gap and how old the news is all show in full. */
+.dest-stat.dest-best { grid-column: 1 / -1; margin-top: .2rem; padding-top: .3rem; border-top: 1px solid rgba(255, 236, 190, .08); }
+.dest-best .dest-age { display: block; margin-top: .05rem; color: var(--muted); font: italic 600 .62rem/1.15 var(--sans); }
+.dest-stat.dest-run { grid-column: 1 / -1; }
+.dest-run .dest-gain { margin-left: .2rem; color: var(--jade-hi); font-variant-numeric: tabular-nums; }
+.dest-stat.best-flat strong { color: color-mix(in srgb, var(--deck-ivory) 70%, var(--muted)); }
 .dest-stat small { color: var(--muted); font: 700 .55rem/1.1 var(--special); letter-spacing: .08em; text-transform: uppercase; }
 .dest-stat strong { margin-top: .08rem; color: var(--deck-ivory); font: 700 .75rem/1.15 var(--sans); }
 .dest-icon { flex: none; width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
@@ -1819,6 +1825,8 @@ body.player button.mk-all:disabled, body.player button.mk-allcargo:disabled { ba
 .mk-head .mk-allslot { display: flex; align-self: center; }
 .mk-head .mk-hold + .mk-allslot { margin-left: .2rem; }
 body.player button.mk-allcargo { padding: .22rem .8rem; min-height: 0; color: var(--brass-hi); }
+/* Selling the whole hold wears the same oxblood as a row's "Trade all / Sell" (19 Nov 2026). */
+body.player button.mk-allcargo.sell { color: #fff6e3; border-color: var(--blood-hi); background: color-mix(in srgb, var(--deck-oxblood) 55%, transparent); }
 body.player button.mk-allcargo.lined { color: #fff6e3; border-color: var(--brass-hi);
   background: linear-gradient(180deg, color-mix(in srgb, var(--deck-brass) 55%, #000 10%), color-mix(in srgb, var(--deck-brass) 30%, #000)); }
 @container pane (max-width: 620px) {
@@ -1919,3 +1927,11 @@ body.player button.mk-allcargo.lined { color: #fff6e3; border-color: var(--brass
   .deck[data-tab="market"] .dk-dyn > .dl-card { flex: none; } }
 @media (prefers-reduced-motion: reduce) {
   .mp-dot::after, .mp-tag, .mp-name { animation: none; } }
+
+/* ====================================================== MASTHEAD PORT NAME UP (19 Nov 2026) == */
+/* The "in from {port}" line is gone, so the port name takes its room and goes up a size. */
+.dk-port b { font-size: clamp(1.6rem, 2.7vw, 2.4rem); line-height: 1.05; }
+@media (orientation: portrait) and (max-width: 600px) {
+  .dk-port b { font-size: 1.45rem; } }
+@media (orientation: landscape) and (max-height: 560px) {
+  .dk-port b { font-size: 1.4rem; } }
