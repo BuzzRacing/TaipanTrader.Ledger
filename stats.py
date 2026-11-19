@@ -81,7 +81,7 @@ def _read(gid):
                 events.append(e)
     except OSError:
         return None
-    game = {"events": events, "colors": colors, "size": size, "books": books}
+    game = {"events": events, "colors": colors, "size": size, "books": books, "gid": gid}
     with _lock:
         if len(_cache) >= _CACHE_MAX:
             _cache.pop(next(iter(_cache)))
@@ -96,10 +96,26 @@ def _meta(gid):
     return {"id": gid}
 
 
-def _players(events, colors):
+# The House is its id: a name is only its label. The server sets HOUSE_NAMES to a function
+# (game id -> {seat id: the House's name now}) and NAMES_VERSION to one that changes with any rename,
+# so records written under an old name show the new one.
+HOUSE_NAMES = None
+NAMES_VERSION = None
+
+
+def _names_rev():
+    try:
+        return NAMES_VERSION() if NAMES_VERSION else None
+    except Exception:
+        return None
+
+
+def _players(events, colors, gid=None):
     """id -> name, firm, colour slot and seat order, from joins and snapshots."""
     out, order = {}, []
     for e in events:
+        if e.get("type") == "house" and e.get("pid") in out and e.get("firm"):
+            out[e["pid"]]["firm"] = e["firm"]          # renamed in Options
         if e.get("type") in ("seat_new", "seat_reclaim") and e.get("pid"):
             p = out.setdefault(e["pid"], {"id": e["pid"]})
             p["name"] = e.get("name") or e.get("who") or p.get("name")
@@ -111,6 +127,13 @@ def _players(events, colors):
             p["name"], p["firm"] = f.get("name", p.get("name")), f.get("firm", p.get("firm"))
             if f["id"] not in order:
                 order.append(f["id"])
+    try:
+        now = HOUSE_NAMES(gid) if (HOUSE_NAMES and gid) else {}
+    except Exception:
+        now = {}
+    for pid, firm in now.items():
+        if pid in out:
+            out[pid]["firm"] = firm
     for i, pid in enumerate(order):
         out[pid]["seat"] = i
         out[pid]["color"] = colors.get(pid, i) % 8
@@ -860,7 +883,7 @@ def find_pid(gid, name):
     if not game:
         return None
     want = (name or "").strip().lower()
-    for p in _players(game["events"], game["colors"]):
+    for p in _players(game["events"], game["colors"], gid):
         if (p.get("name") or "").strip().lower() == want:
             return p["id"]
     return None
@@ -884,7 +907,7 @@ def promotion_record(gid, pid, award):
             break
     else:
         return None
-    players = _players(events, game["colors"])
+    players = _players(events, game["colors"], gid)
     if pid not in {p["id"] for p in players}:
         return None
     houses, _worth, _prices = _walk(events, players)
@@ -909,7 +932,7 @@ def voyage(gid, pid, running=False, meta=None):
     game = _read(gid)
     if not game:
         return None
-    key = (gid, game["size"], pid, bool(running), id(engine.CFG))      # settings change -> work it out again
+    key = (gid, game["size"], pid, bool(running), id(engine.CFG), _names_rev())      # settings change -> work it out again
     with _lock:
         hit = _results.get(key)
     if hit is not None:
@@ -924,7 +947,7 @@ def voyage(gid, pid, running=False, meta=None):
 
 def _voyage(gid, pid, running, meta, game):
     events = game["events"]
-    ps = _players(events, game["colors"])
+    ps = _players(events, game["colors"], gid)
     if pid not in {p["id"] for p in ps}:
         return None
     ended = _ended(events)
@@ -1151,7 +1174,7 @@ def backfill_market(game):
     if rows:
         merged = sorted(rows + list(s.get("price_hist", [])), key=lambda r: r["turn"])
         s["price_hist"] = merged[-(engine.HIST_MONTHS + 1):]
-    ps = _players(events, data["colors"])
+    ps = _players(events, data["colors"], gid)
     houses = _walk(events, ps)[0] if ps else {}
     for pid, p in s.get("players", {}).items():
         h = houses.get(pid)

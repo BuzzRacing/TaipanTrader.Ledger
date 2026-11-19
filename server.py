@@ -154,6 +154,51 @@ def _media_changed():
             hub.changed(save=False)
 
 
+def family_screen(cfg, data):
+    """The settings and reference data for one screen that chose Family-friendly in Options while the
+    table is not: NSFW pictures out, cargo by their family names, family wording."""
+    fcfg = dict(cfg, content=dict(cfg.get("content") or {}, rating="family"))
+    data = dict(data)
+    data["goods"] = {k: dict(g, name=g.get("family_name") or g.get("name"))
+                     for k, g in (data.get("goods") or {}).items()}
+    try:
+        data["text"] = strings.resolve(fcfg, config.load_lang(cfg["language"]["active"]))
+    except Exception:
+        data["text"] = dict(data.get("text") or {}, **(strings.FAMILY if cfg["language"]["active"] == "en" else {}))
+    contra = [g["name"] for g in data["goods"].values() if g.get("contraband")]
+    if contra:
+        joined = " & ".join(contra)
+        data["tokens"] = dict(data.get("tokens") or {}, Contraband=joined, contraband=joined.lower())
+    data["rating"] = "family"
+    data["screen_family"] = True
+    return fcfg, data
+
+
+def family_view(view):
+    """A game state for a Family-friendly screen: the cargo's family names in every line of text
+    (log, news, the desk, the battle). Words only; ids and numbers are left alone."""
+    swaps = [(g["name"], g["family_name"]) for g in engine.CFG["goods"].values()
+             if g.get("family_name") and g.get("name") and g["family_name"] != g["name"]]
+    if not swaps:
+        return view
+    pats = [(re.compile(r"(?<!\w){}(?!\w)".format(re.escape(a))), b) for a, b in swaps] + \
+           [(re.compile(r"(?<!\w){}(?!\w)".format(re.escape(a.lower()))), b.lower()) for a, b in swaps]
+
+    def fix(v):
+        if isinstance(v, str):
+            if " " not in v:                       # one word: only an exact name (ids are lower case)
+                return next((b for a, b in swaps if v == a), v)
+            for pat, b in pats:
+                v = pat.sub(b, v)
+            return v
+        if isinstance(v, list):
+            return [fix(x) for x in v]
+        if isinstance(v, dict):
+            return {k: fix(x) for k, x in v.items()}
+        return v
+    return fix(view)
+
+
 def screen_cfg():
     """The settings as screens may see them: NSFW artwork swapped out while family-friendly."""
     cfg = engine.CFG
@@ -407,7 +452,40 @@ class Hub:
         self.clock = {}
         journal.open_game(game, reason, *settings_now(), kind=kind)
         backfill_market(game)
+        self.sync_houses()
         self.changed()
+
+    def sync_houses(self):
+        """The House is its id (Admin > Captains, Options): every seat sailing under a saved House takes
+        that House's name now, through the game's own "house" action so the journal and replays have it.
+        Also writes the House id on seats that were linked by name only. Call with the lock held."""
+        changed = False
+        s = self.game.s
+        for pid in list(s.get("order") or []):
+            p = s["players"].get(pid)
+            if not p or not p.get("captain"):
+                continue
+            try:
+                hid = captains.house_for_seat(p, s.get("game_id"))
+                h = captains.house(p["captain"], hid) if hid else None
+            except Exception:
+                crash("Looking up a seat's House failed", pid=pid)
+                continue
+            if not h:
+                continue
+            if p.get("hid") != hid:
+                p["hid"] = hid
+                changed = True
+            if h["name"] and h["name"] != p["firm"]:
+                try:
+                    self.game.act(pid, {"type": "house", "name": h["name"]}, self.present() | {pid})
+                    changed = True
+                except GameError as e:
+                    journal.log("WARN", "players", "{}'s House could not take the name {}: {}".format(
+                        p["name"], h["name"], e))
+        if changed:
+            self.changed()
+        return changed
 
     def ticker(self):
         """Notices when a player drops out so the others are not left waiting."""
@@ -764,6 +842,8 @@ class Handler(BaseHTTPRequestHandler):
                 cfg = engine.CFG
                 data = static_data()
                 said = voice.PLAN.public()
+                if query.get("family", [""])[0] == "1" and not media.family(cfg):
+                    cfg, data = family_screen(cfg, data)    # this screen chose Family-friendly (Options)
                 if media.family(cfg):
                     data = dict(data, graphics=media.safe_graphics(data.get("graphics"), cfg))
                     if said.get("cast"):
@@ -773,7 +853,9 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/voice/") and path.endswith(".mp3"):
             return self._voice_clip(path[len("/voice/"):-4])
         if path == "/events":
-            return self._events(query.get("token", [""])[0])
+            return self._events(query.get("token", [""])[0], query.get("family", [""])[0] == "1")
+        if path == "/api/options":
+            return self._options_get(query.get("token", [""])[0])
         if path.startswith("/api/admin/"):
             if not self._admin_ok():
                 return self._deny()
@@ -809,6 +891,8 @@ class Handler(BaseHTTPRequestHandler):
                         raise
                     HUB.changed()
                 return self._send(200, {"ok": True, "token": token})
+            if path == "/api/options":
+                return self._options_post(body)
             if path == "/api/act":
                 with HUB.cond:
                     pid = HUB.game.pid_for_token(body.get("token"))
@@ -848,6 +932,122 @@ class Handler(BaseHTTPRequestHandler):
             with HUB.cond:
                 said = voice.PLAN.msg(str(e))
             return self._send(200, {"ok": False, "error": str(e), "voice": said})
+        self._send(404, {"ok": False, "error": "Not found"})
+
+    # ----------------------------------------------------------- options --
+    def _options_seat(self, token):
+        pid = HUB.game.pid_for_token(token) if token else None
+        if pid is None:
+            raise GameError(engine.tx("e.not_in_game"))
+        return pid, HUB.game.s["players"][pid]
+
+    @staticmethod
+    def _pictures(kind, subject):
+        """A Captain's portraits or a House's seals in the Media Library, newest first, starred marked."""
+        out = []
+        if not subject:
+            return out
+        for it in media.load(engine.CFG)["items"]:
+            if it.get("kind") != kind or it.get("subject") != subject or it.get("type", "image") != "image":
+                continue
+            if not it.get("enabled", True) or not media._exists(it["url"]):
+                continue
+            out.append({"id": it["id"], "url": it["url"], "primary": bool(it.get("primary")),
+                        "nsfw": bool(it.get("nsfw")), "added": it.get("added") or it.get("created") or ""})
+        out.sort(key=lambda i: str(i["added"]), reverse=True)      # newest first, the starred one first of all
+        out.sort(key=lambda i: not i["primary"])
+        return out
+
+    @staticmethod
+    def _jobs_for(kind, subject):
+        n = 0
+        for j in media.JOBS.list():
+            if j.get("kind") == kind and j.get("subject") == subject and j.get("state", j.get("status")) in (
+                    "queued", "running", "waiting", "pending"):
+                n += max(1, int(j.get("count") or 1) - int(j.get("done") or 0))
+        return n
+
+    def _options_get(self, token):
+        """Everything the Options popup shows that is not already in the game state."""
+        with HUB.cond:
+            try:
+                pid, p = self._options_seat(token)
+            except GameError as e:
+                return self._send(200, {"ok": False, "error": str(e)})
+            cid = p.get("captain") or ""
+            hid = captains.house_for_seat(p, HUB.game.s.get("game_id")) if cid else ""
+        c = captains.get(cid) if cid else None
+        h = captains.house(cid, hid) if (cid and hid) else None
+        family = media.family(engine.CFG)
+        pics = lambda kind, subj: [i for i in self._pictures(kind, subj) if not (family and i["nsfw"])]
+        return self._send(200, {
+            "ok": True, "captain": {"cid": cid, "name": c["name"], "title": c.get("title", "")} if c else None,
+            "house": {"hid": hid, "name": h["name"], "color": h["color"], "motto": h.get("motto", "")} if h else None,
+            "portraits": pics("captain", cid) if c else [], "crests": pics("house", hid) if h else [],
+            "painting": {"captain": self._jobs_for("captain", cid) if c else 0,
+                         "house": self._jobs_for("house", hid) if h else 0},
+            "mode": engine.MULT.get("name", ""), "table_family": family, "admin": self._admin_ok()})
+
+    def _options_post(self, body):
+        """Options: choose a portrait or seal, have a new one made, or rename / re-colour the House."""
+        op = str(body.get("op") or "")
+        with HUB.cond:
+            pid, p = self._options_seat(body.get("token"))
+            cid = p.get("captain") or ""
+            hid = captains.house_for_seat(p, HUB.game.s.get("game_id")) if cid else ""
+            who = p["name"]
+        try:
+            if op == "house":
+                name = " ".join(str(body.get("name") or "").split())[:28]
+                color = body.get("color")
+                if not name:
+                    raise GameError(engine.tx("e.house_name"))
+                with HUB.cond:
+                    for q in HUB.game.s["players"].values():
+                        if q["id"] != pid and q["firm"].lower() == name.lower():
+                            raise GameError(engine.tx("e.house_taken", firm=name))
+                    if cid and hid:
+                        before, after = captains.update_house(cid, hid, name, color if color else None)
+                        HUB.sync_houses()
+                        msg = engine.tx("m.house_renamed", old=before["name"], firm=after["name"]) \
+                            if before["name"] != after["name"] else engine.tx("opt.house_saved")
+                    else:
+                        msg = HUB.game.act(pid, {"type": "house", "name": name}, HUB.present() | {pid})
+                    HUB.changed()
+                media._public_cache.clear()
+                journal.log("INFO", "players", "{} saved their House in Options: {}".format(who, msg), **self._via())
+                return self._send(200, {"ok": True, "msg": msg})
+            if op in ("pick", "generate"):
+                kind = "captain" if body.get("what") == "portrait" else "house"
+                subject = cid if kind == "captain" else hid
+                if not subject:
+                    raise GameError(engine.tx("opt.no_captain"))
+                if op == "pick":
+                    iid = str(body.get("id") or "")
+                    if not any(i["id"] == iid for i in self._pictures(kind, subject)):
+                        raise GameError(engine.tx("opt.no_captain"))
+                    media.update([iid], {"primary": True, "enabled": True},
+                                 add_roles=["portrait" if kind == "captain" else "crest"])
+                    media._public_cache.clear()
+                    with HUB.cond:
+                        HUB.changed()
+                    return self._send(200, {"ok": True, "msg": engine.tx("opt.chosen")})
+                if self._jobs_for(kind, subject):
+                    return self._send(200, {"ok": True, "msg": engine.tx("opt.generating")})
+                c = captains.get(cid)
+                h = captains.house(cid, hid) if kind == "house" else None
+                prompt = captains.prompt_for(c, h) if kind == "house" else captains.prompt_for(c)
+                aspect = "3:4" if kind == "captain" else "1:1"
+                if aspect not in imagegen.ASPECTS:
+                    aspect = next(iter(imagegen.ASPECTS))
+                w, hh = imagegen.ASPECTS[aspect]
+                media.JOBS.add(kind, subject, ["portrait" if kind == "captain" else "crest"], prompt[:6000],
+                               w, hh, 1, "auto", tags=media._tags(""), aspect=aspect, replaces="")
+                journal.log("INFO", "players", "{} asked for a new {} in Options".format(
+                    who, "portrait" if kind == "captain" else "House seal"), **self._via())
+                return self._send(200, {"ok": True, "msg": engine.tx("opt.generating")})
+        except captains.CaptainError as e:
+            return self._send(200, {"ok": False, "error": str(e)})
         self._send(404, {"ok": False, "error": "Not found"})
 
     def _join_captain(self, body):
@@ -1271,6 +1471,8 @@ class Handler(BaseHTTPRequestHandler):
             if what == "save":
                 c = captains.save_captain(body.get("captain"))
                 media._public_cache.clear()
+                with HUB.cond:
+                    HUB.sync_houses()          # a House renamed here is renamed at the table too
                 journal.log("INFO", "admin", "Captain {} saved ({} House{})".format(
                     c["name"], len(c["houses"]), "" if len(c["houses"]) == 1 else "s"), **self._via())
                 return self._send(200, {"ok": True, "cid": c["cid"], "msg": "{} saved.".format(c["name"])})
@@ -1539,7 +1741,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, audio, "audio/mpeg")
         return self._send(404, {"ok": False, "error": "Not found"})
 
-    def _events(self, token):
+    def _events(self, token, family=False):
         with HUB.cond:
             pid = HUB.game.pid_for_token(token) if token else None
             if pid:
@@ -1570,6 +1772,8 @@ class Handler(BaseHTTPRequestHandler):
                         known = HUB.game.pid_for_token(token) if token else None
                         view = HUB.view(known)
                         view["unknown_token"] = bool(token) and known is None
+                        if family and not media.family(engine.CFG):
+                            view = family_view(view)
                         payload = json.dumps(view)
                 if payload is None:
                     self.wfile.write(b": keepalive\n\n")
@@ -1657,6 +1861,10 @@ def main():
     HUB = Hub(game, join_url)
     journal.open_game(game, reason, *settings_now(), kind=kind)
     backfill_market(game)
+    stats.HOUSE_NAMES = captains.firm_names         # the records show each House's name now
+    stats.NAMES_VERSION = captains.names_version
+    with HUB.cond:
+        HUB.sync_houses()
     try:
         httpd = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     except OSError as e:

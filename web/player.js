@@ -7,6 +7,9 @@ let D = null;            // reference data (goods, ports, ships, brand, wording)
 let S = null;            // latest game state from the server
 /* This player's own home port (where they started): bank, lender, warehouse and protection. */
 function myHome() { return (S && S.me && S.me.home) || D.home; }
+// Your own home port always has a shipyard, bank and warehouse, whatever Admin > Ports says.
+function yardAt(k) { return !!(D.ports[k] && (D.ports[k].shipyard || k === myHome())); }
+function yardList() { const h = myHome(), y = D.yards.slice(); if (D.ports[h] && !y.includes(D.ports[h].name)) y.unshift(D.ports[h].name); return y.join(", "); }
 /* Each house has its own home port, so {home} in any wording means this player's. */
 function applyHome() { if (S && S.me && D && D.ports && D.ports[myHome()]) TOK.home = D.ports[myHome()].name; }
 let token = store("seatrader_token");
@@ -412,7 +415,7 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "chart.current": "CURRENT PORT", "chart.destination": "DESTINATION", "chart.route_warning": "ROUTE WARNING", "chart.route_forecast": "Route forecast: {weather}",
     "deck.me": "Captain {name}: voices and options", "deck.speech": "Voices", "deck.speech_on": "Voices are on",
     "deck.speech_off": "Voices are off", "deck.speech_none": "Voices are turned off for this game",
-    "deck.options": "Options", "deck.options_soon": "Options are not built yet.",
+    "deck.options": "Options", "deck.options_soon": "Options: the voyage clock, your Captain and House, and this screen.",
     "host.end_short": "End month", "host.new_short": "New game", "host.new_yes_short": "Yes, new game", "host.new_no_short": "Keep playing",
     "market.best": "Best known: {port} ≈ +{pct}% · {when}", "market.best_now": "seen this month", "market.best_ago": "{n} mo ago",
     "market.best_tip": "{good} should fetch about {price} a unit in {port} when you land, after the dealer's cut there. Buying one here costs {cost}. {when}; old prices drift back toward normal, and this allows for that. Harbour dues and the Port Authority's tax are not counted.",
@@ -1730,14 +1733,14 @@ function portTodo() {
   const repair = (me.ships || []).reduce((n, s) => n + s.repair, 0);
   if (repair) {
     const low = Math.min(...me.ships.map(s => Math.round(100 * s.hull / D.ships[s.type].hull)));
-    items.push(["warn", te(D.ports[me.port].shipyard ? "port.todo.repair_yard" : "port.todo.repair", { hull: low, cost: money(repair) }), go("fleet", te("tab.fleet"))]);
+    items.push(["warn", te(yardAt(me.port) ? "port.todo.repair_yard" : "port.todo.repair", { hull: low, cost: money(repair) }), go("fleet", te("tab.fleet"))]);
   }
   // Out of silver with one ship: the shipyard will swap her for a junk and the difference in silver.
   const td = me.trade_down;
   if (td && !me.ready && me.cash + me.bank < 1000) {
-    const yardHere = D.ports[me.port].shipyard;
+    const yardHere = yardAt(me.port);
     items.push(["warn", te(yardHere ? "port.todo.broke_yard" : "port.todo.broke",
-      { name: esc(td.name), junk: esc(td.junk), value: money(td.value), yards: esc(D.yards.join(", ")) }),
+      { name: esc(td.name), junk: esc(td.junk), value: money(td.value), yards: esc(yardList()) }),
       yardHere ? go("fleet", te("tab.fleet")) : go("chart", te("tab.chart"))]);
   }
   const storms = Object.keys(S.weather || {}).filter(r => S.weather[r] >= 3);
@@ -1786,7 +1789,7 @@ function portGlance() {
     ${row(te("port.glance.cut", { rep: (me.rep || {})[me.port] }), pct(me.spread, 1) + "%")}
     ${row(te("port.glance.dues"), "×" + (me.dues && me.dues.level != null ? me.dues.level : 1))}
     ${row(te("port.glance.authority"), me.home_free && me.port === myHome() ? te("port.glance.home_free") : rate > 0 ? te("port.glance.authority_rate", { rate: pct(rate, 1) }) : te("port.glance.free"))}
-    ${row(te("port.glance.yard"), port.shipyard ? te("port.glance.yes") : te("port.glance.no_yard", { yards: esc(D.yards.join(", ")) }))}
+    ${row(te("port.glance.yard"), yardAt(me.port) ? te("port.glance.yes") : te("port.glance.no_yard", { yards: esc(yardList()) }))}
     ${row(te("port.glance.rivals"), rivals.length ? rivals.map(p => `<span class="pt-chip">${houseMark(p)}${esc(p.firm)}</span>`).join("") : te("port.glance.alone"))}
   </table>`;
 }
@@ -2134,7 +2137,7 @@ function classHead(role, tag) {
 }
 
 function fleetTab() {
-  const me = S.me, yard = D.ports[me.port].shipyard;
+  const me = S.me, yard = yardAt(me.port);
   const totalRepair = me.ships.reduce((n, s) => n + s.repair, 0);
   const groups = CLASS_ORDER.map(role => {
     const mine = me.ships.map((s, i) => [s, i]).filter(([s]) => roleOf(s.type) === role);
@@ -2155,7 +2158,7 @@ function fleetTab() {
           const rows = types.filter(k => roleOf(k) === role);
           return rows.length ? `<tbody class="yd-class"><tr class="yd-head"><th colspan="7">${classHead(role, "div")}</th></tr>${rows.map(yardRow).join("")}</tbody>` : "";
         }).join("")}</table>`
-    : `<p class="muted fl-none">${te("yard.none", { port: portName(me.port), yards: D.yards.join(", ") })}</p>`;
+    : `<p class="muted fl-none">${te("yard.none", { port: portName(me.port), yards: yardList() })}</p>`;
   const r = D.fleet_rules || {};
   return `<section class="card fl">
       <header class="mk-head"><h2>${te("fleet.title")}</h2>
@@ -2210,7 +2213,7 @@ function chartTab() {
     const weatherKind = ["calm", "fair", "squalls", "typhoon"][wx] || "calm";
     const isHome = k === myHome();
     const facilities = [
-      p.shipyard && te("sail.facility.shipyard"),
+      (p.shipyard || isHome) && te("sail.facility.shipyard"),
       (p.bank || isHome) && te("sail.facility.bank"),
       (p.warehouse || isHome) && te("sail.facility.warehouse"),
     ].filter(Boolean);
@@ -2361,7 +2364,7 @@ app.addEventListener("click", async e => {
     case "tally": ui.tally = !ui.tally; ui.meOpen = false; return render();
     case "me": ui.meOpen = !ui.meOpen; return render();
     case "speech": Voice.setMuted(!Voice.muted()); return render();
-    case "options": ui.meOpen = false; render(); return toast(t("deck.options_soon"));
+    case "options": ui.meOpen = false; render(); return typeof Options !== "undefined" ? Options.open() : toast(t("deck.options_soon"));
     // Closing the log opens the Port Authority desk: her greeting starts with it, not at the next update.
     case "seen": ui.seenTurn = S.turn; Voice.drop("log"); render(); return Customs.speak();
     case "relog": ui.seenTurn = null; ui.spokenTurn = null; return render();

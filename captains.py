@@ -445,6 +445,74 @@ def link_game(cid, gid, pid, house):
         _write()
 
 
+def update_house(cid, hid, name=None, color=None):
+    """A Captain renames or re-colours one of their Houses (Options on the player screen).
+    The House is its id (hid); the name is only its label, so every game linked to it takes the new
+    name. Returns (house before, house after). Raises CaptainError."""
+    with LOCK:
+        data = load()
+        c = data["captains"].get(str(cid or ""))
+        if not c:
+            raise CaptainError("That Captain is not on the list.")
+        h = next((x for x in c["houses"] if x["hid"] == hid), None)
+        if h is None:
+            raise CaptainError("That House is not one of {}'s.".format(c["name"]))
+        before = copy.deepcopy(h)
+        if name is not None:
+            name = " ".join(str(name).split())[:HOUSE_MAX]
+            if not name:
+                raise CaptainError("Give your House a name.")
+            if any(x is not h and x["name"].lower() == name.lower() for x in c["houses"]):
+                raise CaptainError("{} already has a House called {}.".format(c["name"], name))
+            h["name"] = name
+        if color is not None:
+            if not COLOR_RE.match(str(color)):
+                raise CaptainError("Choose a colour.")
+            h["color"] = str(color)
+        for g in c["games"]:
+            if g.get("hid") == hid:
+                g["house"] = h["name"]
+        _write()
+        return before, copy.deepcopy(h)
+
+
+def house(cid, hid):
+    c = load()["captains"].get(str(cid or ""))
+    h = c and next((x for x in c["houses"] if x["hid"] == hid), None)
+    return copy.deepcopy(h) if h else None
+
+
+def house_for_seat(p, gid=None):
+    """The hid a seat sails under: written on the seat, else this game's link, else the House named
+    like the seat's firm. "" when it has none (a seat joined by name alone)."""
+    c = load()["captains"].get(p.get("captain") or "")
+    if not c:
+        return ""
+    hid = p.get("hid") or next((g.get("hid") for g in c["games"]
+                                if gid and g.get("gid") == gid and g.get("pid") == p.get("id") and g.get("hid")), "")
+    if not hid:
+        firm = (p.get("firm") or "").strip().lower()
+        hid = next((h["hid"] for h in c["houses"] if (h["name"] or "").strip().lower()[:28] == firm), "")
+    return hid
+
+
+def firm_names(gid):
+    """{seat id: current House name} for one recorded game, from every Captain's links: what the
+    records show in place of the name written at the time (a House renamed later shows its new name)."""
+    out = {}
+    for c in load()["captains"].values():
+        names = {h["hid"]: h["name"] for h in c["houses"]}
+        for g in c["games"]:
+            if g.get("gid") == gid and g.get("pid") and names.get(g.get("hid")):
+                out[g["pid"]] = names[g["hid"]]
+    return out
+
+
+def names_version():
+    """Changes whenever any House name changes, for caches of the records."""
+    return tuple(sorted((h["hid"], h["name"]) for c in load()["captains"].values() for h in c["houses"]))
+
+
 def links(c):
     """{game id: seat id} for stats.career."""
     return {g["gid"]: g["pid"] for g in (c or {}).get("games", []) if g.get("gid") and g.get("pid")}

@@ -38,9 +38,14 @@ function store(key, value) {
   return null;
 }
 
+/* Family-friendly chosen for this screen alone (Options). The table's own setting is in Admin. */
+function screenFamily() {
+  try { return localStorage.getItem("seatrader_family") === "1"; } catch (e) { return false; }
+}
+
 /* Fetches the reference data and applies brand, colours, wording and theme. */
 async function loadInfo() {
-  const r = await fetch("/api/info");
+  const r = await fetch("/api/info" + (screenFamily() ? "?family=1" : ""));
   const info = await r.json();
   const d = info.data;
   // screens may carry their own fallback wording for keys an older server does not have yet
@@ -119,7 +124,8 @@ function pic(url, cls) {
 /* Opens the live stream and calls onState with each new game state.
    The browser reconnects on its own if the server restarts. */
 function listen(token, onState, onStatus) {
-  const es = new EventSource("/events" + (token ? "?token=" + encodeURIComponent(token) : ""));
+  const q = [token ? "token=" + encodeURIComponent(token) : "", screenFamily() ? "family=1" : ""].filter(Boolean).join("&");
+  const es = new EventSource("/events" + (q ? "?" + q : ""));
   es.onmessage = e => { onStatus(true); onState(JSON.parse(e.data)); };
   es.onerror = () => onStatus(false);
   return es;

@@ -20,6 +20,7 @@ again whenever settings are saved.
 import copy
 import math
 import random
+import re
 import secrets
 import time
 
@@ -84,8 +85,8 @@ def home_of(p):
 
 
 def port_has(p, port, what):
-    """Is there a bank ("bank") or a warehouse ("warehouse") for this house in port? Its own home port
-    always has both; other ports only where Admin > Ports ticks the box."""
+    """Is there a bank ("bank"), a warehouse ("warehouse") or a shipyard ("shipyard") for this house in
+    port? Its own home port always has all three; other ports only where Admin > Ports ticks the box."""
     return port in PORTS and (port == home_of(p) or bool(PORTS[port].get(what)))
 
 
@@ -178,6 +179,31 @@ def money(n):
 HIST_MONTHS = 12      # months of prices in the market keepers' book (Market tab pulse chart)
 
 
+def seed_firm(p):
+    """The House name the seat's dice were seeded with: its first name, kept when the House is renamed."""
+    return p.get("seed_firm") or p.get("firm", "")
+
+
+def rename_in(obj, old, new, skip=("token", "seed_firm")):
+    """Swap one House name for another in every piece of text inside obj (lists and dicts, in place).
+    Only the whole name, between word edges, so a name inside a longer word is left alone. Returns obj."""
+    pat = re.compile(r"(?<![\w]){}(?![\w])".format(re.escape(old)))
+    def fix(v):
+        if isinstance(v, str):
+            return pat.sub(lambda _m: new, v) if old in v else v
+        if isinstance(v, list):
+            for i, x in enumerate(v):
+                v[i] = fix(x)
+            return v
+        if isinstance(v, dict):
+            for k in list(v):
+                if k not in skip:
+                    v[k] = fix(v[k])
+            return v
+        return v
+    return fix(obj)
+
+
 def date_label(turn):
     return "{} {}".format(tx("mon.{}".format(turn % 12)), R["game"]["start_year"] + turn // 12)
 
@@ -266,7 +292,7 @@ ACTION_CAT = {"buy": "trade", "sell": "trade", "warehouse": "trade", "depot": "t
               "sell_gun": "fleet", "buy_cannon": "fleet", "sell_cannon": "fleet",
               "sail": "orders", "unsail": "orders", "sea": "orders",
               "customs_declare": "finance", "customs_buyback": "finance", "customs_done": "finance",
-              "gift": "finance",
+              "gift": "finance", "house": "players",
               "settings": "host", "start": "host", "force": "host"}
 
 
@@ -840,7 +866,7 @@ class Game:
     def repair_rate(self, p, sh):
         f = R["fleet"]
         rate = f["repair_base"] + SHIPS[sh["type"]]["price"] / float(f["repair_price_div"])
-        if not PORTS[p["port"]]["shipyard"]:
+        if not port_has(p, p["port"], "shipyard"):
             rate *= f["repair_noyard"]
         return max(0.01, rate * (1 - f["repair_rep_discount"] * (p["rep"][p["port"]] - 50.0) / 50.0))
 
@@ -1208,7 +1234,7 @@ class Game:
             oldest = max((age(port, g) or 0) for port in ports for g in (held or list(GOODS)))
             pool = [(port, g) for port in ports for g in (held or list(GOODS)) if (age(port, g) or 0) == oldest]
         pool.sort()
-        rng = random.Random("registrar:{}:{}:{}:{}".format(self.s.get("game_id", ""), p.get("name", ""), p.get("firm", ""), turn))
+        rng = random.Random("registrar:{}:{}:{}:{}".format(self.s.get("game_id", ""), p.get("name", ""), seed_firm(p), turn))
         port, g = rng.choice(pool)
         was = age(port, g)
         price = int(round(self.s["prices"][port][g]))
@@ -1248,12 +1274,12 @@ class Game:
         last = p.get("hot_last")
         if last is not None and turn - int(last) < max(1, int(r.get("hot_every", 3))):
             return None
-        who = "game:{}:{}:{}:{}".format(s.get("game_id", ""), p.get("name", ""), p.get("firm", ""), turn)
+        who = "game:{}:{}:{}:{}".format(s.get("game_id", ""), p.get("name", ""), seed_firm(p), turn)
         chance = float(r.get("hot_home_chance" if home else "hot_away_chance", 0.5 if home else 0.2))
         if random.Random("hot_odds:{}:{}".format(who, here)).random() >= chance:
             return None
         # The Registrar's pick keeps its seed from before the odds, so her tips come out as they did.
-        rng = random.Random("registrar_hot:{}:{}:{}:{}".format(s.get("game_id", ""), p.get("name", ""), p.get("firm", ""), turn)
+        rng = random.Random("registrar_hot:{}:{}:{}:{}".format(s.get("game_id", ""), p.get("name", ""), seed_firm(p), turn)
                             if home else "port_hot:{}:{}".format(who, here))
         lead = max(1, int(r.get("hot_lead", 1)))
         # How long the boom lasts is drawn now and kept secret: the tip names when it lands, never how
@@ -1783,7 +1809,7 @@ class Game:
         last, n = d.get("last"), int(d.get("n", 0))
         if not left:
             left = list(keys)
-            random.Random("{}:{}:{}:{}".format(deck, p.get("name", ""), p.get("firm", ""), n)).shuffle(left)
+            random.Random("{}:{}:{}:{}".format(deck, p.get("name", ""), seed_firm(p), n)).shuffle(left)
             n += 1
             if len(left) > 1 and left[-1] == last:      # drawn from the end
                 left[0], left[-1] = left[-1], left[0]
@@ -1946,6 +1972,28 @@ class Game:
                 self.on_event(h)
         return msg
 
+    def _rename_house(self, p, a):
+        """A Captain renames their House (Options). The House is the seat; the name is only its label,
+        so the new name shows everywhere at once, past log lines and news included."""
+        name = " ".join(str(a.get("name") or "").split())[:28]
+        if not name:
+            raise GameError(tx("e.house_name"))
+        old = p["firm"]
+        if name == old:
+            return tx("m.house_same", firm=name)
+        for q in self.s["players"].values():
+            if q is not p and q["firm"].lower() == name.lower():
+                raise GameError(tx("e.house_taken", firm=name))
+        others = {q["id"]: q["firm"] for q in self.s["players"].values() if q is not p}
+        p.setdefault("seed_firm", old)
+        p["firm"] = name
+        rename_in(self.s, old, name)
+        for q in self.s["players"].values():     # another House's own name is never touched
+            if q["id"] in others:
+                q["firm"] = others[q["id"]]
+        self._detail = {"old": old, "firm": name}
+        return tx("m.house_renamed", old=old, firm=name)
+
     def _act(self, pid, a, present=()):
         s = self.s
         p = s["players"].get(pid)
@@ -1954,6 +2002,8 @@ class Game:
         kind = a.get("type")
         is_host = pid == self.host_id(set(present) | {pid})
 
+        if kind == "house":
+            return self._rename_house(p, a)
         if kind == "promotion_ack":
             queue = p.get("promotions", [])
             ack = a.get("id")
@@ -2294,7 +2344,7 @@ class Game:
         kind = a.get("ship")
         if kind not in SHIPS:
             raise GameError(tx("e.unknown_ship"))
-        if not PORTS[p["port"]]["shipyard"]:
+        if not port_has(p, p["port"], "shipyard"):
             raise GameError(tx("e.no_shipyard", port=PORTS[p["port"]]["name"]))
         role = role_of(kind)
         limit, have = role_limit(role), self.class_count(p, role)
@@ -2326,7 +2376,7 @@ class Game:
 
     def _act_sell_ship(self, p, a):
         sh = self._ship(p, a)
-        if not PORTS[p["port"]]["shipyard"]:
+        if not port_has(p, p["port"], "shipyard"):
             raise GameError(tx("e.no_shipyard", port=PORTS[p["port"]]["name"]))
         if len(p["ships"]) <= 1:
             raise GameError(tx("e.last_ship"))
@@ -2358,7 +2408,7 @@ class Game:
                 "junk": spec["name"]}
 
     def _act_trade_down(self, p, a):
-        if not PORTS[p["port"]]["shipyard"]:
+        if not port_has(p, p["port"], "shipyard"):
             raise GameError(tx("e.no_shipyard", port=PORTS[p["port"]]["name"]))
         if len(p["ships"]) != 1:
             raise GameError(tx("e.trade_down_fleet"))
@@ -4024,6 +4074,7 @@ class Game:
             worth = int(self.worth(p))
             out["me"] = {
                 "id": p["id"], "name": p["name"], "firm": p["firm"], "color": p["color"],
+                "captain": p.get("captain") or "", "hid": p.get("hid") or "",
                 "host": p["id"] == host, "port": port, "home": home_of(p),
                 "home_free": self.home_free(p, home_of(p)),
                 "cash": int(p["cash"]), "bank": int(p["bank"]), "debt": int(math.ceil(p["debt"])),

@@ -131,7 +131,7 @@
       const face = mine.find(i => i.primary && ok(i)) || mine.find(ok);
       const vids = mine.filter(i => i.type === "video").length, nsfw = mine.filter(i => i.nsfw).length;
       return `<button type="button" class="ml-subject" data-mlsubject="${e(k)}">
-        <span class="ml-subject-art">${face ? `<img src="${e(face.url)}" alt="" loading="lazy">` : `<i>${e(String(name).slice(0, 1))}</i>`}</span>
+        <span class="ml-subject-art">${face ? `<img src="${e(face.url)}" alt="" loading="lazy"><span class="ml-quickdel" role="button" tabindex="0" data-mlquickdel="${e(face.id)}" title="Delete this picture (moves it to the media trash)" aria-label="Delete this picture">🗑</span>` : `<i>${e(String(name).slice(0, 1))}</i>`}</span>
         <b>${e(name)}</b><small>${mine.length} item${mine.length === 1 ? "" : "s"}${vids ? ` · ${vids} video` : ""}${nsfw ? ` · <em>${nsfw} NSFW</em>` : ""}</small></button>`;
     }).join("")}</div>`;
   }
@@ -560,7 +560,7 @@
   async function onClick(ev) {
     if (section !== "media") return;
     const t = ev.target;
-    const el = t.closest("[data-mlkind],[data-mlsubject],[data-mlitem],button");
+    const el = t.closest("[data-mlquickdel],[data-mlkind],[data-mlsubject],[data-mlitem],button");
     if (!el) return;
     const d = el.dataset;
     if (d.mlreview) { M.review = !M.review; M.sel.clear(); return redraw(); }
@@ -570,7 +570,8 @@
     if (d.mlquickdel) {
       // Anthony, 19 Nov 2026: one-click delete from the grid. The file goes to web/media/_trash, not gone for good.
       ev.preventDefault(); ev.stopPropagation();
-      el.disabled = true;
+      if (el.dataset.busy) return;
+      el.dataset.busy = "1"; el.disabled = true; el.classList.add("busy");
       const res = await api("media/delete", { ids: [d.mlquickdel] });
       toast(res.ok ? res.msg : res.error, !res.ok);
       M.sel.delete(d.mlquickdel);
