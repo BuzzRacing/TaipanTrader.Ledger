@@ -326,8 +326,24 @@ const Battle = (() => {
         : b.repriced && b.view !== "tell" ? te("battle.odds.bargain_full")
         : te("battle.btn.pay_sub");
       const meter = bg && bar ? `<span class="sf-risk sf-bargain" title="${te("battle.bargain")}"><i style="width:${Math.round(100 * Math.max(0.05, 1 - b.price / Math.max(1, bg.full)))}%"></i></span>` : "";
-      html.push(action("pay", te("battle.btn.pay", { price: money(b.price) }), paySub, meter, off || !b.can_pay,
-        "pay" + (bg && b.view !== "tell" ? " bargain" : "")));
+      // Paying (19 Nov 2026): silver aboard and the bank together pay first (a bank note, no fee). When
+      // they fall short, the Pay button gives way to two: the rest in cargo, or the rest on Madam Wu's books.
+      const tl = b.toll || {};
+      const fromBank = tl.bank ? te("battle.btn.pay_bank", { bank: money(tl.bank) }) : "";
+      if (b.can_pay || !(tl.can_cargo || tl.can_wu)) {
+        html.push(action("pay", te("battle.btn.pay", { price: money(b.price) }),
+          b.can_pay && fromBank && !bg && !b.repriced ? fromBank : paySub, meter, off || !b.can_pay,
+          "pay" + (bg && b.view !== "tell" ? " bargain" : "")));
+      } else {
+        const goods = Object.keys(tl.cargo || {}).map(g => `${tl.cargo[g]} ${a(D.goods[g] ? D.goods[g].name : g)}`).join(", ");
+        const have = money((tl.cash || 0) + (tl.bank || 0));
+        html.push(action("pay_cargo", te("battle.btn.pay_cargo", { price: money(b.price) }),
+          te("battle.btn.pay_cargo_sub", { have, short: money(tl.short) }) + (goods ? `<small>${goods}</small>` : ""),
+          meter, off || !tl.can_cargo, "pay cargo"));
+        html.push(action("pay_wu", te("battle.btn.pay_wu", { price: money(b.price) }),
+          tl.can_wu ? te("battle.btn.pay_wu_sub", { have, short: money(tl.short), debt: money(tl.wu) }) : te("battle.btn.pay_wu_none"),
+          "", off || !tl.can_wu, "pay wu"));
+      }
     }
     html.push(action("fight", te("battle.btn.fight"),
       !b.can_fight ? te("battle.btn.fight_none") : exact && o ? te("battle.odds.fight", { pct: Math.round(o.gun_hit * 100) + "%" }) : te("battle.btn.fight_sub"),
@@ -338,7 +354,7 @@ const Battle = (() => {
     html.push(action("retreat", te("battle.btn.retreat"), retreatSub + (dump ? `<small>${dump}</small>` : ""),
       bar && o ? riskBar(o.retreat[1] / Math.max(1, b.hull)) : "", off, "retreat"));
     const orders = t("w." + b.orders);
-    return `<div class="sf-btns${b.stage === "parley" ? " four" : ""}">${html.join("")}</div>
+    return `<div class="sf-btns${html.length >= 5 ? " five" : b.stage === "parley" ? " four" : ""}">${html.join("")}</div>
       <p class="sf-skip"><span>${te("battle.timer_orders", { orders })}</span>
         <button type="button" class="sf-link" data-sf="skip" ${off ? "disabled" : ""} title="${te("battle.btn.skip_sub")}">${te("battle.btn.skip")} &raquo;</button></p>`;
   }
@@ -651,7 +667,7 @@ const Battle = (() => {
   document.addEventListener("keydown", e => {
     if (root.hidden || root.dataset.mode !== "fight" || e.metaKey || e.ctrlKey || e.altKey) return;
     if (playing && (e.key === " " || e.key === "Enter")) { e.preventDefault(); return nextFrame(); }
-    const key = { f: "fight", r: "run", t: "retreat", p: "pay" }[e.key.toLowerCase()];
+    const key = { f: "fight", r: "run", t: "retreat", p: "pay", c: "pay_cargo", w: "pay_wu" }[e.key.toLowerCase()];
     const el = key && root.querySelector(`.sf-btn[data-sf="${key}"]`);
     if (el && !el.disabled) { e.preventDefault(); send(key); }
   });

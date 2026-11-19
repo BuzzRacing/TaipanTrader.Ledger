@@ -42,7 +42,10 @@
     return items().filter(i => {
       if (M.kind && i.kind !== M.kind) return false;
       if (M.subject && i.subject !== M.subject) return false;
-      if (M.role && !(i.roles.includes(M.role) || !i.roles.length)) return false;
+      // A role also takes in its moods and variants (Anthony, 19 Nov 2026): "mayor" picks up mayor_congrats and
+      // mayor_<rank>, "taxlady" picks up taxlady_bored, _caught and the rest, and a tag naming the role counts too.
+      if (M.role && i.roles.length && !(i.roles.some(r => r === M.role || r.startsWith(M.role + "_"))
+          || i.tags.some(t => String(t).toLowerCase() === M.role))) return false;
       if (M.type && i.type !== M.type) return false;
       if (M.nsfw === "sfw" && i.nsfw) return false;
       if (M.nsfw === "nsfw" && !i.nsfw) return false;
@@ -131,7 +134,7 @@
       const face = mine.find(i => i.primary && ok(i)) || mine.find(ok);
       const vids = mine.filter(i => i.type === "video").length, nsfw = mine.filter(i => i.nsfw).length;
       return `<button type="button" class="ml-subject" data-mlsubject="${e(k)}">
-        <span class="ml-subject-art">${face ? `<img src="${e(face.url)}" alt="" loading="lazy"><span class="ml-quickdel" role="button" tabindex="0" data-mlquickdel="${e(face.id)}" title="Delete this picture (moves it to the media trash)" aria-label="Delete this picture">🗑</span>` : `<i>${e(String(name).slice(0, 1))}</i>`}</span>
+        <span class="ml-subject-art">${face ? `<img src="${e(face.url)}" alt="" loading="lazy"><span class="ml-quickdel" role="button" tabindex="0" data-mlquickdel="${e(face.id)}" title="Delete this picture (moves it to the media trash)" aria-label="Delete this picture">🗑</span>${!face.reviewed ? `<span class="ml-quickok" role="button" tabindex="0" data-mlquickok="${e(face.id)}" title="Approve this picture (marks it reviewed)" aria-label="Approve this picture">✓</span>` : ""}` : `<i>${e(String(name).slice(0, 1))}</i>`}</span>
         <b>${e(name)}</b><small>${mine.length} item${mine.length === 1 ? "" : "s"}${vids ? ` · ${vids} video` : ""}${nsfw ? ` · <em>${nsfw} NSFW</em>` : ""}</small></button>`;
     }).join("")}</div>`;
   }
@@ -316,6 +319,10 @@
     if (kind === "captain" || kind === "house") return ((M.lib && M.lib.prompts && M.lib.prompts[kind]) || {})[subject] || "";
     const style = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
     const name = subjectName(kind, subject);
+    if (kind === "port" && role === "mayor_congrats") {
+      const w = portWoman(subject, "mayor");
+      return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, a former pirate queen who is now the lady mayor of ${name} in 1860, standing in her harbour-office parlour and congratulating the viewer on a hard-won promotion: both arms opened wide toward the camera in warm, generous gratitude and welcome, palms turned up, a radiant proud smile, eyes shining, direct eye contact, ${w.hair}, ${w.dress}, worn open at the throat and shoulders, a gold mayor's chain of office across her bare décolletage, a sealed ivory letter of commission with a red wax seal on the teak desk behind her, a brass strongbox, a harbour window with masts beyond, warm candle and lantern glow, her head, both outstretched hands and her waist all inside the frame with room around them, shallow depth of field, sensual private-release erotic glamour, ${style}`;
+    }
     if (kind === "port" && role && role.startsWith("mayor_")) {
       const rank = role.slice(6), title = (CFG.ranks.find(r => r.id === rank) || {}).title || rank;
       const audience = ((M.lib.promotion_styles || {})[rank] || {}).audience || "a formal harbour-office commission";
@@ -419,8 +426,9 @@
     const inUse = M.lib.in_use.includes(i.url);
     return `<div class="ml-tile${on ? " on" : ""}${i.enabled ? "" : " off"}${i.nsfw ? " nsfw" : ""}" data-mlitem="${e(i.id)}" tabindex="0">
       <div class="ml-art">${thumb(i, "ml-img")}
-        <span class="ml-badges">${i.primary ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? "<b>▶ video</b>" : ""}${i.nsfw ? '<b class="nsfw">NSFW</b>' : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span>
-        <button type="button" class="ml-quickdel" data-mlquickdel="${e(i.id)}" title="Delete (moves it to the media trash)" aria-label="Delete">🗑</button></div>
+        <span class="ml-badges">${i.primary && i.kind !== "persona" ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? "<b>▶ video</b>" : ""}${i.nsfw ? '<b class="nsfw">NSFW</b>' : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span>
+        <button type="button" class="ml-quickdel" data-mlquickdel="${e(i.id)}" title="Delete (moves it to the media trash)" aria-label="Delete">🗑</button>
+        ${!i.reviewed ? `<button type="button" class="ml-quickok" data-mlquickok="${e(i.id)}" title="Approve (marks it reviewed)" aria-label="Approve">✓</button>` : ""}</div>
       <div class="ml-cap"><b>${e(i.title || subjectName(i.kind, i.subject))}</b>
         <small>${i.roles.length ? i.roles.map(r => e(roleName(i.kind, r))).join(", ") : "any role"}${i.tags.length ? " · " + i.tags.map(e).join(", ") : ""}</small></div></div>`;
   }
@@ -437,7 +445,7 @@
         ? `<video src="${e(i.url)}" controls loop playsinline></video>` : `<a href="${e(i.url)}" target="_blank" rel="noopener"><img src="${e(i.url)}" alt=""></a>`}</div>
       <div class="ml-switches">
         <button type="button" class="ml-nsfw${i.nsfw ? " on" : ""}" data-mlset="nsfw" data-v="${i.nsfw ? "0" : "1"}">${i.nsfw ? "NSFW" : "Family-friendly"}</button>
-        <button type="button" class="${i.primary ? "on" : ""}" data-mlset="primary" data-v="${i.primary ? "0" : "1"}" title="Shown when the rule is Fixed">★ ${i.primary ? "Primary" : "Make primary"}</button>
+        ${i.kind !== "persona" ? `<button type="button" class="${i.primary ? "on" : ""}" data-mlset="primary" data-v="${i.primary ? "0" : "1"}" title="Shown when the rule is Fixed">★ ${i.primary ? "Primary" : "Make primary"}</button>` : ""}
         <button type="button" class="${i.enabled ? "on" : ""}" data-mlset="enabled" data-v="${i.enabled ? "0" : "1"}">${i.enabled ? "In rotation" : "Switched off"}</button>
         ${!i.reviewed ? `<button type="button" data-mlset="reviewed" data-v="1">Mark reviewed</button>` : ""}
       </div>
@@ -560,7 +568,7 @@
   async function onClick(ev) {
     if (section !== "media") return;
     const t = ev.target;
-    const el = t.closest("[data-mlquickdel],[data-mlkind],[data-mlsubject],[data-mlitem],button");
+    const el = t.closest("[data-mlquickdel],[data-mlquickok],[data-mlkind],[data-mlsubject],[data-mlitem],button");
     if (!el) return;
     const d = el.dataset;
     if (d.mlreview) { M.review = !M.review; M.sel.clear(); return redraw(); }
@@ -575,6 +583,16 @@
       const res = await api("media/delete", { ids: [d.mlquickdel] });
       toast(res.ok ? res.msg : res.error, !res.ok);
       M.sel.delete(d.mlquickdel);
+      return load(true);
+    }
+    if (d.mlquickok) {
+      // Anthony, 19 Nov 2026: one-click approve from the grid, the twin of Quick Trash. Same as "Mark reviewed".
+      ev.preventDefault(); ev.stopPropagation();
+      if (el.dataset.busy) return;
+      el.dataset.busy = "1"; el.disabled = true; el.classList.add("busy");
+      const res = await api("media/update", { ids: [d.mlquickok], changes: { reviewed: true } });
+      toast(res.ok ? "Approved." : (res.error || "Not saved."), !res.ok);
+      if (M.review) M.sel.delete(d.mlquickok);
       return load(true);
     }
     if (d.mlitem) {
@@ -793,6 +811,8 @@
   function onKey(ev) {
     if (section !== "media") return;
     if (ev.key === "Escape" && M.sel.size) { M.sel.clear(); redraw(); }
+    const quick = ev.target.closest && ev.target.closest("[data-mlquickdel],[data-mlquickok]");
+    if (quick && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); ev.stopPropagation(); quick.click(); return; }
     const tileEl = ev.target.closest && ev.target.closest("[data-mlitem]");
     if (tileEl && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); tileEl.click(); }
   }

@@ -132,7 +132,8 @@ DEFAULTS = {
         "captains": {"typed": False},
         "market": {"spread_base": 0.04, "spread_swing": 0.03, "impact": 0.25, "floor": 0.25,
                    "ceiling": 4.5, "reversion": 0.3, "vol_mult": 1.0, "start_spread": 0.15,
-                   "rep_per_value": 5000, "rep_trade_cap": 2.0, "worth_cargo": 0.9},
+                   "rep_per_value": 5000, "rep_trade_cap": 2.0, "worth_cargo": 0.9,
+                   "own_fade": 0.7, "avg_amber": 1.5, "avg_red": 2.5, "depth_v2": False},
         "bank": {"bank_rate": 0.005, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
                  "debt_grace_months": 3, "debt_call_every": 3, "wu_advice": True, "wu_easy_share": 0.25,
@@ -178,6 +179,8 @@ DEFAULTS = {
                    # Hits that miss the guns may land in the hold: one kind of goods (gold as likely as rice)
                    # loses cargo_hit_min to cargo_hit_max of its units over the side, at least one.
                    "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3,
+                   # Paying to pass when silver and bank fall short: Madam Wu covers the rest for this fee.
+                   "wu_fee": 0.10,
                    # The enemy answers the bosun at the key moments (Admiral Li Yue for her war junks,
                    # Madam Shek Yu-lan for the pirate junks), from her own lines, battle.foe.*.
                    "foe_voice": True,
@@ -188,7 +191,8 @@ DEFAULTS = {
                    "match": True, "match_rounds_min": 2.5, "match_rounds_max": 4.5, "match_base": 0.55,
                    "match_cargo": 0.3, "match_fame": 0.2, "match_standing": 0.1, "match_spread": 0.1,
                    "match_min": 0.3, "match_max": 1.5, "match_lord": 0.15, "match_escort_share": 0.5, "match_cargo_ref": 100000,
-                   "match_ships_min": 2, "match_ships_max": 12, "match_lord_ships_max": 16,
+                   "match_ships_min": 2, "match_ships_max": 24, "match_lord_ships_max": 30, "match_size_swing": 0.3,
+                   "match_v2": False,
                    "match_hp_min": 4, "match_hp_max": 12, "match_flag": 2.0,
                    # How keen they are to attack at all: allure = base + cargo x temptation + fame x fame share.
                    "allure_base": 0.6, "allure_cargo": 0.6, "allure_fame": 0.3, "match_booty": 0.8,
@@ -249,16 +253,16 @@ DEFAULTS = {
     },
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
     "goods": {
-        "opium":     {"name": "Opium", "family_name": "Fireworks", "base": 4200, "vol": 0.16, "depth": 60, "contraband": True, "ban_odds": 0.0},
+        "opium":     {"name": "Opium", "family_name": "Fireworks", "base": 4200, "vol": 0.16, "depth": 600, "contraband": True, "ban_odds": 0.0},
         # Gold is legal, but a port's ban sometimes covers bullion too (ban_odds).
-        "gold":      {"name": "Gold", "family_name": "", "base": 2400, "vol": 0.05, "depth": 90, "contraband": False, "ban_odds": 0.5},
-        "silk":      {"name": "Silk", "family_name": "", "base": 520, "vol": 0.10, "depth": 160, "contraband": False, "ban_odds": 0.0},
-        "porcelain": {"name": "Porcelain", "family_name": "", "base": 230, "vol": 0.08, "depth": 250, "contraband": False, "ban_odds": 0.0},
-        "arms":      {"name": "Arms", "family_name": "Ironware", "base": 160, "vol": 0.10, "depth": 250, "contraband": False, "ban_odds": 0.0},
-        "spices":    {"name": "Spices", "family_name": "", "base": 95, "vol": 0.09, "depth": 450, "contraband": False, "ban_odds": 0.0},
-        "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 500, "contraband": False, "ban_odds": 0.0},
-        "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 1200, "contraband": False, "ban_odds": 0.0},
-        "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 1200, "contraband": False, "ban_odds": 0.0},
+        "gold":      {"name": "Gold", "family_name": "", "base": 2400, "vol": 0.05, "depth": 900, "contraband": False, "ban_odds": 0.5},
+        "silk":      {"name": "Silk", "family_name": "", "base": 520, "vol": 0.10, "depth": 1200, "contraband": False, "ban_odds": 0.0},
+        "porcelain": {"name": "Porcelain", "family_name": "", "base": 230, "vol": 0.08, "depth": 1500, "contraband": False, "ban_odds": 0.0},
+        "arms":      {"name": "Arms", "family_name": "Ironware", "base": 160, "vol": 0.10, "depth": 1500, "contraband": False, "ban_odds": 0.0},
+        "spices":    {"name": "Spices", "family_name": "", "base": 95, "vol": 0.09, "depth": 1800, "contraband": False, "ban_odds": 0.0},
+        "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 2000, "contraband": False, "ban_odds": 0.0},
+        "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 3000, "contraband": False, "ban_odds": 0.0},
+        "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 3000, "contraband": False, "ban_odds": 0.0},
     },
     "regions": {
         "north":  {"name": "Yellow Sea & Japan", "typhoon": 0.02, "squalls": 0.20, "label_lon": 126, "label_lat": 29,
@@ -333,6 +337,10 @@ DEFAULTS = {
 # The three classes of ship (Ships > Class): merchantmen carry cargo and guns, escorts guns only,
 # cargo ships cargo only. SEEDED_SHIPS join saved settings once (see validate).
 SHIP_ROLES = ("trader", "escort", "cargo")
+# Market depths shipped before 19 Nov 2026 (see the depth_v2 upgrade in normalise).
+OLD_DEPTHS = {"opium": 60, "gold": 90, "silk": 160, "porcelain": 250, "arms": 250, "spices": 450, "tea": 500,
+              "rice": 1200, "general": 1200}
+
 SEEDED_SHIPS = ("gunboat", "countryship")
 
 # Paths whose whole value is replaced on save (rows can be deleted), not merged.
@@ -502,12 +510,19 @@ SECTIONS = [
              _pct("rules.market.impact", "Price move from trading one 'depth' of a cargo", "Depth is set per cargo.", 0, 2),
              F("rules.market.vol_mult", "Price swing multiplier", "num", "Scales every cargo's monthly volatility.", min=0, max=5, step=0.05),
              _pct("rules.market.reversion", "Monthly pull back to the usual price"),
+             _pct("rules.market.own_fade", "Share of a trade's own price move gone by next month",
+                  "A big buy or sale moves the port's price; this much of that move fades the month after "
+                  "and the rest the month after that. The usual pull back works on top.", 0, 1),
              F("rules.market.floor", "Lowest price (x usual)", "num", min=0.01, max=1, step=0.01),
              F("rules.market.ceiling", "Highest price (x usual)", "num", min=1, max=50, step=0.1),
              _pct("rules.market.start_spread", "Random spread of opening prices", "", 0, 0.9),
              F("rules.market.rep_per_value", "Trade value that earns 1 standing", "int", min=1, max=10**9),
              F("rules.market.rep_trade_cap", "Most standing from one trade", "num", min=0, max=100, step=0.5),
-             _pct("rules.market.worth_cargo", "Cargo's share counted in net worth", "", 0, 2)]},
+             _pct("rules.market.worth_cargo", "Cargo's share counted in net worth", "", 0, 2),
+             F("rules.market.avg_amber", "Trade bar turns amber at (x posted)", "num",
+               "The average price per unit of a buy, against the posted price. Sales use the same line upside down.",
+               min=1, max=20, step=0.1),
+             F("rules.market.avg_red", "Trade bar turns red at (x posted)", "num", min=1, max=50, step=0.1)]},
          {"title": "Bank and moneylender", "fields": [
              _pct("rules.bank.bank_rate", "Bank interest per month", "", 0, 1),
              _pct("rules.bank.loan_rate", "Loan interest per month", "Compounding. Multiplied by the difficulty level.", 0, 1),
@@ -896,6 +911,10 @@ SECTIONS = [
              F("rules.battle.match_ships_min", "Enemy junks, least", "int", min=1, max=100),
              F("rules.battle.match_ships_max", "Enemy junks, most (pirates)", "int", min=1, max=100),
              F("rules.battle.match_lord_ships_max", "Enemy junks, most (the pirate queen)", "int", min=1, max=100),
+             _pct("rules.battle.match_size_swing", "Enemy fleet size swings by up to",
+                  "Each fight's number of junks moves up or down by up to this share, so fights vary.", 0, 1),
+             _pct("rules.battle.wu_fee", "Madam Wu's fee for covering a price to pass",
+                  "When silver aboard and the bank can't pay the pirates, she pays the rest and adds it to the debt with this fee.", 0, 2),
              F("rules.battle.match_hp_min", "Shots to sink a junk: least (before the cap above)", "num", min=1, max=1000, step=1),
              F("rules.battle.match_hp_max", "Shots to sink a junk: most (before the cap above)", "num", min=1, max=1000, step=1),
              F("rules.battle.match_flag", "Their flagship is this many times tougher", "num", min=1, max=10, step=0.1),
@@ -1192,6 +1211,25 @@ def validate(raw):
                 set_path(cfg, f["path"], _coerce(f, cur, sec["title"], errors))
     if errors:
         return cfg, errors
+
+    # Deeper markets (19 Nov 2026): settings saved before then still carry the old, thin depths, sized
+    # for a junk. Any cargo still at its old shipped depth moves to the new one, once; depths set by hand stay.
+    mk = cfg["rules"]["market"]
+    if not mk.get("depth_v2"):
+        for key, old_depth in OLD_DEPTHS.items():
+            if key in cfg["goods"] and int(cfg["goods"][key].get("depth", 0)) == old_depth:
+                cfg["goods"][key]["depth"] = DEFAULTS["goods"][key]["depth"]
+        mk["depth_v2"] = True
+
+    # Bigger pirate fleets (19 Nov 2026): saved settings still at the old shipped caps (12 junks, the
+    # pirate queen 16) move to the new ones, once; caps set by hand stay.
+    bt = cfg["rules"]["battle"]
+    if not bt.get("match_v2"):
+        if int(bt.get("match_ships_max", 0)) == 12:
+            bt["match_ships_max"] = DEFAULTS["rules"]["battle"]["match_ships_max"]
+        if int(bt.get("match_lord_ships_max", 0)) == 16:
+            bt["match_lord_ships_max"] = DEFAULTS["rules"]["battle"]["match_lord_ships_max"]
+        bt["match_v2"] = True
 
     # Ship types added in a later version (the escort and the cargo ship) join a saved Ships table
     # once; deleting one afterwards sticks.

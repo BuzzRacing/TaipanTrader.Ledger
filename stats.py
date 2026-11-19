@@ -34,7 +34,7 @@ _commissions = {}
 _CACHE_MAX = 64
 
 # Actions whose silver change counts as a cost or income line in "where the silver went".
-ACTION_LINES = {"buy_gun": "guns", "buy_cannon": "guns", "sell_gun": "guns_sold", "sell_cannon": "guns_sold",
+ACTION_LINES = {"buy_gun": "guns", "buy_cannon": "guns", "fill_cannons": "guns", "sell_gun": "guns_sold", "sell_cannon": "guns_sold",
                 "repair": "repairs", "buy_ship": "ships_bought", "sell_ship": "ships_sold", "trade_down": "ships_sold",
                 "protection": "protection", "gift": "gift", "depot": "depot"}
 
@@ -251,9 +251,8 @@ def _fleet_row(f, prices):
             goods[g] = goods.get(g, 0) + q
     stored = sum((f.get("wh") or {}).values()) + sum(sum(((d or {}).get("goods") or {}).values())
                                                     for d in (f.get("depots") or {}).values())
-    home = (prices or {}).get(engine.HOME) or {}
     share = float(engine.R.get("market", {}).get("worth_cargo", 1.0))
-    cargo_value = share * sum(q * float(home.get(g, 0)) for g, q in goods.items())
+    cargo_value = share * sum(q * engine.normal_price(g) for g, q in goods.items())
     fleet_value = f["worth"] - f["cash"] - f["bank"] + f["debt"] - cargo_value
     return {"types": types, "roles": roles, "cannons": sum(int(sh.get("cannons") or 0) for sh in ships),
             "hull": sum(int(sh.get("hull") or 0) for sh in ships), "stored": stored,
@@ -281,6 +280,9 @@ def _walk(events, ps, extra=None):
                 hh = houses.get(f["id"])
                 if hh is None:
                     continue
+                # Net worth is recalculated with today's rule (cargo at its normal price, 19 Nov 2026), so
+                # games recorded under the old rule (Hong Kong's live price) compare fairly.
+                f = dict(f, worth=int(engine.worth_of(f)))
                 row = {"turn": turn, "date": e.get("date") or _date(turn), "cash": f["cash"], "bank": f["bank"],
                        "debt": f["debt"], "worth": f["worth"], "port": f["port"], "ships": len(f.get("ships") or ()),
                        "guns": f.get("guns", 0), "hold": f.get("hold", 0), "used": f.get("used", 0),

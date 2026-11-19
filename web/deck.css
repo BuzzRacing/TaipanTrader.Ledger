@@ -1765,3 +1765,16 @@ body.player button.mk-allcargo.lined { color: #fff6e3; border-color: var(--brass
   .dk-port b { font-size: 1.45rem; } }
 @media (orientation: landscape) and (max-height: 560px) {
   .dk-port b { font-size: 1.4rem; } }
+
+/* What a big trade really costs per unit (19 Nov 2026): average price and how many times the posted
+   price, under the total on the trade button and on Trade all. Amber and red when it runs away. */
+body.player .mk-avg { display: block; font: 600 .66rem/1.1 var(--sans); font-style: normal; opacity: .85; white-space: nowrap; margin-top: .08rem; }
+body.player .mk-avg.amber { color: #ffd27a; opacity: 1; }
+body.player .mk-avg.red { color: #ff8a7a; opacity: 1; font-weight: 800; }
+body.player .dl-row.move b { color: #ffd27a; }
+
+/* Bank the rest (19 Nov 2026), under the Set Sail orders. */
+body.player .bank-rest { display: flex; gap: .6rem; align-items: center; justify-content: space-between; margin: .5rem 0;
+  padding: .45rem .6rem; border: 1px solid color-mix(in srgb, #ffd27a 45%, transparent); border-radius: .5rem;
+  background: color-mix(in srgb, #ffd27a 10%, transparent); font-size: .85rem; }
+body.player .bank-rest span { flex: 1; }

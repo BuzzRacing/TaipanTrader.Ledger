@@ -178,10 +178,6 @@ def _work(gid):
     rows = []
     for p in ps:
         h = stats._house_summary(houses[p["id"]], p, prices, True, goods, ports, total)
-        if over.get("standings"):
-            final = next((q for q in over["standings"] if q.get("id") == p["id"]), None)
-            if final:
-                h["kpis"]["worth"] = final.get("worth", h["kpis"]["worth"])
         place = 1 + order.index(p["id"]) if p["id"] in order else None
         rows.append(_house(h, place))
     rows.sort(key=lambda r: (r["place"] or 99, -r["worth"]))

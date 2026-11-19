@@ -76,6 +76,7 @@ KINDS = {
                        ["keeper", "Market keeper: the woman behind the stalls, on the stage while the Market tab is open"],
                        ["shipmaster", "Ship master: the woman who runs the fleet, on the stage while the Fleet tab is open"],
                        ["mayor", "Mayor: the town's lady mayor who sees the ships off, on the stage and the tab while Set sail is open"],
+                       ["mayor_congrats", "Mayor congratulations: arms open in gratitude, on every promotion certificate in this port (a new one each time; a rank's own Mayor picture still comes first)"],
                        *[["mayor_" + rank["id"], "Mayor {}: portrait for this rank's promotion certificate".format(rank["title"])]
                          for rank in config.defaults()["ranks"] if rank["id"] != "debtor"],
                        ["taxlady", "Tax lady: the town's tax collector who keeps the books, on the stage and the tab while the Ledger is open"],
@@ -336,7 +337,7 @@ def _clean_item(it):
         "id": iid, "url": url, "type": "video" if ext in VIDEO_EXT else "image",
         "kind": kind, "subject": subject, "roles": list(dict.fromkeys(roles)), "tags": _tags(it.get("tags")),
         "nsfw": bool(it.get("nsfw")), "reviewed": bool(it.get("reviewed")), "enabled": it.get("enabled", True) is not False,
-        "primary": bool(it.get("primary")), "weight": _clamp(it.get("weight"), 1, 10, 3),
+        "primary": bool(it.get("primary")) and kind != "persona", "weight": _clamp(it.get("weight"), 1, 10, 3),
         "title": " ".join(str(it.get("title") or "").split())[:80],
         "prompt": str(it.get("prompt") or "")[:6000], "seed": it.get("seed") if isinstance(it.get("seed"), int) else None,
         "width": _clamp(it.get("width"), 0, 20000, 0), "height": _clamp(it.get("height"), 0, 20000, 0),
@@ -542,7 +543,8 @@ def _migrate(lib, cfg):
             it["prompt"] = cast_prompts.get(it["subject"], "")
         if it["prompt"] and nsfw_from_prompt(it["prompt"]):
             it["nsfw"], it["reviewed"] = True, False
-    # One primary per subject: the one the settings use.
+    # One primary per subject: the one the settings use. Personas have none (see _clean_item): any of
+    # their pictures may be shown, picked by the persona rule and the roles ticked on each picture.
     used = {u for u, *_ in _config_refs(cfg)}
     lib["items"] = sorted(by_url.values(), key=lambda i: (i["kind"], i["subject"], i["url"]))
     for it in lib["items"]:

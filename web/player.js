@@ -417,6 +417,16 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "deck.speech_off": "Voices are off", "deck.speech_none": "Voices are turned off for this game",
     "deck.options": "Options", "deck.options_soon": "Options: the voyage clock, your Captain and House, and this screen.",
     "host.end_short": "End month", "host.new_short": "New game", "host.new_yes_short": "Yes, new game", "host.new_no_short": "Keep playing",
+    "market.avg": "avg {avg} · {x}× posted", "market.avg_tip_buy": "Your buying pushes the price up as you go: on average {avg} a unit, {x} times the posted {posted}.",
+    "market.avg_tip_sell": "Your selling pushes the price down as you go: on average {avg} a unit, {x} times the posted {posted}.",
+    "market.all_buy_even_tip": "Buy {n} {good} for {total}: as many as pay their way. Past that, the next unit would cost more here than it fetches in {port} (about {sale} a unit).",
+    "market.all_no_profit": "No profit known", "market.all_no_profit_tip": "No port you know pays enough for {good} to cover buying it here. Drag the bar to buy anyway.",
+    "fleet.fill": "Fill", "fleet.fill_tip": "Fill every free pair of mounts with cannons: {n} for {cost}.",
+    "fleet.fill_all": "Fill all cannons", "fleet.fill_all_tip": "Fill every free mount across the fleet with cannons, escorts first: {n} for {cost}.",
+    "fleet.fill_none": "Every mount is full, or silver is short.",
+    "bank.rest": "Bank {amount}", "bank.rest_note": "{cash} ashore: about a {odds}% chance thieves take {lo}–{hi}% of it in {port} this month. Banked silver is safe, and still pays pirates at sea.",
+    "port.todo.bank_rest": "Heavy purse: {cash} ashore, about {odds}% chance of losing {lo}–{hi}% to thieves in {port}.",
+    "dealer.move": "Price move", "dealer.move_sub": "the market shifting under your trade",
     "market.best": "Best known: {port} ≈ +{pct}% · {when}", "market.best_now": "seen this month", "market.best_ago": "{n} mo ago",
     "market.best_tip": "{good} should fetch about {price} a unit in {port} when you land, after the dealer's cut there. Buying one here costs {cost}. {when}; old prices drift back toward normal, and this allows for that. Harbour dues and the Port Authority's tax are not counted.",
     "ledger.here": "you are here", "ledger.blank": "No prices yet. Visit to fill this page.",
@@ -514,7 +524,7 @@ function tabFaceUrl(k) {
     const it = Media.choose("port", me.port, "banner", { slot: "tab", mode: "fixed" });
     return (it && it.u) || (D.graphics.ports || {})[me.port] || "";
   }
-  const pic = Media.choose("persona", f.cast, "portrait", { slot: "tab", mode: "fixed" });
+  const pic = Media.choose("persona", f.cast, "portrait", { slot: "tab" });
   return (pic && pic.u) || ((VS.cast || {})[f.cast] || {}).portrait || "";
 }
 function womanTabbed(k) {
@@ -832,8 +842,13 @@ function captainCommission(me) {
 const tfb = (key, fb, vars) => T[key] == null ? esc(t(fb, vars)) : te(key, vars);
 function promotionArt(port, rank) {
   const pick = (role, opts) => Media.choose("port", port, role, Object.assign({ strict: true, slot: "promo" }, opts || {}));
-  const dedicated = Media.items("port", port, "mayor_" + rank, false).filter(i => i.r.includes("mayor_" + rank));
-  const mayor = dedicated.find(i => i.p) || dedicated[0] || pick("mayor", { mode: "fixed" });
+  // The Mayor's picture, best first: this rank's own portrait, then her congratulations pictures
+  // (Media Library > Ports > "Mayor congratulations", arms open in gratitude; a new one each ceremony),
+  // then her everyday mayor portrait. Only pictures ticked for the role count (no untagged harbour views).
+  const tagged = role => Media.items("port", port, role, false).filter(i => i.r.includes(role));
+  const anyOf = list => list.length ? list[Math.floor(Math.random() * list.length)] : null;
+  const dedicated = tagged("mayor_" + rank);
+  const mayor = dedicated.find(i => i.p) || dedicated[0] || anyOf(tagged("mayor_congrats")) || pick("mayor", { mode: "fixed" });
   const scene = pick("banner") || pick("arrival") || null;
   return { mayor: mayor && mayor.t === "image" ? mayor.u : "", scene: scene && scene.t === "image" ? scene.u
     : (((D.graphics || {}).ports || {})[port] || "") };
@@ -1074,6 +1089,67 @@ function barStyle(tr) {
   return `background:${seal}${tick},${fill}`;
 }
 
+/* WHAT A BIG TRADE REALLY COSTS (19 Nov 2026). A big trade moves the price as it goes, so the average
+   paid (or got) per unit drifts from the posted price. The bar shows that average and how many times the
+   posted price it is: amber past rules.market.avg_amber, red past avg_red (sales: the same line upside down). */
+function avgOf(g, qty, side) {
+  const mid = S.me.prices[g], total = quote(g, qty, side), avg = qty > 0 ? total / qty : 0;
+  return { avg, x: mid > 0 ? avg / mid : 1 };
+}
+function costTag(g, qty, side) {
+  if (!qty || !side) return "";
+  const { avg, x } = avgOf(g, qty, side), mk = D.market || {};
+  const amber = mk.avg_amber || 1.5, red = mk.avg_red || 2.5;
+  const warn = side === "buy" ? (x >= red ? "red" : x >= amber ? "amber" : "")
+                              : (x <= 1 / red ? "red" : x <= 1 / amber ? "amber" : "");
+  const tip = te(side === "buy" ? "market.avg_tip_buy" : "market.avg_tip_sell",
+                 { avg: money(avg), x: x.toFixed(2), posted: money(S.me.prices[g]) });
+  return `<em class="mk-avg ${warn}" title="${tip}">${te("market.avg", { avg: money(avg), x: x.toFixed(x < 10 ? 2 : 1) })}</em>`;
+}
+
+/* The best price this cargo should fetch in another port, per unit after that port's dealer margin:
+   the ledger's last known price (or a newer tip) drifted toward normal for its age and the trip, or a
+   live hot tip landing when you would arrive (counted at the least a foretold boom can be). Null when
+   nothing is known. */
+function bestSaleElsewhere(g) {
+  const me = S.me, mk = D.market || { reversion: .3, spread_base: .04, spread_swing: .03 };
+  const arrive = S.turn + 1;
+  let best = null;
+  Object.keys(D.ports).forEach(k => {
+    if (k === me.port || (S.bans?.[k] || []).includes(g)) return;
+    const mods = (D.ports[k] && D.ports[k].mods) || {};
+    const normal = (D.goods[g].base || 0) * (mods[g] == null ? 1 : mods[g]);
+    if (!(normal > 0)) return;
+    const rep = me.rep?.[k] ?? 50;
+    const margin = Math.max(0, mk.spread_base - mk.spread_swing * (rep - 50) / 50);
+    let price = null;
+    const hot = (me.hot_tips || []).find(tp => tp.port === k && tp.good === g && tp.over == null
+      && tp.lands <= arrive && arrive <= tp.ends);
+    if (hot) price = normal * (mk.hot_min || 3);
+    else {
+      const known = me.known?.[k], tp = ((me.tips || {})[k] || {})[g];
+      let seen = known?.prices?.[g], turn = known ? known.turn : null;
+      if (tp && Number.isFinite(tp.price) && (turn == null || tp.turn >= turn)) { seen = tp.price; turn = tp.turn; }
+      if (Number.isFinite(seen)) price = normal + (seen - normal) * Math.pow(1 - mk.reversion, Math.max(0, S.turn - turn) + 1);
+    }
+    if (price == null) return;
+    const net = price * (1 - margin);
+    if (!best || net > best.net) best = { k, price, net };
+  });
+  return best;
+}
+
+/* How many units are worth buying here to sell at that best port: stop where the next unit costs more
+   here (the price climbing as you buy, plus the margin) than it would fetch there (the price falling as
+   you sell). With the same depth both ways that is (1 + k n)^2 = sale / cost. */
+function breakEvenQty(g) {
+  const b = bestSaleElsewhere(g);
+  if (!b) return { n: 0, best: null };
+  const mid = S.me.prices[g], kq = D.impact / D.goods[g].depth;
+  const r = b.net / (mid * (1 + S.me.spread));
+  return { n: r <= 1 || !(kq > 0) ? 0 : Math.max(0, Math.floor((Math.sqrt(r) - 1) / kq)), best: b };
+}
+
 function tradeButton(g, tr) {
   // The button and, to its right, its own profit/loss slot. The slot is always there (empty unless a
   // sale is lined up) so the drag bar keeps the same width and never jumps while dragging.
@@ -1084,7 +1160,7 @@ function tradeButton(g, tr) {
   const plTag = pl === null ? "" : `<em class="mk-pl ${pl >= 0 ? "up" : "down"}"${tip}>${te(pl >= 0 ? "market.pl_up" : "market.pl_down", { profit: money(Math.abs(pl)) })}</em>`;
   return `<div class="mk-act${pl === null ? "" : " has-pl"}"><button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}"${tip}>
     <b>${te(tr.side === "buy" ? "btn.buy" : "btn.sell")} ${tr.qty.toLocaleString()}</b>
-    <small>${money(total)}</small></button><span class="mk-pl-slot">${plTag}</span></div>`;
+    <small>${money(total)}</small>${costTag(g, tr.qty, tr.side)}</button><span class="mk-pl-slot">${plTag}</span></div>`;
 }
 
 /* TRADE ALL (18 Nov 2026). The row's "Trade all" button does the whole thing in one click, ignoring the
@@ -1103,16 +1179,21 @@ function maxBuyNow(g) {
 function allOf(g) {
   const have = S.me.cargo[g] || 0, sealed = Math.min(have, (S.me.bond || {})[g] || 0), sellable = have - sealed;
   if (sellable > 0) return { side: "sell", qty: sellable };
-  const n = maxBuyNow(g);
-  return n > 0 ? { side: "buy", qty: n } : { side: "", qty: 0 };
+  // Buying stops at break-even (19 Nov 2026): never past the unit that would cost more than it fetches.
+  const be = breakEvenQty(g), n = Math.min(maxBuyNow(g), be.n);
+  return n > 0 ? { side: "buy", qty: n, best: be.best, capped: n < maxBuyNow(g) }
+               : { side: "", qty: 0, nobuy: maxBuyNow(g) > 0 };
 }
 function tradeAllButton(g) {
   const a = allOf(g);
-  if (!a.side || S.me.ready) return `<button type="button" class="mk-all" disabled><b>${te("market.all")}</b><small>${te("market.all_none")}</small></button>`;
+  if (!a.side || S.me.ready) return `<button type="button" class="mk-all" disabled title="${a.nobuy ? te("market.all_no_profit_tip", { good: esc(D.goods[g].name) }) : ""}"><b>${te("market.all")}</b><small>${te(a.nobuy ? "market.all_no_profit" : "market.all_none")}</small></button>`;
   const total = quote(g, a.qty, a.side), n = a.qty.toLocaleString();
-  const tip = te(a.side === "sell" ? "market.all_sell_tip" : "market.all_buy_tip", { n, good: esc(D.goods[g].name), total: money(total) });
+  const tip = a.side === "sell"
+    ? te("market.all_sell_tip", { n, good: esc(D.goods[g].name), total: money(total) })
+    : te(a.capped ? "market.all_buy_even_tip" : "market.all_buy_tip", { n, good: esc(D.goods[g].name), total: money(total),
+        port: esc(D.ports[a.best.k]?.name || a.best.k), sale: money(a.best.net) });
   return `<button type="button" class="mk-all ${a.side}" data-act="trade_all" data-good="${g}" title="${tip}">
-    <b>${te("market.all")}</b><small>${te(a.side === "sell" ? "market.all_sell" : "market.all_buy", { n })}</small></button>`;
+    <b>${te("market.all")}</b><small>${te(a.side === "sell" ? "market.all_sell" : "market.all_buy", { n })}</small>${costTag(g, a.qty, a.side)}</button>`;
 }
 
 /* The header's "Trade all cargo": with trades lined up on the bars it makes all of them at once; with
@@ -1430,18 +1511,20 @@ function dealerCut(g, qty, side) {
   const mid = S.me.prices[g], k = D.impact * qty / D.goods[g].depth;
   const end = side === "buy" ? mid * (1 + k) : mid / (1 + k);
   const total = quote(g, qty, side), base = qty * (mid + end) / 2;
-  return { total, cut: Math.round(Math.abs(total - base)) };
+  // move: what the price moving under the trade costs against trading it all at the posted price.
+  return { total, cut: Math.round(Math.abs(total - base)), move: Math.round(Math.abs(base - qty * mid)) };
 }
 function dealerCard() {
   const me = S.me;
   if (!me || !D.goods) return "";
-  let pay = 0, get = 0, cut = 0, nBuy = 0, nSell = 0;
+  let pay = 0, get = 0, cut = 0, move = 0, nBuy = 0, nSell = 0;
   if (!me.ready) Object.keys(D.goods).forEach(g => {
     if (ui.vals["t_" + g] == null) return;
     const tr = tradeOf(g);
     if (!tr.side) return;
     const q = dealerCut(g, tr.qty, tr.side);
     cut += q.cut;
+    move += q.move;
     if (tr.side === "buy") { pay += q.total; nBuy += tr.qty; } else { get += q.total; nSell += tr.qty; }
   });
   const margin = pct(me.spread);
@@ -1449,7 +1532,8 @@ function dealerCard() {
   const rows = (nBuy || nSell)
     ? (nBuy ? line(te("dealer.pay"), money(pay), "pay", te("dealer.units", { n: nBuy.toLocaleString() })) : "") +
       (nSell ? line(te("dealer.get"), money(get), "get", te("dealer.units", { n: nSell.toLocaleString() })) : "") +
-      line(te("dealer.cut"), money(cut), "cut", te("dealer.cut_sub", { margin }))
+      line(te("dealer.cut"), money(cut), "cut", te("dealer.cut_sub", { margin })) +
+      (move ? line(te("dealer.move"), money(move), "cut move", te("dealer.move_sub")) : "")
     : "";
   return `<section class="dl-card" title="${te("market.standing", { rep: me.rep[me.port], margin })}">
     <header><span>${te("dealer.title")}</span><b>${te("dealer.margin", { margin })}</b></header>
@@ -1717,6 +1801,31 @@ function mayorLive(range) {
   if (give) give.textContent = t("port.mayor.give", { amount: money(amount) });
 }
 
+/* BANK THE REST (19 Nov 2026). Thieves work the port where the house is at the month's end (where it
+   lands, if it sails), and only a purse over the threshold tempts them. While a bank is in port, one tap
+   puts the silver in it, keeping back the Mayor's harbour bill. The bank can also pay pirates at sea. */
+function robberyOdds(port) {
+  const m = D.mug || {}, rep = S.me.rep?.[port] ?? 50;
+  return Math.max(0, (m.mug_chance || 0) * (1 + (m.mug_rep || 0) * (50 - rep) / 50));
+}
+function bankRest() {
+  const me = S.me, m = D.mug || {};
+  if (me.ready || !(me.bank_here || me.port === myHome())) return null;
+  const keep = Math.ceil((me.dues && me.dues.total) || 0);
+  const amount = Math.floor(me.cash - keep);
+  if (me.cash <= (m.mug_threshold || 0) || amount <= 0) return null;
+  const where = ui.dest || me.port;
+  return { amount, keep, where, odds: robberyOdds(where), lo: m.mug_min || 0, hi: m.mug_max || 0 };
+}
+function bankRestHtml(cls) {
+  const br = bankRest();
+  if (!br) return "";
+  const odds = (br.odds * 100).toFixed(1).replace(/\.0$/, "");
+  return `<div class="bank-rest ${cls || ""}"><span>${te("bank.rest_note", { cash: money(S.me.cash), odds, port: esc(portName(br.where)),
+      lo: Math.round(br.lo * 100), hi: Math.round(br.hi * 100) })}</span>
+    ${btn(te("bank.rest", { amount: money(br.amount) }), "bank_rest", "", "pt-go primary")}</div>`;
+}
+
 /* What is worth doing in this port, most useful first. Each item can jump to the tab that does it. */
 function portTodo() {
   const me = S.me, items = [];
@@ -1756,6 +1865,10 @@ function portTodo() {
   const coll = me.collectors;
   if (coll && coll.calls_in) items.push([coll.calls_in === 1 ? "down" : "warn", ten("port.todo.collectors", coll.calls_in, { amount: money(coll.to_clear) }),
     goView("accounts")]);
+  const br = bankRest();
+  if (br) items.push(["warn", te("port.todo.bank_rest", { cash: money(me.cash), odds: (br.odds * 100).toFixed(1).replace(/\.0$/, ""),
+      port: esc(portName(br.where)), lo: Math.round(br.lo * 100), hi: Math.round(br.hi * 100) }),
+    btn(te("bank.rest", { amount: money(br.amount) }) + arrow, "bank_rest", "", "pt-go")]);
   if (!me.used && !me.ready) items.push(["", te("port.todo.empty"), go("market", te("tab.market"))]);
   // The Mayor's Parlour: a brass "!" while she thinks little of the house (standing under 50).
   const gv = me.gift;
@@ -2083,6 +2196,24 @@ function classInfo(role) {
   return { n, max: r.max, unlock: r.unlock, open: traders >= r.unlock };
 }
 
+/* FILL CANNONS (19 Nov 2026): how many cannons a Fill mounts, as the engine's fill_plan works it out:
+   every free pair of mounts on one ship (i) or across the fleet ("all": escorts first), as silver allows. */
+function fillPlan(i) {
+  const me = S.me, price = D.cannon_price, cs = cannonSlots();
+  const rank = { escort: 0, trader: 1, cargo: 2 };
+  let order = i === "all" ? me.ships.map((_s, k) => k) : [i];
+  if (i === "all") order = order.sort((a, b) => (rank[roleOf(me.ships[a].type)] ?? 3) - (rank[roleOf(me.ships[b].type)] ?? 3) || a - b);
+  let cash = me.cash, n = 0;
+  order.forEach(k => {
+    const s = me.ships[k], spec = D.ships[s.type];
+    if (!spec || !spec.cannons) return;
+    const free = s.free != null ? s.free : spec.slots - s.guns - cs * (s.cannons || 0);
+    const take = Math.min(Math.floor(free / cs), price > 0 ? Math.floor(cash / price) : 0);
+    if (take > 0) { n += take; cash -= take * price; }
+  });
+  return { n, cost: n * price };
+}
+
 function shipCard(s, i, yard) {
   const me = S.me, spec = D.ships[s.type], p = Math.round(100 * s.hull / spec.hull), role = roleOf(s.type);
   const free = s.free != null ? s.free : spec.slots - s.guns - cannonSlots() * (s.cannons || 0);
@@ -2098,6 +2229,7 @@ function shipCard(s, i, yard) {
         <span class="fl-pips">${gunPips(s.guns, spec.slots, s.cannons)}</span><span class="fl-v">${mountsLine(s, spec)}</span></div>` : "";
   const gunBtns = spec.slots > 0 ? `${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${esc(t("fleet.gun_tip", { price: money(D.gun_price) }))}"`, "fl-btn", free < 1 || me.cash < D.gun_price)}
         ${spec.cannons ? btn(te("fleet.cannon_short"), "cannon", `data-i="${i}" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}"`, "fl-btn", free < cannonSlots() || me.cash < D.cannon_price) : ""}
+        ${spec.cannons ? (fp => btn(te("fleet.fill"), "fill", `data-i="${i}" title="${esc(fp.n ? t("fleet.fill_tip", { n: fp.n, cost: money(fp.cost) }) : t("fleet.fill_none"))}"`, "fl-btn", fp.n < 1))(fillPlan(i)) : ""}
         ${s.guns ? btn(te("fleet.sell_gun"), "sellgun", `data-i="${i}" title="${esc(t("fleet.sell_gun_tip", { value: money(Math.floor(D.gun_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}
         ${s.cannons ? btn(te("fleet.sell_cannon"), "sellcannon", `data-i="${i}" title="${esc(t("fleet.sell_cannon_tip", { value: money(Math.floor(D.cannon_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}` : "";
   return `<article class="fl-ship fl-${role}">
@@ -2164,7 +2296,8 @@ function fleetTab() {
       <header class="mk-head"><h2>${te("fleet.title")}</h2>
         <span class="muted" title="${esc(t("fleet.info"))}">${te("fleet.info_short")}</span>
         <span class="mk-hold">${te("fleet.count", { n: me.ships.length, max: maxAll })}</span>${screen}
-        ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "fl-btn primary") : ""}</header>
+        ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "fl-btn primary") : ""}
+        ${(fp => fp.n ? btn(te("fleet.fill_all"), "fill", `data-i="all" title="${esc(t("fleet.fill_all_tip", { n: fp.n, cost: money(fp.cost) }))}"`, "fl-btn primary") : "")(fillPlan("all"))}</header>
       ${groups}</section>
     <section class="card fl yd">
       <header class="mk-head"><h2>${te("yard.title")}</h2>${yard ? `<span class="muted">${te("yard.classes", { n: D.max_fleet, max: (r.escort || {}).max || 0, cap: (r.cargo || {}).max || 0 })}</span>` : ""}</header>
@@ -2243,6 +2376,7 @@ function chartTab() {
       <div class="seg">${btn(cannons() ? te("orders.fight_cannons", { guns: guns(), cannons: cannons() }) : te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
       ${protectionNote()}
       ${slipChoice()}
+      ${bankRestHtml("sail-bank")}
       <div class="row">${btn(dest ? te("sail.go", { port: portName(dest) }) : te("sail.choose"), "sail", "", "primary wide", !dest || me.ready)}</div>
       <div class="row">${btn(te("sail.stay", { port: portName(me.port) }), "stay", "", "wide", me.ready)}</div>
       ${me.ready ? `<p class="muted">${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</p>
@@ -2404,11 +2538,17 @@ app.addEventListener("click", async e => {
       if (ok) { delete ui.vals[tr.key]; render(); }
       return;
     }
+    case "bank_rest": {
+      const br = bankRest();
+      if (!br) return;
+      return act("bank", { op: "deposit", amount: br.amount });
+    }
     case "protection": return act("protection");
     case "depot": return act("depot", { op: d.op });
     case "sell_all": return act("sell", { good: d.good, src: "all" });
     case "gun": return act("buy_gun", { index: +d.i });
     case "cannon": return act("buy_cannon", { index: +d.i });
+    case "fill": return act("fill_cannons", { index: d.i === "all" ? "all" : +d.i });
     case "sellgun": return act("sell_gun", { index: +d.i });
     case "sellcannon": return act("sell_cannon", { index: +d.i });
     case "repair": return act("repair", { index: d.i === "all" ? "all" : +d.i });
