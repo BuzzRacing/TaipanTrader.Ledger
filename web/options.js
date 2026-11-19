@@ -13,6 +13,7 @@ const Options = (() => {
     exit: '<path d="M10 4H4v16h6M9 12h12M16 7l5 5-5 5"/>',
   };
   let dlg = null, info = null, timer = null, poll = null, exiting = false, busy = false, page = "clock", opener = null;
+  let mayors = [], mayorIndex = 0, mayorTimer = null;
 
   const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const put = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
@@ -41,20 +42,12 @@ const Options = (() => {
   applyBg();
 
   /* ------------------------------------------------------------ the clock -- */
-  function monthLabel(turn) {
-    const y = ((D && D.start_year) || 1860) + Math.floor(turn / 12);
-    return t("mon." + (turn % 12)) + " " + y;
-  }
   function clockHtml() {
     if (!S || !S.me) return "";
     const total = (S.years || 0) * 12, n = Math.min(total || S.turn + 1, S.turn + 1);
-    const left = Math.max(0, (S.turns_left || 0) - 1);
-    const end = total ? monthLabel(total - 1) : "";
     const lines = S.free_play
       ? `<p class="op-note">${tx("opt.free", "Free play: the season is over and the trading goes on.")}</p>`
-      : `<p class="op-big">${tx("opt.month", "Month {n} of {total}", { n, total })}</p>
-         <p>${left ? tx("opt.left", "{n} months left", { n: left }) : tx("opt.left_one", "The last month of the season")}
-           ${end ? ` · ${tx("opt.ends", "The season ends {date}", { date: end })}` : ""}</p>`;
+      : `<p class="op-big">${tx("opt.month", "Month {n} of {total}", { n, total })}</p>`;
     const seats = (S.players || []).map(q => {
       const state = q.ready ? "sailed" : q.present ? "in_port" : "away";
       const word = state === "sailed" ? tx("opt.sailed", "Set sail") : state === "in_port" ? tx("opt.in_port", "Still in port") : tx("opt.away", "Not at a screen");
@@ -62,7 +55,7 @@ const Options = (() => {
     }).join("");
     const all = (S.players || []).length && (S.players || []).every(q => q.ready);
     return `<p class="op-date">${esc(S.date || "")}</p>${lines}
-      ${total && !S.free_play ? `<progress class="op-progress" max="${total}" value="${n}" aria-label="${tx("opt.clock", "The Voyage Clock")}"></progress>` : ""}
+      ${voyageRibbon()}
       <ul class="op-seats">${seats}</ul>${all ? `<p class="op-note">${tx("opt.all_sailed", "Everyone has set sail.")}</p>` : ""}`;
   }
 
@@ -149,20 +142,34 @@ const Options = (() => {
   }
 
   function personaHtml() {
-    const who = (typeof VS !== "undefined" && VS.cast && VS.cast.narrator) || {};
-    const art = Media.html("persona", "narrator", "portrait", "op-persona-image", who.portrait || "", { mode: "fixed", slot: "options" });
-    return `<figure class="op-persona">${art}<figcaption><span>${tx("opt.first_mate", "Your First Mate")}</span>
-      <strong>${esc(who.name || "Roxana Cama")}</strong></figcaption></figure>
-      <div class="op-welcome"><span class="op-eyebrow">${tx("opt.at_your_service", "At your service, Captain")}</span>
-      <p>${tx("opt.welcome_captain", "Welcome aboard, Captain {name}. Your voyage, your colours, your command.", { name: (S && S.me && S.me.name) || "" })}</p></div>`;
+    const entry = mayors[mayorIndex];
+    if (!entry) return "";
+    const [portId, port] = entry, who = VS.cast[port.officer];
+    const art = Media.html("persona", port.officer, "portrait", "op-persona-image", who.portrait || "", { mode: "fixed", strict: true, slot: "options-mayor" });
+    const welcomes = {
+      hongkong: "Welcome to Hong Kong, Captain {name}. May our harbour be the beginning of a prosperous voyage.",
+      shanghai: "Welcome to Shanghai, Captain {name}. Our busy wharves have room for you and your ambitions.",
+      nagasaki: "Welcome to Nagasaki, Captain {name}. May you find good company and fair trade beside our sheltered waters.",
+      manila: "Welcome to Manila, Captain {name}. A warm harbour and a world of opportunity await you here.",
+      saigon: "Welcome to Saigon, Captain {name}. Come ashore and enjoy the hospitality of our river port.",
+      bangkok: "Welcome to Bangkok, Captain {name}. May the river bring you good fortune and lasting friendships.",
+      singapore: "Welcome to Singapore, Captain {name}. The world's sea roads meet here, and we are delighted you have joined us.",
+      batavia: "Welcome to Batavia, Captain {name}. May your stay be pleasant and your holds leave full of promise.",
+      calcutta: "Welcome to Calcutta, Captain {name}. Our river is your road to new friends and flourishing trade.",
+      foochow: "Welcome to Foochow, Captain {name}. May our tea country and welcoming quays reward your journey.",
+    };
+    return `<figure class="op-persona">${art}<figcaption><span>${tx("opt.mayor", "Mayor of {port}", { port: port.name })}</span>
+      <strong>${esc(who.name)}</strong></figcaption></figure>
+      <div class="op-welcome"><p>${tx("opt.welcome." + portId, welcomes[portId] || "Welcome to {port}, Captain {name}. May your visit bring good friends and fair trade.", { port: port.name, name: S.me.name })}</p></div>`;
   }
 
   function identityHtml() {
     const me = (S && S.me) || {}, faces = Faces.of(me);
     const portrait = info && (info.portraits || []).find(p => p.primary && !(screenFamily() && p.nsfw));
     const url = portrait ? portrait.url : faces.portrait;
-    return `${url ? `<img src="${esc(url)}" alt="">` : ""}<div><span>${tx("opt.captain", "My Captain")}</span>
-      <b>${esc((info && info.captain && info.captain.name) || me.name || "")}</b><small>${esc((info && info.house && info.house.name) || me.firm || "")}</small></div>`;
+    return `<figure class="op-persona">${url ? `<img class="op-persona-image" src="${esc(url)}" alt="">` : ""}<figcaption><span>${tx("opt.captain", "My Captain")}</span>
+      <strong>${esc((info && info.captain && info.captain.name) || me.name || "")}</strong></figcaption></figure>
+      <div class="op-welcome"><span class="op-eyebrow">${tx("opt.house", "My House")}</span><p>${esc((info && info.house && info.house.name) || me.firm || "")}</p></div>`;
   }
 
   function selectPage(id) {
@@ -277,6 +284,8 @@ const Options = (() => {
   function open() {
     if (dlg) return;
     exiting = false; info = null; page = "clock"; opener = document.activeElement;
+    mayors = Object.entries(D.ports || {}).filter(([, p]) => p.officer && VS.cast && VS.cast[p.officer]);
+    mayorIndex = Math.floor(Math.random() * mayors.length);
     dlg = document.createElement("dialog");
     dlg.className = "op";
     dlg.setAttribute("aria-labelledby", "op-title");
@@ -314,13 +323,17 @@ const Options = (() => {
     draw();
     dlg.showModal();
     load();
+    if (mayors.length > 1) mayorTimer = setInterval(() => {
+      mayorIndex = (mayorIndex + 1) % mayors.length;
+      dlg.querySelector(".op-companion").innerHTML = personaHtml();
+    }, 12000);
     timer = setInterval(() => {
       draw(["clock"]);
     }, 1500);
   }
 
   function close() {
-    clearInterval(timer); clearTimeout(poll);
+    clearInterval(timer); clearInterval(mayorTimer); clearTimeout(poll);
     const d = dlg;
     dlg = null;
     if (d) { try { if (d.open) d.close(); } catch (e) { /* ignore */ } d.remove(); }

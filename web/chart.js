@@ -68,7 +68,7 @@ const Chart = (() => {
       viewBox = `${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)}`;
       focused = true;
     }
-    out.push(`<svg class="chart${focused ? " route-focused" : ""}" viewBox="${viewBox}" role="img" aria-label="${te("chart.aria")}">`);
+    out.push(`<svg class="chart${focused ? " route-focused" : ""}${o.intel ? " intelligence" : ""}" viewBox="${viewBox}" role="${o.clickable ? "group" : "img"}" aria-label="${te("chart.aria")}">`);
     out.push('<defs>' +
       '<marker id="route-arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">' +
       '<path d="M1 1 L10 6 L1 11 Z"/></marker>' +
@@ -135,14 +135,19 @@ const Chart = (() => {
       if (o.crackdown && o.crackdown.includes(k)) cls.push("ban");
       if (o.clickable && k !== o.here) cls.push("click");
       const labelW = Math.max(90, Math.min(230, p.name.length * 13 + 30));
-      const labelH = k === o.here || k === o.dest ? 46 : 34;
-      const labelX = p.label_left ? p.x - labelW - 19 : p.x + 19;
+      const intel = o.intel && o.intel[k];
+      const offset = intel ? 36 : 19;
+      const labelH = intel ? 64 : k === o.here || k === o.dest ? 46 : 34;
+      const labelX = p.label_left ? p.x - labelW - offset : p.x + offset;
       const labelY = p.y - labelH / 2;
-      const textX = p.label_left ? p.x - 31 : p.x + 31;
+      const textX = p.label_left ? p.x - offset - 12 : p.x + offset + 12;
       const anchor = p.label_left ? "end" : "start";
       const act = o.clickable && k !== o.here ? ` data-act="dest" data-port="${k}"` : "";
-      out.push(`<g class="${cls.join(" ")}"${act}>` +
-        `<line class="label-leader" x1="${p.x}" y1="${p.y}" x2="${p.label_left ? p.x - 19 : p.x + 19}" y2="${p.y}"/>` +
+      out.push(`<g class="${cls.join(" ")}"${act}${act ? ` role="button" tabindex="0" aria-label="${esc(intel ? intel.title : p.name)}"${k === o.dest ? ' aria-pressed="true"' : ' aria-pressed="false"'}` : ""}>` +
+        (intel ? `<title>${esc(intel.title)}</title><circle class="intel-track" cx="${p.x}" cy="${p.y}" r="25"/>` +
+          `<circle class="intel-arc${intel.negative ? " negative" : intel.positive ? " positive" : ""}" cx="${p.x}" cy="${p.y}" r="25" pathLength="100" stroke-dasharray="${(intel.fill * 100).toFixed(1)} 100"/>` +
+          (intel.hot ? `<circle class="intel-beacon" cx="${p.x}" cy="${p.y}" r="31"/>` : "") : "") +
+        `<line class="label-leader" x1="${p.x}" y1="${p.y}" x2="${p.label_left ? p.x - offset : p.x + offset}" y2="${p.y}"/>` +
         `<rect class="label-bg" x="${labelX}" y="${labelY}" width="${labelW}" height="${labelH}" rx="8"/>` +
         `<circle class="hit" cx="${p.x}" cy="${p.y}" r="30"/>` +
         `<circle class="pulse" cx="${p.x}" cy="${p.y}" r="19"/>` +
@@ -150,9 +155,10 @@ const Chart = (() => {
         `<circle class="dot" cx="${p.x}" cy="${p.y}" r="8"/>` +
         (k === o.here ? `<g class="current-flag" transform="translate(${p.x - 3} ${p.y - 18})">` +
           '<line x1="0" y1="0" x2="0" y2="-31"/><path d="M0 -31 L29 -25 L0 -17 Z"/></g>' : '') +
-        `<text class="port-name" x="${textX}" y="${k === o.here || k === o.dest ? p.y - 2 : p.y + 6}" text-anchor="${anchor}">${esc(p.name)}</text>` +
-        (k === o.here ? `<text class="port-status" x="${textX}" y="${p.y + 14}" text-anchor="${anchor}">${te("chart.current")}</text>` :
-          k === o.dest ? `<text class="port-status" x="${textX}" y="${p.y + 14}" text-anchor="${anchor}">${te("chart.destination")}</text>` : '') +
+        `<text class="port-name" x="${textX}" y="${intel ? p.y - 8 : k === o.here || k === o.dest ? p.y - 2 : p.y + 6}" text-anchor="${anchor}">${esc(p.name)}</text>` +
+        (intel ? `<text class="intel-value port-status" x="${textX}" y="${p.y + 12}" text-anchor="${anchor}">${esc(intel.value)}${intel.hot ? " · HOT TIP" : ""}</text>` : "") +
+        (k === o.here ? `<text class="port-status" x="${textX}" y="${p.y + (intel ? 26 : 14)}" text-anchor="${anchor}">${te("chart.current")}</text>` :
+          k === o.dest ? `<text class="port-status" x="${textX}" y="${p.y + (intel ? 26 : 14)}" text-anchor="${anchor}">${te("chart.destination")}</text>` : '') +
         `</g>`);
     }
     // house flags
@@ -196,8 +202,36 @@ const Chart = (() => {
       rect.setAttribute("x", (x0 - 12).toFixed(1));
       rect.setAttribute("width", (x1 - x0 + 24).toFixed(1));
     });
+    scope.querySelectorAll("svg.chart.intelligence").forEach(chart => {
+      const placed = [];
+      chart.querySelectorAll(".port").forEach(g => {
+        const rect = g.querySelector(".label-bg"), texts = g.querySelectorAll("text");
+        const x = +rect.getAttribute("x"), y = +rect.getAttribute("y");
+        const width = +rect.getAttribute("width"), height = +rect.getAttribute("height");
+        let target = Math.max(4, Math.min(596 - height, y));
+        for (const shift of [0, -height - 6, height + 6, -2 * (height + 6), 2 * (height + 6)]) {
+          const candidate = Math.max(4, Math.min(596 - height, y + shift));
+          if (!placed.some(b => x < b.x + b.width + 4 && x + width + 4 > b.x && candidate < b.y + b.height + 4 && candidate + height + 4 > b.y)) {
+            target = candidate;
+            break;
+          }
+        }
+        const delta = target - y;
+        rect.setAttribute("y", target);
+        texts.forEach(text => text.setAttribute("y", +text.getAttribute("y") + delta));
+        const leader = g.querySelector(".label-leader");
+        leader.setAttribute("y2", target + height / 2);
+        placed.push({ x, y: target, width, height });
+      });
+    });
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fit());
+  document.addEventListener("keydown", e => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("svg.chart .port.click")) {
+      e.preventDefault();
+      e.target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    }
+  });
 
   return { svg, distance, fit };
 })();

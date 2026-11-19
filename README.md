@@ -10,7 +10,7 @@ A turn-based trading game for 1 to 8 players, set in the Far East of the 1860s a
 4. The first player to join is the host, who picks the game length and starts the game.
 5. To change anything about the game, double-click **Launch_Admin.bat** (see Admin below).
 
-The bottom-left Captain portrait opens **Options**: a brass-and-lacquer desk with your Captain portrait on the left, Roxana Cama's full-height First Mate panel and welcome on the right, a compact row of icon tabs, and one page at a time for the voyage, Captain portraits, House name/colour/seals, table settings, screen preferences and exit. The phone layout keeps both identities above the pages. Arrow keys move between pages; Escape closes the desk. `web/options.js` and `web/options.css` own this popup. Run `python tools/preview_options.py` for an isolated browser preview at `http://localhost:18878`; its fixture edits stay in memory and it never loads a saved game.
+The bottom-left Captain portrait opens **Options**: a brass-and-lacquer desk with equally sized Captain and mayor portraits on the left and right, with a random port mayor offering a warm local welcome and rotating to the next mayor every 12 seconds, a compact row of icon tabs, and one page at a time for the voyage, Captain portraits, House name/colour/seals, table settings, screen preferences and exit. The Voyage Clock reuses the player masthead’s month ribbon and moving ship, including free play. The phone layout keeps both identities above the pages. Arrow keys move between pages; Escape closes the desk. `web/options.js` and `web/options.css` own this popup. Run `python tools/preview_options.py` for an isolated browser preview at `http://localhost:18878`; its fixture edits stay in memory and it never loads a saved game.
 
 | File | What it does |
 |---|---|
@@ -77,6 +77,10 @@ Records are organised by game, with months inside. A game's journal is kept unti
 The files are plain text in the `journal` folder: `journal/games/<game>/events.jsonl` (one event per line) and `journal/server/server-<date>.log`.
 
 ## Tally Book (player statistics)
+
+The **Set Sail > Port intelligence** chart also brings your current game's port record onto the map. Switch between circular layers for arrivals, realised trading P/L, shares owned, standing and route pirate chance. Hot-tip ports stay marked in every layer. Select a destination to see exact figures, its route weather and the best known buy-here/sell-there trade with price age. Arrivals count completed landings, excluding your starting location; trading P/L excludes tax, harbour dues and voyage costs. History uses the existing authenticated `/api/stats` endpoint; **Refresh record** retries a failed history request. Small screens can scroll the map sideways, and reduced-motion preferences disable the ring animations.
+
+Map implementation: `web/sail-intel.js`, `web/sail-intel.css`, shared SVG renderer `web/chart.js`, invoked by `chartTab()` in `web/player.js`. Run `node tools/check_sail_intel.cjs` for behavior checks, or `python tools/preview_sail_intel.py` for a local sample-data preview on port 18879. The preview never opens a saved game. Session continuity (2026-11-19): behavior and syntax checks pass; browser visual QA remains outstanding because browser connections to the preview timed out.
 
 Every player has a Tally Book: their numbers as charts, heat maps and records. Open it with **Tally** at the foot of the tab rail (also in the Ledger tab, the lobby and the end-of-game screen), or go to `http://<server>:8765/stats`. It opens in its own window, so the deck never loses its place, and like the deck it never scrolls: only the panel area scrolls on a small screen.
 
@@ -148,6 +152,16 @@ One turn is one month. Everyone does their port business at the same time: trade
 - **The great house.** At home only: Townhouse ($500k), Mansion ($2M), Palace ($6M), built in turn. Each raises home standing once (bought standing, like a gift: no extra borrowing) and cuts the chance of being robbed ashore at home. Counts in net worth at what was paid. Pictures: Media Library → Home Port Services → Great House.
 - **The flagship.** Ship type *Flagship* (class Flagship): one per house, outside the 5/5/5 limits, named when bought. Big hold and heavy guns, pirates (and the pirate queen) find the fleet 40% less often, and she always sinks last. Lost, a new one costs full price. Pictures: Ships → Flagship, and Scenes → *Sea battle: the flagship* for her fights.
 - **The Mayor's commissions.** The home Mayor offers one yearly goal and one short contract at a time (*Port → Services* at home): sell a cargo in a port, a supply run to a port short of a cargo, or reach a standing in a port. Done in time: silver and home standing. Missed: nothing lost. *Economy → The Mayor's commissions*.
+
+### After the $110 million game (Game 3 review, 19 Nov 2026)
+
+- **Booms don't stack.** When a shortage, a crash or boom, a hot-tip boom and a ban meet on one cargo in one port, only the strongest counts, and a boom's price never runs past its own size. *Pirates & Customs → Crashes and booms → Booms stack* turns the old multiplying back on.
+- **Selling into a boom uses it up.** A sale of 3 x the cargo's depth ends a boom (or a shortage); a smaller sale shrinks it in proportion, and that part of the sale's price drop stays instead of springing back. *Selling this many depths ends a boom*.
+- **The dealers' purse.** Each port's dealers have only so much silver a month for each cargo (0.75 x its depth at its usual price, times the port's *Dealers' purse size* in *Ports*). A sale past it pays 35% for the rest, so a huge hold is sold across several ports. The trade bar shows what is left; the Dealer's margin card shows what a short purse costs. *Economy → The dealers' purse*.
+- **Calmer wild cargoes, fewer tips.** Saved monthly swings for porcelain, tea and silk were lowered once to at most 0.2, 0.3 and 0.2, and the saved hot-tip chances halved once (25% at home, 10% elsewhere by default). Anything set by hand afterwards stays.
+- **Running costs.** Every month each ship costs 2% of her price plus $15 a gun or cannon, a quarter more for each rank above Merchant. Each December the great house costs 6% of what was paid for it and each patronage 5% of its shares. Taken from silver, then the bank, then the debt; shown in the accounts and the Tally Book. *Economy → Crew wages and upkeep* and *Prices and upkeep that grow with the house*.
+- **Prices that grow with the house.** Shares, the great house and the Mayor's delivery fees are multiplied by the square root of (net worth / $1M), at least 1 and at most 10.
+- **Pirates follow the money.** A rich house is attacked a little more often, meets fleets with more guns that last longer, and finds the pirate queen up to twice as often. *Pirates & Customs → Matched fights* (the "rich house" lines).
 
 ## Project layout
 

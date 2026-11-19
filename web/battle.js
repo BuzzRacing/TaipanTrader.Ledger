@@ -41,7 +41,7 @@ const Battle = (() => {
       <div class="sf-round"></div>
       <div class="sf-clock" hidden><span></span><i><b></b></i><small></small></div>
     </header>
-    <div class="sf-enemy" hidden><div class="sf-junks"></div><p></p></div>
+    <div class="sf-enemy" hidden><div class="sf-enemy-health" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span></span></div><div class="sf-junks"></div><p></p><div class="sf-reward" hidden></div></div>
     <div class="sf-mid">
       <div class="sf-who" hidden></div>
       <div class="sf-who sf-foe" hidden></div>
@@ -258,21 +258,32 @@ const Battle = (() => {
   }
 
   /* ------------------------------------------------------------------ drawing -- */
-  /* The enemy line. A matched fight (18 Nov 2026) has fewer, tougher junks: each one shows how much of her
-     hull is left and how many guns she carries, so the captain can see the fight wearing down. */
+  /* Each original ship contributes one share of the fleet bar; sunk ships leave an empty share. */
   function junks(n, left, ships) {
     const show = Math.min(n, 60);
     const el = $(".sf-junks");
     const live = (ships || []).slice(0, left);
-    const key = n + ":" + left + ":" + live.map(x => x.hp).join(",");
+    const strength = live.length
+      ? live.reduce((sum, sh) => sum + Math.max(0, Math.min(1, sh.hp / Math.max(1, sh.max))), 0) / Math.max(1, n)
+      : left / Math.max(1, n);
+    const pct = Math.max(0, Math.min(100, Math.round(100 * strength)));
+    const health = $(".sf-enemy-health");
+    health.hidden = !ships;
+    health.setAttribute("aria-label", t("battle.enemy_fleet"));
+    health.setAttribute("aria-valuenow", pct);
+    health.classList.toggle("damaged", pct <= 60);
+    health.classList.toggle("critical", pct <= 25);
+    health.firstElementChild.style.width = pct + "%";
+    const key = n + ":" + left + ":" + live.map(x => x.hp + "/" + x.max).join(",");
     if (el.dataset.k !== key) {
       el.dataset.k = key;
-      el.className = "sf-junks" + (show > 36 ? " tiny" : show > 16 ? " small" : "") + (live.length ? " hp" : "");
+      el.className = "sf-junks" + (show > 36 ? " tiny" : show > 16 ? " small" : "");
       el.innerHTML = Array.from({ length: show }, (_, i) => {
         const afloat = i < Math.round(show * left / Math.max(1, n));
         const sh = live.length && afloat ? live[i] : null;
-        const bar = sh ? `<span class="sf-jhp" title="${a(sh.hp)}/${a(sh.max)} · ${a(sh.guns)} ${a(t("col.guns").toLowerCase())}"><b style="width:${Math.max(4, Math.round(100 * sh.hp / Math.max(1, sh.max)))}%"></b></span>` : "";
-        return `<i class="${afloat ? "" : "down"}${i === 0 && live.length ? " flag" : ""}">${JUNK}${bar}</i>`;
+        const hull = sh ? sh.hp / Math.max(1, sh.max) : 1;
+        const condition = !afloat ? "down" : hull <= .25 ? "critical" : hull <= .6 ? "damaged" : "";
+        return `<i class="${condition}${i === 0 && live.length ? " flag" : ""}" aria-hidden="true">${JUNK}</i>`;
       }).join("");
     }
   }
@@ -384,8 +395,17 @@ const Battle = (() => {
     header(b.where, b.stage === "parley" ? "" : t("battle.round", { n: Math.min(b.round, b.rounds), rounds: b.rounds }));
     $(".sf-enemy").hidden = false;
     junks(b.n, b.left, b.enemy_ships);
-    $(".sf-enemy p").textContent = b.n + " " + b.enemy + " · " + t("battle.enemy", { left: b.left, n: b.n })
-      + (b.matched && b.enemy_guns ? " · " + t("battle.enemy_guns", { n: b.enemy_guns }) : "");
+    $(".sf-enemy p").textContent = b.enemy + " · " + t("battle.enemy", { left: b.left, n: b.n });
+    const reward = b.reward, prize = $(".sf-reward");
+    prize.hidden = !reward;
+    if (reward) {
+      const low = reward.silver_min + reward.cargo_worth, high = reward.silver_max + reward.cargo_worth;
+      const value = low === high ? money(low) : money(low) + "–" + money(high);
+      const cargo = t("battle.reward." + reward.tier);
+      const room = reward.cargo_left ? t(reward.cargo_worth ? "battle.reward.some_left" : "battle.reward.full") : "";
+      setHtml(prize, `<b>${te("battle.reward.value", { value })}</b><small>${a(cargo)}${room ? " · " + a(room) : ""}</small>`);
+      prize.title = t("battle.reward.note");
+    }
     $(".sf-foot").hidden = false;
     setHtml($(".sf-fleet"), fleetHtml());
     setHtml($(".sf-acts"), actsHtml(b));
@@ -417,6 +437,7 @@ const Battle = (() => {
     $(".sf-enemy").hidden = false;
     junks(f.n, f.n - f.sunk);
     $(".sf-enemy p").textContent = f.n + " " + f.enemy;
+    $(".sf-reward").hidden = true;
     if (!seen.has(f.id)) { root.dataset.mode = "fight"; $(".sf-result").hidden = true; return play(f.id, f.kind, f.beat.frames, ((S.voice || {}).battle || {})[f.id], ((S.voice || {}).battle_foe || {})[f.id]); }
     if (playing) { root.dataset.mode = "fight"; $(".sf-result").hidden = true; return; }
     root.dataset.mode = "result";
@@ -515,6 +536,9 @@ const Battle = (() => {
     const lostList = f.cargo.length ? f.cargo.map(c => line(c.qty, c.good, "-" + money(c.cost), "dn")).join("")
           : `<li class="none">${te(f.outcome === "wrecked" ? "battle.res.cargo_wreck" : "battle.res.cargo_none")}</li>`;
     const list = usePrize ? prizeList : lostList;
+    // What the crew stowed away before they were boarded (19 Nov 2026): it is still aboard.
+    const hidList = (f.hid || []).length
+      ? `<h3>${te("battle.res.hid")}</h3><ul class="sf-rcargo sf-rhid">${f.hid.map(c => line(c.qty, c.good, "&#10003;", "up")).join("")}</ul>` : "";
     const alsoLost = usePrize && f.cargo.length
       ? `<h3>${te("battle.res.cargo")}</h3><ul class="sf-rcargo">${lostList}</ul>` : "";
     const afloat = f.ships.filter(s => !s.lost).length;
@@ -556,7 +580,7 @@ const Battle = (() => {
       <div class="sf-cols">
         <div><h3>${te("battle.res.ships")}</h3><div class="sf-rcolumns"><span>${te("battle.res.vessel")}</span><span>${te("battle.res.hull_label")}</span><span>${te("battle.res.armament")}</span></div><ul class="sf-rships">${ships}</ul></div>
         <div class="sf-rledger"><h3>${te("battle.res.account")}</h3>${account}<p class="sf-account-note">${te("battle.res.account_note")}</p>
-          <h3>${te(usePrize ? "battle.res.prize" : "battle.res.cargo")}</h3><ul class="sf-rcargo${usePrize ? " sf-rprize" : ""}">${list}</ul>${alsoLost}</div>
+          <h3>${te(usePrize ? "battle.res.prize" : "battle.res.cargo")}</h3><ul class="sf-rcargo${usePrize ? " sf-rprize" : ""}">${list}</ul>${alsoLost}${hidList}</div>
       </div>
       <p class="sf-note">${f.outcome === "wrecked" ? te("battle.res.wreck_note") : hurt ? te("battle.res.repairs") : ""}${more ? " " + te("battle.res.next") : ""}</p>
       <footer>

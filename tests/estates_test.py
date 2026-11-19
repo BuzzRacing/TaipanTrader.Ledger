@@ -12,6 +12,9 @@ def two_houses():
     original = engine.CFG
     cfg = config.defaults()
     cfg["rules"]["start"]["where"] = "home"
+    # The listed prices themselves; how they grow with a rich house is in review3_test.
+    cfg["rules"]["estates"]["wealth_scale"] = False
+    cfg["rules"]["fleet"]["upkeep_enabled"] = False
     engine.configure(cfg)
     game = engine.Game(seed=5)
     a = game.pid_for_token(game.join("Ana", "Red Junk"))

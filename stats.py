@@ -452,6 +452,10 @@ def _walk(events, ps, extra=None):
             h.line(ACTION_LINES[typ], now - was, e.get("port"))
             continue
 
+        if cat == "finance" and typ in ("upkeep", "yearly_upkeep"):
+            # Running costs (Game 3 review, 19 Nov 2026): crew wages monthly, the great house and patronage yearly.
+            h.line("upkeep" if typ == "upkeep" else "estate_upkeep", -float(e.get("amount") or 0))
+            continue
         if typ == "interest" and cat == "finance":
             b, d = e.get("bank") or [0, 0], e.get("debt") or [0, 0]
             h.line("bank_interest", b[1] - b[0])

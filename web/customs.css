@@ -197,3 +197,6 @@
 /* The tipped cargo's row on the Market: the brass badge after its name. */
 .mk-table tr[data-hot] .mk-name b { color: var(--brass-hi); }
 .mk-hot { margin-inline-start: .35em; font-size: .7em; }
+
+/* The crew hid part of a line before she counted (19 Nov 2026). */
+.cx-out .cx-hid { color: #a8e6bd; white-space: nowrap; }

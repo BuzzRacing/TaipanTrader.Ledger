@@ -287,7 +287,7 @@ const Customs = (() => {
       const back = r.units && !r.back
         ? btn(te("customs.buyback", { cost: money(r.back_price) }), "cx_back", `data-good="${g}"`, "ghost", r.back_price > S.me.cash) : "";
       return `<div class="cx-vline ${r.outcome}${r.back ? " back" : ""}"><span class="cx-good"><b>${name}</b><small>${r.outcome === "sealed" ? money(r.value) : money(r.declared) + " / " + money(r.value)}</small></span>
-        <em class="cx-out ${r.outcome}">${te("customs.out." + out)}${r.outcome === "partial" ? ` (${r.units}/${r.qty})` : ""}</em>
+        <em class="cx-out ${r.outcome}">${te("customs.out." + out)}${r.outcome === "partial" ? ` (${r.units}/${r.qty})` : ""}${r.hid ? ` · <span class="cx-hid" title="${te("customs.hid_tip")}">${te("customs.hid", { qty: r.hid })}</span>` : ""}</em>
         <b class="cx-amt">${amount}</b>${back}</div>`;
     }).join("");
     const bribe = res.bribe ? `<p class="cx-note ${res.bribe.taken ? "" : "bad"}">${te(res.bribe.taken ? "customs.bribe_taken" : "customs.bribe_refused", { cost: money(res.bribe.cost) })}</p>` : "";

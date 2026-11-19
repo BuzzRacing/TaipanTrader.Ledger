@@ -29,6 +29,8 @@ def setup(level="normal", **rules):
     cfg["rules"]["battle"]["match"] = False        # these tests drive the fleet sizes themselves (see fleet_test)
     cfg["rules"]["battle"]["lowball"] = False      # and expect the pirates to name their usual price
     cfg["rules"]["contraband"].update({"seize_chance": 0.0, "seize_banned": 0.0})
+    cfg["rules"]["fleet"]["upkeep_enabled"] = False   # these tests count silver to the dollar (wages: review3_test)
+    cfg["rules"]["hide"]["enabled"] = False           # and cargo to the unit (the crew hiding a share: hide_test)
     for path, value in rules.items():
         group, key = path.split("__")
         cfg["rules"][group][key] = value

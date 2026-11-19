@@ -123,6 +123,22 @@ const btn = (label, action, data, cls, disabled) =>
 function quote(good, qty, side) {
   const mid = S.me.prices[good], k = D.impact * qty / D.goods[good].depth;
   if (side === "buy") return Math.ceil(qty * (mid + mid * (1 + k)) / 2 * (1 + S.me.spread));
+  return purseCut(good, Math.floor(qty * (mid + mid / (1 + k)) / 2 * (1 - S.me.spread)));
+}
+/* THE DEALERS' PURSE (Game 3 review, 19 Nov 2026). Each port's dealers have only so much silver a month
+   for each cargo (me.purse[good] = [left, size]); silver a sale asks past what is left is paid at
+   D.market.purse_over. The same rule as engine.Game._purse_pay. */
+function purseLeft(good) {
+  const row = S.me && S.me.purse && S.me.purse[good];
+  return row && D.market && D.market.purse_over != null ? row[0] : null;
+}
+function purseCut(good, total) {
+  const left = purseLeft(good);
+  if (left == null || total <= left) return total;
+  return Math.floor(left + (total - left) * D.market.purse_over);
+}
+function fullSale(good, qty) {
+  const mid = S.me.prices[good], k = D.impact * qty / D.goods[good].depth;
   return Math.floor(qty * (mid + mid / (1 + k)) / 2 * (1 - S.me.spread));
 }
 
@@ -424,6 +440,7 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "fleet.fill": "Fill", "fleet.fill_tip": "Fill every free pair of mounts with cannons: {n} for {cost}.",
     "fleet.fill_all": "Fill all cannons", "fleet.fill_all_tip": "Fill every free mount across the fleet with cannons, escorts first: {n} for {cost}.",
     "fleet.fill_none": "Every mount is full, or silver is short.",
+    "fleet.hold_armed": "{hold} of {full} (guns take {lost})",
     "bank.rest": "Bank {amount}", "bank.rest_note": "{cash} ashore: about a {odds}% chance thieves take {lo}–{hi}% of it in {port} this month. Banked silver is safe, and still pays pirates at sea.",
     "port.todo.bank_rest": "Heavy purse: {cash} ashore, about {odds}% chance of losing {lo}–{hi}% to thieves in {port}.",
     "dealer.move": "Price move", "dealer.move_sub": "the market shifting under your trade",
@@ -1112,7 +1129,22 @@ function costTag(g, qty, side) {
                               : (x <= 1 / red ? "red" : x <= 1 / amber ? "amber" : "");
   const tip = te(side === "buy" ? "market.avg_tip_buy" : "market.avg_tip_sell",
                  { avg: money(avg), x: x.toFixed(2), posted: money(S.me.prices[g]) });
-  return `<em class="mk-avg ${warn}" title="${tip}">${te("market.avg", { avg: money(avg), x: x.toFixed(x < 10 ? 2 : 1) })}</em>`;
+  return `<em class="mk-avg ${warn}" title="${tip}">${te("market.avg", { avg: money(avg), x: x.toFixed(x < 10 ? 2 : 1) })}</em>`
+    + (side === "sell" ? purseTag(g, qty) : "");
+}
+/* Under a sale: how much silver the dealers here still have for this cargo, red once the sale runs past it. */
+function purseTag(g, qty) {
+  const left = purseLeft(g);
+  if (left == null) return "";
+  const row = S.me.purse[g], full = fullSale(g, qty), over = Math.round(D.market.purse_over * 100);
+  const name = D.goods[g].name;            // te() escapes it
+  if (full > left) {
+    const tip = te("market.purse_tip_short", { left: money(left), good: name, full: money(full), over, total: money(purseCut(g, full)) });
+    return `<em class="mk-avg red" title="${tip}">${te("market.purse_short", { left: money(left) })}</em>`;
+  }
+  if (left > row[1] * 0.5) return "";
+  const tip = te("market.purse_tip", { left: money(left), size: money(row[1]), good: name, over });
+  return `<em class="mk-avg amber" title="${tip}">${te("market.purse", { left: money(left) })}</em>`;
 }
 
 /* The best price this cargo should fetch in another port, per unit after that port's dealer margin:
@@ -1519,13 +1551,15 @@ function dealerCut(g, qty, side) {
   const mid = S.me.prices[g], k = D.impact * qty / D.goods[g].depth;
   const end = side === "buy" ? mid * (1 + k) : mid / (1 + k);
   const total = quote(g, qty, side), base = qty * (mid + end) / 2;
+  // short: what the dealers' purse running out takes off a sale (kept apart from their margin).
+  const short = side === "sell" ? Math.max(0, fullSale(g, qty) - total) : 0;
   // move: what the price moving under the trade costs against trading it all at the posted price.
-  return { total, cut: Math.round(Math.abs(total - base)), move: Math.round(Math.abs(base - qty * mid)) };
+  return { total, cut: Math.round(Math.abs(total + short - base)), move: Math.round(Math.abs(base - qty * mid)), short };
 }
 function dealerCard() {
   const me = S.me;
   if (!me || !D.goods) return "";
-  let pay = 0, get = 0, cut = 0, move = 0, nBuy = 0, nSell = 0;
+  let pay = 0, get = 0, cut = 0, move = 0, short = 0, nBuy = 0, nSell = 0;
   if (!me.ready) Object.keys(D.goods).forEach(g => {
     if (ui.vals["t_" + g] == null) return;
     const tr = tradeOf(g);
@@ -1533,6 +1567,7 @@ function dealerCard() {
     const q = dealerCut(g, tr.qty, tr.side);
     cut += q.cut;
     move += q.move;
+    short += q.short;
     if (tr.side === "buy") { pay += q.total; nBuy += tr.qty; } else { get += q.total; nSell += tr.qty; }
   });
   const margin = pct(me.spread);
@@ -1541,7 +1576,8 @@ function dealerCard() {
     ? (nBuy ? line(te("dealer.pay"), money(pay), "pay", te("dealer.units", { n: nBuy.toLocaleString() })) : "") +
       (nSell ? line(te("dealer.get"), money(get), "get", te("dealer.units", { n: nSell.toLocaleString() })) : "") +
       line(te("dealer.cut"), money(cut), "cut", te("dealer.cut_sub", { margin })) +
-      (move ? line(te("dealer.move"), money(move), "cut move", te("dealer.move_sub")) : "")
+      (move ? line(te("dealer.move"), money(move), "cut move", te("dealer.move_sub")) : "") +
+      (short ? line(te("dealer.short"), money(short), "cut move", te("dealer.short_sub")) : "")
     : "";
   return `<section class="dl-card" title="${te("market.standing", { rep: me.rep[me.port], margin })}">
     <header><span>${te("dealer.title")}</span><b>${te("dealer.margin", { margin })}</b></header>
@@ -1609,7 +1645,7 @@ function clearanceLedger() {
    The figures come from the account book the server keeps (me.books, engine.py _book). */
 const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
-  ["port", ["dues", "gift", "depot", "repairs", "protection", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
+  ["port", ["dues", "gift", "depot", "repairs", "protection", "upkeep", "estate_upkeep", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
   ["money", ["interest", "bank_interest", "contracts"]],
   ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed", "wh_robbed"]],
 ];
@@ -2273,6 +2309,12 @@ function classInfo(role) {
   return { n, max: r.max, unlock: r.unlock, open: traders >= r.unlock };
 }
 
+/* WEAPONS TAKE CARGO SPACE (19 Nov 2026): a ship's hold with her guns and cannons mounted (plus more, if
+   given), as the engine's ship_hold works it out. Never below 0. */
+function shipHold(s, spec, guns = 0, cannons = 0) {
+  return Math.max(0, spec.hold - (D.gun_hold ?? 5) * ((s.guns || 0) + guns) - (D.cannon_hold ?? 10) * ((s.cannons || 0) + cannons));
+}
+
 /* FILL CANNONS (19 Nov 2026): how many cannons a Fill mounts, as the engine's fill_plan works it out:
    every free pair of mounts on one ship (i) or across the fleet ("all": escorts first), as silver allows. */
 function fillPlan(i) {
@@ -2280,13 +2322,15 @@ function fillPlan(i) {
   const rank = { escort: 0, trader: 1, cargo: 2 };
   let order = i === "all" ? me.ships.map((_s, k) => k) : [i];
   if (i === "all") order = order.sort((a, b) => (rank[roleOf(me.ships[a].type)] ?? 3) - (rank[roleOf(me.ships[b].type)] ?? 3) || a - b);
-  let cash = me.cash, n = 0;
+  let cash = me.cash, n = 0, hold = Math.max(0, me.capacity - me.used);
   order.forEach(k => {
     const s = me.ships[k], spec = D.ships[s.type];
     if (!spec || !spec.cannons) return;
     const free = s.free != null ? s.free : spec.slots - s.guns - cs * (s.cannons || 0);
-    const take = Math.min(Math.floor(free / cs), price > 0 ? Math.floor(cash / price) : 0);
-    if (take > 0) { n += take; cash -= take * price; }
+    let take = Math.min(Math.floor(free / cs), price > 0 ? Math.floor(cash / price) : 0);
+    const now = shipHold(s, spec);
+    while (take > 0 && now - shipHold(s, spec, 0, take) > hold) take--;   // cargo aboard needs the space
+    if (take > 0) { n += take; cash -= take * price; hold -= now - shipHold(s, spec, 0, take); }
   });
   return { n, cost: n * price };
 }
@@ -2299,14 +2343,20 @@ function shipCard(s, i, yard) {
     : `<span class="fl-ok">${te("fleet.seaworthy")}</span>`;
   const traders = me.ships.filter(x => roleOf(x.type) === "trader").length;
   const lastTrader = D.keep_trader !== false && role === "trader" && traders <= 1;
-  const line = role === "flagship" ? te("fleet.flag_line", { type: spec.name, hold: spec.hold })
+  // Weapons take cargo space (19 Nov 2026): show her hold as armed, and what her guns cost her.
+  const armedHold = s.hold != null ? s.hold : shipHold(s, spec);
+  const holdTxt = armedHold < spec.hold
+    ? t("fleet.hold_armed", { hold: armedHold, full: spec.hold, lost: spec.hold - armedHold }) : spec.hold;
+  const line = role === "flagship" ? te("fleet.flag_line", { type: spec.name, hold: holdTxt })
     : role === "escort" ? `${esc(spec.name)} · ${te("fleet.no_hold")}`
     : role === "cargo" ? `${esc(spec.name)} · ${te("col.hold").toLowerCase()} ${spec.hold} · ${te("fleet.no_guns")}`
-    : te("fleet.ship_line", { type: spec.name, hold: spec.hold });
+    : te("fleet.ship_line", { type: spec.name, hold: holdTxt });
+  const holdFree = Math.max(0, me.capacity - me.used);
+  const gunSpace = armedHold - shipHold(s, spec, 1, 0), canSpace = armedHold - shipHold(s, spec, 0, 1);
   const guns = spec.slots > 0 ? `<div class="fl-stat"><span class="fl-lbl">${te("col.guns")}</span>
         <span class="fl-pips">${gunPips(s.guns, spec.slots, s.cannons)}</span><span class="fl-v">${mountsLine(s, spec)}</span></div>` : "";
-  const gunBtns = spec.slots > 0 ? `${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${esc(t("fleet.gun_tip", { price: money(D.gun_price) }))}"`, "fl-btn", free < 1 || me.cash < D.gun_price)}
-        ${spec.cannons ? btn(te("fleet.cannon_short"), "cannon", `data-i="${i}" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}"`, "fl-btn", free < cannonSlots() || me.cash < D.cannon_price) : ""}
+  const gunBtns = spec.slots > 0 ? `${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${esc(t("fleet.gun_tip", { price: money(D.gun_price), space: gunSpace }))}"`, "fl-btn", free < 1 || me.cash < D.gun_price || gunSpace > holdFree)}
+        ${spec.cannons ? btn(te("fleet.cannon_short"), "cannon", `data-i="${i}" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots(), space: canSpace }))}"`, "fl-btn", free < cannonSlots() || me.cash < D.cannon_price || canSpace > holdFree) : ""}
         ${spec.cannons ? (fp => btn(te("fleet.fill"), "fill", `data-i="${i}" title="${esc(fp.n ? t("fleet.fill_tip", { n: fp.n, cost: money(fp.cost) }) : t("fleet.fill_none"))}"`, "fl-btn", fp.n < 1))(fillPlan(i)) : ""}
         ${s.guns ? btn(te("fleet.sell_gun"), "sellgun", `data-i="${i}" title="${esc(t("fleet.sell_gun_tip", { value: money(Math.floor(D.gun_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}
         ${s.cannons ? btn(te("fleet.sell_cannon"), "sellcannon", `data-i="${i}" title="${esc(t("fleet.sell_cannon_tip", { value: money(Math.floor(D.cannon_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}` : "";
@@ -2453,7 +2503,7 @@ function chartTab() {
       <div class="sail-guide sail-guide-top"><span><b>${te("sail.risk_title")}</b></span>
         <span class="heat-key"><small>${te("sail.easiest")}</small><i></i><small>${te("sail.hardest")}</small></span></div>
       <div class="dests">${list}</div>
-      <div class="sail-map">${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: me.port, dest, clickable: !me.ready, mine: me.id, focusRoute: true })}</div></section>
+      ${SailIntel.html(dest)}</section>
     <section class="card"><h2>${te("orders.title")}</h2>
       <div class="seg">${btn(cannons() ? te("orders.fight_cannons", { guns: guns(), cannons: cannons() }) : te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
       ${protectionNote()}

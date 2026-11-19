@@ -27,7 +27,7 @@ def main():
             "portraits": pictures(portraits), "crests": pictures(crests),
             "painting": {}, "mode": "Merchant", "table_family": False, "admin": False}
     fixture = json.dumps({"media": library, "cast": media.safe_cast(cast.public_cast(cfg), cfg),
-                          "brand": cfg["brand"], "options": data}, ensure_ascii=True).replace("</", "<\\/")
+                          "brand": cfg["brand"], "ports": cfg["ports"], "options": data}, ensure_ascii=True).replace("</", "<\\/")
     html = '''<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Captain Options · isolated preview</title><link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/deck.css"><link rel="stylesheet" href="/options.css">
@@ -37,7 +37,7 @@ def main():
     <script>
     const fixture = FIXTURE;
     Media.setup(fixture.media);
-    let D={start_year:1860,brand:fixture.brand}, VS={cast:fixture.cast}, token='preview',stream=null;
+    let D={start_year:1860,brand:fixture.brand,ports:fixture.ports}, VS={cast:fixture.cast}, token='preview',stream=null;
     let S={turn:14,years:5,turns_left:46,date:'March 1861',me:{id:'p1',name:'Anthony',firm:'The Crimson Company',
       portrait:fixture.options.portraits[0]?.url||'',crest:''},players:[
       {id:'p1',name:'Anthony',firm:'The Crimson Company',present:true},
@@ -53,7 +53,13 @@ def main():
     }
     const originalFetch=window.fetch.bind(window);
     window.fetch=(url,...args)=>String(url).startsWith('/api/options')?Promise.resolve(new Response(JSON.stringify(fixture.options))):originalFetch(url,...args);
-    </script><script src="/options.js"></script><script>Options.open();</script></body></html>'''.replace("FIXTURE", fixture)
+    T['voy.left']='{n} months left'; T['voy.left_1']='Final month'; T['voy.close']='Books close {date}';
+    T['voy.free']='Free play'; T['voy.free_sub']='Season ended {date}'; T['voy.closed']='The books are closed';
+    T['voy.aria']='{date}: {left}. {end}'; T['voy.seal']='Close';
+    </script><script src="/voyage-preview.js"></script><script src="/options.js"></script><script>Options.open();</script></body></html>'''.replace("FIXTURE", fixture)
+
+    player = (ROOT / "web" / "player.js").read_text(encoding="utf-8")
+    ribbon = player[player.index("const VOY_NEAR"):player.index("/* The seventh plaque")]
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
@@ -61,7 +67,7 @@ def main():
 
         def do_GET(self):
             path = self.path.split("?")[0]
-            content = {"/": (html, "text/html"), "/theme.css": (config.theme_css(cfg), "text/css"),
+            content = {"/voyage-preview.js": (ribbon, "text/javascript"), "/": (html, "text/html"), "/theme.css": (config.theme_css(cfg), "text/css"),
                        "/fonts.css": (config.fonts_css(cfg, fonts.local_css()), "text/css")}.get(path)
             if not content:
                 target = (ROOT / "web" / unquote(path).lstrip("/")).resolve()

@@ -139,7 +139,12 @@ DEFAULTS = {
         "market": {"spread_base": 0.04, "spread_swing": 0.03, "impact": 0.25, "floor": 0.25,
                    "ceiling": 4.5, "reversion": 0.3, "vol_mult": 1.0, "start_spread": 0.15,
                    "rep_per_value": 5000, "rep_trade_cap": 2.0, "worth_cargo": 0.9,
-                   "own_fade": 0.7, "avg_amber": 1.5, "avg_red": 2.5, "depth_v2": False},
+                   "own_fade": 0.7, "avg_amber": 1.5, "avg_red": 2.5, "depth_v2": False,
+                   # The dealers' purse (Game 3 review, 19 Nov 2026): each port's dealers have only so much
+                   # silver a month for each cargo: purse_depths x the cargo's depth x its normal price there
+                   # x the port's own purse size (Ports table). Silver asked past it is paid at purse_over.
+                   "purse_enabled": True, "purse_depths": 0.75, "purse_over": 0.35,
+                   "review3_v1": False},
         "bank": {"bank_rate": 0.005, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
                  "debt_grace_months": 3, "debt_call_every": 3,
@@ -154,15 +159,27 @@ DEFAULTS = {
                   "flagship_unlock": 0, "flagship_deter": 0.4,
                   "keep_trader": True, "seeded_ships": [], "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
                   "cannon_cost": 7.5, "cannon_power": 2, "cannon_slots": 2,
+                  # Weapons take cargo space (19 Nov 2026): units of a ship's hold each gun / cannon takes.
+                  "gun_hold": 5, "cannon_hold": 10,
                   "warehouse_cap": 10000, "depot_open_cost": 10000, "depot_cap": 1000,
                   "depot_expand_cost": 100000, "depot_expand_cap": 1000, "repair_base": 6, "repair_price_div": 4000,
-                  "repair_noyard": 1.3, "repair_rep_discount": 0.2, "ship_rep": 2},
+                  "repair_noyard": 1.3, "repair_rep_discount": 0.2, "ship_rep": 2,
+                  # Crew wages and upkeep (Game 3 review, 19 Nov 2026), paid every month: upkeep_rate of each
+                  # ship's price plus upkeep_gun for each gun or cannon, times (1 + upkeep_rank for each rank
+                  # the house holds above upkeep_rank_from): a famous house's crews expect famous pay.
+                  "upkeep_enabled": True, "upkeep_rate": 0.02, "upkeep_gun": 15,
+                  "upkeep_rank": 0.25, "upkeep_rank_from": "merchant"},
         "events": {"shock_chance": 0.35, "shock_mults": [0.4, 0.5, 2.0, 2.5, 3.0],
                    "shock_min_turns": 2, "shock_max_turns": 3, "ban_chance": 0.15,
                    "ban_min_turns": 3, "ban_max_turns": 5, "ban_price_mult": 1.5,
                    "windfall_chance": 0.12, "windfall_pair_chance": 0.1,
                    "crash_min": 0.02, "crash_max": 0.12, "boom_min": 2.5, "boom_max": 10.0,
-                   "windfall_min_turns": 1, "windfall_max_turns": 2},
+                   "windfall_min_turns": 1, "windfall_max_turns": 2,
+                   # Game 3 review (19 Nov 2026): when a shortage, a boom and a hot-tip boom (or a ban) meet on
+                   # one cargo in one port, only the strongest counts (stack_booms False), and a boom's price
+                   # never runs past its own size. Selling into a boom or a shortage uses it up: a sale of
+                   # boom_eat_depths x the cargo's depth ends it, a smaller one shrinks it in proportion.
+                   "stack_booms": False, "boom_eat_depths": 3.0},
         "contraband": {"seize_chance": 0.03, "seize_banned": 0.55, "seize_rep_relief": 0.003,
                        "fine_per_unit": 300, "rep_penalty": 15},
         "weather": {"forecast_accuracy": 0.8, "storm_chance": [0.0, 0.04, 0.20, 0.60],
@@ -179,6 +196,12 @@ DEFAULTS = {
                    "protect_save": 0.5, "cost_share": 0.02, "cost_min": 500, "renew_at": 2,
                    "tribute": True, "tribute_mult": 1.5},
         "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 100, "guns": 2},
+        # The crew hides a share before it is taken (owner's decision, 19 Nov 2026): whenever customs
+        # seize contraband, the Port Authority buys cargo out, pirates plunder the hold, or the
+        # moneylender closes the books, the crew always gets a random min..max share of it out of
+        # sight first. Small, dear goods (dear_goods) hide dear_mult times as well.
+        "hide": {"enabled": True, "min": 0.10, "max": 0.30, "dear_mult": 1.5, "dear_goods": ["gold", "opium"],
+                 "customs": True, "desk": True, "pirates": True, "bankrupt": True},
         # The sea battle played on screen (engine.Game, "sea battles"). A captain at a screen chooses
         # each round; the month waits at sea until every fight is over.
         "battle": {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
@@ -188,6 +211,9 @@ DEFAULTS = {
                    # Hits that miss the guns may land in the hold: one kind of goods (gold as likely as rice)
                    # loses cargo_hit_min to cargo_hit_max of its units over the side, at least one.
                    "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3,
+                   # Spiteful crews: rolled at the sighting; they aim for the hold spite_hold times as often,
+                   # and a hold hit goes for the dearest good aboard spite_aim of the time.
+                   "spite": True, "spite_chance": 0.3, "spite_chance_lord": 0.5, "spite_aim": 0.75, "spite_hold": 2.0,
                    # Paying to pass when silver and bank fall short: Madam Wu covers the rest for this fee.
                    "wu_fee": 0.10,
                    # The enemy answers the bosun at the key moments (Admiral Li Yue for her war junks,
@@ -205,6 +231,12 @@ DEFAULTS = {
                    "match_hp_min": 4, "match_hp_max": 12, "match_flag": 2.0,
                    # How keen they are to attack at all: allure = base + cargo x temptation + fame x fame share.
                    "allure_base": 0.6, "allure_cargo": 0.6, "allure_fame": 0.3, "match_booty": 0.8,
+                   # Rich houses draw the big fleets (Game 3 review, 19 Nov 2026). worth share = net worth /
+                   # (net worth + worth_ref). It adds match_worth to the match (their guns), match_worth_rounds
+                   # to the rounds their hull lasts, allure_worth to their keenness to attack, and lord_worth
+                   # times it to the chance of meeting the pirate queen.
+                   "worth_ref": 5000000, "match_worth": 0.3, "match_worth_rounds": 1.0,
+                   "allure_worth": 0.4, "lord_worth": 1.0,
                    # Fame at sea: gained by winning, fades each month; fame_ref of it counts as full fame.
                    "fame_win": 1.0, "fame_broke_off": 0.5, "fame_decay": 0.1, "fame_ref": 10,
                    # Formation: escorts in the van, merchantmen in the line, cargo ships in the rear.
@@ -252,7 +284,13 @@ DEFAULTS = {
                     "house_enabled": True,
                     "house_cost_1": 500000, "house_cost_2": 2000000, "house_cost_3": 6000000,
                     "house_rep_1": 5, "house_rep_2": 8, "house_rep_3": 12,
-                    "house_rob_1": 0.3, "house_rob_2": 0.6, "house_rob_3": 0.9},
+                    "house_rob_1": 0.3, "house_rob_2": 0.6, "house_rob_3": 0.9,
+                    # Prices that grow with the house (Game 3 review, 19 Nov 2026): shares, the great house and
+                    # the Mayor's fees are multiplied by the square root of (net worth / wealth_ref), at least
+                    # 1 and at most wealth_max. Each December the great house costs house_upkeep of what was
+                    # paid for it, and each port where the house is Patron costs patron_upkeep of its shares.
+                    "wealth_scale": True, "wealth_ref": 1000000, "wealth_max": 10.0,
+                    "house_upkeep": 0.06, "patron_upkeep": 0.05},
         # The Mayor's commissions (late game, 19 Nov 2026): the home Mayor offers one yearly goal and one
         # short contract at a time. Kinds: deliveries, supply runs to a port short of a cargo, and
         # standing goals. Paid in silver and home standing; a missed one is only a missed chance.
@@ -260,16 +298,16 @@ DEFAULTS = {
                       "hold_share_short": 0.35, "hold_share_year": 1.0, "min_qty": 10,
                       "fee_share": 0.25, "fee_share_year": 0.35, "supply_mult": 1.5, "shortage_at": 1.35,
                       "standing_short": 10, "standing_year": 25, "standing_fee": 0.0015,
-                      "rep_short": 3, "rep_year": 8},
+                      "rep_short": 3, "rep_year": 8, "fee_wealth": True},
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
-                      "hot_enabled": True, "hot_home_chance": 0.5, "hot_away_chance": 0.2,
+                      "hot_enabled": True, "hot_home_chance": 0.25, "hot_away_chance": 0.1,
                       "hot_every": 3, "hot_lead": 1, "hot_months": 2, "hot_hold": True,
                       "hot_months_min": 1, "hot_months_max": 3, "hot_after_max": 1.5,
                       "hot_min": 3.0, "hot_max": 6.0},
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
-        "customs": {"enabled": True, "home_free": True, "bond": True, "drift": 0.005, "range": 0.0125, "min_rate": 0.0, "max_rate": 0.5,
+        "customs": {"enabled": True, "home_free": True, "spot_home": 0.05, "spot_shares": 0.05, "bond": True, "drift": 0.005, "range": 0.0125, "min_rate": 0.0, "max_rate": 0.5,
                     "buy_base": 0.003, "buy_k": 0.3, "buy_exp": 1.8, "buy_cap": 0.9,
                     "audit_base": 0.006, "audit_k": 0.12, "audit_cap": 0.9,
                     "appetite_power": 1.0, "greed_weight": 0.08, "cunning_weight": 0.08, "rep_audit": 0.8, "rep_buy": 0.6,
@@ -305,25 +343,25 @@ DEFAULTS = {
     },
     # mods = local price multipliers (below 1 = made here, above 1 = in demand).
     "ports": {
-        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "officer_hongkong", "mood": 0.15,
+        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "officer_hongkong", "mood": 0.15, "purse": 1.4,
                       "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
-        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15,
+        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15, "purse": 1.3,
                       "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
-        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.025, "officer": "officer_nagasaki", "mood": 0.1,
+        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.025, "officer": "officer_nagasaki", "mood": 0.1, "purse": 0.8,
                       "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}},
-        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.015, "officer": "officer_manila", "mood": 0.15,
+        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.015, "officer": "officer_manila", "mood": 0.15, "purse": 0.9,
                       "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}},
-        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.025, "officer": "officer_foochow", "mood": 0.15,
+        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.025, "officer": "officer_foochow", "mood": 0.15, "purse": 0.9,
                       "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}},
-        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.02, "officer": "officer_saigon", "mood": 0.5,
+        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.02, "officer": "officer_saigon", "mood": 0.5, "purse": 0.8,
                       "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}},
-        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.03, "officer": "officer_bangkok", "mood": 0.12,
+        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.03, "officer": "officer_bangkok", "mood": 0.12, "purse": 0.9,
                       "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}},
-        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.01, "officer": "officer_singapore", "mood": 0.1,
+        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.01, "officer": "officer_singapore", "mood": 0.1, "purse": 1.2,
                       "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}},
-        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.035, "officer": "officer_batavia", "mood": 0.1,
+        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.035, "officer": "officer_batavia", "mood": 0.1, "purse": 1.0,
                       "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}},
-        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "bank": True, "warehouse": True, "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2,
+        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "bank": True, "warehouse": True, "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2, "purse": 1.2,
                       "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}},
     },
     # hold = cargo units; hull = damage it can take; slots = guns it can mount (a cannon takes
@@ -375,6 +413,8 @@ OLD_DEPTHS = {"opium": 60, "gold": 90, "silk": 160, "porcelain": 250, "arms": 25
               "rice": 1200, "general": 1200}
 
 SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
+# Game 3 review (19 Nov 2026): the swingiest cargoes are calmed once to at most these monthly swings.
+CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
 
 # Paths whose whole value is replaced on save (rows can be deleted), not merged.
 WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "escort_names", "cargo_names", "difficulty.presets",
@@ -534,6 +574,19 @@ SECTIONS = [
              F("rules.wreck.ship", "Replacement ship", "select", options_from="ships"),
              F("rules.wreck.hull", "Its hull points", "int", "Never more than a sound ship of that kind.", min=1, max=10000),
              F("rules.wreck.guns", "Its guns", "int", "Never more than that ship has room for.", min=0, max=1000)]},
+         {"title": "Crew hides a share (before it is taken)", "fields": [
+             F("rules.hide.enabled", "The crew hides a share", "bool", "Whenever cargo or silver is about to be "
+               "taken, the crew always gets a random share of it out of sight first. It stays aboard."),
+             _pct("rules.hide.min", "Share hidden, least"),
+             _pct("rules.hide.max", "Share hidden, most"),
+             F("rules.hide.dear_goods", "Goods small and dear enough to hide better", "lines",
+               "Cargo keys, one per line (gold, opium).", max=20),
+             F("rules.hide.dear_mult", "They hide this many times as well", "num", "1.5 turns 10-30% into "
+               "15-45%. Never more than all of it.", min=1, max=10, step=0.1),
+             F("rules.hide.customs", "From customs seizing contraband", "bool"),
+             F("rules.hide.desk", "From the Port Authority buying cargo out", "bool"),
+             F("rules.hide.pirates", "From pirates plundering the hold", "bool"),
+             F("rules.hide.bankrupt", "From the moneylender at bankruptcy (silver and cargo aboard)", "bool")]},
          {"title": "Records (see Captain's Report)", "fields": [
              F("journal.keep_games", "Game journals to keep", "int", "Every game has a journal of everything that "
                "happened in it. When there are more than this many, the oldest are deleted, except the game in "
@@ -562,6 +615,15 @@ SECTIONS = [
                "The average price per unit of a buy, against the posted price. Sales use the same line upside down.",
                min=1, max=20, step=0.1),
              F("rules.market.avg_red", "Trade bar turns red at (x posted)", "num", min=1, max=50, step=0.1)]},
+         {"title": "The dealers' purse", "fields": [
+             F("rules.market.purse_enabled", "Dealers have only so much silver a month", "bool",
+               "Each port's dealers can pay only so much for each cargo each month, so a huge hold has to be sold across "
+               "several ports. Shared by every house; full again each month. Each port's size is in the Ports table."),
+             F("rules.market.purse_depths", "Purse for each cargo (x its depth at its usual price)", "num",
+               "0.75 with opium's depth of 600 at $8,000 is $3.6 million a month at a normal port. A boom drains it faster.",
+               min=0.01, max=100, step=0.05),
+             _pct("rules.market.purse_over", "Paid for silver asked past the purse",
+                  "What the dealers pay, as a share of their price, for a sale that runs past their purse.")]},
          {"title": "Bank and moneylender", "fields": [
              _pct("rules.bank.bank_rate", "Bank interest per month", "", 0, 1),
              _pct("rules.bank.loan_rate", "Loan interest per month", "Compounding. Multiplied by the difficulty level.", 0, 1),
@@ -632,6 +694,10 @@ SECTIONS = [
                "Each cannon fires this many shots a round.", min=1, max=100),
              F("rules.fleet.cannon_slots", "Gun mounts a cannon takes", "int",
                "Only ships marked for cannons (Ships) can carry them.", min=1, max=20),
+             F("rules.fleet.gun_hold", "Cargo space a gun takes (units)", "int",
+               "Each gun mounted takes this much of her hold. 0 = guns take no cargo space.", min=0, max=10000),
+             F("rules.fleet.cannon_hold", "Cargo space a cannon takes (units)", "int",
+               "Each cannon mounted takes this much of her hold. A ship's hold never drops below 0.", min=0, max=10000),
              _pct("rules.fleet.ship_resale", "Ship resale value (sound hull)"),
              F("rules.fleet.warehouse_cap", "Warehouse space (units)", "int", min=0, max=10**8),
              F("rules.fleet.depot_open_cost", "Away warehouse: price to open", "int", min=0, max=10**9),
@@ -639,6 +705,14 @@ SECTIONS = [
              F("rules.fleet.depot_expand_cost", "Away warehouse: price to enlarge", "int", min=0, max=10**9),
              F("rules.fleet.depot_expand_cap", "Away warehouse: space added each time (units)", "int", min=1, max=10**8),
              F("rules.fleet.ship_rep", "Standing gained by buying a ship", "num", min=0, max=100, step=0.5)]},
+         {"title": "Crew wages and upkeep", "fields": [
+             F("rules.fleet.upkeep_enabled", "Ships cost wages and upkeep every month", "bool",
+               "Taken from silver aboard, then the bank; whatever is left goes on the debt. Shown in the accounts."),
+             _pct("rules.fleet.upkeep_rate", "Each month, this share of each ship's price", "", 0, 1),
+             F("rules.fleet.upkeep_gun", "Each month, for each gun or cannon", "num", min=0, max=100000, step=1),
+             F("rules.fleet.upkeep_rank", "Wages rise by this much for each rank above the one below", "num",
+               "A famous house's crews expect famous pay. 0.25 is a quarter more for each rank.", min=0, max=10, step=0.05),
+             F("rules.fleet.upkeep_rank_from", "Wages start rising above this rank", "text", max=30)]},
          {"title": "Repairs", "fields": [
              F("rules.fleet.repair_base", "Cost per hull point: base", "num", min=0, max=10000, step=0.5),
              F("rules.fleet.repair_price_div", "Plus ship price divided by", "int", min=1, max=10**7),
@@ -683,6 +757,15 @@ SECTIONS = [
              _pct("rules.estates.house_rob_1", "Townhouse: cut in the chance of being robbed ashore at home"),
              _pct("rules.estates.house_rob_2", "Mansion: cut in the chance of being robbed ashore at home"),
              _pct("rules.estates.house_rob_3", "Palace: cut in the chance of being robbed ashore at home")]},
+         {"title": "Prices and upkeep that grow with the house (late game)", "fields": [
+             F("rules.estates.wealth_scale", "Shares, the great house and the Mayor's fees grow with net worth", "bool",
+               "They are multiplied by the square root of (net worth / the figure below), at least 1."),
+             F("rules.estates.wealth_ref", "Net worth at which prices start to grow", "int",
+               "At 1,000,000: a house worth 4 million pays double, 25 million five times.", min=1, max=10**12),
+             F("rules.estates.wealth_max", "Prices grow at most this many times", "num", min=1, max=1000, step=0.5),
+             _pct("rules.estates.house_upkeep", "Each December: the great house costs this share of what was paid", "", 0, 1),
+             _pct("rules.estates.patron_upkeep", "Each December: each patronage costs this share of the shares held there", "", 0, 1),
+             F("rules.contracts.fee_wealth", "The Mayor's delivery and supply fees grow with net worth too", "bool")]},
          {"title": "The Mayor's commissions (late game)", "fields": [
              F("rules.contracts.enabled", "The home Mayor offers yearly goals and contracts", "bool",
                "One yearly goal and one short contract at a time, taken at home on the Port tab's Services. "
@@ -732,6 +815,12 @@ SECTIONS = [
                "Off: ships come and go without seeing the Port Authority."),
              F("rules.customs.home_free", "A house pays no cargo tax in its own home port", "bool",
                "Each player's home port (where they started) waves them in free, whatever its rate for others."),
+             _pct("rules.customs.spot_home", "Spot check at home: chance a house is stopped anyway",
+                  "Now and then a house coming home with cargo is stopped and declares at the port's full rate, "
+                  "for that one landing only. Lies, buyouts and audits work as in any port. 0: never.", 0, 1),
+             _pct("rules.customs.spot_shares", "Spot check where shares make a port free",
+                  "The same, in a port where the house's shares cut its tax to nothing: the shares are set aside "
+                  "for that landing and it declares at the full rate. 0: never.", 0, 1),
              F("rules.customs.bond", "Cargo may be kept sealed in bond", "bool",
                "At the desk a captain may leave a cargo sealed aboard: no tax and no risk on it, but none of it "
                "can be sold in that port until the house has sailed."),
@@ -855,7 +944,10 @@ SECTIONS = [
                         "Her greed and cunning shape the odds; her pictures are this port's Tax lady pictures.",
                         options_from="characters", default="taxlady"),
                       C("mood", "Officer's mood swing", "pct", "How far her odds can move from one visit to the next.",
-                        min=0, max=1, default=0.15)]},
+                        min=0, max=1, default=0.15),
+                      C("purse", "Dealers' purse size", "num", "How much silver this port's dealers have each month for "
+                        "each cargo, against the usual (Economy > Markets sets the usual). 1 is normal; a great port is "
+                        "bigger, a small one smaller. Selling past it pays far less.", min=0.05, max=20, step=0.05, default=1.0)]},
      ],
      "matrix": {"path": "ports", "sub": "mods", "cols_from": "goods", "title": "Local prices",
                 "help": "Each cell multiplies the cargo's usual price in that port. Below 1 it is made there and cheap; "
@@ -954,6 +1046,15 @@ SECTIONS = [
                   "Of the hits that miss the guns: this share lands in the hold. One kind of goods aboard, every "
                   "kind as likely as the next (gold included), loses part of its units over the side."),
              _pct("rules.battle.cargo_hit_min", "Hold hit: share of that good lost, least"),
+             F("rules.battle.spite", "Spiteful crews aim for the dearest cargo", "bool",
+               "On: some enemy crews would rather sink a rich cargo than let it sail. Rolled at the sighting; "
+               "Powder and the enemy say so. They hit the hold more often and mostly the dearest good aboard."),
+             _pct("rules.battle.spite_chance", "Pirate crews that are spiteful"),
+             _pct("rules.battle.spite_chance_lord", "Li Yue's war junk crews that are spiteful"),
+             _pct("rules.battle.spite_aim", "Spiteful hold hits that find the dearest good",
+                  "The rest land on any good aboard, as usual."),
+             F("rules.battle.spite_hold", "Spiteful crews hit the hold this many times as often", "float",
+               "Multiplies the hold-hit share above (2 = twice as often).", min=1, max=5),
              _pct("rules.battle.cargo_hit_max", "Hold hit: share of that good lost, most"),
              F("rules.battle.parley", "Pirates name a price to let the fleet pass", "bool",
                "Before the first shot. The pirate queen's fleet never does."),
@@ -1025,6 +1126,15 @@ SECTIONS = [
                "Multiplies the pirate attack chance. An empty hold and no fame gives this.", min=0, max=5, step=0.05),
              F("rules.battle.allure_cargo", "Keener by this much for a rich hold (at the most)", "num", min=0, max=5, step=0.05),
              F("rules.battle.allure_fame", "Keener by this much for a famous fleet (at the most)", "num", min=0, max=5, step=0.05),
+             F("rules.battle.worth_ref", "Rich house: net worth that counts as half way rich", "int",
+               "How rich a house looks to the pirates: net worth / (net worth + this).", min=1, max=10**12),
+             F("rules.battle.allure_worth", "Keener by this much for a rich house (at the most)", "num", min=0, max=5, step=0.05),
+             F("rules.battle.match_worth", "A rich house meets this much more fire (at the most)", "num",
+               "Added to the match, so their guns grow with the house.", min=0, max=5, step=0.05),
+             F("rules.battle.match_worth_rounds", "A rich house's enemies last this many more rounds (at the most)", "num",
+               min=0, max=10, step=0.25),
+             F("rules.battle.lord_worth", "The pirate queen finds a rich house this much more often (at the most)", "num",
+               "1 doubles her chance for the richest houses.", min=0, max=10, step=0.1),
              F("rules.battle.fame_win", "Fame gained by winning a fight", "num", min=0, max=100, step=0.25),
              F("rules.battle.fame_broke_off", "Fame gained when they break off", "num", min=0, max=100, step=0.25),
              _pct("rules.battle.fame_decay", "Fame that fades each month"),
@@ -1095,7 +1205,13 @@ SECTIONS = [
              F("rules.events.boom_min", "Boom: lowest price (times normal)", "num", min=1, max=100, step=0.5),
              F("rules.events.boom_max", "Boom: highest price (times normal)", "num", min=1, max=100, step=0.5),
              F("rules.events.windfall_min_turns", "Lasts at least (months)", "int", min=1, max=12),
-             F("rules.events.windfall_max_turns", "Lasts at most (months)", "int", min=1, max=12)]},
+             F("rules.events.windfall_max_turns", "Lasts at most (months)", "int", min=1, max=12),
+             F("rules.events.stack_booms", "Booms stack", "bool",
+               "Off: when a shortage, a boom, a hot-tip boom or a ban meet on one cargo in one port, only the strongest "
+               "counts, and a boom never runs past its own size. On: they multiply (the old way, which made 34x prices)."),
+             F("rules.events.boom_eat_depths", "Selling this many depths ends a boom", "num",
+               "Selling into a boom or a shortage uses it up: this many times the cargo's depth ends it, a smaller sale "
+               "shrinks it in proportion. 0 turns it off.", min=0, max=100, step=0.25)]},
      ]},
 ]
 
@@ -1322,6 +1438,20 @@ def validate(raw):
             if key in cfg["goods"] and int(cfg["goods"][key].get("depth", 0)) == old_depth:
                 cfg["goods"][key]["depth"] = DEFAULTS["goods"][key]["depth"]
         mk["depth_v2"] = True
+
+    # Game 3 review (19 Nov 2026), once: the swingiest cargoes (porcelain, tea, silk) are calmed to at most
+    # CALM_VOLS, and hot tips saved in the file come half as often. Values already lower stay as they are,
+    # and anything changed by hand afterwards sticks.
+    if not mk.get("review3_v1"):
+        for key, top in CALM_VOLS.items():
+            if key in cfg["goods"] and float(cfg["goods"][key].get("vol", 0)) > top:
+                cfg["goods"][key]["vol"] = top
+        saved = ((raw.get("rules") or {}).get("registrar") or {}) if isinstance(raw.get("rules"), dict) else {}
+        reg = cfg["rules"]["registrar"]
+        for key in ("hot_home_chance", "hot_away_chance"):
+            if key in saved:                       # a saved chance is halved; a missing one is already the new default
+                reg[key] = round(float(reg[key]) * 0.5, 4)
+        mk["review3_v1"] = True
 
     # Bigger pirate fleets (19 Nov 2026): saved settings still at the old shipped caps (12 junks, the
     # pirate queen 16) move to the new ones, once; caps set by hand stay.

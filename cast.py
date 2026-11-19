@@ -467,7 +467,9 @@ for _who, _keys in {
          "m.gift.cool", "m.gift.gracious", "l.gift"]
         + ["m.gift.{}.{}".format(t, i) for t in ("cool", "gracious") for i in range(10)],
     "bosun": ["l.typhoon", "l.storm", "l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
-              "l.long_fight", "l.plundered", "l.damage", "l.attack_met", "l.retreated", "l.parley_paid"],
+              "l.long_fight", "l.plundered", "l.damage", "l.attack_met", "l.retreated", "l.parley_paid",
+              # The crew hides a share (19 Nov 2026): the bosun tells you what they saved.
+              "l.hid_pirates", "l.hid_customs", "l.hid_desk", "l.hid_bankrupt"],
     "lender": ["m.borrowed", "m.repaid", "e.no_more_loans", "e.nothing_to_repay"] + [
         "m.{}.{}.{}".format(op, tier, i) for op, tiers in (("borrowed", ("easy", "careful", "danger")),
                                                       ("repaid", ("part", "still", "under", "clear")))
@@ -602,6 +604,10 @@ SAY = {
     "l.robbed": "You were beaten and robbed in the street. Silver is safer in the bank.",
     "l.driven_off": "Pirate junks closed in, but {pirate}'s fleet drove them off.",
     "l.seized": "Customs officers searched the fleet, seized your {contraband} and fined you.",
+    "l.hid_pirates": "Before they came over the rail, the crew stowed some of the cargo where no pirate would look.",
+    "l.hid_customs": "The crew had some of it under the ballast before the officers came aboard. They never found it.",
+    "l.hid_desk": "While she counted, the crew slipped some of it below decks. Untaxed, and still ours.",
+    "l.hid_bankrupt": "Before the clerks came aboard, the crew squirrelled a little away. It is yours still.",
     "l.attack": "You were attacked. Your orders were to {orders}.",
     "l.attack_noguns": "You were attacked. With no guns aboard, you could only run.",
     "l.attack_met": "You were attacked at sea.",

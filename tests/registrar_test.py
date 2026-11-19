@@ -21,6 +21,7 @@ from engine import Game, GOODS, PORTS  # noqa: E402
 def setup(**registrar):
     """The price-tip tests run with hot tips off; the hot-tip tests turn them on."""
     base = config.defaults()
+    base["rules"]["customs"]["spot_home"] = 0.0     # her welcome, not a spot check
     base["rules"]["start"]["where"] = "home"
     base["rules"]["registrar"]["hot_enabled"] = False
     # The hot-tip tests below want a tip every time unless they say otherwise.

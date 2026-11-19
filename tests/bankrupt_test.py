@@ -17,6 +17,7 @@ from engine import Game, R  # noqa: E402
 def _game(**bank):
     keep = dict(R["bank"])
     R["bank"].update(bank)
+    R["hide"]["bankrupt"] = False      # these count the restart to the dollar (the crew hiding a share: hide_test)
     game = Game(seed=11)
     p = game.s["players"][game.pid_for_token(game.join("Tester", "Test House"))]
     return game, p, keep
@@ -25,6 +26,7 @@ def _game(**bank):
 def _restore(keep):
     R["bank"].clear()
     R["bank"].update(keep)
+    R["hide"]["bankrupt"] = True
 
 
 def test_interest_stops_at_the_cap_and_never_forgives():

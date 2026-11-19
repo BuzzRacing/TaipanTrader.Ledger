@@ -29,8 +29,14 @@ def arrive(seed, dest, cargo=(("tea", 30), ("general", 25))):
     return g, p
 
 
+def no_spot(cfg):
+    """These checks are about the ordinary rules: no spot checks at free landings."""
+    cfg["rules"]["customs"]["spot_home"] = cfg["rules"]["customs"]["spot_shares"] = 0.0
+    return cfg
+
+
 def main():
-    base = config.defaults()
+    base = no_spot(config.defaults())
     base["rules"]["start"]["where"] = "home"     # these voyages are written as leaving Hong Kong
     engine.configure(base)
     # 1. Arriving with cargo opens her desk, and nothing else can be done until it is cleared.
@@ -188,7 +194,7 @@ def main():
         game._open_customs(q)
         return q["customs"], game.view(pid, [pid])["me"]
 
-    engine.configure(config.defaults())               # random starts
+    engine.configure(no_spot(config.defaults()))      # random starts
     homes = set()
     for seed in range(30):
         g = Game(seed=seed)
@@ -208,7 +214,7 @@ def main():
             assert not cu["home_free"] and cu["rate"] == g.tax_rate(away) == g.tax_rate_for(p, away)
             assert cu["status"] == ("declare" if PORTS[away]["tax_rate"] > 0 else "welcome")
     assert len(homes) > 5 and homes - {"hongkong"}, homes
-    off = config.defaults()
+    off = no_spot(config.defaults())
     off["rules"]["customs"]["home_free"] = False
     assert not config.validate(off)[1]
     engine.configure(off)
@@ -221,6 +227,64 @@ def main():
         assert not cu["home_free"] and not me["home_free"] and cu["rate"] == g.tax_rate(p["home"])
     back = config.defaults()
     back["rules"]["start"]["where"] = "home"
+    engine.configure(back)
+
+    # 5c. Spot checks: a house that would pay nothing (home port, or shares that cut the tax to
+    #     nothing) is now and then stopped anyway and declares at the port's full rate, that
+    #     landing only. Its own seed: the same landing always comes out the same.
+    spot = config.defaults()
+    spot["rules"]["customs"]["spot_home"] = spot["rules"]["customs"]["spot_shares"] = 0.25
+    assert not config.validate(spot)[1]
+    engine.configure(spot)
+    stopped = {"home": 0, "shares": 0}
+    for seed in range(80):
+        g = Game(seed=seed)
+        g.join("Ann", "")
+        g.admin("start", {})
+        p = g.s["players"]["p1"]
+        home = p["home"]
+        cu, me = land(g, "p1", home)
+        again, _ = land(g, "p1", home)
+        assert cu["spot"] == again["spot"], "the same landing must come out the same"
+        if cu["spot"]:
+            stopped["home"] += 1
+            assert cu["spot"] == "home" and cu["status"] == "declare" and not cu["free"] and not cu["home_free"]
+            assert cu["rate"] == round(g.tax_rate(home), 4) > 0 and cu["say"] == "l.customs_spot_home"
+            assert me["customs"]["spot"] == "home" and "spot check" in me["customs"]["welcome"].lower()
+            assert g.tax_rate_for(p, home) == 0          # the waiver itself stands for every other landing
+        else:
+            assert cu["status"] == "welcome" and cu["home_free"] and cu["rate"] == 0
+        # A port this house holds every share of (100% cut): free, but a spot check charges the full rate.
+        away = next(k for k in PORTS if k != home and PORTS[k]["tax_rate"] > 0)
+        g._share_book(away)[p["id"]] = 10**3
+        assert g.tax_rate_for(p, away) == 0
+        cu, _ = land(g, "p1", away)
+        if cu["spot"]:
+            stopped["shares"] += 1
+            assert cu["spot"] == "shares" and cu["status"] == "declare" and cu["rate"] == round(g.tax_rate(away), 4)
+            assert cu["say"] == "l.customs_spot_shares"
+        else:
+            assert cu["status"] == "welcome" and cu["rate"] == 0
+        # Partly-cut tax is charged anyway: no spot roll, the cut rate stands.
+        g._share_book(away)[p["id"]] = 1
+        cu, _ = land(g, "p1", away)
+        assert not cu["spot"] and cu["rate"] == round(g.tax_rate_for(p, away), 4) > 0
+    assert 8 <= stopped["home"] <= 36 and 8 <= stopped["shares"] <= 36, stopped
+    # An empty hold or a free port is never stopped; 0 turns spot checks off.
+    g = Game(seed=5)
+    g.join("Ann", "")
+    g.admin("start", {})
+    p = g.s["players"]["p1"]
+    p["port"], p["cargo"], p["customs"] = p["home"], {}, None
+    g._open_customs(p)
+    assert not p["customs"]["spot"] and p["customs"]["status"] == "welcome"
+    engine.configure(no_spot(config.defaults()))
+    for seed in range(40):
+        g = Game(seed=seed)
+        g.join("Ann", "")
+        g.admin("start", {})
+        cu, _ = land(g, "p1", g.s["players"]["p1"]["home"])
+        assert not cu["spot"] and cu["status"] == "welcome"
     engine.configure(back)
 
     # 6. Her lines are read by the officer of the port the house is in.
