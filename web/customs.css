@@ -2,18 +2,30 @@
 
 .deck .veil.cx-veil { display: flex; align-items: center; justify-content: center; }
 .deck .modal.cx-desk {
-  --cl-pad: clamp(1rem, 3vw, 2rem);
-  position: relative; isolation: isolate; max-width: 46rem; width: 100%;
-  display: flex; flex-direction: column; padding: 0; overflow: hidden; background: var(--deck-night);
+  --cl-pad: clamp(.9rem, 2vw, 1.6rem);
+  position: relative; isolation: isolate; max-width: 76rem; width: 100%; height: min(48rem, 100%);
+  display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); padding: 0; overflow: hidden;
+  background: var(--deck-night);
 }
-.deck .modal.cx-desk.welcome { max-width: 44rem; }
-.cx-desk:not(.welcome) .cx-art { opacity: .24; }
-.cx-desk .cx-art .stg-mono { display: none; }
-.cx-desk.welcome .cx-head, .cx-desk.welcome .cx-say { max-width: 65%; }
-
-.cx-body { padding: var(--cl-pad) var(--cl-pad) 0; overflow-y: auto; min-height: 0; max-height: 100%; scrollbar-width: thin; overscroll-behavior: contain;
-  display: flex; flex-direction: column; gap: .45rem; }
-.deck .modal.cx-desk { max-height: 100%; }
+.cx-desk .cx-art { position: relative; min-width: 0; min-height: 0; overflow: hidden;
+  border-inline-end: 1px solid var(--edge-hi); background: var(--deck-lacquer); }
+.cx-desk .cx-art .cl-art-media { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; }
+.cx-desk .cx-art .stg-mono { display: grid; place-items: center; height: 100%; font: 4rem var(--title); color: var(--brass-hi); }
+.cx-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: linear-gradient(180deg, var(--deck-lacquer), var(--deck-night)); }
+.cx-body { padding: var(--cl-pad) var(--cl-pad) 0; overflow-y: auto; min-height: 0; flex: 1; scrollbar-width: thin; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: .75rem; overflow-wrap: anywhere; }
+.cx-body > * { flex-shrink: 0; }
+.cx-panel > footer { flex: none; display: flex; justify-content: flex-end; padding: 1rem var(--cl-pad); border-top: 1px solid var(--edge); }
+@media (max-width: 1100px) {
+  .cx-desk .cx-line { grid-template-columns: minmax(0, 1fr) 4.9rem 3.9rem; }
+  .cx-desk .cx-line .cx-slide { grid-column: 1 / -1; order: 5; }
+}
+@media (max-width: 600px) {
+  .deck .modal.cx-desk { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(9rem, 30%) minmax(0, 1fr); }
+  .cx-desk .cx-art { border-inline-end: 0; border-bottom: 1px solid var(--edge-hi); }
+  .cx-desk .cx-art .cl-art-media { object-position: 50% 20%; }
+}
 .cx-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .4rem 1rem; padding-bottom: .7rem; border-bottom: 1px solid var(--edge-hi); }
 .deck .cx-head h2 { margin: .15rem 0; color: var(--deck-ivory); font: 400 clamp(1.9rem, 4vw, 2.75rem)/1.1 var(--title); }
 .deck .cx-head .eyebrow { margin: 0; color: var(--brass-hi); font: 1.25rem var(--title); letter-spacing: normal; text-transform: none; }
@@ -49,8 +61,7 @@
 .hot-line { font-weight: 600; }
 .hot-tips h2 { margin: 0 0 .25rem; }
 .cx-tip[aria-current="true"] { border-style: solid; box-shadow: 0 0 0 1px var(--deck-jade); }
-.cx-desk.welcome .cx-tip { max-width: 65%; }
-@media (max-width: 760px) { .cx-desk.welcome .cx-tip { max-width: none; } .cx-tip-art { width: 5.5rem; height: 5.5rem; } }
+@media (max-width: 760px) { .cx-tip-art { width: 5.5rem; height: 5.5rem; } }
 .cx-tell { margin: 0; min-height: 1.4em; color: var(--brass-hi); font-family: var(--special, var(--serif)); font-size: .95rem; }
 .cx-desk[data-state="hungry"] .cx-tell { color: var(--blood-hi); }
 .cx-desk[data-state="over"] .cx-tell { color: var(--jade-hi); }
@@ -137,10 +148,6 @@
   .cx-vline { grid-template-columns: minmax(0, 1fr) auto auto; gap: .35rem; }
   .cx-vline button { grid-column: 1 / -1; justify-self: end; }
 }
-@media (max-width: 600px) {
-  .cx-desk.welcome .cx-head { max-width: 75%; }
-  .cx-desk.welcome .cx-say { max-width: none; }
-}
 @media (prefers-reduced-motion: reduce) { .cx-vline { animation: none; } .cx-bar i { transition: none; } }
 
 /* A cargo kept sealed in bond: a small pill on the slider's caption line, opposite her chip, so it
@@ -158,3 +165,35 @@
 /* The plain warning under a line declared below half its worth. */
 .cx-warn { grid-column: 1 / -1; margin: 0; font-size: .8rem; font-weight: 600; color: var(--blood-hi); }
 .cx-warn:empty { display: none; }
+
+/* The live hot tip, pinned across the top of the Port screen (player.js hotPin) from the month it is
+   given until its boom is over. Brass while it is coming, a slow glow while it is booming, grey once
+   it has gone. The cargo picture is a large square, never a small round thumbnail. */
+.hot-pin { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .85rem; align-items: center;
+  padding: .5rem .85rem .5rem .5rem; border-radius: var(--radius); border: 2px solid var(--deck-brass);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--deck-brass) 30%, transparent), color-mix(in srgb, var(--deck-brass) 10%, transparent));
+  box-shadow: 0 0 0 1px #0006, 0 4px 14px #0007; }
+.hot-pin-art { width: 4.75rem; height: 4.75rem; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--edge-hi); box-shadow: 0 3px 10px #0008; }
+.hot-pin-art img, .hot-pin-art .hot-pin-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hot-pin-text p { margin: 0; }
+.hot-pin-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.hot-pin-head b { font: 1.35rem/1.15 var(--title); color: var(--brass-hi); }
+.hot-pin-when { color: var(--deck-ivory); font-size: .95rem; margin-top: .15rem !important; }
+.hot-pin-act { text-align: end; display: grid; gap: .1rem; max-width: 17rem; }
+.hot-pin-act b { color: var(--brass-hi); font: 700 1rem/1.25 var(--sans); }
+.hot-pin-act small { color: var(--muted); }
+.hot-pin.on { animation: hot-pin-glow 2.4s ease-in-out infinite; }
+@keyframes hot-pin-glow { 50% { box-shadow: 0 0 0 1px #0006, 0 0 22px color-mix(in srgb, var(--deck-brass) 75%, transparent); } }
+.hot-pin.gone { border-color: var(--edge-hi); background: color-mix(in srgb, var(--muted) 12%, transparent); box-shadow: none; }
+.hot-pin.gone .hot-pin-art { filter: grayscale(1) brightness(.75); }
+.hot-pin.gone .hot-pin-head b, .hot-pin.gone .hot-pin-act b { color: var(--muted); }
+.hot-pin.gone .hot-badge { opacity: .55; }
+@media (prefers-reduced-motion: reduce) { .hot-pin.on { animation: none; } }
+@media (max-width: 760px) {
+  .hot-pin { grid-template-columns: auto minmax(0, 1fr); }
+  .hot-pin-art { width: 3.5rem; height: 3.5rem; }
+  .hot-pin-act { grid-column: 1 / -1; text-align: start; max-width: none; }
+}
+/* The tipped cargo's row on the Market: the brass badge after its name. */
+.mk-table tr[data-hot] .mk-name b { color: var(--brass-hi); }
+.mk-hot { margin-inline-start: .35em; font-size: .7em; }

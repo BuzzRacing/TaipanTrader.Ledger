@@ -320,6 +320,8 @@ function render() {
   Pulse.sync(inGame && ui.tab === "market" && !ui.tally);
   markSpeaking();
   if (typeof Battle !== "undefined") Battle.sync();
+  TownCrier.sync(S, D, inGame && !portOverlay && !S.me.promotion && !Battle.busy()
+    && !document.querySelector(".ceremony") && !document.querySelector("dialog[open]"));
 }
 
 /* The living background and the stage's picture between lines. */
@@ -1097,9 +1099,12 @@ function marketRow(g) {
   const tag = good.contraband ? ` <span class="tag">${te("tag.contraband")}</span>` : "";
   const held = Pulse.pinned && Pulse.good === g ? " mp-held" : "";
   const tip = te("pulse.row_tip", { good: good.name });
-  return `<tr data-good="${g}" class="${tr.side}${held}">
+  // The cargo of a live hot tip carries the brass flame (hotPin), where to buy it or where it booms.
+  const hp = hotLive(), hot = hp && !hotGone(hp) && hp.good === g && (me.port === hp.home || me.port === hp.port);
+  const hotTag = hot ? ` <span class="hot-badge mk-hot">${HOT_FLAME}${te("hot.badge")}</span>` : "";
+  return `<tr data-good="${g}" class="${tr.side}${held}"${hot ? ' data-hot="1"' : ""}>
     <td class="mk-ico" data-act="pulse_pin" data-good="${g}" title="${tip}">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
-    <td class="mk-name" data-act="pulse_pin" data-good="${g}" title="${tip}"><b>${esc(good.name)}</b>${tag}</td>
+    <td class="mk-name" data-act="pulse_pin" data-good="${g}" title="${tip}"><b>${esc(good.name)}</b>${tag}${hotTag}</td>
     <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${tr.sealed ? `<small class="mk-sealed">${te("market.sealed", { n: tr.sealed.toLocaleString() })}</small>` : ""}${paidHtml(g)}</td>
     <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
       value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"${tr.sealed ? ` title="${te("market.sealed_block", { n: tr.sealed.toLocaleString(), good: good.name, port: portName(me.port) })}"` : ""}></td>
@@ -1404,7 +1409,7 @@ function portTab() {
   const seg = `<nav class="pt-tabs" role="tablist" aria-label="${te("port.views")}">${views.map(v =>
     `<button type="button" role="tab" class="pt-tab${ui.portView === v ? " on" : ""}" data-act="port_view" data-v="${v}" aria-selected="${ui.portView === v}"><span>${portViewLabel(v)}</span>${portBadge(v)}</button>`).join("")}</nav>`;
   const body = { arrival: portArrival, accounts: portAccounts, log: portLog, news: portNews, services: portServices }[ui.portView]();
-  return `<div class="pt">${seg}<div class="pt-view pt-${ui.portView}">${body}</div></div>`;
+  return `<div class="pt">${hotPin()}${seg}<div class="pt-view pt-${ui.portView}">${body}</div></div>`;
 }
 
 /* A small count on a sub-tab: things needing attention on Arrival, lines in this voyage's log, news items. */
@@ -1437,6 +1442,38 @@ function hotTipsCard() {
   const list = (S.me.hot_tips || []).filter(tp => tp.ends >= S.turn);
   if (!list.length) return "";
   return `<section class="card hot-tips">${list.map(tp => hotTipHtml(tp, false)).join("")}</section>`;
+}
+
+/* The live hot tip, pinned in brass across the top of the Port and Market screens from the month it
+   is given until its boom is over, so it can't be lost among the ordinary price moves. One line:
+   the cargo, where it booms, when (or how long is left), and what to do in the port the fleet is in. */
+/* A tip is shown from the month it is given until the latest its boom could run, and for one month after
+   it really ends (tp.over, set by the server; how long it runs is never sent ahead). */
+const hotGone = tp => tp.over != null && S.turn >= tp.over;
+const hotLive = () => ((S.me && S.me.hot_tips) || []).filter(x => (x.ends >= S.turn || (x.over != null && S.turn === x.over))
+  && D.goods[x.good] && D.ports[x.port]).slice(-1)[0];
+function hotPin() {
+  const me = S.me, tp = hotLive();
+  if (!tp) return "";
+  const goods = D.goods[tp.good].name, where = portName(tp.port), home = portName(tp.home || me.home);
+  const on = S.turn >= tp.lands, gone = hotGone(tp);
+  const when = gone ? te("hot.over", { where, goods })
+    : on ? `${te("hot.on", { where })} · ${te("hot.any_month")}`
+    : `${te("hot.soon", { where, when: hotWhen(tp.lands - S.turn) })} · ${te("hot.how_long")}`;
+  const held = (me.cargo || {})[tp.good] || 0;
+  const act = gone ? te("hot.pin_missed")
+    : on && me.port === tp.port ? te("hot.pin_sell", { goods, where })
+    : !on && me.port === tp.home ? te("hot.pin_buy", { goods, port: home })
+    : !on ? te("hot.pin_go", { goods, where }) : te("hot.pin_race", { where });
+  return `<section class="hot-pin${gone ? " gone" : on ? " on" : ""}" role="status" aria-label="${te("hot.badge")}">
+    <span class="hot-pin-art" aria-hidden="true">${Media.html("cargo", tp.good, "icon", "hot-pin-img", (D.graphics.goods || {})[tp.good], { mode: "fixed" })}</span>
+    <div class="hot-pin-text">
+      <p class="hot-pin-head"><span class="hot-badge">${HOT_FLAME}${te("hot.badge")}</span>
+        <b>${te("hot.pin_route", { goods, where })}</b></p>
+      <p class="hot-pin-when">${when}</p>
+    </div>
+    <div class="hot-pin-act"><b>${act}</b>${held ? `<small>${te("hot.pin_held", { n: held, goods })}</small>` : ""}</div>
+  </section>`;
 }
 
 /* ---- The Mayor's Parlour: once per visit, a purse of silver for standing in this port.
@@ -1906,60 +1943,105 @@ function mountsLine(s, spec) {
   return `${s.cannons} ${esc(t("tag.cannons"))} + ${s.guns} · ${te("fleet.mounts", { used: s.guns + cannonSlots() * s.cannons, slots: spec.slots })}`;
 }
 
+/* Three classes of ship (18 Nov 2026): merchantmen (cargo and guns, the line), escorts (guns only, the van)
+   and cargo ships (hold only, the rear). The Fleet tab and the shipyard keep them apart, each with its own count
+   and limit; escorts and cargo ships open once the line of merchantmen is full. */
+const CLASS_ORDER = ["trader", "escort", "cargo"];
+const roleOf = k => ((D.ships[k] || {}).role) || "trader";
+function classInfo(role) {
+  const c = (S.me.classes || {})[role];
+  if (c) return c;
+  const r = (D.fleet_rules || {})[role] || { max: D.max_fleet, unlock: 0 };
+  const n = S.me.ships.filter(s => roleOf(s.type) === role).length;
+  const traders = S.me.ships.filter(s => roleOf(s.type) === "trader").length;
+  return { n, max: r.max, unlock: r.unlock, open: traders >= r.unlock };
+}
+
 function shipCard(s, i, yard) {
-  const me = S.me, spec = D.ships[s.type], p = Math.round(100 * s.hull / spec.hull);
+  const me = S.me, spec = D.ships[s.type], p = Math.round(100 * s.hull / spec.hull), role = roleOf(s.type);
   const free = s.free != null ? s.free : spec.slots - s.guns - cannonSlots() * (s.cannons || 0);
   const fix = s.repair
     ? btn(te("fleet.repair", { cost: money(s.repair) }), "repair", `data-i="${i}"`, "fl-btn")
     : `<span class="fl-ok">${te("fleet.seaworthy")}</span>`;
-  return `<article class="fl-ship">
+  const traders = me.ships.filter(x => roleOf(x.type) === "trader").length;
+  const lastTrader = D.keep_trader !== false && role === "trader" && traders <= 1;
+  const line = role === "escort" ? `${esc(spec.name)} · ${te("fleet.no_hold")}`
+    : role === "cargo" ? `${esc(spec.name)} · ${te("col.hold").toLowerCase()} ${spec.hold} · ${te("fleet.no_guns")}`
+    : te("fleet.ship_line", { type: spec.name, hold: spec.hold });
+  const guns = spec.slots > 0 ? `<div class="fl-stat"><span class="fl-lbl">${te("col.guns")}</span>
+        <span class="fl-pips">${gunPips(s.guns, spec.slots, s.cannons)}</span><span class="fl-v">${mountsLine(s, spec)}</span></div>` : "";
+  const gunBtns = spec.slots > 0 ? `${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${esc(t("fleet.gun_tip", { price: money(D.gun_price) }))}"`, "fl-btn", free < 1 || me.cash < D.gun_price)}
+        ${spec.cannons ? btn(te("fleet.cannon_short"), "cannon", `data-i="${i}" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}"`, "fl-btn", free < cannonSlots() || me.cash < D.cannon_price) : ""}
+        ${s.guns ? btn(te("fleet.sell_gun"), "sellgun", `data-i="${i}" title="${esc(t("fleet.sell_gun_tip", { value: money(Math.floor(D.gun_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}
+        ${s.cannons ? btn(te("fleet.sell_cannon"), "sellcannon", `data-i="${i}" title="${esc(t("fleet.sell_cannon_tip", { value: money(Math.floor(D.cannon_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}` : "";
+  return `<article class="fl-ship fl-${role}">
     <div class="fl-art">${Media.html("ship", s.type, "card", "fl-img", D.graphics.ships[s.type], { slot: "fleet:" + s.name })}</div>
     <div class="fl-body">
       <header class="fl-name"><b>${esc(s.name)}</b>${spec.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}
-        <span class="fl-type">${te("fleet.ship_line", { type: spec.name, hold: spec.hold })}</span></header>
+        <span class="fl-type">${line}</span></header>
       <div class="fl-stat"><span class="fl-lbl">${te("col.hull")}</span>
         <div class="hull"><i style="width:${p}%" class="${p < 35 ? "low" : ""}"></i></div><span class="fl-v">${s.hull}/${spec.hull}</span></div>
-      <div class="fl-stat"><span class="fl-lbl">${te("col.guns")}</span>
-        <span class="fl-pips">${gunPips(s.guns, spec.slots, s.cannons)}</span><span class="fl-v">${mountsLine(s, spec)}</span></div>
-      <div class="fl-acts">${btn(te("fleet.gun_short"), "gun", `data-i="${i}" title="${esc(t("fleet.gun_tip", { price: money(D.gun_price) }))}"`, "fl-btn", free < 1 || me.cash < D.gun_price)}
-        ${spec.cannons ? btn(te("fleet.cannon_short"), "cannon", `data-i="${i}" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}"`, "fl-btn", free < cannonSlots() || me.cash < D.cannon_price) : ""}
-        ${s.guns ? btn(te("fleet.sell_gun"), "sellgun", `data-i="${i}" title="${esc(t("fleet.sell_gun_tip", { value: money(Math.floor(D.gun_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}
-        ${s.cannons ? btn(te("fleet.sell_cannon"), "sellcannon", `data-i="${i}" title="${esc(t("fleet.sell_cannon_tip", { value: money(Math.floor(D.cannon_price * D.gun_resale)) }))}"`, "fl-btn ghost") : ""}
+      ${guns}
+      <div class="fl-acts">${gunBtns}
         ${fix}
         ${yard && me.ships.length < 2 && me.trade_down
           ? btn(te("fleet.trade_down", { value: money(me.trade_down.value) }), "tradedown", `title="${esc(t("fleet.trade_down_tip", { junk: me.trade_down.junk, hold: me.trade_down.hold, guns: me.trade_down.guns, value: money(me.trade_down.value) }))}"`, "fl-btn ghost")
-          : yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "fl-btn ghost", me.ships.length < 2) : ""}</div>
+          : yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "fl-btn ghost", me.ships.length < 2 || lastTrader) : ""}</div>
     </div></article>`;
 }
 
 function yardRow(k) {
-  const me = S.me, s = D.ships[k];
-  const cant = me.cash < s.price || me.ships.length >= D.max_fleet;
+  const me = S.me, s = D.ships[k], c = classInfo(roleOf(k));
+  const cant = me.cash < s.price || c.n >= c.max || !c.open;
   return `<tr class="${cant ? "dim" : ""}">
     <td class="yd-ico">${Media.html("ship", k, "card", "yd-img", D.graphics.ships[k], { slot: "yard" })}</td>
     <td class="yd-name"><b>${esc(s.name)}</b>${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}${s.cannons ? `<span class="tag" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}">${te("tag.cannons")}</span>` : ""}</td>
-    <td class="n">${s.hold}</td><td class="n">${s.hull}</td><td class="n">${s.slots}</td>
+    <td class="n">${s.hold || "—"}</td><td class="n">${s.hull}</td><td class="n">${s.slots || "—"}</td>
     <td class="n yd-price">${money(s.price)}</td>
     <td class="yd-do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "fl-btn primary", cant)}</td></tr>`;
+}
+
+/* One class's heading: name, what it is for, count of limit, and (for escorts and cargo ships) when it opens. */
+function classHead(role, tag) {
+  const c = classInfo(role);
+  const state = !c.open ? `<span class="fl-lock">${te("class.locked", { n: c.unlock })}</span>`
+    : c.n >= c.max ? `<span class="fl-full">${te("class.full")}</span>` : "";
+  return `<${tag} class="fl-class-head fl-${role}"><b>${te("class." + role)}</b><span class="fl-class-sub">${te("class." + role + "_sub")}</span>
+    <span class="fl-class-n">${te("class.count", { n: c.n, max: c.max })}</span>${state}</${tag}>`;
 }
 
 function fleetTab() {
   const me = S.me, yard = D.ports[me.port].shipyard;
   const totalRepair = me.ships.reduce((n, s) => n + s.repair, 0);
-  const ships = me.ships.map((s, i) => shipCard(s, i, yard)).join("");
+  const groups = CLASS_ORDER.map(role => {
+    const mine = me.ships.map((s, i) => [s, i]).filter(([s]) => roleOf(s.type) === role);
+    const c = classInfo(role);
+    if (!mine.length && role !== "trader" && !c.open) return "";      // nothing to show until the line is full
+    return `<div class="fl-class">${classHead(role, "header")}
+      ${mine.length ? `<div class="fl-ships">${mine.map(([s, i]) => shipCard(s, i, yard)).join("")}</div>`
+        : `<p class="muted fl-none">${te("class.none")}</p>`}</div>`;
+  }).join("");
+  const esc_ = classInfo("escort").n, rear = classInfo("cargo").n;
+  const screen = rear ? `<span class="fl-screen${esc_ < rear ? " thin" : ""}">${te(esc_ < rear ? "class.screen_thin" : "class.screen", { n: esc_, max: rear })}</span>` : "";
+  const maxAll = CLASS_ORDER.reduce((n, r) => n + classInfo(r).max, 0);
+  const types = Object.keys(D.ships);
   const yardBody = yard
     ? `<table class="yd-table"><thead><tr><th colspan="2">${te("col.ship")}</th><th class="n">${te("col.hold")}</th><th class="n">${te("col.hull")}</th>
         <th class="n">${te("col.guns")}</th><th class="n">${te("col.price")}</th><th></th></tr></thead>
-        <tbody>${Object.keys(D.ships).map(yardRow).join("")}</tbody></table>`
+        ${CLASS_ORDER.map(role => {
+          const rows = types.filter(k => roleOf(k) === role);
+          return rows.length ? `<tbody class="yd-class"><tr class="yd-head"><th colspan="7">${classHead(role, "div")}</th></tr>${rows.map(yardRow).join("")}</tbody>` : "";
+        }).join("")}</table>`
     : `<p class="muted fl-none">${te("yard.none", { port: portName(me.port), yards: D.yards.join(", ") })}</p>`;
+  const r = D.fleet_rules || {};
   return `<section class="card fl">
       <header class="mk-head"><h2>${te("fleet.title")}</h2>
         <span class="muted" title="${esc(t("fleet.info"))}">${te("fleet.info_short")}</span>
-        <span class="mk-hold">${te("fleet.count", { n: me.ships.length, max: D.max_fleet })}</span>
+        <span class="mk-hold">${te("fleet.count", { n: me.ships.length, max: maxAll })}</span>${screen}
         ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "fl-btn primary") : ""}</header>
-      <div class="fl-ships">${ships}</div></section>
+      ${groups}</section>
     <section class="card fl yd">
-      <header class="mk-head"><h2>${te("yard.title")}</h2>${yard ? `<span class="muted">${te("yard.limit", { n: D.max_fleet })}</span>` : ""}</header>
+      <header class="mk-head"><h2>${te("yard.title")}</h2>${yard ? `<span class="muted">${te("yard.classes", { n: D.max_fleet, max: (r.escort || {}).max || 0, cap: (r.cargo || {}).max || 0 })}</span>` : ""}</header>
       ${yardBody}</section>`;
 }
 

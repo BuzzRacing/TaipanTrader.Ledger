@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Town crier — integrated preview</title>
+<link rel="stylesheet" href="../web/style.css"><link rel="stylesheet" href="../web/deck.css"><link rel="stylesheet" href="../web/town-crier.css">
+<style>@font-face{font-family:Alegreya;src:url('../web/fonts/alegreya-latin-77f23cbd.woff2')}@font-face{font-family:'Uncial Antiqua';src:url('../web/fonts/uncial-antiqua-latin-e93ce65c.woff2')}body{min-height:100vh;background:linear-gradient(#15100c88,#15100ccc),url('../web/assets/ceremony-harbor.png') center/cover!important}header{padding:24px;display:flex;gap:18px;align-items:center;color:#f1e3c5}header button{padding:12px 20px;background:#c9a34e;border:0;color:#15100c}#checks{color:#f1e3c5}</style>
+<body class="player"><header>Full-size lacquer &amp; brass <button id="preview">Preview alert</button><span id="checks"></span></header>
+<script src="../web/common.js"></script><script src="../web/media.js"></script><script src="../web/town-crier.js"></script><script>
+T={"mon.0": "Jan", "mon.1": "Feb", "mon.2": "Mar", "mon.3": "Apr", "mon.4": "May", "mon.5": "Jun", "mon.6": "Jul", "mon.7": "Aug", "mon.8": "Sep", "mon.9": "Oct", "mon.10": "Nov", "mon.11": "Dec", "crier_alert.proclamation": "A proclamation", "crier_alert.speaker": "The Town Crier", "crier_alert.hear": "Hear ye, captains!", "crier_alert.title": "The books close soon", "crier_alert.ten": "Ten", "crier_alert.months": "Months remain", "crier_alert.month": "Month remains", "crier_alert.quote": "{n} months remain before the books close! Make your final trades and see your house’s fortune secured.", "crier_alert.quote_one": "One month remains before the books close! Make your final trades and see your house’s fortune secured.", "crier_alert.detail": "The trading window is drawing to a close. Make every remaining voyage count.", "crier_alert.continue": "Back to trading", "voy.left": "{n} months left", "voy.left_1": "Final month", "voy.closed": "The books are closed", "voy.free": "Free play", "voy.free_sub": "Books closed {date}", "voy.close": "Books close {date}", "voy.seal": "終", "voy.aria": "Voyage: {date}. {left}. Books close {end}."};
+Media.setup({items:{persona:{crier:[{id:'crier',t:'image',u:'../web/media/persona/crier/persona-crier-e0edeef4.png',r:['portrait'],p:true}]}},rules:{defaults:{},subjects:{}},fallback:{},options:{}});
+const data={start_year:1860};
+const base={game_id:'crier-test-'+Date.now(),me:{id:'preview'},phase:'port',turns_left:11,years:10};
+let checks=0;
+const assert=(condition,label)=>{if(!condition)throw Error(label);checks++};
+const shown=()=>document.querySelector('.tc-alert');
+const sync=(patch={},allow=true)=>TownCrier.sync({...base,...patch},data,allow);
+sync();assert(!shown(),'No notice at eleven months');
+sync({turns_left:10},false);assert(!shown(),'Wait for other popups');
+sync({turns_left:10});assert(shown()?.open,'Show at ten months');
+assert(shown().textContent.includes('Dec 1869'),'Configured closing date');
+assert(shown().textContent.includes('Ten months remain'),'Crier proclamation');
+const first=shown();sync({turns_left:10});assert(shown()===first,'Keep the same dialog on redraw');
+shown().querySelector('button').click();sync({turns_left:9});assert(!shown(),'Dismissed notice does not repeat');
+assert(store('seatrader_crier_ack:'+base.game_id+':preview')==='1','Acknowledgement persisted');
+sync({game_id:base.game_id+'-new',turns_left:10});assert(shown()?.open,'A new game gets its own notice');
+sync({phase:'sea',turns_left:10});assert(!shown(),'No notice during battle');
+sync({phase:'ended',turns_left:0});assert(!shown(),'No notice after game ends');
+sync({turns_left:10,free_play:true});assert(!shown(),'No notice in free play');
+sync({turns_left:10,me:null});assert(!shown(),'No notice without a seated player');
+sync({game_id:base.game_id+'-late',turns_left:9});assert(shown()?.open,'Reconnect catches a missed threshold');
+sync({phase:'ended',turns_left:0});
+sync({game_id:base.game_id+'-one',turns_left:1});assert(shown().textContent.includes('One month remains'),'Singular final-month wording');
+sync({phase:'ended',turns_left:0});
+store('seatrader_crier_ack:'+base.game_id+'-reload:preview','1');
+sync({game_id:base.game_id+'-reload',me:{id:'preview'},turns_left:10});assert(!shown(),'Persisted acknowledgement suppresses a reload');
+document.querySelector('#checks').textContent=checks+' checks passed';
+const preview=()=>TownCrier.sync({...base,game_id:base.game_id+'-visual-'+Date.now(),turns_left:10},data,true);
+document.querySelector('#preview').addEventListener('click',preview);preview();
+</script></body></html>

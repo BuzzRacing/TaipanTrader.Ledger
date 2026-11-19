@@ -10774,8 +10774,8 @@
     "video_chance": 0
    },
    "service": {
-    "mode": "fixed",
-    "seconds": 30,
+    "mode": "shuffle",
+    "seconds": 12,
     "video_chance": 0
    },
    "brand": {
@@ -11324,5 +11324,8 @@
     }
    ]
   }
- }
+ },
+ "fixes": [
+  "service_shuffle"
+ ]
 }

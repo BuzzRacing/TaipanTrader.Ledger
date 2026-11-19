@@ -308,3 +308,38 @@ body.seafighting #app { visibility: hidden; }
 
 /* Prize cargo taken from a won fight */
 .sf-rprize li:not(.none) { color: var(--jade-hi); }
+
+/* ------------------------------------------------ the fleet's classes (18 Nov 2026) -- */
+/* Enemy junks in a matched fight: a hull bar under each, the flagship (first) a little larger. */
+.sf-junks.hp i { position: relative; height: calc(var(--j) + 6px); }
+.sf-junks.hp i svg { height: var(--j); }
+.sf-junks i.flag:not(.down) { transform: scale(1.18); transform-origin: 50% 80%; }
+.sf-jhp { position: absolute; left: 8%; right: 8%; bottom: 0; height: 4px; border-radius: 2px; overflow: hidden;
+  background: color-mix(in srgb, var(--deck-ivory) 18%, transparent); }
+.sf-jhp b { display: block; height: 100%; background: var(--blood-hi); transition: width .7s ease-out; }
+/* The fleet in formation: a small heading per rank (van, line, rear) with its colour. */
+.sf-fleet ul.formed li.sf-rank { display: block; grid-column: 1 / -1; margin: .2rem 0 0; padding-left: .4rem; border-left: 3px solid var(--cls); }
+.sf-fleet ul.formed li.sf-rank small { font: .66rem/1.2 var(--special); letter-spacing: .1em; text-transform: uppercase; color: var(--brass-hi); }
+.sf-fleet .r-escort, .sf-rships .r-escort { --cls: #b3402a; }
+.sf-fleet .r-trader, .sf-rships .r-trader { --cls: var(--deck-brass); }
+.sf-fleet .r-cargo, .sf-rships .r-cargo { --cls: #3f9a7a; }
+/* A big fleet (up to 15): two columns, no gun pips, so the screen never scrolls. */
+.sf-fleet ul.many { grid-template-columns: 1fr 1fr; column-gap: .8rem; gap: .12rem .8rem; }
+.sf-fleet ul.many li { font-size: .78rem; grid-template-columns: minmax(0, 1fr) 3.2rem auto; }
+.sf-fleet ul.many .sf-pips { display: none; }
+.sf-foot:has(ul.many) { grid-template-columns: minmax(18rem, 1.25fr) minmax(0, 2.4fr); }
+.sf-rships li[class*="r-"] { padding-left: .45rem; border-left: 3px solid var(--cls); }
+.sf-rships:has(li:nth-child(7)) { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem .9rem !important; }
+.sf-rships:has(li:nth-child(7)) .sf-rpips { display: none; }
+@media (orientation: portrait) {
+  .sf-fleet ul.many { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* They misjudged the hold (18 Nov 2026): the Pay button glows jade; on Trade winds a meter fills with how good
+   a bargain it is (full = they think the hold is nearly empty). */
+#seafight .sf-btn.pay.bargain { border-color: var(--jade-hi); box-shadow: 0 0 0 1px var(--jade-hi), 0 0 18px color-mix(in srgb, var(--jade-hi) 45%, transparent);
+  animation: sfBargain 2.4s ease-in-out infinite; }
+@keyframes sfBargain { 50% { box-shadow: 0 0 0 1px var(--jade-hi), 0 0 28px color-mix(in srgb, var(--jade-hi) 70%, transparent); } }
+.sf-risk.sf-bargain { background: color-mix(in srgb, var(--deck-ivory) 14%, transparent); position: relative; }
+.sf-risk.sf-bargain i { background: var(--jade-hi); border-right: 0; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { #seafight .sf-btn.pay.bargain { animation: none; } }

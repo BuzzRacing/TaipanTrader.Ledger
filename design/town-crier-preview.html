@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Town crier · Ten months remain</title>
+<style>
+@font-face{font-family:Uncial;src:url('../web/fonts/uncial-antiqua-latin-e93ce65c.woff2')}
+@font-face{font-family:Alegreya;src:url('../web/fonts/alegreya-latin-77f23cbd.woff2')}
+:root{color-scheme:dark;--brass:#c9a34e;--ivory:#f1e3c5;--night:#15100c;font-family:Alegreya,Georgia,serif;color:var(--ivory);background:var(--night)}
+*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer}button:focus-visible{outline:3px solid #f6dfa0;outline-offset:5px}
+.preview-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 28px;border-bottom:1px solid #c9a34e45;background:#15100c;font-size:15px}.preview-bar small{color:#b4a78d}.options{display:flex;gap:8px}.options button,.reopen{padding:8px 16px;background:#271d15;color:#e4d2ad;border:1px solid #c9a34e66;border-radius:4px}.options button[aria-pressed=true]{background:#c9a34e;color:#21180f}
+main{min-height:calc(100svh - 76px);position:relative;display:grid;place-items:center;padding:64px 28px;isolation:isolate;overflow:hidden}
+.harbor{position:absolute;inset:0;z-index:-2;background:linear-gradient(#0e0c0bb0,#0e0c0bd9),url('../web/assets/ceremony-harbor.png') center/cover;filter:blur(3px);transform:scale(1.02)}
+.ribbon{position:absolute;top:20px;right:32px;text-align:right;color:#c8b892;font:15px Consolas,monospace}.ribbon small{display:block;margin-top:5px;font:14px Alegreya;letter-spacing:.09em;color:#b19555}
+.popup{width:min(960px,100%);position:relative;display:grid;grid-template-columns:38% 62%;background:linear-gradient(120deg,#231b14,#15100c 70%);border:1px solid #a17b38;outline:1px solid #c9a34e3d;outline-offset:5px;border-radius:5px;box-shadow:0 28px 100px #000c,0 0 70px #c9a34e12;overflow:hidden}
+.portrait{position:relative;min-height:575px;margin:0;overflow:hidden;border-right:1px solid #c9a34e55;background:#28241d}.portrait img{width:100%;height:100%;position:absolute;object-fit:cover;object-position:51% 0%;filter:saturate(.7) brightness(.87)}.portrait::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#15100c 1%,#15100cb0 14%,transparent 48%)}
+.portrait figcaption{position:absolute;bottom:26px;left:27px;right:20px;z-index:1}.portrait strong{display:block;font-size:26px;font-weight:400}.portrait span{color:#c9a34e;font-size:13px;text-transform:uppercase;letter-spacing:.17em}
+.content{padding:34px 42px 30px;display:flex;flex-direction:column;align-items:center;text-align:center}.eyebrow{display:flex;align-items:center;gap:12px;justify-content:center;color:var(--brass);font-size:13px;letter-spacing:.16em;text-transform:uppercase;margin:0}.eyebrow svg{width:21px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5}
+h1{font:normal 30px/1.25 Uncial,Georgia,serif;margin:19px 0 8px;color:#ead8ae}.ornament{width:100%;color:var(--brass);font-size:12px;background:linear-gradient(90deg,transparent,#c9a34e70 40%,transparent 40%,transparent 60%,#c9a34e70 60%,transparent) center/100% 1px no-repeat}
+.count{margin-top:9px;font:normal 108px/1 Uncial,Georgia,serif;color:#e3c37a;text-shadow:0 2px 15px #c9a34e20}.months{font-size:16px;text-transform:uppercase;letter-spacing:.23em;color:#d5be8e;margin:3px 0 22px}
+blockquote{margin:0;font-size:23px;line-height:1.4;color:#eee0c5}blockquote p{margin:0}.detail{color:#bcb09a;font-size:17px;line-height:1.45;margin:17px 0 22px;max-width:340px}.cta{margin-top:auto;min-height:49px;width:100%;border:1px solid #d7b96b;border-radius:4px;color:#1b160f;background:linear-gradient(#dfc68a,#bc974a);font-size:19px;box-shadow:inset 0 1px #fff4ce60,0 4px 14px #0005}.cta:hover{background:#ead199}.close-date{font-size:13px;letter-spacing:.07em;margin:13px 0 0;color:#b39d75}
+body[data-style=paper] .content{background:radial-gradient(ellipse at 30% 20%,#f5e9ce,#dfc899);color:#302216;outline:1px solid #977536;outline-offset:-11px}body[data-style=paper] h1,body[data-style=paper] blockquote{color:#342318}body[data-style=paper] .eyebrow,body[data-style=paper] .months,body[data-style=paper] .detail,body[data-style=paper] .close-date{color:#6c5231}body[data-style=paper] .count{color:#775322}body[data-style=paper] .cta{background:#263b31;color:#f1e3c5;border-color:#8c743f}
+body[data-style=compact] .popup{width:min(760px,100%);grid-template-columns:31% 69%}body[data-style=compact] .portrait{min-height:480px}body[data-style=compact] .content{padding:28px 34px}body[data-style=compact] h1{font-size:25px}body[data-style=compact] .count{font-size:78px}body[data-style=compact] blockquote{font-size:21px}body[data-style=compact] .months{margin-bottom:15px}
+.reopen{display:none}.dismissed .popup{display:none}.dismissed .reopen{display:block}
+@media(max-width:650px){.preview-bar{padding:12px;flex-direction:column;gap:9px}.preview-bar small{display:none}.options button{padding:7px 10px;font-size:14px}main{padding:58px 15px 24px}.ribbon{right:18px;top:15px;font-size:12px}.ribbon small{font-size:11px}.popup,body[data-style=compact] .popup{grid-template-columns:1fr}.portrait,body[data-style=compact] .portrait{min-height:165px;border-right:0;border-bottom:1px solid #c9a34e55}.portrait img{object-position:50% 9%;object-fit:cover;height:auto;top:-45px}.portrait::after{background:linear-gradient(90deg,#15100c99,transparent 80%),linear-gradient(0deg,#15100c,transparent 70%)}.portrait figcaption{bottom:15px;left:22px}.portrait strong{font-size:23px}.content,body[data-style=compact] .content{padding:24px}.eyebrow{font-size:11px}h1{font-size:25px;margin-top:13px}.count{font-size:77px}.months{font-size:13px;margin-bottom:16px}blockquote{font-size:21px}.detail{font-size:16px;margin:15px 0 20px}}
+</style>
+<body data-style="dark">
+<nav class="preview-bar" aria-label="Mockup styles"><div>Town crier <small> / 10-month alert mockup</small></div><div class="options"><button data-style="dark" aria-pressed="true">Lacquer & brass</button><button data-style="paper" aria-pressed="false">Parchment notice</button><button data-style="compact" aria-pressed="false">Compact</button></div></nav>
+<main>
+  <div class="harbor"></div>
+  <div class="ribbon">10 months left<small>BOOKS CLOSE DEC 1869</small></div>
+  <section class="popup" role="dialog" aria-modal="true" aria-labelledby="alert-title" aria-describedby="crier-message">
+    <figure class="portrait"><img src="../web/media/persona/crier/persona-crier-e0edeef4.png" alt="The town crier with her bell and proclamation"><figcaption><span>A proclamation</span><strong>The Town Crier</strong></figcaption></figure>
+    <div class="content">
+      <p class="eyebrow"><svg viewBox="0 0 24 28" aria-hidden="true"><path d="M5 20h14l-2-4v-6a5 5 0 0 0-10 0v6zM10 23q2 4 4 0M12 2v3M3 7 1 5m20 2 2-2"/></svg>Hear ye, captains!</p>
+      <h1 id="alert-title">The books close soon</h1>
+      <div class="ornament" aria-hidden="true">◆</div>
+      <div class="count">10</div><p class="months">Months remain</p>
+      <blockquote id="crier-message"><p>“Ten months remain before the books close! Make your final trades and see your house’s fortune secured.”</p></blockquote>
+      <p class="detail">The trading window is drawing to a close.<br>Make every remaining voyage count.</p>
+      <button class="cta" id="continue">Back to trading &nbsp; →</button>
+      <p class="close-date">BOOKS CLOSE · DECEMBER 1869</p>
+    </div>
+  </section>
+  <button class="reopen">Preview alert again</button>
+</main>
+<script>
+const main=document.querySelector('main');
+document.querySelectorAll('.options button').forEach(button=>button.addEventListener('click',()=>{document.body.dataset.style=button.dataset.style;document.querySelectorAll('.options button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));main.classList.remove('dismissed')}));
+document.querySelector('#continue').addEventListener('click',()=>{main.classList.add('dismissed');document.querySelector('.reopen').focus()});
+document.querySelector('.reopen').addEventListener('click',()=>{main.classList.remove('dismissed');document.querySelector('#continue').focus()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){main.classList.add('dismissed');document.querySelector('.reopen').focus()}});
+</script>
+</body>
+</html>

@@ -182,7 +182,7 @@ def test_hot_tip_names_a_boom_elsewhere_in_a_cargo_cheap_at_home():
 
 
 def test_the_boom_lands_when_she_says_and_lasts():
-    setup(hot_enabled=True, hot_lead=1, hot_months=2, hot_min=4.0, hot_max=4.0)
+    setup(hot_enabled=True, hot_lead=1, hot_months_min=2, hot_months_max=2, hot_min=4.0, hot_max=4.0)
     game, p = anchor(port="hongkong", home="hongkong")
     tip = p["customs"]["tip"]
     port, g = tip["port"], tip["good"]
@@ -199,7 +199,7 @@ def test_the_boom_lands_when_she_says_and_lasts():
 
 
 def test_at_most_one_hot_tip_at_a_time():
-    setup(hot_enabled=True, hot_every=1, hot_lead=1, hot_months=2)
+    setup(hot_enabled=True, hot_every=1, hot_lead=1, hot_months_min=2, hot_months_max=2)
     game, p = anchor()
     tip = p["customs"]["tip"]
     assert tip.get("hot") and tip["ends"] == 3, tip
@@ -305,6 +305,50 @@ def test_never_two_hot_tips_at_once_whoever_gives_it():
     game._open_customs(p)
     assert p["customs"]["tip"]["by"] == "registrar"
     assert len([t for t in p["hot_tips"] if t["ends"] >= game.s["turn"]]) == 1
+
+
+def _boom_run(seed_turns=40, **rules):
+    """Play one hot tip from the desk to well past its boom. Returns the game, tip, normal price and the
+    price (times normal) seen each month."""
+    setup(hot_enabled=True, hot_lead=1, hot_min=4.0, hot_max=4.0, **rules)
+    game, p = anchor(port="hongkong", home="hongkong")
+    tip = p["customs"]["tip"]
+    port, g = tip["port"], tip["good"]
+    normal = GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)
+    seen = {}
+    for _ in range(tip["ends"] + 3):
+        game._move_markets([])
+        game.s["turn"] += 1
+        seen[game.s["turn"]] = game.s["prices"][port][g] / normal
+    return game, p, tip, seen
+
+
+def test_the_boom_runs_a_secret_one_to_three_months():
+    lengths = set()
+    setup(hot_enabled=True, hot_months_min=1, hot_months_max=3)
+    for n in range(60):
+        game, p = anchor(port="hongkong", home="hongkong", seed=100 + n)
+        tip = p["customs"]["tip"]
+        assert tip["ends"] == tip["lands"] + 2, tip                       # the tip shows only the longest
+        assert "turns" not in tip and "months" not in tip, tip            # the real length is never sent
+        lengths.add(game.s["forecasts"][-1]["turns"])
+    assert lengths == {1, 2, 3}, lengths
+
+
+def test_the_boom_holds_its_price_then_drops_when_it_ends():
+    for months in (1, 2, 3):
+        game, p, tip, seen = _boom_run(hot_months_min=months, hot_months_max=months)
+        last = tip["lands"] + months - 1
+        for t in range(tip["lands"], last + 1):
+            assert seen[t] >= 4.0 - 1e-9, (months, t, seen)               # never below the foretold level
+        assert seen[last + 1] < 2.6, (months, seen)                       # over: back near normal at once
+        assert tip["over"] == last + 1, (months, tip)
+        assert not game._hot_live(p) or game.s["turn"] < tip["over"]       # a new tip may come once it is over
+
+
+def test_the_boom_swings_when_hold_is_off():
+    game, p, tip, seen = _boom_run(hot_months_min=3, hot_months_max=3, hot_hold=False)
+    assert tip["over"] == tip["lands"] + 3, tip
 
 
 def test_officer_hot_lines_are_read_by_the_ports_officer():

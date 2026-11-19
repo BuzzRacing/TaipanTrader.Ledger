@@ -63,7 +63,8 @@ KINDS = {
                           ["speaking", "While speaking: shown (or played) when they read a line"],
                           ["idle", "Idle: harbor board gallery between lines"],
                           ["happy", "Happy: good news (sales, escapes, wins; the tax lady's tax paid and buyout)"],
-                          ["angry", "Angry: bad news (losses, seizures, threats; the tax lady catching a lie)"]],
+                          ["angry", "Angry: bad news (losses, seizures, threats; the tax lady catching a lie)"],
+                          ["sly", "Sly: a secret or a bargain (Powder's whisper when pirates misjudge the hold)"]],
                 "default_role": "speaking"},
     "port": {"label": "Ports", "one": "Port", "subjects": "ports",
              "roles": [["banner", "Banner at the top of the market and port tabs"],
@@ -133,7 +134,7 @@ RULE_DEFAULTS = {
     "ship": {"mode": "random", "seconds": 14, "video_chance": 0},
     "cargo": {"mode": "fixed", "seconds": 20, "video_chance": 0},
     "scene": {"mode": "shuffle", "seconds": 12, "video_chance": 25},
-    "service": {"mode": "fixed", "seconds": 30, "video_chance": 0},
+    "service": {"mode": "shuffle", "seconds": 12, "video_chance": 0},
     "brand": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "reference": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "other": {"mode": "fixed", "seconds": 30, "video_chance": 0},
@@ -174,8 +175,26 @@ def _read():
     except (OSError, ValueError):
         return None
     lib = _tidy(lib)
+    if _one_time_fixes(lib):
+        _write(lib)
+        return lib
     _cache.update(mtime=mtime, lib=lib)
     return lib
+
+
+# Changes to libraries saved before a default changed. Each runs once per library, then is listed in
+# lib["fixes"] so a later choice in Admin > Media Library is never undone.
+#   service_shuffle: Port services pictures used to be "fixed" (always the starred one); they now
+#                    shuffle through every picture of that service.
+def _one_time_fixes(lib):
+    changed = False
+    if "service_shuffle" not in lib["fixes"]:
+        d = lib["rules"]["defaults"]
+        if d.get("service", {}).get("mode") == "fixed":
+            d["service"] = dict(RULE_DEFAULTS["service"])
+        lib["fixes"].append("service_shuffle")
+        changed = True
+    return changed
 
 
 def _write(lib):
@@ -259,6 +278,8 @@ def _tidy(lib):
         "new_nsfw": opt.get("new_nsfw") if opt.get("new_nsfw") in ("auto", "yes", "no") else "auto",
     }
     out["slots"] = _clean_slots(lib.get("slots"))
+    out["fixes"] = [x for x in (lib.get("fixes") if isinstance(lib.get("fixes"), list) else [])
+                    if isinstance(x, str)][:50]
     seen = set()
     for it in lib.get("items") if isinstance(lib.get("items"), list) else []:
         it = _clean_item(it)
@@ -414,9 +435,27 @@ def subjects(cfg):
         caps, houses = captains.media_subjects()
     except Exception:
         caps, houses = [], []
-    return {"persona": chars, "captain": caps, "house": houses, "port": names("ports"), "ship": names("ships"), "cargo": names("goods"),
+    return {"persona": chars, "captain": caps, "house": houses, "port": names("ports"), "ship": ship_names(cfg), "cargo": names("goods"),
             "rank": [[rank["id"], rank["title"]] for rank in cfg.get("ranks", [])],
             "service": [list(s) for s in SERVICES], "scene": [list(s) for s in SCENES], "brand": [list(s) for s in BRAND_SLOTS], "reference": [], "other": []}
+
+
+# The historical class behind each ship type, shown with the type's own name in the library so a renamed
+# type ("Blood Moon") still says what she is (an East Indiaman, a merchantman).
+SHIP_CLASS = {"junk": "Junk", "lorcha": "Lorcha", "barque": "Barque", "clipper": "Clipper", "indiaman": "East Indiaman",
+              "gunboat": "Paddle Gunboat", "countryship": "Country Ship"}
+ROLE_LABEL = {"trader": "Merchantman", "escort": "Escort, guns only", "cargo": "Cargo ship, hold only"}
+
+
+def ship_names(cfg):
+    out = []
+    for k, v in (cfg.get("ships") or {}).items():
+        v = v or {}
+        name = v.get("name") or k
+        cls = SHIP_CLASS.get(k, k.replace("_", " ").title())
+        role = ROLE_LABEL.get(v.get("role") or "trader", "Merchantman")
+        out.append([k, "{} · {} · {}".format(name, cls, role) if cls.lower() != name.lower() else "{} · {}".format(name, role)])
+    return out
 
 
 def _guess(fname):

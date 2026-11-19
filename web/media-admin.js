@@ -268,6 +268,48 @@
     return w || { who: "woman in her thirties", hair: "glossy black hair pinned with jade and gold", dress: "a close-fitting embroidered oxblood silk jacket open at the throat" };
   }
 
+  // What each ship type looks like (18 Nov 2026: the fleet's three classes). The library lists a ship as
+  // "her name · her class · what she does", and the starting prompt describes the class, not the name, so a
+  // renamed type ("Blood Moon") still comes out as an East Indiaman. Unknown types fall back to the name.
+  // Women only on deck (the Pirate Queen sandbox), as in the battle pictures.
+  const SHIP_LOOK = {
+    junk: "a Chinese trading junk with battened red-brown lug sails, a high carved stern and a painted eye on the bow, a few small guns on deck",
+    lorcha: "a Macanese lorcha: a European-built hull with Chinese battened junk sails, trim and quick, a handful of brass guns along the rail",
+    barque: "a three-masted merchant barque, square-rigged fore and main, fore-and-aft mizzen, a row of gunports, holds deep with cargo",
+    clipper: "a sleek long-hulled opium clipper with towering raked masts and clouds of white canvas, a knife-sharp bow cutting the sea",
+    indiaman: "a great black-and-gold East Indiaman, a towering three-decker merchant ship with a double row of gunports and a gilded stern gallery",
+    gunboat: "a black-hulled paddle steam gunboat hired as a convoy escort: a tall smoking funnel amidships, big paddle boxes, two masts with furled sails, six heavy pivot cannons on deck and no cargo hatches, lean and menacing",
+    countryship: "a huge teak-built Indian country ship, broad and deep-bellied, sitting low in the water under a mountain of cargo, bales and chests lashed on deck, no guns at all, slow and heavy"
+  };
+  const SHIP_ROLE_LOOK = {
+    escort: "a black-hulled armed escort steamer with heavy deck cannons and no cargo, lean and menacing",
+    cargo: "a broad, deep-bellied unarmed cargo ship sitting low in the water under a mountain of cargo",
+    trader: "an armed merchant trading ship with cargo and guns"
+  };
+  const SHIP_WOMEN = "her crew are all women, sea-women in rolled shirtsleeves and sashes, women only";
+  function shipPrompt(subject, role, style) {
+    const spec = ((CFG && CFG.ships) || {})[subject] || {};
+    const look = SHIP_LOOK[subject] || SHIP_ROLE_LOOK[spec.role || "trader"] || ("a " + (spec.name || subject));
+    if (role === "battle") return `${look}, in the thick of a sea battle against pirate junks off the China coast in 1860, cannon smoke, muzzle flashes and spray, ${spec.role === "escort" ? "she steams ahead of the merchant convoy to take the enemy's fire" : spec.role === "cargo" ? "she lumbers at the back of the convoy behind the escorts as shot splashes around her" : "she fires a broadside from the line of the convoy"}, ${SHIP_WOMEN}, wide cinematic view, ${style}`;
+    if (role === "sailing") return `${look}, under way on the South China Sea in 1860, ${spec.role === "escort" ? "steaming at the head of a merchant convoy, black smoke trailing" : spec.role === "cargo" ? "sailing at the rear of a merchant convoy, an escort steamer ahead" : "full sail, spray over the bow"}, golden late light, wide view, ${SHIP_WOMEN}, ${style}`;
+    return `Ship portrait of ${look}, 1860s China Seas, the whole ship side-on and filling the frame, detailed rigging and weathered hull, calm harbour water, ${SHIP_WOMEN}, ${style}`;
+  }
+
+  const PERSONA_MOODS = {
+    speaking: "caught mid-sentence, lips parted, one hand raised as she makes her point",
+    happy: "a broad, triumphant, delighted smile, eyes bright, good news written all over her face",
+    angry: "narrowed eyes, jaw set, a sharp warning gesture, plainly furious at bad news",
+    sly: "a sly conspiratorial half-smile and a knowing wink, leaning in close as if sharing a secret, one finger raised to her lips",
+    idle: "a relaxed, unguarded moment, looking off to one side, lost in thought"
+  };
+  function personaPrompt(subject, mood) {
+    const base = (CFG.characters[subject] || {}).portrait_prompt || "";
+    const clause = PERSONA_MOODS[mood];
+    if (!clause || !base) return base;
+    const at = base.indexOf(", romanticized");
+    return at > 0 ? base.slice(0, at) + ", " + clause + base.slice(at) : base + ", " + clause;
+  }
+
   function defaultPrompt(kind, subject, role) {
     if (kind === "persona" && CFG.characters[subject]) return CFG.characters[subject].portrait_prompt || "";
     // Captains and Houses (Admin > Captains): their own prompt, or the template filled in.
@@ -280,7 +322,7 @@
     if (kind === "port" && role === "mayor") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, a former pirate queen who is now the lady mayor of ${name} in 1860 and keeps the town's ledger and collects its taxes, seated at a heavy teak desk and looking straight into the camera with a sly, appraising, seductive half-smile, as if she already knows what you owe her and how you will pay, direct eye contact, ${w.hair}, ${w.dress}, worn open at the throat and shoulders, a gold mayor's chain of office across her bare décolletage, a quill in one ringed hand, an open leather-bound ledger, a brass strongbox spilling silver dollars, tax seals and a cutlass hung on the wall behind her, warm candle and lantern glow, harbour window haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
     if (kind === "port" && role === "taxlady") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, the tax collector who works the ${name} waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless, teasing smile and one raised eyebrow, direct eye contact, ${w.hair}, ${w.dress}, a jade customs seal on a cord resting against her bare skin, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
     if (kind === "port") return `The port of ${name} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, ${style}`;
-    if (kind === "ship") return `A ${name} under full sail on the South China Sea, 1860s, detailed rigging and weathered hull, ${style}`;
+    if (kind === "ship") return shipPrompt(subject, role, style);
     if (kind === "cargo") return `Still life of ${name} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, ${style}`;
     if (kind === "service") return `The interior of the ${name} at a Hong Kong trading harbor in the 1860s, wide environmental shot, period details, no text or people, ${style}`;
     if (kind === "scene") return `${name} on the China Seas in 1860, a trading fleet caught in the moment, ${style}`;
@@ -657,8 +699,34 @@
         M.gen.roles = [d.mlgenrole]; M.gen.aspect = "3:4";
         return redraw();
       }
-      // A sea battle moment gets its own starting prompt for that enemy (only replaces a stock prompt, never your own words).
+      // A persona's mood pictures (18 Nov 2026): ticking a mood puts that expression into her own portrait prompt
+      // (stock prompts only), e.g. Sly for Powder's whisper when pirates misjudge the hold.
+      if ((M.kind || "persona") === "persona" && PERSONA_MOODS[d.mlgenrole]) {
+        const pid = M.gen.forKey.split(":")[1] || "";
+        const box = $("mlgenprompt"), now = (box && box.value) || M.gen.prompt;
+        const stock = [undefined].concat(Object.keys(PERSONA_MOODS)).some(r => now === personaPrompt(pid, r));
+        if (el.checked) {
+          if (!now.trim() || stock) M.gen.prompt = personaPrompt(pid, d.mlgenrole);
+          M.gen.roles = [d.mlgenrole]; M.gen.aspect = "3:4";
+        } else if (stock) {
+          M.gen.prompt = personaPrompt(pid, M.gen.roles[0]);
+        }
+        return redraw();
+      }
+      // A ship's card, under-sail and in-battle pictures each get their own starting prompt (stock prompts only).
       const subj = M.gen.forKey.split(":")[1] || "";
+      if ((M.kind || "persona") === "ship" && ["card", "sailing", "battle"].includes(d.mlgenrole)) {
+        const box = $("mlgenprompt"), now = (box && box.value) || M.gen.prompt;
+        const stock = [undefined, "card", "sailing", "battle"].some(r => now === defaultPrompt("ship", subj, r));
+        if (el.checked) {
+          if (!now.trim() || stock) M.gen.prompt = defaultPrompt("ship", subj, d.mlgenrole);
+          M.gen.roles = [d.mlgenrole]; M.gen.aspect = d.mlgenrole === "card" ? "3:2" : "16:9";
+        } else if (stock) {
+          M.gen.prompt = defaultPrompt("ship", subj, M.gen.roles[0]);
+        }
+        return redraw();
+      }
+      // A sea battle moment gets its own starting prompt for that enemy (only replaces a stock prompt, never your own words).
       if ((M.kind || "persona") === "scene" && BATTLE_ENEMY[subj] && BATTLE_MOMENTS[d.mlgenrole]) {
         const box = $("mlgenprompt"), now = (box && box.value) || M.gen.prompt;
         const stock = [undefined].concat(Object.keys(BATTLE_MOMENTS)).some(r => now === defaultPrompt("scene", subj, r));

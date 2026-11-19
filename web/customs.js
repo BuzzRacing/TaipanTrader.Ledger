@@ -6,20 +6,11 @@
    place. How much of her odds the captain sees depends on the difficulty level (Admin > Ratings &
    Difficulty > "Port Authority odds shown"): exact numbers, a bar without numbers, or only her tell.
 
-   Her tells are the port's Media Library pictures with the roles taxlady_bored, taxlady_curious and
-   taxlady_hungry. With several in a role she shows a different one each time her mood changes. A port
-   without its own uses its plain "Tax lady" pictures, then Hong Kong's, then the officer's profile picture.
-
-   Her ruling shows her mood: tax paid and buyout show her HAPPY, caught shows her ANGRY. Every picture
-   of her in that mood goes into one pool and they take turns (all of them are shown before any repeats):
-   her persona pictures with the role or tag "happy"/"angry", plus this port's ruling pictures
-   (taxlady_tax / taxlady_buyout = happy, taxlady_caught = angry) and any of this port's tax-lady
-   pictures tagged "happy"/"angry". With none in that mood she shows any picture of her.
-   Her welcome is any picture of her.
-
-   While her desk is open the right-hand stage shows her too, in a different picture from the popup's
-   (and from the small one beside her greeting): the stage draws from every picture of her this port has,
-   so two or three pictures of her are enough. With only one picture of her, the stage keeps the port.
+   Portraits belong to the active officer, including the Registrar at the house's home port.
+   Persona media takes precedence over legacy port art. Legacy tax-lady art is only used for
+   that port's configured officer when she has no persona media or profile portrait.
+   Rulings use happy/angry portraits; declaration tells use bored/curious/hungry when available.
+   The stage uses a second portrait of the same officer, or keeps the port when none is free.
 
    Needs from player.js: S, D, ui, act(), render(), portName(), pct(). */
 "use strict";
@@ -33,11 +24,9 @@ function hotTipHtml(tp, atDesk) {
   /* At the desk her own words say it all, so no small-print recap under them. */
   let note = "";
   if (atDesk) { /* nothing */ }
-  else if (S.turn < tp.lands) note = `<b>${te("hot.soon", { where, when: hotWhen(tp.lands - S.turn) })}</b> · ${te("hot.from", { home })}`;
-  else {
-    const left = tp.ends - S.turn + 1;
-    note = `<b>${te("hot.on", { where })}</b> · ${te(left === 1 ? "hot.left" : "hot.left_n", { n: left })}`;
-  }
+  else if (S.turn < tp.lands) note = `<b>${te("hot.soon", { where, when: hotWhen(tp.lands - S.turn) })}</b> · ${te("hot.how_long")} · ${te("hot.from", { home })}`;
+  else if (tp.over != null && S.turn >= tp.over) note = `<b>${te("hot.over", { where, goods })}</b>`;
+  else note = `<b>${te("hot.on", { where })}</b> · ${te("hot.any_month")}`;
   const away = tp.by === "officer";
   const head = atDesk ? (away ? te("customs.hot_head_port", { who: tp.who || home }) : te("customs.hot_head"))
     : (away ? te("hot.head_port", { port: home }) : te("hot.head"));
@@ -55,7 +44,7 @@ const Customs = (() => {
   const srcOf = h => { const m = /src="([^"]+)"/.exec(h || ""); return m ? m[1].replace(/&amp;/g, "&") : ""; };
 
   const cu = () => (S && S.me && S.me.customs) || null;
-  const key = c => c.port + ":" + S.turn;
+  const key = c => c.port + ":" + S.turn + ":" + c.officer;
 
   /* The same sums as engine.Game.customs_odds. */
   function odds(c, line, declared, bribe) {
@@ -116,41 +105,16 @@ const Customs = (() => {
   }
 
   /* ---------------------------------------------------------------- her face -- */
-  function pool(port, role) {
-    return Media.items("port", [port], role, true).filter(i => i.r.includes(role));
-  }
-  /* The officer's own persona pictures in one mood (e.g. "happy"), strictly that mood. */
-  function moodPool(officer, mood) {
-    return officer ? Media.items("persona", [officer], mood, true).filter(i => i.r.includes(mood)) : [];
-  }
-  /* Where to look for each of her tells, best first. */
-  const LADDER = {
-    bored:   [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
-    over:    [["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
-    curious: [["port", "taxlady_curious"], ["port", "taxlady_bored"], ["port", "taxlady"], ["officer", "portrait"]],
-    hungry:  [["port", "taxlady_hungry"], ["port", "taxlady_curious"], ["port", "taxlady"], ["officer", "portrait"]],
-  };
-  /* Her ruling's mood, and this port's ruling role that counts as that mood. */
   const RULING = { tax: ["happy", "taxlady_tax"], buyout: ["happy", "taxlady_buyout"], caught: ["angry", "taxlady_caught"] };
-  /* A picture is in a mood when it has that role, or a tag with that word in it ("happy", "mood happy"). */
   function inMood(i, mood) {
     return i.r.includes(mood) || (i.g || []).some(t => String(t).toLowerCase().split(/[^a-z]+/).includes(mood));
   }
-  /* Every picture of her in her ruling's mood: this port's ruling pictures and tax-lady pictures tagged
-     with the mood, and her own persona pictures with that mood as a role or tag. */
-  function rulingPool(c, state) {
-    const [mood, role] = RULING[state];
-    const seen = new Set(), out = [];
-    const add = i => { if (i && i.u && !seen.has(i.u)) { seen.add(i.u); out.push(i); } };
-    const lady = i => i.r.some(r => r === "taxlady" || r.startsWith("taxlady_"));
-    Media.items("port", [c.port], "", true).filter(i => lady(i) && (i.r.includes(role) || inMood(i, mood))).forEach(add);
-    if (c.officer) Media.items("persona", [c.officer], "", true).filter(i => inMood(i, mood)).forEach(add);
-    return out;
-  }
-  /* Any picture of her: her own first, borrowed ones only when she has none. */
-  function anyOfHer(c) {
-    const { own, borrowed } = herPictures(c);
-    return own.length ? own : borrowed;
+  function moodPictures(c, state) {
+    const list = herPictures(c);
+    if (state === "welcome") return list;
+    const [mood, role] = RULING[state] || [state === "over" ? "bored" : state, "taxlady_" + (state === "over" ? "bored" : state)];
+    const matching = list.filter(i => inMood(i, mood) || i.r.includes(role));
+    return matching.length ? matching : list;
   }
   /* Take turns through a pool: every picture is shown once before any repeats, never the one she wore
      last, never the one the stage is showing. */
@@ -170,26 +134,10 @@ const Customs = (() => {
   }
   function face(c, state, cls) {
     cls = cls || "stg-img stg-keeper stg-taxlady cx-img";
-    const roles = { bored: "taxlady_bored", curious: "taxlady_curious", hungry: "taxlady_hungry", over: "taxlady_bored" };
-    const role = roles[state] || "taxlady";
-    let list = [];
-    if (RULING[state]) {
-      list = rulingPool(c, state);
-      if (!list.length) list = anyOfHer(c);
-    } else if (state === "welcome") {
-      list = anyOfHer(c);
-    } else {
-      for (const [where, r] of (LADDER[state] || LADDER.bored)) {
-        list = where === "port" ? pool(c.port, r) : moodPool(c.officer, r);
-        if (list.length) break;
-      }
-      if (!list.length) list = pool(D.home || "hongkong", role);
-      if (!list.length) list = pool(D.home || "hongkong", "taxlady");
-    }
+    const list = moodPictures(c, state);
     if (!list.length) {
-      const html = Media.html("persona", c.officer, "portrait", cls, ((VS.cast || {})[c.officer] || {}).portrait || "", { slot: "cx" });
-      onScreen.art = srcOf(html);
-      return html || `<i class="stg-mono">${esc((c.name || "?").split(/\s+/).map(w => w[0]).slice(0, 2).join(""))}</i>`;
+      onScreen.art = "";
+      return `<i class="stg-mono">${esc((c.name || "?").split(/\s+/).map(w => w[0]).slice(0, 2).join(""))}</i>`;
     }
     const memo = state + ":" + key(c);
     let it = list.find(i => i.id === pick[memo]);
@@ -367,8 +315,8 @@ const Customs = (() => {
     const body = c.status === "declare" ? declareHtml(c) : c.status === "verdict" ? verdictHtml(c) : welcomeHtml(c);
     const label = c.status === "declare" ? "customs.declare_btn" : c.status === "verdict" ? "customs.continue" : "customs.welcome_btn";
     return `<div class="veil cx-veil"><section class="modal cx-desk ${c.status}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}" data-key="${esc(key(c))}">
-      <div class="cl-art cx-art" aria-hidden="true">${face(c, shownState, "cl-art-media")}</div>
-      ${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary")}</footer>
+      <div class="cx-art" aria-hidden="true">${face(c, shownState, "cl-art-media")}</div>
+      <div class="cx-panel">${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary")}</footer></div>
     </section></div>`;
   }
 
@@ -454,20 +402,18 @@ const Customs = (() => {
     return false;
   }
 
-  /* Every picture of her, best first: this port's tax-lady pictures (any of her moods), her own
-     persona pictures (any role), her profile picture. Borrowed ones (her home port's, Hong Kong's, any
-     port's plain "Tax lady") come second and are only used when none of her own is free. */
   function herPictures(c) {
-    const seen = new Set(), own = [], borrowed = [];
-    const add = (out, i) => { if (i && i.u && !seen.has(i.u)) { seen.add(i.u); out.push(i); } };
-    const lady = i => i.r.some(r => r === "taxlady" || r.startsWith("taxlady_"));
-    Media.items("port", [c.port], "", true).filter(lady).forEach(i => add(own, i));
-    if (c.officer) Media.items("persona", [c.officer], "", true).forEach(i => add(own, i));
+    const seen = new Set(), own = [];
+    const add = i => { if (i && i.u && !seen.has(i.u)) { seen.add(i.u); own.push(i); } };
+    if (c.officer) Media.items("persona", [c.officer], "", true).forEach(add);
     const prof = ((VS.cast || {})[c.officer] || {}).portrait;
-    if (prof) add(own, { id: prof, u: prof, t: "image", r: [] });
-    [D.home || "hongkong", "hongkong"].concat(Object.keys(D.ports || {})).forEach(p =>
-      Media.items("port", [p], "taxlady", true).filter(i => i.r.includes("taxlady")).forEach(i => add(borrowed, i)));
-    return { own, borrowed };
+    if (prof) add({ id: prof, u: prof, t: "image", r: [] });
+    // A homecoming Registrar is not the local port officer, even when they share a desk.
+    if (!own.length && c.officer && (D.ports[c.port] || {}).officer === c.officer) {
+      Media.items("port", [c.port], "", true)
+        .filter(i => i.r.some(r => r === "taxlady" || r.startsWith("taxlady_"))).forEach(add);
+    }
+    return own;
   }
 
   /* Her picture on the right-hand stage while the desk is open: one pick per visit, never the picture
@@ -476,13 +422,12 @@ const Customs = (() => {
   function stage() {
     const c = cu();
     if (!c || S.me.ready) { onScreen.stage = ""; return null; }
-    const { own, borrowed } = herPictures(c);
+    const own = herPictures(c);
     const busy = u => u === onScreen.art || u === onScreen.greet;
     const k = key(c);
-    let it = own.concat(borrowed).find(i => i.u === stagePick[k] && !busy(i.u));
+    let it = own.find(i => i.u === stagePick[k] && !busy(i.u));
     if (!it) {
       let free = own.filter(i => !busy(i.u));
-      if (!free.length) free = borrowed.filter(i => !busy(i.u));
       if (!free.length) { onScreen.stage = ""; delete stagePick[k]; return null; }
       it = free[Math.floor(Math.random() * free.length)];
       stagePick[k] = it.u;

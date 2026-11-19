@@ -121,13 +121,17 @@ const Battle = (() => {
     if (out.length > 1 && out[0] === notFirst) out.push(out.shift());
     return out;
   }
-  function speakerChip(clip) {
+  /* mood: a persona role ("sly" for the bargain whisper, "angry" when they raise the price). Her pictures in
+     that role are shown when she has any; otherwise any of her pictures, as before. */
+  function speakerChip(clip, mood) {
     const who = $(".sf-who");
     clearInterval(whoTimer);
     whoTimer = null;
     const c = clip && typeof VS !== "undefined" && VS.cast ? VS.cast[clip.c] : null;
     if (!c) { who.hidden = true; return; }
-    let urls = typeof Media !== "undefined" ? Media.items("persona", clip.c, "", false).map(i => i.u) : [];
+    const all = typeof Media !== "undefined" ? Media.items("persona", clip.c, "", false) : [];
+    const moody = mood ? all.filter(i => (i.r || []).includes(mood)) : [];
+    let urls = (moody.length ? moody : all).map(i => i.u);
     urls = Array.from(new Set(urls));
     if (!urls.length && c.portrait) urls = [c.portrait];
     urls = shuffled(urls, whoLast[clip.c]);
@@ -172,7 +176,7 @@ const Battle = (() => {
     p.tag = "sf:" + p.key + ":" + p.i;
     p.started = false;
     p.t0 = Date.now();
-    speakerChip(clip && f.say ? clip : null);
+    speakerChip(clip && f.say ? clip : null, f.mood);
     if (clip && f.say && typeof Voice !== "undefined") {
       Voice.say([Object.assign({ tag: p.tag, text: f.say }, clip)], { group: "battle" });
     }
@@ -203,33 +207,48 @@ const Battle = (() => {
   }
 
   /* ------------------------------------------------------------------ drawing -- */
-  function junks(n, left) {
+  /* The enemy line. A matched fight (18 Nov 2026) has fewer, tougher junks: each one shows how much of her
+     hull is left and how many guns she carries, so the captain can see the fight wearing down. */
+  function junks(n, left, ships) {
     const show = Math.min(n, 60);
     const el = $(".sf-junks");
-    const key = n + ":" + left;
+    const live = (ships || []).slice(0, left);
+    const key = n + ":" + left + ":" + live.map(x => x.hp).join(",");
     if (el.dataset.k !== key) {
       el.dataset.k = key;
-      el.className = "sf-junks" + (show > 36 ? " tiny" : show > 16 ? " small" : "");
-      el.innerHTML = Array.from({ length: show }, (_, i) =>
-        `<i class="${i < Math.round(show * left / Math.max(1, n)) ? "" : "down"}">${JUNK}</i>`).join("");
+      el.className = "sf-junks" + (show > 36 ? " tiny" : show > 16 ? " small" : "") + (live.length ? " hp" : "");
+      el.innerHTML = Array.from({ length: show }, (_, i) => {
+        const afloat = i < Math.round(show * left / Math.max(1, n));
+        const sh = live.length && afloat ? live[i] : null;
+        const bar = sh ? `<span class="sf-jhp" title="${a(sh.hp)}/${a(sh.max)} · ${a(sh.guns)} ${a(t("col.guns").toLowerCase())}"><b style="width:${Math.max(4, Math.round(100 * sh.hp / Math.max(1, sh.max)))}%"></b></span>` : "";
+        return `<i class="${afloat ? "" : "down"}${i === 0 && live.length ? " flag" : ""}">${JUNK}${bar}</i>`;
+      }).join("");
     }
   }
 
+  /* The fleet in formation: van (escorts), line (merchantmen), rear (cargo ships). */
+  const ROLE_ORDER = ["escort", "trader", "cargo"], ROLE_LABEL = { escort: "battle.van", trader: "battle.line", cargo: "battle.rear" };
+  const roleOf = s => s.role || ((D.ships[s.type] || {}).role) || "trader";
   function fleetHtml() {
     const me = S.me;
-    const ships = me.ships.map(s => {
+    const row = s => {
       const spec = D.ships[s.type] || { hull: s.hull, slots: s.guns, name: s.type };
       const pct = Math.max(0, Math.min(100, Math.round(100 * s.hull / spec.hull)));
       const c = s.cannons || 0, empty = Math.max(0, (spec.slots || 0) - s.guns - (D.cannon_slots || 2) * c);
       const pips = `<i class="on cn"></i>`.repeat(c) + `<i class="on"></i>`.repeat(s.guns) + `<i></i>`.repeat(empty);
       return `<li class="${pct <= 25 ? "low" : ""}"><b>${a(s.name)}</b><span class="sf-hull"><i style="width:${pct}%"></i></span>
         <small>${s.hull}/${spec.hull}</small><span class="sf-pips">${pips}</span></li>`;
-    }).join("");
+    };
+    const roles = ROLE_ORDER.filter(r => me.ships.some(s => roleOf(s) === r));
+    const formed = roles.length > 1 || roles[0] !== "trader";
+    const ships = formed
+      ? roles.map(r => `<li class="sf-rank r-${r}"><small>${te(ROLE_LABEL[r])}</small></li>` + me.ships.filter(s => roleOf(s) === r).map(row).join("")).join("")
+      : me.ships.map(row).join("");
     const goods = Object.keys(me.cargo).sort((x, y) => me.cargo[y] - me.cargo[x]);
     const cargo = goods.length
       ? goods.slice(0, 4).map(g => `${me.cargo[g]} ${a(D.goods[g] ? D.goods[g].name : g)}`).join(" · ") + (goods.length > 4 ? " · +" + (goods.length - 4) : "")
       : te("battle.stake_none");
-    return `<h3>${te("battle.fleet")}</h3><ul>${ships}</ul>
+    return `<h3>${te("battle.fleet")}</h3><ul class="${formed ? "formed" : ""}${me.ships.length > 6 ? " many" : ""}">${ships}</ul>
       <p class="sf-stake"><small>${te("battle.stake")}</small>${cargo}</p>`;
   }
 
@@ -250,8 +269,16 @@ const Battle = (() => {
       : te("battle.odds.retreat_cargo", { qty: b.dump_qty });
     const html = [];
     if (b.stage === "parley") {
-      html.push(action("pay", te("battle.btn.pay", { price: money(b.price) }),
-        b.can_pay ? te("battle.btn.pay_sub") : te("battle.btn.pay_short"), "", off || !b.can_pay, "pay"));
+      // They misjudged the hold: how plainly it shows follows the odds setting (exact: the share; bar: a meter;
+      // tell: only Powder's manner, in the tell line). After a refusal they ask the full price.
+      const bg = b.bargain;
+      const paySub = !b.can_pay ? te("battle.btn.pay_short")
+        : bg && exact ? te("battle.odds.bargain", { pct: Math.max(1, Math.round(bg.share * 100)) + "%" })
+        : b.repriced && b.view !== "tell" ? te("battle.odds.bargain_full")
+        : te("battle.btn.pay_sub");
+      const meter = bg && bar ? `<span class="sf-risk sf-bargain" title="${te("battle.bargain")}"><i style="width:${Math.round(100 * Math.max(0.05, 1 - b.price / Math.max(1, bg.full)))}%"></i></span>` : "";
+      html.push(action("pay", te("battle.btn.pay", { price: money(b.price) }), paySub, meter, off || !b.can_pay,
+        "pay" + (bg && b.view !== "tell" ? " bargain" : "")));
     }
     html.push(action("fight", te("battle.btn.fight"),
       !b.can_fight ? te("battle.btn.fight_none") : exact && o ? te("battle.odds.fight", { pct: Math.round(o.gun_hit * 100) + "%" }) : te("battle.btn.fight_sub"),
@@ -285,15 +312,16 @@ const Battle = (() => {
     if (!seen.has(key)) play(key, b.kind, b.beat.frames, ((S.voice || {}).battle || {}).now);
     header(b.where, b.stage === "parley" ? "" : t("battle.round", { n: Math.min(b.round, b.rounds), rounds: b.rounds }));
     $(".sf-enemy").hidden = false;
-    junks(b.n, b.left);
-    $(".sf-enemy p").textContent = b.n + " " + b.enemy + " · " + t("battle.enemy", { left: b.left, n: b.n });
+    junks(b.n, b.left, b.enemy_ships);
+    $(".sf-enemy p").textContent = b.n + " " + b.enemy + " · " + t("battle.enemy", { left: b.left, n: b.n })
+      + (b.matched && b.enemy_guns ? " · " + t("battle.enemy_guns", { n: b.enemy_guns }) : "");
     $(".sf-foot").hidden = false;
     setHtml($(".sf-fleet"), fleetHtml());
     setHtml($(".sf-acts"), actsHtml(b));
     if (!playing) {
       const last = b.beat.frames[b.beat.frames.length - 1];
       showPicture(last ? last.moment : "sighting", b.kind, key + ":rest");
-      $(".sf-cap").textContent = b.stage === "parley" ? t("battle.parley", { price: money(b.price) }) : (last ? last.cap : "");
+      $(".sf-cap").textContent = b.stage === "parley" ? t(b.bargain ? "battle.cap.lowball" : b.repriced ? "battle.cap.reprice" : "battle.parley", { price: money(b.price) }) : (last ? last.cap : "");
       $(".sf-tell").textContent = b.tell || "";
       $(".sf-who").hidden = true;
     }
@@ -395,7 +423,7 @@ const Battle = (() => {
     const gunsHit = s => (s.guns0 != null && s.guns1 != null && s.guns1 < s.guns0) || cannonsHit(s);
     const hurt = f.ships.some(s => !s.lost && (s.hull1 < s.hull0 || gunsHit(s)));
 
-    const ships = f.ships.map(s => `<li class="${s.lost ? "lost" : (s.hull1 < s.hull0 || gunsHit(s)) ? "hit" : ""}">
+    const ships = f.ships.slice().sort((x, y) => ROLE_ORDER.indexOf(roleOf(x)) - ROLE_ORDER.indexOf(roleOf(y))).map(s => `<li class="r-${roleOf(s)} ${s.lost ? "lost" : (s.hull1 < s.hull0 || gunsHit(s)) ? "hit" : ""}">
         <div class="sf-rsh"><b>${a(s.name)}</b><span>${s.lost ? te("battle.res.ship_lost") : te("battle.res.hull", { a: s.hull0, b: s.hull1 })}</span></div>
         ${hullBar(s)}${gunPips(s)}</li>`).join("");
 

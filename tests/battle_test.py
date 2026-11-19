@@ -26,6 +26,8 @@ def setup(level="normal", **rules):
     cfg["rules"]["pirates"].update({"chance": 1.0, "fleet_min": 6, "fleet_base": 6, "fleet_max": 6})
     cfg["rules"]["liyuen"]["chance"] = 0.0
     cfg["rules"]["customs"]["enabled"] = False
+    cfg["rules"]["battle"]["match"] = False        # these tests drive the fleet sizes themselves (see fleet_test)
+    cfg["rules"]["battle"]["lowball"] = False      # and expect the pirates to name their usual price
     cfg["rules"]["contraband"].update({"seize_chance": 0.0, "seize_banned": 0.0})
     for path, value in rules.items():
         group, key = path.split("__")

@@ -138,7 +138,10 @@ DEFAULTS = {
                  "mug_threshold": 20000, "mug_chance": 0.06, "mug_rep": 0.6,
                  "mug_min": 0.07, "mug_max": 0.15,
                  "whrob_chance": 0.02, "whrob_rep": 0.6, "whrob_min": 0.10, "whrob_max": 0.30},
-        "fleet": {"max_fleet": 5, "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
+        # max_fleet counts merchantmen (ships with role "trader"). Escorts (guns, no hold) and cargo ships
+        # (hold, no guns) have their own limits, and open once the house has escort_unlock merchantmen.
+        "fleet": {"max_fleet": 5, "max_escorts": 5, "max_cargo": 5, "escort_unlock": 5, "cargo_unlock": 5,
+                  "keep_trader": True, "seeded_ships": [], "gun_price": 600, "gun_resale": 0.333, "ship_resale": 0.5,
                   "cannon_cost": 7.5, "cannon_power": 2, "cannon_slots": 2,
                   "warehouse_cap": 10000, "depot_open_cost": 10000, "depot_cap": 1000,
                   "depot_expand_cost": 100000, "depot_expand_cap": 1000, "repair_base": 6, "repair_price_div": 4000,
@@ -174,6 +177,27 @@ DEFAULTS = {
                    # Hits that miss the guns may land in the hold: one kind of goods (gold as likely as rice)
                    # loses cargo_hit_min to cargo_hit_max of its units over the side, at least one.
                    "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3,
+                   # Matched fights (engine.Game._muster): the enemy is sized from the house's own fleet.
+                   # Their hull = our firepower x match_rounds; their guns = our hull x match / match_rounds.
+                   # match (1 = an even fight) = base + cargo x temptation + fame x fame share
+                   #   - standing x (standing in the port ahead - 50) / 50 + noise, held between min and max.
+                   "match": True, "match_rounds_min": 2.5, "match_rounds_max": 4.5, "match_base": 0.55,
+                   "match_cargo": 0.3, "match_fame": 0.2, "match_standing": 0.1, "match_spread": 0.1,
+                   "match_min": 0.3, "match_max": 1.5, "match_lord": 0.15, "match_escort_share": 0.5, "match_cargo_ref": 100000,
+                   "match_ships_min": 2, "match_ships_max": 12, "match_lord_ships_max": 16,
+                   "match_hp_min": 4, "match_hp_max": 12, "match_flag": 2.0,
+                   # How keen they are to attack at all: allure = base + cargo x temptation + fame x fame share.
+                   "allure_base": 0.6, "allure_cargo": 0.6, "allure_fame": 0.3, "match_booty": 0.8,
+                   # Fame at sea: gained by winning, fades each month; fame_ref of it counts as full fame.
+                   "fame_win": 1.0, "fame_broke_off": 0.5, "fame_decay": 0.1, "fame_ref": 10,
+                   # Formation: escorts in the van, merchantmen in the line, cargo ships in the rear.
+                   "focus": 0.3, "van_weight": 4, "line_weight": 3, "rear_weight": 3, "rear_cover": 0.85,
+                   "cargo_spill": 1.0,
+                   # They misjudge the hold (engine.Game._lowball): chance x (1 + dense x the share of the cargo's
+                   # value in lowball_goods) x (1 - fame x fame share). They then price the cargo at lowball_min to
+                   # lowball_max of its worth. Refused, they see the hold and ask the full price once before fighting.
+                   "lowball": True, "lowball_chance": 0.15, "lowball_dense": 1.0, "lowball_fame": 0.7,
+                   "lowball_min": 0.1, "lowball_max": 0.3, "lowball_goods": ["gold", "opium"],
                    # Prize cargo from a won fight (engine.Game._battle_prize): a tier by weight, then that many
                    # kinds of goods. Scraps are a few units each; the others are a value in silver per enemy
                    # junk (grown like booty) shared among the goods. Only what fits in the hold is taken.
@@ -202,7 +226,8 @@ DEFAULTS = {
         # Never two at once per house: none while a tip is still to come or still running.
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
                       "hot_enabled": True, "hot_home_chance": 0.5, "hot_away_chance": 0.2,
-                      "hot_every": 3, "hot_lead": 1, "hot_months": 2,
+                      "hot_every": 3, "hot_lead": 1, "hot_months": 2, "hot_hold": True,
+                      "hot_months_min": 1, "hot_months_max": 3, "hot_after_max": 1.5,
                       "hot_min": 3.0, "hot_max": 6.0},
         # The Port Authority: each port's tax officer takes a cut of the cargo's declared value on
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
@@ -272,6 +297,14 @@ DEFAULTS = {
         "barque":   {"name": "Barque", "hold": 250, "hull": 200, "slots": 12, "price": 22000, "fast": False, "cannons": True},
         "clipper":  {"name": "Clipper", "hold": 180, "hull": 160, "slots": 10, "price": 35000, "fast": True, "cannons": False},
         "indiaman": {"name": "East Indiaman", "hold": 500, "hull": 320, "slots": 24, "price": 80000, "fast": False, "cannons": True},
+        # Escort: a hired war steamer like the paddle gunboats that convoyed the China coast in the 1850s
+        # and 60s. Guns only, no hold; sails in the van and takes the enemy's fire.
+        "gunboat":  {"name": "Paddle Gunboat", "hold": 0, "hull": 500, "slots": 12, "price": 65000, "fast": False, "cannons": True,
+                     "role": "escort"},
+        # Cargo ship: a big teak-built Indian "country ship" of the India-China trade. Hold only, no guns;
+        # sails in the rear behind the escorts. Every hit on her sends cargo to the bottom.
+        "countryship": {"name": "Country Ship", "hold": 750, "hull": 200, "slots": 0, "price": 120000, "fast": False,
+                        "cannons": False, "role": "cargo"},
     },
     "ship_names": ["Morning Cloud", "Jade Heron", "Lucky Star", "Sea Witch", "Golden Carp", "Lady Hughes",
                    "Red Rover", "Water Dragon", "Flying Cloud", "Pearl of Canton", "Falcon", "Nemesis",
@@ -283,6 +316,11 @@ DEFAULTS = {
     "characters": copy.deepcopy(cast.CHARACTERS),
     "voice": copy.deepcopy(cast.VOICE_DEFAULTS),
 }
+
+# The three classes of ship (Ships > Class): merchantmen carry cargo and guns, escorts guns only,
+# cargo ships cargo only. SEEDED_SHIPS join saved settings once (see validate).
+SHIP_ROLES = ("trader", "escort", "cargo")
+SEEDED_SHIPS = ("gunboat", "countryship")
 
 # Paths whose whole value is replaced on save (rows can be deleted), not merged.
 WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "difficulty.presets",
@@ -491,7 +529,15 @@ SECTIONS = [
              _pct("rules.bank.whrob_min", "Least share of the stock taken"),
              _pct("rules.bank.whrob_max", "Most share of the stock taken")]},
          {"title": "Fleet and warehouse", "fields": [
-             F("rules.fleet.max_fleet", "Most ships in a fleet", "int", min=1, max=20),
+             F("rules.fleet.max_fleet", "Most merchantmen in a fleet", "int",
+               "Ships of the Merchantman class (Ships). Escorts and cargo ships have their own limits below.", min=1, max=20),
+             F("rules.fleet.max_escorts", "Most escorts (guns only)", "int", min=0, max=20),
+             F("rules.fleet.max_cargo", "Most cargo ships (hold only)", "int", min=0, max=20),
+             F("rules.fleet.escort_unlock", "Merchantmen needed before a shipyard sells escorts", "int",
+               "Counted when buying. Escorts already bought stay if merchantmen are lost.", min=0, max=20),
+             F("rules.fleet.cargo_unlock", "Merchantmen needed before a shipyard sells cargo ships", "int", min=0, max=20),
+             F("rules.fleet.keep_trader", "The last merchantman cannot be sold", "bool",
+               "A fleet of only escorts or cargo ships cannot trade properly; keep one merchantman as the flagship."),
              F("rules.fleet.gun_price", "Price of a gun", "int", min=0, max=10**7),
              _pct("rules.fleet.gun_resale", "Gun's share of value when a ship is sold",
                   "Cannons sell back at the same share of their price."),
@@ -594,7 +640,16 @@ SECTIONS = [
              F("rules.registrar.hot_lead", "The boom lands after (months)", "int",
                "1: the month after she tells you, so a house that buys and sails at once arrives in it.",
                min=1, max=6),
-             F("rules.registrar.hot_months", "The boom lasts (months)", "int", min=1, max=12),
+             F("rules.registrar.hot_months_min", "The boom lasts at least (months)", "int",
+               "How long a hot-tip boom runs is picked at random between this and the longest, and kept "
+               "secret: the tip says when it lands, never how long it lasts.", min=1, max=12),
+             F("rules.registrar.hot_months_max", "The boom lasts at most (months)", "int", min=1, max=12),
+             F("rules.registrar.hot_hold", "A hot-tip boom holds its price the whole time", "bool",
+               "On: while a foretold boom runs, the month's price swing can lift it but never drop it below "
+               "the level that was foretold. Off: it swings like any other price."),
+             F("rules.registrar.hot_after_max", "When it ends, the price falls to (up to, times normal)", "num",
+               "The month a hot-tip boom runs out its price drops straight back to between normal and this, "
+               "so a house that arrives late has missed it.", min=1, max=10, step=0.1),
              F("rules.registrar.hot_min", "Boom: lowest price (times normal)", "num", min=1, max=100, step=0.5),
              F("rules.registrar.hot_max", "Boom: highest price (times normal)", "num", min=1, max=100, step=0.5)]},
          {"title": "Port Authority: her odds", "fields": [
@@ -680,13 +735,17 @@ SECTIONS = [
      "tables": [
          {"path": "ships", "title": "Ship types", "kind": "dict", "id_label": "Key",
           "columns": [C("name", "Name", "text", max=30),
-                      C("hold", "Hold (units)", "int", min=1, max=10**6),
+                      C("hold", "Hold (units)", "int", "0 for an escort.", min=0, max=10**6),
                       C("hull", "Hull points", "int", min=1, max=10**5),
                       C("slots", "Gun mounts", "int", min=0, max=500),
                       C("price", "Price", "int", min=0, max=10**9),
                       C("fast", "Fast", "bool", "Runs from pirates better and suffers less in storms."),
                       C("cannons", "Cannons", "bool", "Her deck can carry cannons as well as guns. Each cannon takes "
-                        "the gun mounts set under Rules > Fleet.", default=False)]},
+                        "the gun mounts set under Rules > Fleet.", default=False),
+                      C("role", "Class", "select", "Merchantman: cargo and guns (the first line of the fleet). "
+                        "Escort: guns only, sails in the van and takes the fire. Cargo ship: hold only, sails in "
+                        "the rear. The limits for each class are under Rules > Fleet.", default="trader",
+                        options=[["trader", "Merchantman"], ["escort", "Escort"], ["cargo", "Cargo ship"]])]},
      ],
      "groups": [
          {"title": "Ship names", "fields": [
@@ -793,6 +852,66 @@ SECTIONS = [
              F("rules.battle.prize_tiers.haul.goods_max", "Prize, A great haul: kinds of goods, most", "int", min=1, max=9),
              F("rules.battle.prize_tiers.haul.value_min", "Prize, A great haul: silver per enemy junk, least", "int", min=0, max=10**6),
              F("rules.battle.prize_tiers.haul.value_max", "Prize, A great haul: silver per enemy junk, most", "int", min=0, max=10**6)]},
+         {"title": "Matched fights and the fleet's formation", "fields": [
+             F("rules.battle.match", "Pirates match the fleet they attack", "bool",
+               "On: the enemy is sized from your own fleet (fewer, tougher junks with real broadsides), so every fight "
+               "is close enough to be worth thinking about. Off: the old way, more junks the bigger your hold."),
+             F("rules.battle.match_rounds_min", "Rounds of our fire to sink them all, least", "num", min=1, max=20, step=0.5),
+             F("rules.battle.match_rounds_max", "Rounds of our fire to sink them all, most", "num", min=1, max=20, step=0.5),
+             F("rules.battle.match_base", "How close the fight is: base", "num",
+               "1 is an even fight (they sink us as fast as we sink them). 0.5 means we should win and take about a "
+               "quarter of our hull in damage.", min=0, max=3, step=0.05),
+             F("rules.battle.match_cargo", "Plus this much for a rich hold (at the most)", "num", min=0, max=3, step=0.05),
+             F("rules.battle.match_cargo_ref", "Cargo value that counts as half-rich", "int",
+               "At usual prices. A hold worth this much adds half the amount above.", min=1, max=10**9),
+             F("rules.battle.match_fame", "Plus this much for a famous fleet (at the most)", "num", min=0, max=3, step=0.05),
+             F("rules.battle.match_standing", "Less this much for standing 100 in the port ahead", "num",
+               "Standing 0 adds the same. Friends ashore send word of who is lying in wait.", min=0, max=3, step=0.05),
+             F("rules.battle.match_spread", "Chance swing (spread)", "num", min=0, max=2, step=0.01),
+             F("rules.battle.match_min", "Closeness, least", "num", min=0, max=5, step=0.05),
+             F("rules.battle.match_max", "Closeness, most", "num", min=0, max=5, step=0.05),
+             F("rules.battle.match_lord", "The pirate queen's fleet: closer by", "num", min=0, max=3, step=0.05),
+             _pct("rules.battle.match_escort_share", "Escorts' hull counted when they size their guns",
+                  "Their broadsides are sized from the hull they mean to take. Escorts count only this share, so each escort "
+                  "soaks up fire meant for the merchantmen and the cargo ships."),
+             F("rules.battle.match_ships_min", "Enemy junks, least", "int", min=1, max=100),
+             F("rules.battle.match_ships_max", "Enemy junks, most (pirates)", "int", min=1, max=100),
+             F("rules.battle.match_lord_ships_max", "Enemy junks, most (the pirate queen)", "int", min=1, max=100),
+             F("rules.battle.match_hp_min", "Shots to sink a junk: least (before the cap above)", "num", min=1, max=1000, step=1),
+             F("rules.battle.match_hp_max", "Shots to sink a junk: most (before the cap above)", "num", min=1, max=1000, step=1),
+             F("rules.battle.match_flag", "Their flagship is this many times tougher", "num", min=1, max=10, step=0.1),
+             F("rules.battle.match_booty", "Booty from a matched fight (x the usual per-junk booty)", "num", min=0, max=10, step=0.05),
+             F("rules.battle.allure_base", "How keen they are to attack: base", "num",
+               "Multiplies the pirate attack chance. An empty hold and no fame gives this.", min=0, max=5, step=0.05),
+             F("rules.battle.allure_cargo", "Keener by this much for a rich hold (at the most)", "num", min=0, max=5, step=0.05),
+             F("rules.battle.allure_fame", "Keener by this much for a famous fleet (at the most)", "num", min=0, max=5, step=0.05),
+             F("rules.battle.fame_win", "Fame gained by winning a fight", "num", min=0, max=100, step=0.25),
+             F("rules.battle.fame_broke_off", "Fame gained when they break off", "num", min=0, max=100, step=0.25),
+             _pct("rules.battle.fame_decay", "Fame that fades each month"),
+             F("rules.battle.fame_ref", "Fame that counts as fully famous", "num", min=0.5, max=1000, step=0.5),
+             _pct("rules.battle.focus", "Enemy broadsides laid on the weakest ship in front",
+                  "The rest are spread over the fleet by the weights below."),
+             F("rules.battle.van_weight", "Escorts (van): share of the spread fire", "num", min=0, max=100, step=0.5),
+             F("rules.battle.line_weight", "Merchantmen (line): share of the spread fire", "num", min=0, max=100, step=0.5),
+             F("rules.battle.rear_weight", "Cargo ships (rear): share of the spread fire, unscreened", "num", min=0, max=100, step=0.5),
+             _pct("rules.battle.rear_cover", "Fire a full screen keeps off the rear",
+                  "Screened by one escort (or two merchantmen) per cargo ship. As the van is sunk the rear is hit more."),
+             F("rules.battle.cargo_spill", "Cargo lost when a cargo ship is hit", "num",
+               "1 means a hit that takes 10% of her hull sends 10% of her share of the hold to the bottom.", min=0, max=10, step=0.1)]},
+         {"title": "They misjudge the hold (a bargain to pass)", "fields": [
+             F("rules.battle.lowball", "Pirates sometimes misjudge what you carry", "bool",
+               "Now and then they take a rich fleet for a poor coaster and name a price on a fraction of the cargo. "
+               "Turn it down and they see the hold: they ask the full price once more before the first shot. "
+               "How plainly the screen says it is a bargain follows the difficulty's sea battle odds."),
+             _pct("rules.battle.lowball_chance", "Chance they misjudge the hold (base)"),
+             F("rules.battle.lowball_dense", "More likely by this much when the hold is all gold or opium", "num",
+               "1 means a hold of nothing but those goods doubles the chance.", min=0, max=10, step=0.1),
+             F("rules.battle.lowball_goods", "Goods small and dear enough to fool them", "lines",
+               "Cargo keys, one per line (gold, opium).", max=20),
+             _pct("rules.battle.lowball_fame", "A famous fleet fools them this much less",
+                  "At full fame. Famous houses are known to be rich."),
+             _pct("rules.battle.lowball_min", "They think the cargo is worth, least"),
+             _pct("rules.battle.lowball_max", "They think the cargo is worth, most")]},
          {"title": "The pirate queen", "fields": [
              _pct("rules.liyuen.chance", "Chance her fleet finds an unprotected player"),
              F("rules.liyuen.fleet_base", "War junks: base", "int", min=1, max=1000),
@@ -1041,6 +1160,26 @@ def validate(raw):
     if errors:
         return cfg, errors
 
+    # Ship types added in a later version (the escort and the cargo ship) join a saved Ships table
+    # once; deleting one afterwards sticks.
+    fl = cfg["rules"]["fleet"]
+    seeded_ships = set(fl.get("seeded_ships") or [])
+    for key in SEEDED_SHIPS:
+        if key not in seeded_ships and key not in cfg["ships"]:
+            cfg["ships"][key] = copy.deepcopy(DEFAULTS["ships"][key])
+        seeded_ships.add(key)
+    fl["seeded_ships"] = sorted(seeded_ships)
+    # Each class keeps to its job: an escort carries no cargo, a cargo ship mounts no guns.
+    for key, sh in cfg["ships"].items():
+        if sh.get("role") not in SHIP_ROLES:
+            sh["role"] = "trader"
+        if sh["role"] == "escort":
+            sh["hold"] = 0
+        elif sh["role"] == "cargo":
+            sh["slots"], sh["cannons"] = 0, False
+    if not any(sh["role"] == "trader" for sh in cfg["ships"].values()):
+        errors.append("Ships: at least one ship type must be a Merchantman")
+
     goods, ports, ships, regions = cfg["goods"], cfg["ports"], cfg["ships"], cfg["regions"]
     for key, r in regions.items():
         r["seasons"] = _seasons(r.get("seasons", []), "Seas / " + key, errors)
@@ -1074,6 +1213,8 @@ def validate(raw):
                      ("Game Setup / replacement ship", cfg["rules"]["wreck"]["ship"])):
         if k not in ships:
             errors.append("{}: ship '{}' does not exist".format(where, k))
+        elif ships[k].get("role", "trader") != "trader":
+            errors.append("{}: '{}' must be a Merchantman (escorts and cargo ships can't sail alone)".format(where, k))
     if cfg["rules"]["start"]["ship"] in ships:
         cfg["rules"]["start"]["guns"] = min(cfg["rules"]["start"]["guns"], ships[cfg["rules"]["start"]["ship"]]["slots"])
     g["lengths"] = sorted(set(g["lengths"]))

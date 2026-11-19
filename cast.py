@@ -478,7 +478,8 @@ for _who, _keys in {
     "comprador": ["m.bought", "m.sold", "m.stored", "m.loaded", "e.no_room", "e.cost", "e.only_have", "e.sealed",
                   "e.unknown_cargo", "e.nothing_to_store", "e.nothing_to_load", "e.home_only"],
     "shipwright": ["m.ship_joined", "m.ship_sold", "m.gun_mounted", "m.repaired", "e.unknown_ship", "e.no_shipyard",
-                   "e.fleet_limit", "e.ship_cost", "e.no_such_ship", "e.last_ship", "e.unload_first",
+                   "e.fleet_limit", "e.class_limit.escort", "e.class_limit.cargo", "e.class_locked.escort",
+                   "e.class_locked.cargo", "e.last_trader", "e.ship_cost", "e.no_such_ship", "e.last_ship", "e.unload_first",
                    "e.no_more_guns", "e.gun_cost", "e.nothing_to_repair"],
     "customs": ["l.seized", "n.ban", "n.ban_lifted", "n.caught"],
     # The Mayor and the Tax collector speak only when they catch a captain (owner's decision).

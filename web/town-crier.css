@@ -1,0 +1,44 @@
+.tc-alert {
+  width: min(960px, calc(100vw - 40px)); max-width: none; max-height: calc(100dvh - 40px);
+  margin: auto; padding: 0; overflow: auto; color: var(--deck-ivory); background: var(--deck-night);
+  border: 1px solid var(--deck-brass); border-radius: 5px; outline: 1px solid color-mix(in srgb, var(--deck-brass) 30%, transparent);
+  outline-offset: 5px; box-shadow: 0 28px 100px #000c; font-family: var(--sans); scrollbar-width: thin;
+}
+.tc-alert::backdrop { background: #080503b8; backdrop-filter: blur(6px); }
+.tc-card { display: grid; grid-template-columns: 38% 62%; background: linear-gradient(120deg, var(--deck-lacquer), var(--deck-night) 70%); }
+.tc-portrait { position: relative; min-height: 575px; margin: 0; overflow: hidden; border-right: 1px solid color-mix(in srgb, var(--deck-brass) 40%, transparent); }
+.tc-portrait > img { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: 51% 0%; filter: saturate(.7) brightness(.87); }
+.tc-portrait::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, var(--deck-night) 1%, transparent 55%); }
+.tc-portrait figcaption { position: absolute; bottom: 26px; left: 27px; right: 20px; z-index: 1; }
+.tc-portrait strong { display: block; font-size: 26px; font-weight: 400; }
+.tc-portrait figcaption > span { color: var(--deck-brass); font-size: 13px; text-transform: uppercase; letter-spacing: .17em; }
+.tc-no-art { display: grid; place-items: center; height: 100%; font-size: 100px; color: var(--deck-brass); }
+.tc-content { padding: 34px 42px 30px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.tc-eyebrow { display: flex; align-items: center; gap: 12px; justify-content: center; color: var(--deck-brass); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; margin: 0; }
+.tc-eyebrow svg { width: 21px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.5; flex: none; }
+.tc-content h2 { font: normal 30px/1.25 var(--title); margin: 19px 0 8px; color: var(--deck-ivory); }
+.tc-ornament { width: 100%; color: var(--deck-brass); font-size: 12px; background: linear-gradient(90deg, transparent, var(--deck-brass) 40%, transparent 40%, transparent 60%, var(--deck-brass) 60%, transparent) center / 100% 1px no-repeat; }
+.tc-count { margin-top: 9px; font: normal 108px/1 var(--title); color: color-mix(in srgb, var(--deck-brass) 75%, var(--deck-ivory)); }
+.tc-months { font-size: 16px; text-transform: uppercase; letter-spacing: .23em; color: var(--deck-brass); margin: 3px 0 22px; }
+.tc-content blockquote { margin: 0; font-size: 23px; line-height: 1.4; color: var(--deck-ivory); }
+.tc-detail { color: color-mix(in srgb, var(--deck-ivory) 73%, var(--deck-night)); font-size: 17px; line-height: 1.45; margin: 17px 0 22px; max-width: 340px; }
+.tc-content .tc-continue { margin-top: auto; min-height: 49px; width: 100%; border: 1px solid var(--deck-brass); border-radius: 4px; color: var(--deck-night); background: linear-gradient(color-mix(in srgb, var(--deck-brass) 65%, var(--deck-ivory)), var(--deck-brass)); font: 19px var(--sans); cursor: pointer; }
+.tc-continue:hover { filter: brightness(1.12); }
+.tc-continue:focus-visible { outline: 3px solid var(--deck-ivory); outline-offset: 4px; }
+.tc-date { font-size: 13px; letter-spacing: .07em; margin: 13px 0 0; color: var(--deck-brass); text-transform: uppercase; }
+@media (max-width: 650px) {
+  .tc-alert { width: calc(100vw - 28px); max-height: calc(100dvh - 28px); }
+  .tc-card { grid-template-columns: 1fr; }
+  .tc-portrait { min-height: 165px; border-right: 0; }
+  .tc-portrait > img { height: auto; top: -45px; }
+  .tc-portrait::after { background: linear-gradient(90deg, var(--deck-night), transparent 80%), linear-gradient(0deg, var(--deck-night), transparent 70%); }
+  .tc-portrait figcaption { bottom: 15px; left: 22px; }
+  .tc-portrait strong { font-size: 23px; }
+  .tc-content { padding: 24px; }
+  .tc-eyebrow { font-size: 11px; }
+  .tc-content h2 { font-size: 25px; margin-top: 13px; }
+  .tc-count { font-size: 77px; }
+  .tc-months { font-size: 13px; margin-bottom: 16px; }
+  .tc-content blockquote { font-size: 21px; }
+  .tc-detail { font-size: 16px; margin: 15px 0 20px; }
+}
