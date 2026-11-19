@@ -1,131 +1,23 @@
-/* SeaTrader: the promotion ceremony (promotion.css, drawn by syncPromotion() in player.js).
-   Redesigned 18 Nov 2026 after the sea battle reckoning: the port's harbour behind, the Mayor large
-   on the left with her words, and an ivory letter of commission on the right with the rank's seal in
-   a slow brass sunburst. Overrides the older .fleet-promotion box in deck.css. */
-
-@font-face { font-family: "Ceremony Title"; src: url("/fonts/uncial-antiqua-latin-e93ce65c.woff2") format("woff2"); font-display: block; }
-
-.fleet-promotion.pr {
-  --figures: "Consolas", "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --paper: #f1e3c5; --paper-2: #e6d2a8; --ink: #2a1b14; --ink-2: #5b4130;
-  position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: clamp(.8rem, 3vw, 2.4rem);
-  box-sizing: border-box; border: 0; border-radius: 0; background: var(--deck-night); color: var(--deck-ivory); overflow: hidden;
-  display: grid; grid-template-columns: minmax(0, 1fr) min(36rem, 52%); align-items: center;
-  animation: prIn .6s ease-out both;
-}
-.fleet-promotion.pr:not([open]) { display: none; }
-.fleet-promotion.pr::backdrop { background: var(--deck-night); }
-@keyframes prIn { from { opacity: 0; } to { opacity: 1; } }
-
-/* the harbour, pushed back */
-.pr-scene { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.8) brightness(.6) blur(1px); transform: scale(1.03); }
-.pr-shade { position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse 70% 85% at 28% 45%, transparent 0%, color-mix(in srgb, var(--deck-night) 50%, transparent) 62%, color-mix(in srgb, var(--deck-night) 92%, transparent) 100%),
-    linear-gradient(90deg, transparent 30%, color-mix(in srgb, var(--deck-night) 75%, transparent) 62%, color-mix(in srgb, var(--deck-night) 88%, transparent) 100%); }
-
-/* the Mayor */
-.pr-who { position: absolute; left: 0; top: 0; bottom: 0; width: min(50vw, 46rem); margin: 0; }
-.pr-who > img { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%;
-  -webkit-mask-image: linear-gradient(90deg, #000 58%, transparent 97%); mask-image: linear-gradient(90deg, #000 58%, transparent 97%);
-  animation: prWho 1s ease-out both; }
-@keyframes prWho { from { opacity: 0; transform: translateX(-3%); } to { opacity: 1; transform: none; } }
-.pr-line { position: absolute; left: clamp(.6rem, 2.8vw, 2.2rem); bottom: clamp(.6rem, 2.8vw, 2.2rem); width: min(27rem, 88%);
-  padding: .9rem 1.2rem 1rem; border: 1px solid color-mix(in srgb, var(--deck-brass) 55%, transparent); border-radius: var(--radius);
-  background: color-mix(in srgb, var(--deck-night) 84%, transparent); box-shadow: 0 .8rem 2.5rem rgba(0, 0, 0, .55); animation: prUp .6s .5s ease-out both; }
-.pr-line header { display: flex; align-items: center; gap: .6rem; margin-bottom: .4rem; font: .95rem/1.1 var(--special); letter-spacing: .08em; color: var(--brass-hi); }
-.pr-say { flex: none; display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -.4rem 0; padding: 0; border-radius: 50%;
-  background: var(--deck-oxblood); border: 1px solid var(--deck-brass); color: var(--deck-ivory); cursor: pointer; }
-.pr-say svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pr-say:hover { background: color-mix(in srgb, var(--deck-oxblood) 80%, #fff); }
-.pr-line p { margin: 0; font: italic clamp(1.05rem, 1.7vw, 1.3rem)/1.35 var(--serif); color: var(--deck-ivory); }
-@keyframes prUp { from { opacity: 0; transform: translateY(.8rem); } to { opacity: 1; transform: none; } }
-
-/* the letter of commission */
-.pr-card { grid-column: 2; position: relative; display: flex; flex-direction: column; align-items: center; gap: .55rem; text-align: center;
-  max-height: 100%; overflow-y: auto; scrollbar-width: thin; box-sizing: border-box; padding: clamp(1.2rem, 3vw, 2.2rem) clamp(1.1rem, 3vw, 2.4rem) clamp(1rem, 2.4vw, 1.8rem);
-  color: var(--ink); border-radius: 3px;
-  background: radial-gradient(ellipse at 50% 30%, var(--paper) 0%, var(--paper) 45%, var(--paper-2) 100%);
-  border: 1px solid var(--deck-brass); outline: 2px solid color-mix(in srgb, var(--deck-brass) 55%, transparent); outline-offset: -10px;
-  box-shadow: 0 0 0 5px var(--deck-lacquer), 0 0 0 6px color-mix(in srgb, var(--deck-brass) 60%, transparent), 0 2rem 5rem rgba(0, 0, 0, .75);
-  animation: prCard .7s .15s cubic-bezier(.2, 1.2, .4, 1) both; }
-@keyframes prCard { from { opacity: 0; transform: translateY(1.2rem) scale(.97); } to { opacity: 1; transform: none; } }
-.pr-ribbon { position: absolute; top: -6px; right: clamp(1.4rem, 4vw, 2.6rem); width: 2.4rem; height: 4.6rem; pointer-events: none;
-  background: linear-gradient(90deg, #6a1e22, var(--deck-oxblood) 40%, #8f2c30 60%, #6a1e22);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); box-shadow: 0 2px 6px rgba(0, 0, 0, .4); }
-.pr-eyebrow { margin: 0; padding-inline: 2.6rem; font: .95rem/1.25 var(--special); letter-spacing: .14em; color: var(--ink-2); }
-.pr-card h2 { margin: 0; font: 700 clamp(1.2rem, 2.2vw, 1.5rem)/1.2 var(--serif); letter-spacing: .02em; color: var(--deck-oxblood); }
-.pr-card h2::before, .pr-card h2::after { content: "❧"; display: inline-block; margin: 0 .55rem; font-weight: 400; color: var(--deck-brass); }
-.pr-card h2::before { transform: scaleX(-1); }
-
-.pr-seal { position: relative; display: grid; place-items: center; width: clamp(6.5rem, 12vw, 9rem); aspect-ratio: 1; margin: .3rem 0 .1rem; }
-.pr-rays { position: absolute; inset: -22%; border-radius: 50%; pointer-events: none;
-  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--deck-brass) 55%, transparent) 0deg 5deg, transparent 5deg 15deg);
-  -webkit-mask-image: radial-gradient(circle, #000 30%, transparent 70%); mask-image: radial-gradient(circle, #000 30%, transparent 70%);
-  animation: prSpin 40s linear infinite, prFade 1s .5s ease-out both; }
-.pr-ring { position: absolute; inset: 2%; border-radius: 50%; border: 2px solid var(--deck-brass);
-  box-shadow: 0 0 0 4px var(--paper), 0 0 0 5px color-mix(in srgb, var(--deck-brass) 55%, transparent), 0 .6rem 1.4rem rgba(42, 27, 20, .35); }
-.pr-seal img, .pr-noseal { position: relative; width: 88%; height: 88%; object-fit: contain; animation: prSeal .7s .45s cubic-bezier(.2, 1.6, .4, 1) both; }
-.pr-noseal { display: grid; place-items: center; border-radius: 50%; background: var(--deck-jade); color: var(--deck-brass); font-size: 3rem; }
-.pr-seal::after { content: ""; position: absolute; inset: 6%; border-radius: 50%; pointer-events: none;
-  background: linear-gradient(115deg, transparent 35%, rgba(255, 246, 220, .55) 48%, transparent 60%) no-repeat; background-size: 250% 100%;
-  animation: prGleam 4.5s 1.4s ease-in-out infinite; }
-@keyframes prSpin { to { transform: rotate(360deg); } }
-@keyframes prFade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes prSeal { from { opacity: 0; transform: scale(1.7) rotate(-20deg); } to { opacity: 1; transform: none; } }
-@keyframes prGleam { 0% { background-position: 120% 0; } 35%, 100% { background-position: -120% 0; } }
-
-/* the game's name, in its own lettering (wordmark.css), inked onto the letter */
-.pr-brand { margin: -.2rem 0 .1rem; padding-inline: 2.8rem; font: normal clamp(1.5rem, 2.8vw, 2.1rem)/1.1 "Ceremony Title", Georgia, serif;
-  letter-spacing: -.02em; color: var(--deck-oxblood); text-shadow: 0 1px 0 rgba(255, 255, 255, .55); }
-.pr-brand:empty { display: none; }
-.pr-brand::after { content: "◆"; display: block; margin: .15rem auto 0; width: min(16rem, 80%); font: .7rem/1 Georgia, serif; color: var(--deck-brass);
-  background: linear-gradient(90deg, transparent, var(--deck-brass) 30%, transparent 46%, transparent 54%, var(--deck-brass) 70%, transparent) center / 100% 1px no-repeat; }
-
-.pr-to { margin: .15rem 0 0; font: 700 clamp(1.15rem, 2vw, 1.4rem)/1.2 var(--serif); color: var(--ink); }
-.pr-house { margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
-  font: 700 clamp(1.05rem, 1.9vw, 1.3rem)/1.2 var(--special); letter-spacing: normal; color: var(--deck-oxblood); }
-.pr-house .crest { width: 2.4rem; height: 2.4rem; object-fit: contain; border-radius: 6px; flex: none;
-  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px color-mix(in srgb, var(--deck-brass) 70%, transparent); }
-.pr-hereby { margin: .1rem 0 0; font: italic 1rem/1.3 var(--serif); color: var(--ink-2); }
-/* the new rank, in the game's title lettering, plain black ink */
-.pr-rank { margin: .1rem 0 0; font: normal clamp(1.7rem, 3.2vw, 2.4rem)/1.15 "Ceremony Title", Georgia, serif; letter-spacing: -.01em;
-  color: #000; animation: prUp .6s .7s ease-out both; }
-
-.pr-figs { align-self: stretch; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .5rem 0 0; padding: .7rem 0;
-  border-block: 1px solid color-mix(in srgb, var(--deck-brass) 70%, transparent); }
-.pr-figs > div + div { border-left: 1px solid color-mix(in srgb, var(--deck-brass) 45%, transparent); }
-.pr-figs dt { font: .8rem/1.2 var(--special); letter-spacing: .08em; color: var(--ink-2); }
-.pr-figs dd { margin: .2rem 0 0; font: 600 1.15rem/1.2 var(--figures); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
-.pr-figs dd small { display: block; font-size: .8rem; font-weight: 500; color: var(--ink-2); }
-.pr-figs > div:last-child dd { font-family: var(--serif); font-weight: 700; }
-.pr-figs > div:last-child dd small { font-family: var(--figures); }
-
-.pr-card footer { align-self: stretch; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: .4rem; }
-.pr-sign { margin: 0; text-align: left; display: flex; flex-direction: column; }
-.pr-sign span { font: italic 1.2rem/1.1 var(--serif); color: var(--ink); border-bottom: 1px solid var(--ink-2); padding: 0 .4rem .15rem 0; }
-.pr-sign small { margin-top: .2rem; font: .78rem/1.2 var(--special); letter-spacing: .08em; color: var(--ink-2); }
-.pr-card footer button { margin-left: auto; min-height: 3.2rem; padding: 0 1.6rem; font: 700 1.15rem/1 var(--sans); color: var(--deck-ivory);
-  background: linear-gradient(180deg, #8f2c30, #6a1e22); border: 2px solid var(--deck-brass); border-radius: 4px;
-  box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px color-mix(in srgb, var(--deck-brass) 55%, transparent), 0 .4rem 1rem rgba(42, 27, 20, .35); cursor: pointer; }
-.pr-card footer button:hover { background: linear-gradient(180deg, #a3363b, #7b2428); }
-.pr-card footer button:disabled { opacity: .6; cursor: progress; }
-.fleet-promotion.pr .fleet-promotion-error { color: var(--deck-oxblood); font-weight: 700; }
-
-/* upright screens: the letter at the foot, the Mayor faded behind, her words above it */
-@media (orientation: portrait), (max-aspect-ratio: 1/1) {
-  .fleet-promotion.pr { display: flex; flex-direction: column; justify-content: flex-end; gap: .9rem; overflow-y: auto; }
-  .pr-who { position: static; width: auto; }
-  .pr-who > img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; z-index: 0;
-    -webkit-mask-image: linear-gradient(0deg, transparent 30%, #000 75%); mask-image: linear-gradient(0deg, transparent 30%, #000 75%); }
-  .pr-line { position: relative; z-index: 1; left: auto; bottom: auto; width: auto; }
-  .pr-card { position: relative; z-index: 1; width: 100%; max-height: none; overflow: visible; }
-}
-@media (max-height: 560px) {
-  .pr-seal { width: 5.5rem; }
-  .pr-rank { font-size: 1.6rem; }
-  .pr-line p { display: none; }
-  .pr-hereby, .pr-brand::after { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .fleet-promotion.pr, .pr-who > img, .pr-line, .pr-card, .pr-rays, .pr-seal img, .pr-noseal, .pr-seal::after, .pr-rank { animation: none; }
-}
+@font-face{font-family:"Ceremony Title";src:url("/fonts/uncial-antiqua-latin-e93ce65c.woff2") format("woff2");font-display:swap}
+.fleet-promotion.pr{--pr-tone:var(--deck-jade);--pr-deep:var(--deck-night);--pr-metal:var(--deck-brass);--pr-paper:var(--deck-ivory);--pr-ink:var(--deck-jade);position:fixed;inset:0;width:min(60rem,calc(100% - 1.5rem));height:fit-content;max-width:none;max-height:calc(100dvh - 1.5rem);margin:auto;padding:clamp(.9rem,2vw,1.5rem);box-sizing:border-box;overflow:auto;scrollbar-width:thin;isolation:isolate;border:1px solid var(--pr-metal);border-radius:2px;background:var(--pr-deep);color:var(--deck-ivory);box-shadow:inset 0 0 0 5px var(--deck-night),0 2rem 5rem #0009;animation:prIn .6s ease-out both}
+.fleet-promotion.pr:not([open]){display:none}.fleet-promotion.pr::backdrop{background:#090f0ee8;backdrop-filter:blur(5px)}.fleet-promotion.pr *,.fleet-promotion.pr *::before,.fleet-promotion.pr *::after{box-sizing:border-box}
+.pr-scene{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.16;z-index:-2;pointer-events:none}.pr-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(transparent,var(--pr-deep))}.pr-ceremony{position:relative}
+.pr-mast{display:flex;justify-content:space-between;align-items:center;gap:1rem;font:.8rem/1.3 var(--special);color:var(--deck-ivory);letter-spacing:.06em}.pr-brand{font:normal clamp(1rem,2vw,1.3rem)/1.2 "Ceremony Title",Georgia,serif;color:var(--pr-metal)}
+.pr-house{display:flex;align-items:center;gap:clamp(1rem,3vw,1.8rem);padding:clamp(1.4rem,3vw,2rem) .6rem}.pr-house .crest,.pr-house .chip{display:block;flex:none;width:clamp(5.2rem,10vw,7.5rem);height:clamp(5.2rem,10vw,7.5rem);object-fit:cover;border-radius:50%;border:2px solid var(--pr-metal);box-shadow:0 0 0 5px var(--pr-deep),0 0 0 6px color-mix(in srgb,var(--pr-metal) 60%,transparent),0 .8rem 1.5rem #0006;animation:prCrest 1.2s ease-out both}
+.pr-house>div:not(.pr-tier){min-width:0}.pr-house-label{margin:0;font:.75rem/1.3 var(--special);letter-spacing:.17em;text-transform:uppercase;color:var(--deck-ivory)}.pr-house h2{margin:.2rem 0 .4rem;font:normal clamp(1.7rem,4vw,3rem)/1.2 "Ceremony Title",Georgia,serif;color:var(--deck-ivory);overflow-wrap:anywhere}.pr-to{margin:0;font:1.25rem/1.3 var(--serif);color:var(--deck-ivory)}
+.pr-tier{margin-left:auto;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;min-width:4rem;padding-inline:.5rem;border-inline:1px solid color-mix(in srgb,var(--pr-metal) 40%,transparent);background:linear-gradient(var(--pr-tone),transparent);color:var(--pr-metal)}.pr-tier strong{font:normal 2.3rem/1.2 "Ceremony Title",Georgia,serif}.pr-tier span{font:.7rem/1.2 var(--special);letter-spacing:.1em;text-transform:uppercase}
+.pr-document{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.85fr);align-items:stretch;border:1px solid var(--pr-metal);background:var(--pr-paper);box-shadow:0 1rem 2.5rem #0006}.pr-card{position:relative;padding:clamp(1.5rem,3vw,2.2rem);text-align:center;color:#322b21;background:radial-gradient(ellipse at 50% 10%,#fff7e8,transparent 75%),var(--pr-paper);outline:1px solid #aa8e5644;outline-offset:-9px;animation:prPaper 1.1s .15s ease-out both}
+.pr-eyebrow{margin:0;font:.75rem/1.6 var(--special);letter-spacing:.1em;text-transform:uppercase;color:#705635}.pr-hereby{margin:.9rem 0 .4rem;font:italic 1.1rem/1.3 var(--serif);color:#654e35}.pr-seal{position:relative;display:grid;place-items:center;width:clamp(6rem,10vw,7.3rem);aspect-ratio:1;margin:.4rem auto .8rem;animation:prSeal .8s .9s cubic-bezier(.2,.8,.3,1) both}
+.pr-rays{position:absolute;inset:-25%;border-radius:50%;pointer-events:none;background:repeating-conic-gradient(from 3deg,color-mix(in srgb,var(--pr-metal) 70%,transparent) 0deg 3deg,transparent 3deg 15deg);-webkit-mask-image:radial-gradient(circle,transparent 30%,#0008 48%,transparent 71%);mask-image:radial-gradient(circle,transparent 30%,#0008 48%,transparent 71%);animation:prRays 5s ease-out both}.pr-seal img{position:relative;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 5px 5px #4f35143d)}.pr-noseal{position:relative;display:grid;place-items:center;width:90%;height:90%;border-radius:50%;background:var(--pr-tone);border:3px double var(--pr-metal);color:var(--pr-metal);font:2rem "Ceremony Title",serif}
+.pr-seal::after{content:"";position:absolute;inset:5%;border-radius:50%;pointer-events:none;background:linear-gradient(115deg,transparent 35%,#fff6dca0 48%,transparent 60%) no-repeat;background-size:250% 100%;animation:prGleam 1.8s 2.3s ease-in-out both}.pr-card .pr-rank{margin:0 0 .4rem;font:normal clamp(1.8rem,4.7vw,3.2rem)/1.2 "Ceremony Title",Georgia,serif;color:var(--pr-ink);overflow-wrap:anywhere;animation:prUp .8s 1.5s ease-out both}.pr-elevation{margin:0;font:.8rem/1.4 var(--special);letter-spacing:.04em;color:#705635}
+.pr-path{display:flex;flex-wrap:wrap;justify-content:center;gap:.55rem;padding:0;margin:1.1rem 0;list-style:none}.pr-path li{display:grid;place-items:center;min-width:1.7rem;height:1.7rem;padding:0 .15rem;border-radius:50%;background:#b2a17c22;color:#725e3d;font:.75rem/1 var(--serif)}.pr-path .earned{background:var(--pr-ink);color:#f3dfb4}.pr-path .current{outline:1px solid var(--pr-ink);outline-offset:3px;background:var(--pr-metal);color:#2f2b20;animation:prStep .8s 2s ease-out both}.pr-accessible{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.pr-citation{margin:0 auto;max-width:24rem;font:1.1rem/1.4 var(--serif);color:#5a4832}.pr-record-label{display:flex;align-items:center;gap:.6rem;margin:1.2rem 0 .7rem;font:.75rem/1.3 var(--special);letter-spacing:.08em;color:#705635;text-transform:uppercase}.pr-record-label::before,.pr-record-label::after{content:"";height:1px;flex:1;background:#a4895555}
+.pr-figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem .6rem;margin:0;animation:prUp .9s 2.3s ease-out both}.pr-figs>div{display:flex;flex-direction:column-reverse;gap:.2rem}.pr-figs .pr-worth{grid-column:1/-1}.pr-figs dt{font:.85rem/1.3 var(--serif);color:#705635}.pr-figs dd{margin:0;font:1.8rem/1.15 var(--serif);font-variant-numeric:tabular-nums;color:var(--pr-ink);overflow-wrap:anywhere}.pr-figs .pr-worth dd{font-size:clamp(1.8rem,3.8vw,2.3rem)}
+.pr-deeds{margin:.8rem 0 0;font:.9rem/1.4 var(--serif);color:#705635}
+.pr-exploit{display:flex;flex-direction:column;gap:.35rem;margin:1rem 0 0;padding-block:.8rem;border-block:1px solid #a4895555;font:1rem/1.4 var(--serif);color:#5a4832}.pr-exploit>span{font:.75rem/1.3 var(--special);text-transform:uppercase;letter-spacing:.06em}.pr-exploit em{color:var(--pr-ink)}.pr-sign{display:flex;flex-direction:column;gap:.25rem;margin:1.2rem 0 0;color:#59432c;animation:prUp .8s 3s ease-out both}.pr-sign span{font:italic 1.25rem/1.2 var(--serif)}.pr-sign small{font:.75rem/1.2 var(--special);letter-spacing:.05em}
+.pr-who{position:relative;display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate;overflow:hidden;margin:0;min-height:30rem;background:var(--pr-tone)}.pr-who>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 23%;z-index:-2;animation:prPortrait 9s ease-out both}.pr-who::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(transparent 35%,#0b151352 50%,#0c1b17f5 83%);pointer-events:none}.pr-line{position:relative;margin-top:21rem;padding:clamp(1rem,2.5vw,1.6rem);color:var(--deck-ivory)}
+.pr-line header{display:flex;align-items:center;gap:.6rem;border-top:1px solid color-mix(in srgb,var(--pr-metal) 60%,transparent);padding-top:.8rem;font:.8rem/1.3 var(--special);letter-spacing:.06em;color:var(--pr-metal)}.pr-line p{margin:.8rem 0;font:italic clamp(1.15rem,2vw,1.45rem)/1.4 var(--serif);color:var(--deck-ivory);animation:prUp 1s 2.8s ease-out both}.pr-line small{font:.85rem/1.3 var(--serif);color:var(--deck-ivory)}.fleet-promotion.pr .pr-say{display:inline-grid;place-items:center;flex:none;width:2.75rem;height:2.75rem;padding:0;border:1px solid var(--pr-metal);border-radius:50%;background:var(--pr-tone);color:var(--deck-ivory);cursor:pointer}.pr-say svg{width:1.1rem;height:1.1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pr-actions{position:sticky;bottom:-1.5rem;z-index:2;padding:1.1rem 0 .7rem;text-align:center;background:var(--pr-deep)}.fleet-promotion.pr .pr-actions button{min-height:3.2rem;padding:.9rem 1.7rem;font:1.2rem/1.2 var(--serif);color:var(--deck-ivory);background:linear-gradient(color-mix(in srgb,var(--pr-tone) 85%,#fff),var(--pr-tone));border:1px solid var(--pr-metal);border-radius:2px;box-shadow:inset 0 0 0 3px var(--pr-deep),0 .4rem 1rem #0004;cursor:pointer}.fleet-promotion.pr .pr-actions button:hover,.fleet-promotion.pr .pr-say:hover{filter:brightness(1.15)}.fleet-promotion.pr .pr-actions button:disabled{opacity:.6;cursor:progress}.pr-next{margin:.75rem 0 0;font:.95rem/1.4 var(--serif);color:var(--deck-ivory)}.fleet-promotion.pr .fleet-promotion-error{color:var(--deck-ivory);font-weight:bold;text-align:center}
+@keyframes prIn{from{opacity:0}to{opacity:1}}@keyframes prCrest{from{opacity:0;transform:translateY(-15px) rotate(-9deg)}to{opacity:1;transform:none}}@keyframes prPaper{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}@keyframes prSeal{from{opacity:0;transform:scale(1.55) rotate(-12deg)}to{opacity:1;transform:none}}@keyframes prUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@keyframes prStep{from{transform:scale(1.8)}to{transform:scale(1)}}@keyframes prPortrait{from{transform:scale(1.075)}to{transform:scale(1)}}@keyframes prRays{from{transform:rotate(-15deg)}to{transform:none}}@keyframes prGleam{from{background-position:120% 0}to{background-position:-120% 0}}
+@media(max-width:640px){.pr-document{grid-template-columns:minmax(0,1fr)}.pr-tier{display:none}.pr-mast{flex-wrap:wrap;font-size:.75rem}.pr-house{padding-inline:.2rem}.pr-house h2{font-size:clamp(1.5rem,6vw,2.5rem)}.pr-card .pr-rank{font-size:clamp(1.9rem,8vw,2.7rem)}.pr-who{min-height:23rem}.pr-who>img{object-position:50% 25%}.pr-line{margin-top:12rem;padding-top:0}.pr-who::after{background:linear-gradient(transparent,#0c1b17e8 70%,#0c1b17)}.pr-who.nopic{min-height:0}.pr-who.nopic .pr-line{margin-top:1rem}}
+@media(prefers-reduced-motion:reduce){.fleet-promotion.pr,.fleet-promotion.pr *,.fleet-promotion.pr *::after{animation:none}}

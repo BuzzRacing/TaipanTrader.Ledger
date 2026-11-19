@@ -84,6 +84,10 @@ const ICON = {
   routes: '<circle cx="6" cy="17" r="2.2"/><circle cx="18" cy="7" r="2.2"/><path d="M8 16c5-1 3-7 8-8" stroke-dasharray="2 2.5"/>',
   markets: '<path d="M4 20V10M9 20V5M14 20v-8M19 20V8"/>',
   perils: '<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 16.5v.5"/>',
+  purse: '<path d="M6 8h12l1.5 11a1 1 0 0 1-1 1.1H5.5a1 1 0 0 1-1-1.1z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/><path d="M10 13.5h4"/>',
+  tip: '<path d="M12 3a6 6 0 0 1 3.5 10.9V17h-7v-3.1A6 6 0 0 1 12 3z"/><path d="M9.5 20h5"/>',
+  prize: '<path d="M4 10h16v9H4z"/><path d="M4 10l2-4h12l2 4M12 6v13"/>',
+  desk: '<path d="M4 9h16v3H4zM6 12v8M18 12v8"/><path d="M9 9V6h6v3"/>',
   storm: '<path d="M7 15a4 4 0 1 1 1-7.9A5 5 0 0 1 18 9a3 3 0 0 1 0 6z"/><path d="M11 15l-2 4h3l-2 3"/>',
   battle: '<path d="M5 19L19 5M15 5h4v4M9 19H5v-4M5 5l14 14M5 9V5h4M19 15v4h-4"/>',
   wreck: '<path d="M3 15h18l-3 4H6z"/><path d="M12 15V5l5 6h-5"/><path d="M2 21c3-1 5 1 8 0s5 1 8 0 3 0 4 0"/>',
@@ -96,6 +100,73 @@ const ICON = {
   table: '<path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/>', close: '<path d="M6 6l12 12M18 6L6 18"/>'
 };
 const icon = (k, cls) => `<svg class="ico ${cls || ""}" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ""}</svg>`;
+
+/* -------------------------------------------------------------- pictures -- */
+/* Pictures come from the Media Library (media.js, sent with /api/info, NSFW already filtered out while the
+   game is family-friendly). Every helper gives "" when the library has nothing, so the page still works.
+   Pictures are always rectangles big enough to see, never small round badges. */
+const hasMedia = () => typeof Media !== "undefined";
+function lazy(html) { return String(html || "").replace(/<img /g, '<img loading="lazy" decoding="async" '); }
+function mpic(kind, subj, role, cls, opts) {
+  if (!hasMedia() || !subj) return "";
+  return lazy(Media.html(kind, subj, role, cls || "", "", opts || {}));
+}
+/* A persona in a mood (happy, angry, sly...), else any picture of her. */
+function face(cid, mood, cls, slot) {
+  cls = (cls || "") + " pz";        // pz: a person's picture, zoomed in on the top half where the face is
+  return (mood && mpic("persona", cid, mood, cls, { strict: true, slot })) || mpic("persona", cid, "portrait", cls, { slot });
+}
+/* Fan-Tan Bella, keeper of the Tally Book: her mood follows the numbers on screen. */
+function hostMood() {
+  if (ui.scope === "voyage" && V) {
+    const m = V.voyage.me.months, k = V.voyage.me.kpis;
+    if (!m.length) return "sly";
+    const last = m[m.length - 1].worth, prev = m.length > 1 ? m[m.length - 2].worth : k.start_worth;
+    if (last < prev * .9 || last < k.start_worth || (k.peak && last < k.peak * .6)) return "angry";
+    if (last > prev && last > k.start_worth) return "happy";
+    return "sly";
+  }
+  if (C && C.career.totals.games) return C.career.totals.wins ? "happy" : "sly";
+  return "sly";
+}
+function hostHtml() {
+  const mood = hostMood();
+  const pic = face("bookmaker", mood, "tl-host-img", "tally-host");
+  if (!pic) return "";
+  return `<figure class="tl-host" title="${te("st.host.name")}"><span class="pfr host-fr">${pic}</span><figcaption><b>${te("st.host.name")}</b><small>${te("st.host." + mood)}</small></figcaption></figure>`;
+}
+/* An empty panel: Bella says so, with her picture. */
+function emptyNote(key) {
+  const pic = face("bookmaker", "sly", "be-img", "empty-" + key);
+  return pic ? `<div class="bella-empty"><span class="pfr be-fr">${pic}</span><p>${te(key)}</p></div>` : `<p class="muted empty">${te(key)}</p>`;
+}
+/* Who got your silver: the face for each taker. */
+function takerPic(r, cls) {
+  const top = Object.keys(r.ports || {}).find(p => D.ports[p]);
+  switch (r.who) {
+    case "mayor": return (top && mpic("port", top, "mayor", cls + " pz", { strict: true, slot: "tk-mayor" })) || face("mayor", "happy", cls, "tk-mayor");
+    case "officer": return (top && face("officer_" + top, "", cls, "tk-officer")) || (top && mpic("port", top, "taxlady", cls + " pz", { strict: true, slot: "tk-officer" })) || face("taxlady", "", cls, "tk-officer");
+    case "pirates": return face("pirate", "sly", cls, "tk-pirates");
+    case "thieves": return mpic("scene", "robbery", "", cls, { slot: "tk-thieves" });
+    case "warehouse": return mpic("service", "warehouse", "background", cls, { slot: "tk-wh" });
+    default: return face(r.who, r.amount > 0 ? "happy" : "sly", cls, "tk-" + r.who);
+  }
+}
+/* The sea-fight picture for one battle: war junks or pirate junks, at the moment it ended. */
+const BATTLE_MOMENT = { won: "victory", escaped: "got_away", broke_off: "got_away", retreated: "retreat", plundered: "boarding",
+                        paid: "sighting", sunk: "ship_lost", fought: "broadside" };
+function battlePic(b, i) {
+  return mpic("scene", b.lord ? "seafight_lord" : "seafight_pirates", BATTLE_MOMENT[b.result] || "broadside", "bl-img", { slot: "battle-" + i });
+}
+function cargoPic(g, cls) {
+  if (!hasMedia()) return "";
+  return lazy(Media.html("cargo", g, "icon", cls, ((D.graphics || {}).goods || {})[g], { mode: "fixed" }));
+}
+function rankBadgeUrl(id) {
+  if (!hasMedia() || !id) return "";
+  const it = Media.choose("rank", id, "badge", { mode: "fixed", strict: true });
+  return it && it.t === "image" ? it.u : "";
+}
 
 /* ----------------------------------------------------------------- net -- */
 async function getJSON(url) {
@@ -148,7 +219,7 @@ async function pickWho(players) {
     ${btn(te("st.back"), "back", "", "ghost")}</section></div>`;
 }
 
-const TABS = ["fortune", "routes", "markets", "perils"];
+const TABS = ["fortune", "purse", "routes", "markets", "perils"];
 
 function render(animate) {
   stopTimers();
@@ -164,12 +235,13 @@ function render(animate) {
   const games = gameOptions();
   app.innerHTML = `<div class="tl" data-scope="${scope}" data-tab="${ui.tab}">
     <header class="tl-top">
-      <div class="tl-house">${vs ? houseIco(who, "tl-crest", name) : icon("rank", "big")}
+      <div class="tl-house">${captainPic(vs ? who : null, name)}${vs ? houseIco(who, "tl-crest", name) : icon("rank", "big")}
         <div><p class="eyebrow">${te("st.title")}</p>${head}</div></div>
       <div class="tl-scope seg" role="tablist">
         ${btn(te("st.voyage"), "scope", `data-s="voyage" ${V ? "" : "disabled"}`, scope === "voyage" ? "on" : "")}
         ${btn(te("st.career"), "scope", 'data-s="career"', scope === "career" ? "on" : "")}</div>
       ${vs && games ? `<label class="tl-game"><span>${te("st.game")}</span><select data-act="game">${games}</select></label>` : ""}
+      ${hostHtml()}
       ${btn(icon("close"), "back", `aria-label="${te("st.back")}" title="${te("st.back")}"`, "ghost tl-x")}
     </header>
     <section class="tl-kpis">${vs ? voyageKpis() : careerKpis()}</section>
@@ -183,6 +255,12 @@ function render(animate) {
   main.scrollTop = 0;
   drawAll(animate);
   countUp(animate);
+}
+
+/* The Captain's own portrait (Admin > Captains), a proper picture beside the House crest. */
+function captainPic(who, name) {
+  const f = Faces.of({ name: (who && who.name) || name, firm: who && who.firm });
+  return f.portrait ? `<span class="pfr cap-fr"><img class="tl-captain pz" loading="lazy" src="${esc(f.portrait)}" alt=""></span>` : "";
 }
 
 function lockNote() {
@@ -318,7 +396,7 @@ function lineChart(o, animate) {
   const n = o.xs.length;
   const all = [];
   o.series.forEach(s => s.vals.forEach(v => { if (v != null) all.push(v); }));
-  if (!all.length || n < 1) { node.innerHTML = `<p class="muted empty">${te("st.empty")}</p>`; return; }
+  if (!all.length || n < 1) { node.innerHTML = `${emptyNote("st.empty")}`; return; }
   let lo = Math.min(...all), hi = Math.max(...all);
   if (o.zero !== false) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
   const ticks = niceTicks(lo, hi, Math.max(3, Math.round(H / 70)));
@@ -373,7 +451,8 @@ function lineChart(o, animate) {
     if (v == null) return;
     const glyph = m.kind === "bad" ? '<path d="M-3 -3L3 3M3 -3L-3 3"/>' : m.kind === "down" ? '<path d="M-3 -1.5L0 2.5L3 -1.5"/>' : "";
     out.push(`<g class="mk mk-${m.kind || "rank"}" transform="translate(${X(m.i)},${Y(v)})"><circle r="6.5"/>${glyph}` +
-      (m.short ? `<text y="-12" text-anchor="middle">${esc(m.short)}</text>` : "") + "</g>");
+      (m.img ? `<image class="mk-badge" href="${esc(m.img)}" x="-17" y="-46" width="34" height="34"/>`
+        : m.short ? `<text y="-12" text-anchor="middle">${esc(m.short)}</text>` : "") + "</g>");
   });
   out.push(`<line class="xh" x1="0" x2="0" y1="${pad.t}" y2="${H - pad.b}" visibility="hidden"/>`);
   out.push(`<rect class="hit" x="${pad.l}" y="0" width="${Math.max(1, W - pad.l - pad.r)}" height="${H}"/></svg>`);
@@ -400,7 +479,7 @@ function bars(id, items, opts, animate) {
   const node = el(id);
   if (!node) return;
   const o = opts || {};
-  if (!items.length) { node.innerHTML = `<p class="muted empty">${te(o.empty || "st.empty")}</p>`; return; }
+  if (!items.length) { node.innerHTML = `${emptyNote(o.empty || "st.empty")}`; return; }
   const max = Math.max(1, ...items.map(i => Math.abs(i.value)));
   const neg = items.some(i => i.value < 0), pos = items.some(i => i.value > 0);
   const split = neg && pos ? Math.max(.2, Math.min(.8, Math.max(...items.map(i => i.value < 0 ? -i.value : 0)) /
@@ -432,7 +511,7 @@ function heat(id, o, animate) {
   if (!node) return;
   const vals = [];
   o.rows.forEach(r => o.cols.forEach(c => { const v = o.val(r.k, c.k); if (v != null) vals.push(v); }));
-  if (!vals.length) { node.innerHTML = `<p class="muted empty">${te(o.empty || "st.empty")}</p>`; return; }
+  if (!vals.length) { node.innerHTML = `${emptyNote(o.empty || "st.empty")}`; return; }
   const max = Math.max(1, ...vals.map(Math.abs));
   const lo = o.lo != null ? o.lo : Math.min(...vals), hi = o.hi != null ? o.hi : Math.max(...vals);
   const cells = [];
@@ -480,6 +559,8 @@ const VOYAGE = {
     later(a => lineChart({ id: "worth", xs, area: true, series: [{ name: t("st.worth"), color: SINGLE, vals: m.map(r => r.worth), width: 2.5 }],
       marks: me.rankups.map(r => ({ i: m.findIndex(x => x.turn === r.turn), label: t(r.up ? "st.rankup" : "st.rankdown", { rank: r.rank }),
                                     short: r.up ? "★" : "", kind: r.up ? "rank" : "down" }))
+        .concat((me.promotions || []).map(pr => ({ i: m.findIndex(x => x.turn >= pr.turn), label: t("st.commissioned", { rank: pr.rank, port: portName(pr.port) }),
+                                                   img: rankBadgeUrl(pr.rank_id), short: "★", kind: "rank" })))
         .concat(me.moments.filter(x => x.kind === "wreck").map(x => ({ i: m.findIndex(r => r.turn === x.turn + 1), label: t("st.m.wreck"), short: "", kind: "bad" })))
         .filter(x => x.i >= 0),
       tipExtra: i => `<div class="tip-note">${esc(portName(m[i].port))} · ${te("st.ships_n", { n: m[i].ships })} · ${te("st.guns_n", { n: m[i].guns })}</div>` }, a));
@@ -504,6 +585,46 @@ const VOYAGE = {
       ${panel("cargo", te("st.p.cargo"), te("st.p.cargo_sub"))}
       ${panel("lines", te("st.p.lines"), te("st.p.lines_sub"))}
       ${panel("trades", te("st.p.trades"), te("st.p.trades_sub"), tradeList(me), { table: false })}
+    </div>`;
+  },
+
+  purse() {
+    const me = V.voyage.me, m = me.months, xs = m.map(r => r.date);
+    later(a => stackChart("parts", xs, [
+      { name: t("st.part.cash"), color: ser(0), vals: m.map(r => Math.max(0, r.cash)) },
+      { name: t("st.part.bank"), color: ser(2), vals: m.map(r => r.bank) },
+      { name: t("st.part.cargo"), color: ser(3), vals: m.map(r => r.goods_value || 0) },
+      { name: t("st.part.fleet"), color: ser(6), vals: m.map(r => r.fleet_value || 0) }],
+      { name: t("st.part.debt"), color: ser(1), vals: m.map(r => r.debt) },
+      { name: t("st.worth"), vals: m.map(r => r.worth) },
+      (me.windfalls || []).filter(w => w.sold || w.bought).map(w => ({ i: m.findIndex(r => r.turn >= w.turn),
+        label: t(w.sort === "boom" ? "st.wf.boom" : "st.wf.crash", { good: goodName(w.good), port: portName(w.port) }), kind: w.sort })), a));
+    later(a => lineChart({ id: "fleetc", xs, zero: true, series: [
+      { name: t("st.fl.hold"), color: SINGLE, vals: m.map(r => r.hold) },
+      { name: t("st.fl.hull"), color: ser(2), vals: m.map(r => r.hull == null ? null : r.hull) }],
+      tipFmt: v => Math.round(v).toLocaleString("en-US"), fmt: v => short(v).replace(CUR, ""),
+      tipExtra: i => `<div class="tip-note">${te("st.ships_n", { n: m[i].ships })} · ${te("st.fl.guns", { n: m[i].guns, v: m[i].cannons || 0 })}</div>` +
+        (m[i].types ? `<div class="tip-note">${esc(Object.entries(m[i].types).map(([k, n]) => n + " " + shipName(k)).join(", "))}</div>` : "") }, a));
+    // The Ledger's own account: trading (sales, sales to the Port Authority, less what the cargo cost) as one line.
+    const bl = me.books ? Object.assign({}, me.books.lines) : null;
+    if (bl) { bl.trade = (bl.sales || 0) + (bl.pa_sold || 0) + (bl.cost || 0); delete bl.sales; delete bl.pa_sold; delete bl.cost; }
+    const books = bl && Object.entries(bl).filter(([k, v]) => v && (k === "trade" || T["port.pl." + k] != null))
+      .sort((x, y) => y[1] - x[1]).map(([k, v]) => ({ label: te(k === "trade" ? "st.book.trade" : "port.pl." + k), value: v }));
+    if (books) later(a => bars("books", books, {}, a));
+    const d = me.desk || { visits: 0, ports: [], tax: 0, fine: 0, bribe: 0, caught: 0, bought: 0, sealed: 0, honesty: null };
+    later(a => bars("deskports", d.ports.map(p => ({ label: esc(portName(p.port)), value: -(p.tax + p.fine),
+      sub: te("st.desk.port_sub", { n: p.visits, caught: p.caught, pct: p.value ? Math.round(p.declared / p.value * 100) + "%" : "–" }) })),
+      { empty: "st.desk.none" }, a));
+    return `<div class="pg pg-purse">
+      ${panel("parts", te("st.p.parts"), te("st.p.parts_sub"), "", { cls: "wide" })}
+      ${panel("takers", te("st.p.takers"), te("st.p.takers_sub"), takerCards(me.takers), { table: false })}
+      ${panel("desk", te("st.p.desk"), te("st.p.desk_sub"), deskHtml(me), { table: false })}
+      ${panel("deskports", te("st.p.deskports"), te("st.p.deskports_sub"))}
+      ${panel("fleetc", te("st.p.fleet"), te("st.p.fleet_sub"))}
+      ${panel("ships", te("st.p.ships"), te("st.p.ships_sub"), shipCards(me.fleet), { table: false })}
+      ${panel("tips", te("st.p.tips"), te("st.p.tips_sub"), tipList(me.tips), { table: false })}
+      ${panel("promos", te("st.p.promos"), te("st.p.promos_sub"), promoCards(me.promotions), { table: false })}
+      ${books ? panel("books", te("st.p.books"), te("st.p.books_sub", { date: me.books.date })) : ""}
     </div>`;
   },
 
@@ -568,11 +689,13 @@ const VOYAGE = {
     }, a));
     later(a => priceSmall("history", me, ui.good, a));
     later(a => scoreHist("scores", me, a));
+    const booms = (me.windfalls || []).filter(w => w.big || w.sold || w.bought);
     const chips = goods.map(g => btn(esc(goodName(g)), "good", `data-g="${g}"`, "mini " + (g === ui.good ? "on" : ""))).join("");
     return `<div class="pg pg-markets">
       ${panel("prices", te("st.p.prices"), mk.full ? te("st.p.prices_full") : te("st.p.prices_fair"), "", { cls: "wide" })}
       ${panel("history", th("st.p.history", { good: esc(goodName(ui.good)) }), te("st.p.history_sub"), "", { cls: "tall", tools: `<div class="chips">${chips}</div>` })}
       ${panel("scores", te("st.p.scores"), te("st.p.scores_sub"))}
+      ${panel("booms", te("st.p.booms"), mk.full ? te("st.p.booms_full") : te("st.p.booms_fair"), boomList(booms), { table: false })}
     </div>`;
   },
 
@@ -588,12 +711,14 @@ const VOYAGE = {
     const tiles = [
       ["storm", t("st.t.storms"), p.storms, t("st.t.storm_sub", { dmg: p.storm_damage, n: p.typhoons })],
       ["battle", t("st.t.battles"), p.battles, t("st.t.battle_sub", { won: p.won, ran: p.escaped, off: p.broke_off, lost: p.plundered })],
-      ["ship", t("st.t.gunnery"), me.kpis.accuracy == null ? "–" : pct(me.kpis.accuracy), t("st.t.gunnery_sub", { sunk: me.battles.reduce((s, b) => s + b.sunk, 0) })],
+      ["ship", t("st.t.gunnery"), me.kpis.accuracy == null ? "–" : pct(me.kpis.accuracy), t("st.t.gunnery_sub", { sunk: me.kpis.enemy_sunk == null ? me.battles.reduce((s, b) => s + b.sunk, 0) : me.kpis.enemy_sunk })],
       ["rank", t("st.t.booty"), money(p.booty), t("st.t.booty_sub", { n: p.won })],
       ["seized", t("st.t.seized"), p.seizures, t("st.t.seized_sub", { v: money(p.seized_value + p.fines) })],
       ["robbed", t("st.t.robbed"), p.robbed, t("st.t.robbed_sub", { v: money(p.robbed_value) })],
       ["wreck", t("st.t.wrecks"), p.wrecks, t("st.t.wrecks_sub", { n: p.ships_lost })],
-      ["perils", t("st.t.driven"), p.driven_off, t("st.t.driven_sub")]
+      ["perils", t("st.t.driven"), p.driven_off, t("st.t.driven_sub")],
+      ["prize", t("st.t.prizes"), p.prizes || 0, t("st.t.prizes_sub", { v: money(p.prize_value || 0), n: p.prize_units || 0 })],
+      ["purse", t("st.t.bargains"), (p.paid_off || 0) + " / " + me.battles.filter(b => b.asked).length, t("st.t.bargains_sub", { n: p.lowballs || 0, v: money(-(me.lines.parley || 0)) })]
     ];
     const losses = [["plunder_value", p.plunder_value], ["seized_value", p.seized_value], ["fines", p.fines],
       ["robbed_value", p.robbed_value], ["wreck_cash", p.wreck_cash], ["wreck_cargo_value", p.wreck_cargo_value],
@@ -619,7 +744,7 @@ function tradeList(me) {
       <div><b>${esc(goodName(tr.good))}</b><small>${te("st.trade_line", { qty: tr.qty, port: portName(tr.port), date: tr.date })}</small>
       <small>${te("st.trade_sub", { buy: money(tr.basis / Math.max(1, tr.qty)), sell: money(tr.unit), pct: tr.pct == null ? "–" : Math.round(tr.pct * 100) + "%" })}</small></div>
       <em class="${tr.profit < 0 ? "down" : "up"}">${signed(tr.profit)}</em></li>`;
-  if (!me.best.length && !me.worst.length) return `<p class="muted empty">${te("st.no_trades")}</p>`;
+  if (!me.best.length && !me.worst.length) return `${emptyNote("st.no_trades")}`;
   const best = me.best.filter(x => x.profit > 0).map(x => row(x, "good")).join("");
   const worst = me.worst.map(x => row(x, "bad")).join("");
   return `<div class="trades"><p class="eyebrow">${te("st.best")}</p>${best ? `<ul>${best}</ul>` : `<p class="muted">–</p>`}
@@ -627,10 +752,22 @@ function tradeList(me) {
 }
 
 function battleList(me) {
-  if (!me.battles.length) return `<p class="muted empty">${te("st.no_battles")}</p>`;
-  return `<ul class="blist">${me.battles.slice().reverse().map(b => `<li class="r-${b.result}">${icon(b.result === "won" ? "rank" : b.result === "plundered" ? "robbed" : "battle")}
-    <div><b>${th("st.b.title", { n: b.count, enemy: esc(b.enemy || "") })}</b><small>${esc(b.date)}${b.route ? " · " + esc(portName(b.route[0])) + " → " + esc(portName(b.route[1])) : ""} · ${th("st.b.orders", { o: esc(b.orders || "") })}</small></div>
-    <span>${te("st.b." + b.result)}<small>${b.booty ? "+" + money(b.booty) : b.plundered ? "-" + money(b.plundered) : b.paid ? "-" + money(b.paid) : b.overboard ? "-" + money(b.overboard) : te("st.b.rounds", { n: b.rounds, sunk: b.sunk })}</small></span></li>`).join("")}</ul>`;
+  if (!me.battles.length) return `${emptyNote("st.no_battles")}`;
+  const all = me.battles.length;
+  return `<ul class="blist">${me.battles.slice().reverse().map((b, k) => {
+    const i = all - 1 - k;
+    const pic = battlePic(b, i);
+    const foe = face(b.lord ? "pirate" : "agent", b.result === "won" ? "angry" : "sly", "bf-img", "foe-" + i);
+    const extra = [];
+    if (b.prize) extra.push(te("st.b.prize", { v: money(b.prize), n: Object.values(b.prize_goods || {}).reduce((x, y) => x + y, 0) }));
+    if (b.asked) extra.push(te(b.lowball ? "st.b.lowball" : "st.b.asked", { v: money(b.asked) }));
+    if (b.choices) extra.push(Object.entries(b.choices).map(([c, n]) => te("st.b.choice", { o: t("st.b.c." + c), n })).join(", "));
+    return `<li class="r-${b.result}${pic ? " has-pic" : ""}">${pic ? `<div class="bl-pic">${pic}</div>` : icon(b.result === "won" ? "rank" : b.result === "plundered" ? "robbed" : "battle")}
+    <div><b>${th("st.b.title", { n: b.count, enemy: esc(b.enemy || "") })}</b><small>${esc(b.date)}${b.route ? " · " + esc(portName(b.route[0])) + " → " + esc(portName(b.route[1])) : ""} · ${th("st.b.orders", { o: esc(b.orders || "") })}</small>
+    ${extra.length ? `<small class="bl-x">${extra.join(" · ")}</small>` : ""}</div>
+    <span>${te("st.b." + b.result)}<small>${b.booty ? "+" + money(b.booty) : b.plundered ? "-" + money(b.plundered) : b.paid ? "-" + money(b.paid) : b.overboard ? "-" + money(b.overboard) : te("st.b.rounds", { n: b.rounds, sunk: b.sunk })}</small></span>
+    ${foe ? `<div class="bf-pic" title="${esc(b.enemy || "")}">${foe}</div>` : ""}</li>`;
+  }).join("")}</ul>`;
 }
 
 function headToHead(v) {
@@ -724,7 +861,7 @@ function raceBars(id, houses, me, animate) {
   const node = el(id);
   if (!node) return;
   const months = me.months;
-  if (!months.length) { node.innerHTML = `<p class="muted empty">${te("st.empty")}</p>`; return; }
+  if (!months.length) { node.innerHTML = `${emptyNote("st.empty")}`; return; }
   const at = ui.raceAt == null ? months.length - 1 : ui.raceAt;
   const values = houses.map(h => {
     const row = (h.months || []).find(r => r.turn === months[at].turn);
@@ -762,7 +899,7 @@ function priceSmall(id, me, good, animate) {
   if (!node) return;
   const hist = me.markets.history[good] || {};
   const ports = Object.keys(D.ports).filter(p => (hist[p] || []).length);
-  if (!ports.length) { node.innerHTML = `<p class="muted empty">${te("st.never_seen_good")}</p>`; return; }
+  if (!ports.length) { node.innerHTML = `${emptyNote("st.never_seen_good")}`; return; }
   const all = [].concat(...ports.map(p => hist[p].map(x => x[1])));
   const lo = Math.min(...all), hi = Math.max(...all);
   const t0 = Math.min(...[].concat(...ports.map(p => hist[p].map(x => x[0])))), t1 = Math.max(V.voyage.game.turn, t0 + 1);
@@ -776,8 +913,10 @@ function priceSmall(id, me, good, animate) {
     const tr = trades.filter(x => x.port === p).map(x => x.side === "buy"
       ? `<path class="tb" d="M${X(x.turn)} ${Y(x.unit) - 7}l5 8h-10z"/>` : `<path class="ts" d="M${X(x.turn)} ${Y(x.unit) + 7}l5 -8h-10z"/>`).join("");
     const last = pts[pts.length - 1][1];
+    const bands = (me.windfalls || []).filter(w => w.good === good && w.port === p).map(w =>
+      `<rect class="band ${w.sort}" x="${X(w.turn)}" width="${Math.max(3, X(w.turn + w.turns) - X(w.turn))}" y="0" height="${H}"/>`).join("");
     return `<figure data-p="${p}"><figcaption>${esc(portName(p))}<b>${money(last)}</b></figcaption>
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path class="ln${animate && !still ? " draw" : ""}" pathLength="1" d="${d}" stroke="${SINGLE}"/>${dots}${tr}</svg></figure>`;
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bands}<path class="ln${animate && !still ? " draw" : ""}" pathLength="1" d="${d}" stroke="${SINGLE}"/>${dots}${tr}</svg></figure>`;
   }).join("")}</div><div class="hlg"><span><svg class="key" viewBox="0 0 12 10"><path class="tb" d="M6 1l5 8H1z"/></svg>${te("st.you_bought")}</span><span><svg class="key" viewBox="0 0 12 10"><path class="ts" d="M6 9l5-8H1z"/></svg>${te("st.you_sold")}</span></div>`;
   hoverable(node, e => {
     const f = e.target.closest("figure");
@@ -802,7 +941,7 @@ function scoreHist(id, me, animate) {
   const node = el(id);
   if (!node) return;
   const sc = me.trades.filter(x => x.score != null);
-  if (!sc.length) { node.innerHTML = `<p class="muted empty">${te("st.no_trades")}</p>`; return; }
+  if (!sc.length) { node.innerHTML = `${emptyNote("st.no_trades")}`; return; }
   const bins = Array.from({ length: 10 }, () => ({ buy: 0, sell: 0 }));
   sc.forEach(x => { bins[Math.min(9, Math.floor(x.score / 10))][x.side]++; });
   const max = Math.max(1, ...bins.map(b => b.buy + b.sell));
@@ -824,11 +963,145 @@ function scoreHist(id, me, animate) {
   ui.tables[id] = () => tableHtml([te("st.k.score"), te("st.buys"), te("st.sells")], bins.map((b, i) => [i * 10 + "–" + (i * 10 + 9), b.buy, b.sell]));
 }
 
+/* ===================================================== PURSE & FLEET == */
+const shipName = k => ((D.ships || {})[k] || {}).name || k;
+
+/* Net worth split into its parts, stacked (silver, bank, cargo, fleet), debt hanging below the line,
+   and net worth itself drawn over the top. Booms and crashes the house traded in are marked. */
+function stackChart(id, xs, layers, neg, total, marks, animate) {
+  const node = el(id);
+  if (!node) return;
+  const [W, H] = size(node);
+  const n = xs.length;
+  if (!n) { node.innerHTML = emptyNote("st.empty"); return; }
+  const pad = { l: 58, r: 14, t: (marks || []).length ? 22 : 12, b: 40 };
+  const tops = xs.map((_x, i) => layers.reduce((s2, L) => s2 + (L.vals[i] || 0), 0));
+  const hi = Math.max(1, ...tops, ...total.vals), lo = Math.min(0, ...neg.vals.map(v => -v));
+  const ticks = niceTicks(lo, hi, Math.max(3, Math.round(H / 70)));
+  const top = Math.max(hi, ticks[ticks.length - 1]), bot = Math.min(lo, ticks[0]);
+  const X = i => pad.l + (n === 1 ? (W - pad.l - pad.r) / 2 : i * (W - pad.l - pad.r) / (n - 1));
+  const Y = v => pad.t + (top - v) / (top - bot || 1) * (H - pad.t - pad.b);
+  const out = [`<svg class="lc stack" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`];
+  ticks.forEach(tk => out.push(`<line class="gl${tk === 0 ? " zero" : ""}" x1="${pad.l}" x2="${W - pad.r}" y1="${Y(tk)}" y2="${Y(tk)}"/>` +
+    `<text class="ax" x="${pad.l - 8}" y="${Y(tk) + 4}" text-anchor="end">${esc(short(tk))}</text>`));
+  const base = xs.map(() => 0);
+  layers.forEach((L, li) => {
+    const up = xs.map((_x, i) => base[i] + (L.vals[i] || 0));
+    const d = "M" + xs.map((_x, i) => X(i).toFixed(1) + " " + Y(up[i]).toFixed(1)).join("L") +
+      "L" + xs.map((_x, i) => X(n - 1 - i).toFixed(1) + " " + Y(base[n - 1 - i]).toFixed(1)).join("L") + "Z";
+    out.push(`<path class="sa${animate && !still ? " fade" : ""}" d="${d}" fill="${L.color}" style="animation-delay:${li * 90}ms"/>`);
+    up.forEach((v, i) => { base[i] = v; });
+  });
+  const dd = "M" + xs.map((_x, i) => X(i).toFixed(1) + " " + Y(0).toFixed(1)).join("L") +
+    "L" + xs.map((_x, i) => X(n - 1 - i).toFixed(1) + " " + Y(-(neg.vals[n - 1 - i] || 0)).toFixed(1)).join("L") + "Z";
+  out.push(`<path class="sa neg" d="${dd}" fill="${neg.color}"/>`);
+  out.push(`<path class="ln${animate && !still ? " draw" : ""}" pathLength="1" d="${"M" + total.vals.map((v, i) => X(i).toFixed(1) + " " + Y(v).toFixed(1)).join("L")}" stroke="#f1e3c5" style="stroke-width:2px"/>`);
+  (marks || []).filter(mk => mk.i >= 0).forEach(mk => out.push(`<g class="wf wf-${mk.kind}" transform="translate(${X(mk.i)},${pad.t - 4})"><path d="${mk.kind === "boom" ? "M-5 4L0 -4L5 4z" : "M-5 -4L0 4L5 -4z"}"/></g>`));
+  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - pad.l - pad.r) / 74))));
+  xs.forEach((x, i) => {
+    if (i % every !== 0) return;
+    const anchor = i === 0 ? "start" : X(i) + 30 > W - pad.r ? "end" : "middle";
+    out.push(`<text class="ax" x="${X(i)}" y="${H - 22}" text-anchor="${anchor}">${esc(x)}</text>`);
+  });
+  const keys = layers.concat([neg]).map(L => `<tspan fill="${L.color}">■</tspan> ${esc(L.name)}`).join("   ");
+  out.push(`<text class="ax lgd" x="${pad.l}" y="${H - 5}">${keys}   <tspan fill="#f1e3c5">━</tspan> ${esc(total.name)}</text>`);
+  out.push(`<line class="xh" x1="0" x2="0" y1="${pad.t}" y2="${H - pad.b}" visibility="hidden"/><rect class="hit" x="${pad.l}" y="0" width="${Math.max(1, W - pad.l - pad.r)}" height="${H - pad.b}"/></svg>`);
+  node.innerHTML = out.join("");
+  const svg = node.querySelector("svg"), xh = svg.querySelector(".xh");
+  hoverable(svg, e => {
+    const r = svg.getBoundingClientRect();
+    const px = (e.clientX - r.left) * W / r.width;
+    const i = n === 1 ? 0 : Math.max(0, Math.min(n - 1, Math.round((px - pad.l) / ((W - pad.l - pad.r) / (n - 1)))));
+    xh.setAttribute("x1", X(i)); xh.setAttribute("x2", X(i)); xh.setAttribute("visibility", "visible");
+    const rows = layers.map(L => `<div><i style="background:${L.color}"></i>${esc(L.name)}<b>${money(L.vals[i] || 0)}</b></div>`).join("") +
+      `<div><i style="background:${neg.color}"></i>${esc(neg.name)}<b>${money(-(neg.vals[i] || 0))}</b></div>`;
+    const mk = (marks || []).filter(x => x.i === i).map(x => `<div class="tip-note">${esc(x.label)}</div>`).join("");
+    return `<p>${esc(xs[i])}</p><div>${esc(total.name)}<b>${money(total.vals[i])}</b></div>${rows}${mk}`;
+  });
+  svg.addEventListener("pointerleave", () => xh.setAttribute("visibility", "hidden"));
+  ui.tables[id] = () => tableHtml([te("st.col.month"), esc(total.name)].concat(layers.map(L => esc(L.name)), [esc(neg.name)]),
+    xs.map((x, i) => [esc(x), money(total.vals[i])].concat(layers.map(L => money(L.vals[i] || 0)), [money(-(neg.vals[i] || 0))])));
+}
+
+function takerCards(list) {
+  if (!list || !list.length) return emptyNote("st.empty");
+  return `<ul class="takers">${list.slice(0, 8).map(r => {
+    const ports = Object.entries(r.ports).filter(([p]) => D.ports[p]).slice(0, 3)
+      .map(([p, v]) => `${esc(portName(p))} ${short(v)}`).join(" · ");
+    return `<li class="${r.amount > 0 ? "in" : "out"}"><div class="tk-pic">${takerPic(r, "tk-img")}</div>
+      <div class="tk-txt"><span>${te("st.who." + r.who)}</span><b>${signed(r.amount)}</b>
+      <small>${Object.keys(r.lines).map(k => te("st.line." + k)).join(" · ")}</small>${ports ? `<small class="tk-ports">${ports}</small>` : ""}</div></li>`;
+  }).join("")}</ul>`;
+}
+
+function deskHtml(me) {
+  const d = me.desk || { visits: 0, ports: [], tax: 0, fine: 0, bribe: 0, caught: 0, bought: 0, sealed: 0, honesty: null }, du = me.dues || { count: 0, paid: 0, slipped: 0, caught: 0, slip_saved: 0 };
+  if (!d.visits && !du.count) return emptyNote("st.desk.none");
+  const top = d.ports[0] && d.ports[0].port;
+  const pic = top ? (face("officer_" + top, d.caught ? "angry" : "happy", "dk-img", "desk-face") || mpic("port", top, "taxlady", "dk-img pz", { strict: true, slot: "desk-face" })) : "";
+  const row = (label, val) => `<div><span>${label}</span><b>${val}</b></div>`;
+  return `<div class="desk">${pic ? `<div class="dk-pic">${pic}</div>` : ""}<div class="dk-rows">
+    ${row(te("st.desk.visits"), d.visits)}
+    ${row(te("st.desk.honesty"), d.honesty == null ? "–" : Math.round(d.honesty * 100) + "%")}
+    ${row(te("st.desk.tax"), money(d.tax))}
+    ${row(te("st.desk.fine"), money(d.fine) + (d.caught ? " · " + te("st.desk.caught", { n: d.caught }) : ""))}
+    ${d.bribe ? row(te("st.desk.bribe"), money(d.bribe)) : ""}
+    ${d.bought ? row(te("st.desk.bought"), money(d.bought)) : ""}
+    ${d.sealed ? row(te("st.desk.sealed"), d.sealed) : ""}
+    ${row(te("st.desk.dues"), money(du.paid) + " · " + te("st.desk.dues_n", { n: du.count }))}
+    ${du.slipped || du.caught ? row(te("st.desk.slip"), te("st.desk.slip_v", { n: du.slipped, caught: du.caught, v: money(du.slip_saved) })) : ""}
+  </div></div>`;
+}
+
+function shipCards(fleet) {
+  if (!fleet || !fleet.length) return emptyNote("st.empty");
+  return `<ul class="ships">${fleet.map((sh, i) => `<li>${mpic("ship", sh.type, "card", "sh-img", { slot: "ship-" + i })}
+    <div><b>${esc(sh.name || "")}</b><small>${esc(shipName(sh.type))} · ${te("st.fl.hull_n", { n: sh.hull || 0 })}</small>
+    <small>${sh.cannons ? te("st.fl.cannons_n", { n: sh.cannons }) : te("st.guns_n", { n: sh.guns || 0 })}</small></div></li>`).join("")}</ul>`;
+}
+
+function tipList(tips) {
+  if (!tips || !tips.length) return emptyNote("st.tips.none");
+  return `<ul class="tips">${tips.slice().reverse().map((tp, i) => {
+    const who = tp.by === "officer" ? "officer_" + tp.at : "taxlady";      // the Registrar is the home port's tax lady
+    const pic = face(who, tp.status === "cashed" ? "happy" : tp.status === "missed" ? "angry" : "sly", "tp-img", "tip-" + i)
+      || cargoPic(tp.good, "tp-img");
+    const what = tp.kind === "boom" ? te("st.tips.boom", { good: goodName(tp.good), port: portName(tp.where), v: tp.mult ? "×" + (+tp.mult).toFixed(1) : "" })
+      : te("st.tips.price", { good: goodName(tp.good), port: portName(tp.where), price: money(tp.price || 0) });
+    const res = tp.status === "cashed" ? `<em class="up">${signed(tp.profit)}</em>` : `<em class="${tp.status === "missed" ? "down" : ""}">${te("st.tips." + tp.status)}</em>`;
+    return `<li class="s-${tp.status}"><div class="tp-pic">${pic}</div><div><b>${what}</b><small>${esc(tp.date)} · ${te(tp.by === "officer" ? "st.tips.by_officer" : "st.tips.by_registrar", { port: portName(tp.at) })}</small></div>${res}</li>`;
+  }).join("")}</ul>`;
+}
+
+function promoCards(list, withGame) {
+  if (!list || !list.length) return emptyNote("st.promos.none");
+  return `<ul class="promos">${list.map((pr, i) => {
+    const badge = rankBadgeUrl(pr.rank_id);
+    const mayor = mpic("port", pr.port, "mayor_" + pr.rank_id, "pm-img pz", { strict: true, slot: "promo-" + i })
+      || mpic("port", pr.port, "mayor", "pm-img pz", { strict: true, slot: "promo-" + i }) || face("mayor", "happy", "pm-img", "promo-" + i);
+    return `<li><div class="pm-pic">${mayor}${badge ? `<img class="pm-badge" loading="lazy" src="${esc(badge)}" alt="">` : ""}</div>
+      <div><b>${esc(pr.rank)}</b><small>${te("st.promos.line", { port: portName(pr.port), date: pr.date })}</small>${withGame && pr.firm ? `<small>${esc(pr.firm)}</small>` : ""}</div></li>`;
+  }).join("")}</ul>`;
+}
+
+/* Booms and crashes in the markets this house could know of, with what it made of each. */
+function boomList(list) {
+  if (!list || !list.length) return emptyNote("st.wf.none");
+  return `<ul class="booms">${list.slice().reverse().map((w, i) => {
+    const pic = cargoPic(w.good, "bm-img");
+    const res = w.sold ? `<em class="${w.profit < 0 ? "down" : "up"}">${signed(w.profit)}</em>`
+      : w.bought ? `<em>${te("st.wf.bought", { n: w.bought })}</em>` : `<em class="muted">${te("st.wf.none_yours")}</em>`;
+    return `<li class="wf-${w.sort}${w.big ? " big" : ""}"><div class="bm-pic">${pic}<i>${w.sort === "boom" ? "▲" : "▼"}</i></div>
+      <div><b>${te(w.sort === "boom" ? "st.wf.boom" : "st.wf.crash", { good: goodName(w.good), port: portName(w.port) })}</b>
+      <small>${esc(w.date)} · ×${w.mult} · ${te("st.wf.months", { n: w.turns })}${w.from != null ? " · " + money(w.from) + " → " + money(w.to) : ""}${w.foretold ? " · " + te("st.wf.foretold") : ""}</small></div>${res}</li>`;
+  }).join("")}</ul>`;
+}
+
 /* ========================================================= CAREER ===== */
 const CAREER = {
   fortune() {
     const c = C.career;
-    if (!c.games.length) return `<p class="muted empty big">${te("st.no_games")}</p>`;
+    if (!c.games.length) return `${emptyNote("st.no_games")}`;
     const games = c.games.slice().reverse();
     const gl = games.map((g, i) => t("st.game_n", { n: i + 1 }));
     later(a => lineChart({ id: "finals", xs: gl, area: true,
@@ -841,6 +1114,22 @@ const CAREER = {
       ${panel("finals", te("st.p.finals"), te("st.p.finals_sub"), "", { cls: "wide" })}
       ${panel("ccargo", te("st.p.ccargo"), te("st.p.ccargo_sub"))}
       ${panel("records", te("st.p.records"), te("st.p.records_sub"), recordsHtml(c), { table: false })}
+    </div>`;
+  },
+  purse() {
+    const c = C.career, tt = c.totals;
+    if (!c.games.length) return emptyNote("st.no_games");
+    const tiles = [["purse", t("st.ct.dues"), money(tt.dues), t("st.ct.dues_sub")],
+      ["desk", t("st.ct.desk"), money(tt.pa_paid), t("st.ct.desk_sub", { n: tt.desk_visits, caught: tt.caught })],
+      ["tip", t("st.ct.tips"), tt.tips_cashed + " / " + tt.tips, t("st.ct.tips_sub", { v: money(tt.tip_profit) })],
+      ["prize", t("st.ct.prizes"), tt.prizes, t("st.ct.prizes_sub", { v: money(tt.prize_value) })],
+      ["battle", t("st.ct.sunk"), tt.enemy_sunk, t("st.ct.sunk_sub")],
+      ["rank", t("st.ct.promos"), tt.promotions, ""]];
+    return `<div class="pg pg-cpurse">
+      ${panel("cptiles", te("st.p.cpurse"), te("st.p.cpurse_sub"), `<div class="tiles">${tiles.map(x =>
+        `<div class="tile">${icon(x[0])}<span>${esc(x[1])}</span><b>${esc(String(x[2]))}</b><small>${esc(x[3])}</small></div>`).join("")}</div>`, { cls: "wide", table: false })}
+      ${panel("ctakers", te("st.p.takers"), te("st.p.ctakers_sub"), takerCards(c.takers || []), { table: false })}
+      ${panel("cpromos", te("st.p.promos"), te("st.p.cpromos_sub"), promoCards(c.promotions || [], true), { table: false })}
     </div>`;
   },
   routes() {
@@ -872,7 +1161,7 @@ const CAREER = {
     return `<div class="pg pg-cmarkets">
       ${panel("cscore", te("st.p.cscore"), te("st.p.cscore_sub"), "", { cls: "wide" })}
       ${panel("cbook", te("st.p.cbook"), te("st.p.cbook_sub"), rows.length ? tableHtml([te("st.cargo"), te("st.bought"), te("st.sold"), te("st.k.trades_h"), te("st.lost"), te("st.profit")], rows)
-        : `<p class="muted empty">${te("st.no_trades")}</p>`, { cls: "wide", table: false })}
+        : `${emptyNote("st.no_trades")}`, { cls: "wide", table: false })}
     </div>`;
   },
   perils() {
@@ -904,7 +1193,15 @@ function gameCards(c) {
 
 function recordsHtml(c) {
   const r = c.records, out = [];
-  const add = (key, val, sub) => { if (r[key]) out.push(`<li><span>${te("st.r." + key)}</span><b>${val}</b><small>${sub}</small></li>`); };
+  const recPic = (key, x) => {
+    if (!x) return "";
+    if (x.port) return mpic("port", x.port, "banner", "rc-img", { slot: "rec-" + key });
+    if (key === "biggest_booty" || key === "biggest_fight" || key === "biggest_prize") return mpic("scene", "seafight_pirates", "victory", "rc-img", { slot: "rec-" + key });
+    if (key === "best_finish" || key === "peak_worth") return mpic("scene", "victory", "", "rc-img", { slot: "rec-" + key });
+    return face("bookmaker", "happy", "rc-img", "rec-" + key);
+  };
+  const add = (key, val, sub) => { if (r[key]) { const pic = recPic(key, r[key]);
+    out.push(`<li class="${pic ? "has-pic" : ""}">${pic ? `<div class="rc-pic">${pic}</div>` : ""}<span>${te("st.r." + key)}</span><b>${val}</b><small>${sub}</small></li>`); } };
   add("best_finish", r.best_finish && money(r.best_finish.value), r.best_finish && esc(r.best_finish.firm + " · " + r.best_finish.date));
   add("peak_worth", r.peak_worth && money(r.peak_worth.value), r.peak_worth && esc(r.peak_worth.date));
   add("best_sale", r.best_sale && signed(r.best_sale.value), r.best_sale && te("st.r.sale_sub", { qty: r.best_sale.qty, good: goodName(r.best_sale.good), port: portName(r.best_sale.port), date: r.best_sale.date }));
@@ -912,9 +1209,11 @@ function recordsHtml(c) {
   add("biggest_booty", r.biggest_booty && money(r.biggest_booty.value), r.biggest_booty && te("st.r.booty_sub", { n: r.biggest_booty.count, date: r.biggest_booty.date }));
   add("biggest_fight", r.biggest_fight && r.biggest_fight.value, r.biggest_fight && te("st.r.fight_sub", { result: t("st.b." + r.biggest_fight.result), date: r.biggest_fight.date }));
   add("best_score", r.best_score && r.best_score.value, r.best_score && esc(r.best_score.firm));
+  add("biggest_prize", r.biggest_prize && money(r.biggest_prize.value), r.biggest_prize && te("st.r.prize_sub", { n: r.biggest_prize.units || 0, date: r.biggest_prize.date }));
+  add("best_boom", r.best_boom && signed(r.best_boom.value), r.best_boom && te("st.r.boom_sub", { good: goodName(r.best_boom.good), port: portName(r.best_boom.port), date: r.best_boom.date }));
   Object.keys(r).filter(k => k.startsWith("rank_")).sort((a, b) => r[a].value - r[b].value).forEach(k =>
     out.push(`<li><span>${th("st.r.rank", { rank: esc(r[k].rank) })}</span><b>${te("st.r.months", { n: r[k].value })}</b><small>${esc(r[k].firm + " · " + r[k].date)}</small></li>`));
-  return out.length ? `<ul class="records">${out.join("")}</ul>` : `<p class="muted empty">${te("st.empty")}</p>`;
+  return out.length ? `<ul class="records">${out.join("")}</ul>` : `${emptyNote("st.empty")}`;
 }
 
 /* -------------------------------------------------------------- events -- */
@@ -952,6 +1251,26 @@ app.addEventListener("click", e => {
       return;
   }
 });
+/* Tap any picture to see it full size; tap again (or Escape) to close. */
+const ZOOMABLE = "img.pz, img.bl-img, img.rc-img, img.sh-img, img.pm-img";
+function openPic(src) {
+  let box = document.getElementById("picbox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "picbox";
+    box.addEventListener("click", () => { box.hidden = true; });
+    document.body.appendChild(box);
+  }
+  box.innerHTML = `<img src="${esc(src)}" alt="">`;
+  box.hidden = false;
+}
+document.addEventListener("click", e => {
+  const img = e.target.closest && e.target.closest(ZOOMABLE);
+  if (!img || !app.contains(img)) return;
+  e.stopPropagation();
+  openPic(img.currentSrc || img.src);
+}, true);
+
 app.addEventListener("change", e => {
   if (e.target.dataset.act === "game") { ui.game = e.target.value; ui.lastJson = {}; load(false); }
 });
@@ -969,7 +1288,11 @@ function redraw() {
 let resizeT = null;
 window.addEventListener("resize", () => { if (!ui.visible) return; clearTimeout(resizeT); resizeT = setTimeout(redraw, 160); });
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") { const x = app.querySelector(".tl-x"); if (x) x.click(); }
+  if (e.key === "Escape") {
+    const box = document.getElementById("picbox");
+    if (box && !box.hidden) { box.hidden = true; return; }
+    const x = app.querySelector(".tl-x"); if (x) x.click();
+  }
 });
 // While a game is in progress the numbers move every month: look again now and then.
 setInterval(() => { if (ui.visible && !document.hidden && V && V.voyage.game.running && !ui.raceTimer && !ui.mapTimer) load(true); }, 20000);

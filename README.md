@@ -24,6 +24,10 @@ The game saves after every turn to `saves/current.json` and resumes from it on t
 
 The Harbor Board at `/board` is a read-only Chart Room. It shows who's ready to sail, public battle updates, house standings, forecasts and cargo restrictions. Scroll the news panel for earlier bulletins and the optional port gallery.
 
+Promotions open a House commission with the Mayor on the right, a large House crest, a rank seal and a short ceremonial reveal (reduced-motion settings are respected). Net worth, fleet, date and rank progression are captured when awarded; voyages and the best profitable sale come from the captain's journal up to that promotion. The accept button acknowledges the award and opens the Fleet tab.
+
+Certificate palettes live in `web/assets/promotion-styles.json`. In **Media Library > Ports**, each port has **Mayor Clerk**, **Mayor Trader**, **Mayor Merchant**, **Mayor Senior Merchant**, **Mayor Merchant Prince** and **Mayor Taipan** portrait roles, with generation prompts for each audience. Missing dedicated art uses that port's existing Mayor. Foochow's Taipan portrait is installed; the remaining audiences await their own paintings. When moving artwork between machines, retain the role directory, for example `web/media/port/foochow/mayor_taipan/`, so a Media Library scan identifies it correctly without replacing the destination's library.
+
 ## Admin
 
 **Launch_Admin.bat** opens the command center at `http://localhost:8765/admin`. Nothing changes until you press **Save & apply**; then every open player screen and harbor board updates at once, mid-game included.
@@ -44,6 +48,8 @@ The Harbor Board at `/board` is a read-only Chart Room. It shows who's ready to 
 The Admin page needs no password on the computer running the game. Other devices cannot open it until you set a password under Backup & Access (or with `python server.py --admin-password WORD`); they then sign in at `http://<address>:8765/admin`.
 
 Settings live in the `config` folder, uploaded images in `web/uploads`, games in `saves`, records in `journal`, spoken lines in `cache/voice`. Delete `config` to return to the defaults.
+
+The admin header has its own **Graphics > Main artwork > Command Center banner** slot, linked to **Media Library > Brand > Command Center banner**. Upload or pick a replacement in Graphics and press **Save & apply**. It previews in the header while editing. Use a wide panorama with dark, quiet space on the left; the header crops the center strip. The bundled painting is `web/assets/branding/crimson-ledger-command-center-v01.webp`. Files placed in `web/media/brand/admin_masthead_bg/` can be imported with **Scan folders**, then selected in Graphics.
 
 ## Captain's Report
 

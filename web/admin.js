@@ -102,6 +102,8 @@ function refreshDirty() {
 }
 /* Header emblem and browser tab icon follow Graphics > Browser icon (the Art Bible's brass mark). */
 function brandMark() {
+  const banner = CFG?.graphics?.admin_masthead_bg || "";
+  $(".masthead").style.backgroundImage = banner ? `url(${JSON.stringify(banner)})` : "none";
   const url = (CFG && CFG.graphics && CFG.graphics.favicon) || "/assets/branding/crimson-ledger-icon-v01.png";
   if ($("#gmark").getAttribute("src") !== url) $("#gmark").src = url;
   if ($("#favicon").getAttribute("href") !== url) $("#favicon").href = url;

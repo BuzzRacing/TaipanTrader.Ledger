@@ -787,17 +787,12 @@ function captainCommission(me) {
   </section>`;
 }
 
-/* The promotion: a full-screen ceremony (redesigned 18 Nov 2026, after the sea battle reckoning).
-   The port's harbour picture behind, the Mayor large on the left with her words, and an ivory
-   letter of commission on the right: the rank's seal in a slow brass sunburst, the new rank in the
-   title font, the captain's worth and ships, the next rank to aim for, and Continue. Styles in
-   promotion.css. New wording keys fall back to English until strings.py has them. */
 const tfb = (key, fb, vars) => T[key] == null ? esc(t(fb, vars)) : te(key, vars);
-function promotionArt(port) {
+function promotionArt(port, rank) {
   const pick = (role, opts) => Media.choose("port", port, role, Object.assign({ strict: true, slot: "promo" }, opts || {}));
-  const mayor = pick("mayor", { mode: "fixed" })
-    || (Media.items("port", port, "mayor", false).filter(i => i.r.includes("mayor"))[0]) || null;
-  const scene = pick("arrival") || pick("banner") || null;
+  const dedicated = Media.items("port", port, "mayor_" + rank, false).filter(i => i.r.includes("mayor_" + rank));
+  const mayor = dedicated.find(i => i.p) || dedicated[0] || pick("mayor", { mode: "fixed" });
+  const scene = pick("banner") || pick("arrival") || null;
   return { mayor: mayor && mayor.t === "image" ? mayor.u : "", scene: scene && scene.t === "image" ? scene.u
     : (((D.graphics || {}).ports || {})[port] || "") };
 }
@@ -812,49 +807,86 @@ function syncPromotion(inGame, canShow) {
   if (dialog && dialog.dataset.promotion === key) return;
   if (dialog) dialog.remove();
   const me = S.me, port = portName(promotion.port);
-  const art = promotionArt(promotion.port);
+  const record = promotion.record || {};
+  const ranks = record.ranks || D.ranks || [];
+  const rankIndex = ranks.findIndex(r => r.id === promotion.rank_id);
+  const numeral = n => {
+    let out = "";
+    for (const [value, mark] of [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"],
+      [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]]) {
+      while (n >= value) { out += mark; n -= value; }
+    }
+    return out;
+  };
+  const art = promotionArt(promotion.port, promotion.rank_id);
   const badge = Media.choose("rank", promotion.rank_id, "badge", { mode: "fixed", strict: true });
-  const next = me.next_rank && me.next_rank.title !== promotion.title ? me.next_rank : null;
+  const next = Object.hasOwn(record, "next") ? record.next : me.next_rank;
+  const achievements = promotion.achievements;
   const mayorLabel = te("fleet.promotion_mayor", { port });
   const said = promotion.text || t("fleet.promotion_quote", { name: me.name, rank: promotion.title });
   const clip = ((S.voice || {}).promotion || [])[0] || null;
-  const crest = typeof houseMark === "function" ? houseMark(me, "pr-crest") : "";
+  const captain = Object.assign({}, me, { name: record.name || me.name, firm: record.firm || me.firm });
+  const crest = houseMark(captain, "pr-crest");
+  const style = (D.promotion_styles || {})[promotion.rank_id];
+  const facts = [
+    [t("fleet.captain_worth"), money(record.worth ?? me.worth), "pr-worth"],
+    [t("fleet.promotion_ships"), record.ships ?? me.ships.length, ""]
+  ];
+  if (achievements) {
+    facts.push([t("fleet.promotion_voyages"), achievements.voyages, ""]);
+  }
+  const best = achievements && achievements.best;
+  const bestLine = best ? t("fleet.promotion_best_line", { qty: best.qty,
+    good: (D.goods[best.good] || {}).name || best.good, port: portName(best.port), profit: money(best.profit) }) : "";
   dialog = document.createElement("dialog");
   dialog.className = "fleet-promotion pr";
+  dialog.dataset.rank = promotion.rank_id;
+  if (style) for (const k of ["tone", "deep", "metal", "paper", "ink"]) dialog.style.setProperty("--pr-" + k, style[k]);
   dialog.dataset.promotion = key;
   dialog.setAttribute("aria-labelledby", "fleet-promotion-title");
   dialog.innerHTML = `
     ${art.scene ? `<img class="pr-scene" src="${esc(art.scene)}" alt="">` : ""}<div class="pr-shade" aria-hidden="true"></div>
+    <div class="pr-ceremony">
+    <header class="pr-mast"><span class="pr-brand">${esc(typeof brandName === "function" && D.brand ? brandName(D.brand) : "")}</span>
+      <span>${esc(port)} · ${te("fleet.promotion_letter")}</span></header>
+    <div class="pr-house">${crest}<div><p class="pr-house-label">${te("fleet.promotion_house_of")}</p>
+      <h2>${esc(captain.firm || captain.name)}</h2><p class="pr-to">${tfb("fleet.promotion_to", "Captain {name}", { name: captain.name })}</p></div>
+      ${rankIndex >= 0 ? `<div class="pr-tier" aria-hidden="true"><strong>${numeral(rankIndex + 1)}</strong><span>${te("fleet.promotion_rank_label")}</span></div>` : ""}</div>
+    <div class="pr-document${art.mayor ? "" : " pr-no-portrait"}">
+    <section class="pr-card">
+      <p class="pr-eyebrow">${tfb("fleet.promotion_order", "By order of the {mayor}", { mayor: t("fleet.promotion_mayor", { port }) })}</p>
+      <p class="pr-hereby">${te("fleet.promotion_you_commissioned")}</p>
+      <div class="pr-seal"><span class="pr-rays" aria-hidden="true"></span>
+        ${badge ? `<img src="${esc(badge.u)}" alt="">` : `<span class="pr-noseal" aria-hidden="true">${numeral(rankIndex + 1)}</span>`}</div>
+      <h2 class="pr-rank" id="fleet-promotion-title">${esc(promotion.title)}</h2>
+      <p class="pr-elevation">${record.previous ? `${esc(record.previous.title)} <span aria-hidden="true">→</span> ` : ""}${esc(promotion.title)}</p>
+      ${ranks.length ? `<ol class="pr-path" aria-label="${te("fleet.promotion_progress")}">${ranks.map((r, i) =>
+        `<li class="${i <= rankIndex ? "earned" : ""}${i === rankIndex ? " current" : ""}"${i === rankIndex ? ' aria-current="step"' : ""}>
+          <span aria-hidden="true">${numeral(i + 1)}</span><span class="pr-accessible">${esc(r.title)}</span></li>`).join("")}</ol>` : ""}
+      <p class="pr-citation">${te(next ? "fleet.promotion_citation" : "fleet.promotion_citation_top", { firm: captain.firm || captain.name })}</p>
+      <p class="pr-record-label">${te("fleet.promotion_record")}</p>
+      <dl class="pr-figs">${facts.map(([label, value, cls]) => `<div class="${cls}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("")}</dl>
+      ${achievements && (achievements.ports || achievements.won) ? `<p class="pr-deeds">${[
+        achievements.ports ? te("fleet.promotion_ports_count", { n: achievements.ports }) : "",
+        achievements.won ? te("fleet.promotion_wins_count", { n: achievements.won }) : ""
+      ].filter(Boolean).join(" · ")}</p>` : ""}
+      ${best ? `<p class="pr-exploit"><span>${te("fleet.promotion_best")}</span><em>${esc(bestLine)}</em></p>` : ""}
+      <p class="pr-sign"><span>${mayorLabel}</span><small>${esc(port)} · ${esc(record.date || S.date || "")}</small></p>
+    </section>
     <figure class="pr-who${art.mayor ? "" : " nopic"}">
       ${art.mayor ? `<img src="${esc(art.mayor)}" alt="${mayorLabel}">` : ""}
       <figcaption class="pr-line"><header>${clip && typeof Voice !== "undefined"
           ? `<button type="button" class="pr-say" data-pr="say" aria-label="${tfb("fleet.promotion_say", "Hear her again")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button>` : ""}
         <span>${mayorLabel}</span></header>
-        <p>“${esc(said)}”</p></figcaption>
+        <p>“${esc(said)}”</p><small>${te("fleet.promotion_audience", { rank: promotion.title })}</small></figcaption>
     </figure>
-    <section class="pr-card">
-      <span class="pr-ribbon" aria-hidden="true"></span>
-      <div class="pr-brand" aria-hidden="true">${esc(typeof brandName === "function" && D.brand ? brandName(D.brand) : "")}</div>
-      <p class="pr-eyebrow">${tfb("fleet.promotion_order", "By order of the {mayor}", { mayor: t("fleet.promotion_mayor", { port }) })}</p>
-      <h2 id="fleet-promotion-title">${te("fleet.promotion_title")}</h2>
-      <div class="pr-seal"><span class="pr-rays" aria-hidden="true"></span><span class="pr-ring" aria-hidden="true"></span>
-        ${badge ? `<img src="${esc(badge.u)}" alt="">` : `<span class="pr-noseal" aria-hidden="true">★</span>`}</div>
-      <p class="pr-to">${tfb("fleet.promotion_to", "Captain {name}", { name: me.name })}</p>
-      ${me.firm ? `<p class="pr-house">${crest}<span>${tfb("fleet.promotion_house", "of {firm}", { firm: me.firm })}</span></p>` : ""}
-      <p class="pr-hereby">${tfb("fleet.promotion_commissioned", "is hereby commissioned")}</p>
-      <p class="pr-rank">${esc(promotion.title)}</p>
-      <dl class="pr-figs">
-        <div><dt>${te("fleet.captain_worth")}</dt><dd>${esc(money(me.worth))}</dd></div>
-        <div><dt>${te("fleet.captain_ships")}</dt><dd>${me.ships.length}</dd></div>
-        <div><dt>${tfb("fleet.promotion_next", "Next commission")}</dt><dd>${next
-          ? `${esc(next.title)} <small>${esc(money(next.worth))}</small>` : tfb("fleet.promotion_top", "The highest there is")}</dd></div>
-      </dl>
-      <footer>
-        <p class="pr-sign"><span>${mayorLabel}</span><small>${esc(port)}${S.date ? " · " + esc(S.date) : ""}</small></p>
-        <button type="button" class="primary" data-pr="go" autofocus>${te(inGame ? "fleet.promotion_continue" : "fleet.promotion_done")} <span aria-hidden="true">&rarr;</span></button>
-      </footer>
+    </div>
+    <footer class="pr-actions">
+      <button type="button" data-pr="go">${te("fleet.promotion_accept")} <span aria-hidden="true">&rarr;</span></button>
+      <p class="pr-next">${next ? `${te("fleet.promotion_next")}: ${esc(next.title)} · ${esc(money(next.worth))}` : te("fleet.promotion_top")}</p>
+    </footer>
       <div class="fleet-promotion-error" role="alert"></div>
-    </section>`;
+    </div>`;
   // The Mayor says her congratulations as the ceremony opens, and again from the speaker button.
   const sayIt = () => {
     if (!clip || typeof Voice === "undefined") return;
@@ -885,7 +917,9 @@ function syncPromotion(inGame, canShow) {
   });
   app.appendChild(dialog);
   dialog.showModal();
-  setTimeout(sayIt, 900);
+  button.focus({ preventScroll: true });
+  dialog.scrollTop = 0;
+  setTimeout(() => { if (dialog.isConnected && dialog.open) sayIt(); }, 900);
 }
 
 /* The captain button at the foot of the rail: the Captain's portrait from the Media Library, square and

@@ -20,7 +20,7 @@
     ["cargo", "goods", "Cargo pictures", "Beside each cargo in the market.", "icon"],
   ];
   const ASPECT = { brand: "16:9", port: "16:9", ship: "3:2", cargo: "1:1" };
-  const BRAND_ASPECT = { logo: "3:1", favicon: "1:1", masthead_bg: "16:5", page_bg: "16:9", board_bg: "16:9", chart_bg: "5:3" };
+  const BRAND_ASPECT = { logo: "3:1", favicon: "1:1", masthead_bg: "16:5", admin_masthead_bg: "3:1", page_bg: "16:9", board_bg: "16:9", chart_bg: "5:3" };
   const HOW = { first: "first filed", settings: "changed in settings", upload: "new upload", generated: "regenerated",
     library: "picked from the library", removed: "removed", file: "file replaced on disk" };
   const STYLE = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
@@ -53,6 +53,7 @@
     const n = s.label;
     if (s.kind === "brand" && s.subject === "logo") return 'Crimson Ledger primary logo, antique brass three-masted trading junk with oxblood battened sails over an open ivory merchant ledger and jade wave, emblem left of stacked engraved gold lettering CRIMSON LEDGER, transparent background, wide 3:1 composition, lacquer black, oxblood, antique brass and jade palette, no other text';
     if (s.kind === "brand" && s.subject === "favicon") return 'Crimson Ledger square game icon, antique brass three-masted trading junk with oxblood battened sails over an open ivory merchant ledger and jade wave, dark jade enamel, rounded oxblood lacquer tile, bold silhouette, no text';
+    if (s.kind === "brand" && s.subject === "admin_masthead_bg") return `One cohesive panoramic 1860 Hong Kong trading-house chart room overlooking a misty jade harbor, oxblood-sailed trading junk and warm brass oil lamp on the right, teak desk with a merchant ledger and nautical charts, dark quiet left 40 percent for the existing title, important objects in the central horizontal third for a shallow banner crop, no people, no collage, ${STYLE}`;
     if (s.kind === "port") return `The port of ${n} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, wide banner composition, ${STYLE}`;
     if (s.kind === "ship") return `A ${n} under full sail on the South China Sea, 1860s, detailed rigging and weathered hull, ${STYLE}`;
     if (s.kind === "cargo") return `Still life of ${n} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, ${STYLE}`;

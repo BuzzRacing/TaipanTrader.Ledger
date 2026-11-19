@@ -69,6 +69,7 @@ DEFAULTS = {
         "logo": "/assets/branding/crimson-ledger-logo-v01.png",
         "favicon": "/assets/branding/crimson-ledger-icon-v01.png",
         "masthead_bg": "/uploads/historical-masthead.webp",
+        "admin_masthead_bg": "/assets/branding/crimson-ledger-command-center-v01.webp",
         "page_bg": "/uploads/historical-page.webp",
         "board_bg": "/uploads/historical-board.webp",
         "chart_bg": "/uploads/historical-chart-v3.svg",
@@ -177,6 +178,9 @@ DEFAULTS = {
                    # Hits that miss the guns may land in the hold: one kind of goods (gold as likely as rice)
                    # loses cargo_hit_min to cargo_hit_max of its units over the side, at least one.
                    "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3,
+                   # The enemy answers the bosun at the key moments (Admiral Li Yue for her war junks,
+                   # Madam Shek Yu-lan for the pirate junks), from her own lines, battle.foe.*.
+                   "foe_voice": True,
                    # Matched fights (engine.Game._muster): the enemy is sized from the house's own fleet.
                    # Their hull = our firepower x match_rounds; their guns = our hull x match / match_rounds.
                    # match (1 = an even fight) = base + cargo x temptation + fame x fame share
@@ -310,6 +314,15 @@ DEFAULTS = {
                    "Red Rover", "Water Dragon", "Flying Cloud", "Pearl of Canton", "Falcon", "Nemesis",
                    "Lotus Wind", "Black Joke", "Sylph", "Cowasjee", "Ariel", "Taeping", "Fiery Cross",
                    "Mandarin", "Eastern Queen", "Kestrel", "Tiger Tail", "Silver Moon", "Antelope"],
+    # Escorts (guns only) and cargo ships (hold only) each have their own list; ship_names above is
+    # the Merchantmen's. An empty or used-up list falls back to the Merchantmen's names.
+    "escort_names": ["Iron Maiden", "Hellcat", "Valkyrie", "Fury", "Vixen", "Medusa", "Gorgon", "Banshee",
+                     "Firebrand", "Lady Vengeance", "Scarlet Fang", "Widow's Wrath", "Steel Siren", "Harpy",
+                     "Thunder Queen", "Brimstone Belle", "Tempest", "Red Fury", "Cutthroat Kate", "Bloody Mary"],
+    "cargo_names": ["Golden Hoard", "Silk Purse", "Treasure Chest", "Rich Widow", "Dowager Empress", "Laden Lady",
+                    "Cornucopia", "Bountiful", "Ample Grace", "Spice Queen", "Tea Duchess", "Bengal Matron",
+                    "Bombay Belle", "Coromandel Countess", "Golden Fleece", "Deep Pockets", "Fat Purse",
+                    "Heavy Heart", "Plenty", "Big Bertha"],
     # How much history to keep (Admin > Captain's Report). See journal.py.
     "journal": {"keep_games": 50, "server_days": 30},
     # Who reads the game aloud, and how (Admin > Cast & Voices). See cast.py.
@@ -323,7 +336,7 @@ SHIP_ROLES = ("trader", "escort", "cargo")
 SEEDED_SHIPS = ("gunboat", "countryship")
 
 # Paths whose whole value is replaced on save (rows can be deleted), not merged.
-WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "difficulty.presets",
+WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "escort_names", "cargo_names", "difficulty.presets",
          "theme.player_colors", "rules.game.lengths", "rules.events.shock_mults",
          "rules.weather.storm_chance", "graphics.goods", "graphics.ports", "graphics.ships",
          "characters", "voice.lines", "voice.say")
@@ -749,7 +762,9 @@ SECTIONS = [
      ],
      "groups": [
          {"title": "Ship names", "fields": [
-             F("ship_names", "Names given to new ships", "lines", "One per line.", max=40)]},
+             F("ship_names", "Merchantman names", "lines", "Names given to new Merchantmen. One per line.", max=40),
+             F("escort_names", "Escort names", "lines", "Names given to new Escorts. One per line.", max=40),
+             F("cargo_names", "Cargo ship names", "lines", "Names given to new Cargo ships. One per line.", max=40)]},
      ]},
     {"id": "weather", "title": "Weather & Seas", "intro": "Storm odds for each sea and what storms do.",
      "tables": [
@@ -811,6 +826,10 @@ SECTIONS = [
              F("rules.battle.first_extra", "Extra seconds on the first round", "int", min=0, max=600),
              F("rules.battle.voice_grace", "Seconds allowed for the bosun's line", "int",
                "Added to every round so the clock does not run while she is speaking.", min=0, max=60),
+             F("rules.battle.foe_voice", "The enemy answers the bosun", "bool",
+               "On: Admiral Li Yue (her war junks) or Madam Shek Yu-lan (the pirate junks) stands on the right and "
+               "answers at the key moments: the sighting, the price, a ship sunk on either side, and the ending. "
+               "Their lines are under Sea battle in Language & Text (battle.foe.*)."),
              _pct("rules.battle.gun_loss", "Enemy hits that smash guns instead of the hull",
                   "Each hit on a ship that still has guns: this share dismounts guns (no hull damage); the rest hole the hull."),
              _pct("rules.battle.gun_loss_two", "Gun hits that smash two guns, not one"),
@@ -963,6 +982,7 @@ GRAPHIC_SLOTS = [
     ["logo", "Logo", "Transparent wide logo used on the join screen, lobby, opening, harbor board and admin header. Include the game name in the artwork."],
     ["favicon", "Browser tab icon", "A small square image."],
     ["masthead_bg", "Title banner background", "Behind the title on the join and lobby screens."],
+    ["admin_masthead_bg", "Command Center banner", "Behind the title in the admin header. Use a wide panorama with quiet, dark space on the left; the center strip is shown. Managed in Media Library > Brand > Command Center banner."],
     ["page_bg", "Player screen background", "Behind the cards on every player screen. Subtle textures work best."],
     ["board_bg", "Harbor board background", "Behind the big-screen board."],
     ["chart_bg", "Chart artwork", "Replaces the drawn coastlines. Must cover longitude 85-135, latitude -10 to 35 at 5:3 (for example 2000 x 1200)."],
@@ -976,6 +996,19 @@ URL_RE = re.compile(r"^(/uploads/[A-Za-z0-9._-]+|/(media|assets)/(?!_trash/)(?!.
 
 def defaults():
     return copy.deepcopy(DEFAULTS)
+
+
+def promotion_styles():
+    with open(os.path.join(ROOT, "web", "assets", "promotion-styles.json"), encoding="utf-8") as f:
+        styles = json.load(f)
+    if not isinstance(styles, dict) or not styles:
+        raise ValueError("web/assets/promotion-styles.json: certificate styles must be a non-empty object")
+    for rank, style in styles.items():
+        if not ID_RE.fullmatch(rank) or not isinstance(style, dict) or \
+                not all(COLOR_RE.fullmatch(str(style.get(k, ""))) for k in ("tone", "deep", "metal", "paper", "ink")) or \
+                not isinstance(style.get("audience"), str):
+            raise ValueError("web/assets/promotion-styles.json: invalid certificate style for {}".format(rank))
+    return styles
 
 
 def get_path(d, path):

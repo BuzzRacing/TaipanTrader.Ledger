@@ -316,6 +316,12 @@
     if (kind === "captain" || kind === "house") return ((M.lib && M.lib.prompts && M.lib.prompts[kind]) || {})[subject] || "";
     const style = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
     const name = subjectName(kind, subject);
+    if (kind === "port" && role && role.startsWith("mayor_")) {
+      const rank = role.slice(6), title = (CFG.ranks.find(r => r.id === rank) || {}).title || rank;
+      const audience = ((M.lib.promotion_styles || {})[rank] || {}).audience || "a formal harbour-office commission";
+      const w = portWoman(subject, "mayor");
+      return `Bespoke ceremonial portrait of the lady mayor of ${name}, for the ${title} promotion certificate. Keep the same recognizable adult mayor as her other portraits: ${w.who}, ${w.hair}, her own civic gold chain. ${audience}. Proud warm acknowledgement, direct eye contact, waist-up composition with her face in the upper third, fully dressed, a period ivory commission on a teak desk, richly textured believable materials, no modern objects, no text, no frame, ${style}`;
+    }
     if (kind === "scene" && BATTLE_ENEMY[subject]) return battlePrompt(subject, role, style);
     if (kind === "port" && role === "keeper") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, who runs a trading stall in the ${name} market in 1860, looking straight into the camera with a slow, knowing, inviting half-smile and heavy-lidded bedroom eyes, ${w.hair}, ${w.dress}, bare skin glowing with humid heat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
     if (kind === "port" && role === "shipmaster") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry, dangerous ${w.who}, the ship master who rules the ${name} shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, ${w.hair}, ${w.dress}, a brass spyglass in one gloved hand, sweat-sheened skin, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
@@ -690,7 +696,8 @@
       M.gen.roles = M.gen.roles.filter(r => r !== d.mlgenrole);
       if (el.checked) M.gen.roles.push(d.mlgenrole);
       // A market keeper, ship master, mayor or tax lady is a portrait of her, not a harbour view: swap the starting prompt, shape and roles.
-      const womanRoles = ["keeper", "shipmaster", "mayor", "taxlady"];
+      const womanRoles = ["keeper", "shipmaster", "mayor", "taxlady"].concat(
+        (kinds().port.roles || []).map(r => r[0]).filter(r => r.startsWith("mayor_")));
       if (womanRoles.includes(d.mlgenrole) && el.checked && (M.kind || "persona") === "port") {
         const subject = M.gen.forKey.split(":")[1] || "";
         const box = $("mlgenprompt"), now = (box && box.value) || M.gen.prompt;

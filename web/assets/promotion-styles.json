@@ -1,0 +1,9 @@
+{
+  "debtor": {"tone":"#424c4b","deep":"#202b2a","metal":"#c5c8bc","paper":"#e9e6db","ink":"#424c4b","audience":"a restrained pewter-and-charcoal counting room, a plain ivory commission and a single brass lamp"},
+  "clerk": {"tone":"#424c4b","deep":"#202b2a","metal":"#c5c8bc","paper":"#e9e6db","ink":"#424c4b","audience":"a modest harbour-office audience, pewter-grey silk with simple trim, signing a first commission beside a single brass lamp"},
+  "trader": {"tone":"#285d58","deep":"#123330","metal":"#c8ae76","paper":"#e5ebdf","ink":"#285d58","audience":"a welcoming harbour-office commission, verdigris silk and antique brass trim, a teak desk with a sealed commission and trading junks beyond the window"},
+  "merchant": {"tone":"#293e5b","deep":"#172538","metal":"#c7bd98","paper":"#e5e7ea","ink":"#293e5b","audience":"a formal merchant reception, rich indigo silk with silver and antique brass details, carved screens and an ivory commission presented on a teak desk"},
+  "senior_merchant": {"tone":"#513550","deep":"#2b1d2c","metal":"#c5ad83","paper":"#eee3e7","ink":"#513550","audience":"a distinguished senior merchant audience, plum silk and black velvet with fine antique gold embroidery, warm lanterns and richly carved dark wood"},
+  "merchant_prince": {"tone":"#794c30","deep":"#39291f","metal":"#e2b87b","paper":"#f0e2ce","ink":"#764527","audience":"a grand merchant-prince reception, copper-coloured silk with ornate antique gold embroidery, a ceremonial ivory commission, elaborate carved screens and harbour dusk"},
+  "taipan": {"tone":"#183e32","deep":"#10271f","metal":"#d5b675","paper":"#ede4cd","ink":"#214b3b","audience":"the highest Taipan commission in an elegant treaty-port reception room, formal imperial-jade silk and black velvet with rich antique gold embroidery, a civic gold chain, an ivory commission on a teak table, carved screens and harbour dusk"}
+}

@@ -274,6 +274,19 @@ class Hub:
             out["now"] = clips(me["battle"].get("beat"))
         return out
 
+    def _battle_foe_voice(self, me):
+        """The enemy's answering line on each picture (Admiral Li Yue or Madam Shek Yu-lan, named on the
+        frame as foe_by), keyed the same way as _battle_voice. None when nobody reads the log aloud."""
+        plan = voice.PLAN
+        if not plan.ready() or not plan.cfg["voice"]["read_log"]:
+            return None
+        clips = lambda beat: [plan._clip(f["foe"], f.get("foe_by")) if f.get("foe") and f.get("foe_by") else None
+                              for f in (beat or {}).get("frames", [])]
+        out = {f["id"]: clips(f.get("beat")) for f in me.get("fights") or []}
+        if me.get("battle"):
+            out["now"] = clips(me["battle"].get("beat"))
+        return out
+
     def present(self):
         now = time.time()
         grace = engine.R["game"]["grace_seconds"]
@@ -325,7 +338,10 @@ class Hub:
                       "news": voice.PLAN.lines(v.get("news"), "news", 14)}
         if me.get("battle") or me.get("fights"):
             v["voice"]["battle"] = self._battle_voice(me)
+            v["voice"]["battle_foe"] = self._battle_foe_voice(me)
         promo = me.get("promotion") or {}
+        if promo:
+            me["promotion"] = dict(promo, achievements=stats.promotion_record(v["game_id"], pid, promo))
         if promo.get("text"):
             # The Mayor's congratulations on a promotion (strings m.promote.N), read by the Mayor.
             v["voice"]["promotion"] = voice.PLAN.lines([promo["text"]], "log", port=promo.get("port"))

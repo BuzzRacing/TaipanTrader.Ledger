@@ -41,6 +41,7 @@ const Battle = (() => {
     <div class="sf-enemy" hidden><div class="sf-junks"></div><p></p></div>
     <div class="sf-mid">
       <div class="sf-who" hidden></div>
+      <div class="sf-who sf-foe" hidden></div>
       <p class="sf-cap" aria-live="assertive"></p>
       <p class="sf-tell"></p>
     </div>
@@ -53,7 +54,7 @@ const Battle = (() => {
 
   let seen = new Set();           // beats already played on this screen
   let acked = new Set();          // fights whose reckoning the captain has closed
-  let playing = null;             // {key, frames, clips, i, timer, tag, started, t0}
+  let playing = null;             // {key, frames, clips, foes, i, timer, tag, started, t0}
   let sending = false, clockEnd = 0, clockTotal = 1, clockKey = "", curPic = 0, picKey = "", drawnKey = "";
   try { acked = new Set(JSON.parse(sessionStorage.getItem("seatrader_fights") || "[]")); } catch (e) { /* a fresh page */ }
 
@@ -110,7 +111,7 @@ const Battle = (() => {
      has in the media library, shuffled, crossfading to the next every few seconds while they talk.
      Each new line starts on a different picture from the one the last line ended on. */
   const WHO_ROTATE_MS = 3200;
-  let whoTimer = null;
+  const whoTimer = { us: null, foe: null };   // one picture rotation for each seat
   const whoLast = {};             // persona -> last picture url shown
   function shuffled(list, notFirst) {
     const out = list.slice();
@@ -123,10 +124,13 @@ const Battle = (() => {
   }
   /* mood: a persona role ("sly" for the bargain whisper, "angry" when they raise the price). Her pictures in
      that role are shown when she has any; otherwise any of her pictures, as before. */
-  function speakerChip(clip, mood) {
-    const who = $(".sf-who");
-    clearInterval(whoTimer);
-    whoTimer = null;
+  /* side: "us" (the bosun, on the left) or "foe" (the enemy's voice, on the right; added 18 Nov 2026). */
+  function speakerChip(clip, mood, side) {
+    side = side || "us";
+    const who = $(side === "foe" ? ".sf-foe" : ".sf-who:not(.sf-foe)");
+    clearInterval(whoTimer[side]);
+    whoTimer[side] = null;
+    who.classList.remove("quiet");
     const c = clip && typeof VS !== "undefined" && VS.cast ? VS.cast[clip.c] : null;
     if (!c) { who.hidden = true; return; }
     const all = typeof Media !== "undefined" ? Media.items("persona", clip.c, "", false) : [];
@@ -145,8 +149,8 @@ const Battle = (() => {
     if (urls.length) whoLast[clip.c] = urls[0];
     if (urls.length < 2) return;
     let i = 0;
-    whoTimer = setInterval(() => {
-      if (who.hidden || !who.isConnected) { clearInterval(whoTimer); whoTimer = null; return; }
+    whoTimer[side] = setInterval(() => {
+      if (who.hidden || !who.isConnected) { clearInterval(whoTimer[side]); whoTimer[side] = null; return; }
       i = (i + 1) % urls.length;
       const url = urls[i], faces = who.querySelectorAll(".sf-face");
       const on = who.querySelector(".sf-face.on"), off = Array.from(faces).find(x => x !== on);
@@ -162,34 +166,65 @@ const Battle = (() => {
     }, WHO_ROTATE_MS);
   }
 
+  function hideWho() {
+    root.querySelectorAll(".sf-who").forEach(w => { w.hidden = true; w.classList.remove("quiet"); });
+    clearInterval(whoTimer.us); clearInterval(whoTimer.foe);
+    whoTimer.us = whoTimer.foe = null;
+  }
+  /* Which seat is talking: the other steps back. */
+  function talking(side) {
+    const us = $(".sf-who:not(.sf-foe)"), foe = $(".sf-foe");
+    us.classList.toggle("quiet", side === "foe" && !foe.hidden);
+    foe.classList.toggle("quiet", side === "us" && !us.hidden);
+  }
+
   function frameStep() {
     const p = playing;
     if (!p) return;
     const f = p.frames[p.i];
-    if (!f) { playing = null; $(".sf-who").hidden = true; return sync(); }
+    if (!f) { playing = null; hideWho(); return sync(); }
     showPicture(f.moment, p.kind, p.key + ":" + p.i);
     const cap = $(".sf-cap");
     cap.textContent = f.cap || "";
     cap.classList.remove("in"); void cap.offsetWidth; cap.classList.add("in");
     $(".sf-tell").textContent = "";
     const clip = p.clips && p.clips[p.i];
+    const foeClip = f.foe && p.foes ? p.foes[p.i] : null;
+    const ours = !!(clip && f.say), theirs = !!(foeClip && f.foe);
     p.tag = "sf:" + p.key + ":" + p.i;
+    const foeTag = p.tag + ":foe";
+    // the lines this picture waits for, in order: the bosun first, then the enemy's answer
+    const tags = (ours ? [p.tag] : []).concat(theirs ? [foeTag] : []);
+    const heard = new Set();
+    let lastEnd = 0;
     p.started = false;
     p.t0 = Date.now();
-    speakerChip(clip && f.say ? clip : null, f.mood);
-    if (clip && f.say && typeof Voice !== "undefined") {
-      Voice.say([Object.assign({ tag: p.tag, text: f.say }, clip)], { group: "battle" });
+    speakerChip(ours ? clip : null, f.mood, "us");
+    speakerChip(theirs ? foeClip : null, f.foe_mood, "foe");
+    if (ours && theirs) talking("us");
+    if (tags.length && typeof Voice !== "undefined") {
+      Voice.say([].concat(ours ? [Object.assign({ tag: p.tag, text: f.say }, clip)] : [],
+        theirs ? [Object.assign({ tag: foeTag, text: f.foe }, foeClip)] : []), { group: "battle" });
     }
+    const maxMs = MAX_FRAME_MS + (ours && theirs ? MAX_FRAME_MS * .8 : 0);
     clearInterval(p.timer);
     p.timer = setInterval(() => {
       if (playing !== p) return clearInterval(p.timer);
       const now = Date.now() - p.t0, cur = typeof Voice !== "undefined" ? Voice.current() : null;
-      const mine = cur && cur.tag === p.tag;
-      if (mine) p.started = true;
+      const tagNow = cur ? cur.tag : "";
+      if (tags.includes(tagNow)) {
+        if (!heard.has(tagNow)) { heard.add(tagNow); if (ours && theirs) talking(tagNow === foeTag ? "foe" : "us"); }
+        p.started = true;
+        lastEnd = now;
+      }
       const quiet = (f.cap || "").length * PER_CHAR_MS + MIN_FRAME_MS;
-      const over = p.started ? !mine && now >= MIN_FRAME_MS
-        : now >= (clip && f.say && now < VOICE_START_MS ? VOICE_START_MS : quiet);
-      if (over || now >= MAX_FRAME_MS) nextFrame();
+      let over;
+      if (!tags.length) over = now >= quiet;
+      else if (!p.started) over = now >= VOICE_START_MS && now >= quiet;               // muted or no voices
+      else if (tags.includes(tagNow)) over = false;                                    // someone is still speaking
+      else if (heard.has(tags[tags.length - 1])) over = now >= MIN_FRAME_MS;           // the last line has been said
+      else over = now - lastEnd >= VOICE_START_MS;                                     // the next line never came
+      if (over || now >= maxMs) nextFrame();
     }, 120);
   }
   function nextFrame() {
@@ -199,10 +234,10 @@ const Battle = (() => {
     playing.i += 1;
     frameStep();
   }
-  function play(key, kind, frames, clips) {
+  function play(key, kind, frames, clips, foes) {
     seen.add(key);
     if (playing) clearInterval(playing.timer);
-    playing = { key, kind, frames: frames || [], clips: clips || [], i: 0, timer: null };
+    playing = { key, kind, frames: frames || [], clips: clips || [], foes: foes || [], i: 0, timer: null };
     frameStep();
   }
 
@@ -309,7 +344,7 @@ const Battle = (() => {
     $(".sf-wait").hidden = true;
     $(".sf-result").hidden = true;
     const key = S.turn + ":" + index + ":" + b.beat.id;
-    if (!seen.has(key)) play(key, b.kind, b.beat.frames, ((S.voice || {}).battle || {}).now);
+    if (!seen.has(key)) play(key, b.kind, b.beat.frames, ((S.voice || {}).battle || {}).now, ((S.voice || {}).battle_foe || {}).now);
     header(b.where, b.stage === "parley" ? "" : t("battle.round", { n: Math.min(b.round, b.rounds), rounds: b.rounds }));
     $(".sf-enemy").hidden = false;
     junks(b.n, b.left, b.enemy_ships);
@@ -323,7 +358,7 @@ const Battle = (() => {
       showPicture(last ? last.moment : "sighting", b.kind, key + ":rest");
       $(".sf-cap").textContent = b.stage === "parley" ? t(b.bargain ? "battle.cap.lowball" : b.repriced ? "battle.cap.reprice" : "battle.parley", { price: money(b.price) }) : (last ? last.cap : "");
       $(".sf-tell").textContent = b.tell || "";
-      $(".sf-who").hidden = true;
+      hideWho();
     }
     // the round clock (the server's; shown here)
     const ck = key + ":" + b.secs_total;
@@ -346,14 +381,14 @@ const Battle = (() => {
     $(".sf-enemy").hidden = false;
     junks(f.n, f.n - f.sunk);
     $(".sf-enemy p").textContent = f.n + " " + f.enemy;
-    if (!seen.has(f.id)) { root.dataset.mode = "fight"; $(".sf-result").hidden = true; return play(f.id, f.kind, f.beat.frames, ((S.voice || {}).battle || {})[f.id]); }
+    if (!seen.has(f.id)) { root.dataset.mode = "fight"; $(".sf-result").hidden = true; return play(f.id, f.kind, f.beat.frames, ((S.voice || {}).battle || {})[f.id], ((S.voice || {}).battle_foe || {})[f.id]); }
     if (playing) { root.dataset.mode = "fight"; $(".sf-result").hidden = true; return; }
     root.dataset.mode = "result";
     const last = f.beat.frames[f.beat.frames.length - 1];
     showPicture(last ? last.moment : "got_away", f.kind, f.id + ":rest");
     $(".sf-cap").textContent = "";
     $(".sf-tell").textContent = "";
-    $(".sf-who").hidden = true;
+    hideWho();
     const out = $(".sf-result");
     setHtml(out, reckoningHtml(f, more));
     out.hidden = false;
@@ -362,15 +397,7 @@ const Battle = (() => {
   }
 
   /* ------------------------------------------------------------- the reckoning -- */
-  /* Redesigned 18 Nov 2026 (mockup "Crimson Ledger — Sea Battle Reckoning"): the last battle
-     picture fills the screen, Powder O'Rourke (whoever read the fight) stands large on the left
-     with her closing line, and the reckoning is a lacquer ledger card on the right: a wax seal
-     with the enemy sunk, the enemy line as junks (sunk ones listing under the waterline), hull
-     bars and gun pips for each ship, the cargo as a ledger with leaders, a stamp, and the net
-     figure on a double rule beside Make for port. */
   const GOOD_MOOD = { won: 1, away: 1, broke_off: 1, paid: 1 };
-  const STAMP = { won: ["battle.res.stamp_won", "Prize"], plundered: ["battle.res.stamp_plundered", "Boarded"],
-    wrecked: ["battle.res.stamp_wrecked", "Lost"], retreated: ["battle.res.stamp_retreated", "Jettisoned"] };
   /* Wording with a fallback, so the screen reads right before strings.py has the key. */
   const tf = (key, fb, vars) => T[key] == null ? a(fb) : te(key, vars);
   const goodName = g => D.goods[g] ? D.goods[g].name : g;
@@ -405,16 +432,30 @@ const Battle = (() => {
     const was = Math.max(now, Math.min(max, s.hull0));
     const pct = v => (100 * v / max).toFixed(1) + "%";
     const low = now / max <= .25 ? " low" : "";
-    return `<span class="sf-rhull${low}" aria-hidden="true"><i class="now" style="width:${pct(now)}"></i><i class="gone" style="left:${pct(now)};width:${pct(was - now)}"></i></span>`;
+    return `<span class="sf-rhull${low}" aria-hidden="true"><i class="now" style="--before:${pct(was)};width:${pct(now)}"></i><i class="gone" style="left:${pct(now)};width:${pct(was - now)}"></i></span>`;
   }
-  function gunPips(s) {
-    if (s.lost) return "";
-    const g1 = s.guns1 || 0, g0 = Math.max(g1, s.guns0 || 0), c1 = s.cannons1 || 0, c0 = Math.max(c1, s.cannons0 || 0);
-    if (!g0 && !c0) return "";
-    const pips = `<i class="on cn"></i>`.repeat(c1) + `<i class="cn broke"></i>`.repeat(c0 - c1)
-      + `<i class="on"></i>`.repeat(g1) + `<i class="broke"></i>`.repeat(g0 - g1);
-    const lost = (g0 - g1) + (c0 - c1);
-    return `<span class="sf-rpips">${pips}${lost ? `<small>${a(lost)} ${tf("battle.res.smashed", "smashed")}</small>` : ""}</span>`;
+  function armsCount(s) {
+    const count = (key, label) => {
+      const before = s[key + "0"] || 0, after = s.lost ? 0 : s[key + "1"] || 0;
+      return before || after ? `<span>${te(label, { n: after })}${before > after ? ` <em>−${a(before - after)}</em>` : ""}</span>` : "";
+    };
+    return count("guns", "battle.res.gun_count") + count("cannons", "battle.res.cannon_count")
+      || `<span class="unarmed">${te("battle.res.unarmed")}</span>`;
+  }
+
+  function resultArt(outcome) {
+    const marks = {
+      won: '<path d="m20 42 9-21 9 13 9-13 9 21H20Zm3 7h30M17 24l3 8m39-8-3 8M11 40c0 12 8 22 19 25M65 40c0 12-8 22-19 25M14 48l8 2m-4 8 8-1m36-9-8 2m4 8-8-1"/>',
+      away: '<path d="M14 27h32c12 0 12-16 2-16-6 0-9 5-7 9M9 38h48c12 0 12 17 2 17-6 0-9-5-7-9M20 49h15c12 0 12 16 2 16M17 17h12"/>',
+      retreated: '<path d="M39 12v43M35 17 17 40h18m9-19 15 23H44M15 51h48l-9 11H24ZM9 69q9-5 18 0t18 0 18 0"/>',
+      paid: '<ellipse cx="29" cy="24" rx="17" ry="7"/><path d="M12 24v10c0 9 34 9 34 0V24M12 34v10c0 8 19 10 28 6"/><ellipse cx="52" cy="47" rx="15" ry="7"/><path d="M37 47v11c0 9 30 9 30 0V47M23 20h12m-6-3v14"/>',
+      plundered: '<path d="M14 33h48v31H14ZM14 33l8-17h32l8 17M14 46h19m10 0h19M33 39h10v15H33ZM26 16v17m24-17v17M26 57h5m14 0h5"/>',
+      wrecked: '<path d="m38 10 5 18-10 9 12 10-7 20M31 16a25 25 0 0 0-8 44m24-44a25 25 0 0 1 8 44M13 38h12m26 0h12M21 21l8 8m18 18 8 8M21 55l8-8m18-18 8-8M9 70q9-5 18 0t18 0 18 0"/>',
+      broke_off: '<path d="M38 10 14 20v19c0 14 12 23 24 29 12-6 24-15 24-29V20ZM25 38l9 10 18-22"/>',
+    };
+    const emblem = `<svg viewBox="0 0 76 80" aria-hidden="true">${marks[outcome] || marks.broke_off}</svg>`;
+    const compass = `<svg viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="140"/><circle cx="160" cy="160" r="126"/><circle cx="160" cy="160" r="83"/><path d="M160 6v32m0 244v32M6 160h32m244 0h32M51 51l23 23m172 172 23 23M51 269l23-23M246 74l23-23"/><path class="rose" d="m160 39 21 100 100 21-100 21-21 100-21-100-100-21 100-21Zm0 49v144M88 160h144"/></svg>`;
+    return { emblem, backdrop: `<div class="sf-raftermath mood-${a(outcome)}" aria-hidden="true"><div class="sf-rcompass">${compass}</div><div class="sf-rswell"></div></div>` };
   }
 
   function reckoningHtml(f, more) {
@@ -423,9 +464,11 @@ const Battle = (() => {
     const gunsHit = s => (s.guns0 != null && s.guns1 != null && s.guns1 < s.guns0) || cannonsHit(s);
     const hurt = f.ships.some(s => !s.lost && (s.hull1 < s.hull0 || gunsHit(s)));
 
-    const ships = f.ships.slice().sort((x, y) => ROLE_ORDER.indexOf(roleOf(x)) - ROLE_ORDER.indexOf(roleOf(y))).map(s => `<li class="r-${roleOf(s)} ${s.lost ? "lost" : (s.hull1 < s.hull0 || gunsHit(s)) ? "hit" : ""}">
-        <div class="sf-rsh"><b>${a(s.name)}</b><span>${s.lost ? te("battle.res.ship_lost") : te("battle.res.hull", { a: s.hull0, b: s.hull1 })}</span></div>
-        ${hullBar(s)}${gunPips(s)}</li>`).join("");
+    const ships = ROLE_ORDER.filter(r => f.ships.some(s => roleOf(s) === r)).map(r =>
+      `<li class="sf-rgroup r-${r}">${te(ROLE_LABEL[r])}<span>${f.ships.filter(s => roleOf(s) === r && !s.lost).length} / ${f.ships.filter(s => roleOf(s) === r).length}</span></li>`
+      + f.ships.filter(s => roleOf(s) === r).map(s => `<li class="sf-rship r-${r} ${s.lost ? "lost" : (s.hull1 < s.hull0 || gunsHit(s)) ? "hit" : ""}">
+        <b>${a(s.name)}</b><div class="sf-rcondition"><span>${s.lost ? te("battle.res.ship_lost") : `${a(s.hull0)} → ${a(s.hull1)}`}</span>${hullBar(s)}</div>
+        <div class="sf-rarms">${armsCount(s)}</div></li>`).join("")).join("");
 
     const line = (qty, good, fig, cls) => `<li><span><b>${a(qty)}</b> ${a(goodName(good))}</span><i></i><em class="${cls}">${fig}</em></li>`;
     // A win shows what was taken; cargo shot out of the hold on the way shows too, as its own ledger.
@@ -438,21 +481,24 @@ const Battle = (() => {
     const list = usePrize ? prizeList : lostList;
     const alsoLost = usePrize && f.cargo.length
       ? `<h3>${te("battle.res.cargo")}</h3><ul class="sf-rcargo">${lostList}</ul>` : "";
-    const st = STAMP[f.outcome];
-    const showStamp = st && (f.outcome !== "won" || (f.prize || []).length) && (f.outcome !== "plundered" || f.cargo.length);
-    const stamp = showStamp ? `<span class="sf-stamp" aria-hidden="true">${tf(st[0], st[1])}</span>` : "";
-
-    const n = Math.max(0, f.n || 0), showN = Math.min(n, 24), down = Math.round(showN * (f.sunk || 0) / Math.max(1, n));
-    const fleet = n ? `<div class="sf-rjunks" role="img" aria-label="${te("battle.res.sunk_v", { sunk: f.sunk, n: f.n })}">
-        ${Array.from({ length: showN }, (_, i) => `<i class="${i < down ? "down" : ""}">${JUNK}</i>`).join("")}</div>` : "";
-
+    const afloat = f.ships.filter(s => !s.lost).length;
+    const hullLost = f.ships.reduce((n, s) => n + Math.max(0, s.hull0 - (s.lost ? 0 : s.hull1)), 0);
+    const armsLost = f.ships.reduce((n, s) => n + Math.max(0, (s.guns0 || 0) - (s.lost ? 0 : s.guns1 || 0))
+      + Math.max(0, (s.cannons0 || 0) - (s.lost ? 0 : s.cannons1 || 0)), 0);
     const rows = [
-      `<div><small>${te("battle.res.rounds")}</small><b>${a(f.rounds)}</b></div>`,
-      f.booty ? `<div class="up"><small>${te("battle.res.booty")}</small><b>+${money(f.booty)}</b></div>` : "",
-      f.prize_worth ? `<div class="gold"><small>${te("battle.res.prize_worth")}</small><b>${money(f.prize_worth)}</b></div>` : "",
-      f.paid ? `<div class="dn"><small>${te("battle.res.paid_line")}</small><b>-${money(f.paid)}</b></div>` : "",
-      f.cargo.length ? `<div class="dn"><small>${te("battle.res.cargo")}</small><b>-${money(f.cargo.reduce((t, c) => t + c.cost, 0))}</b></div>` : "",
+      `<div><small>${te("battle.res.sunk")}</small><b>${te("battle.res.sunk_v", { sunk: f.sunk, n: f.n })}</b></div>`,
+      `<div class="${afloat === f.ships.length ? "up" : "dn"}"><small>${te("battle.res.afloat")}</small><b>${a(afloat)} / ${a(f.ships.length)}</b></div>`,
+      `<div class="${hullLost ? "dn" : ""}"><small>${te("battle.res.hull_lost")}</small><b>${a(hullLost)}</b></div>`,
+      `<div class="${armsLost ? "dn" : ""}"><small>${te("battle.res.arms_lost")}</small><b>${a(armsLost)}</b></div>`,
     ].join("");
+    const silver = f.booty - f.paid;
+    const bookedLoss = Math.max(0, silver - f.net);
+    const account = `<dl class="sf-account">
+      <div><dt>${te("battle.res.booty")}</dt><dd class="up">${f.booty ? "+" : ""}${money(f.booty)}</dd></div>
+      ${f.paid ? `<div><dt>${te("battle.res.paid_line")}</dt><dd class="dn">−${money(f.paid)}</dd></div>` : ""}
+      ${bookedLoss ? `<div><dt>${te("battle.res.booked_losses")}</dt><dd class="dn">−${money(bookedLoss)}</dd></div>` : ""}
+      ${f.prize_worth ? `<div class="estimate"><dt>${te("battle.res.prize_estimate")}</dt><dd>${money(f.prize_worth)}</dd></div>` : ""}
+      </dl>`;
 
     const cl = closingFor(f);
     const who = cl.c ? `<figure class="sf-rwho${cl.url ? "" : " nopic"}" style="--who:${a(cl.c.color || "var(--deck-brass)")}">
@@ -464,15 +510,17 @@ const Battle = (() => {
           <p>“${a(cl.text)}”</p></figcaption>` : ""}
       </figure>` : "";
 
-    return `${who}<section class="sf-card o-${a(f.outcome)}${good ? " good" : " bad"}" role="dialog" aria-labelledby="sfResTitle">
-      ${n ? `<div class="sf-seal" aria-hidden="true"><b>${a(f.sunk)}/${a(f.n)}</b><small>${tf("battle.res.seal", "sunk")}</small></div>` : ""}
+    const art = resultArt(f.outcome);
+    return `${art.backdrop}${who}<section class="sf-card o-${a(f.outcome)}${good ? " good" : " bad"}" role="dialog" aria-labelledby="sfResTitle">
       <header><p class="eyebrow">${a(f.n + " " + f.enemy)}${f.where ? " · " + te("battle.off", { port: f.where }) : ""}</p>
-        <h2 id="sfResTitle">${te("battle.res." + f.outcome)}</h2></header>
-      ${fleet}
+        <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${art.emblem}</span><h2 id="sfResTitle">${te("battle.res." + f.outcome)}</h2></div>
+        <p class="sf-rreason">${te("battle.res.reason_" + f.outcome)}</p>
+        <p class="sf-rrounds">${te("battle.res.rounds")}: ${a(f.rounds)}</p></header>
       ${rows ? `<div class="sf-rows">${rows}</div>` : ""}
       <div class="sf-cols">
-        <div><h3>${te("battle.res.ships")}</h3><ul class="sf-rships">${ships}</ul></div>
-        <div class="sf-rledger"><h3>${te(usePrize ? "battle.res.prize" : "battle.res.cargo")}</h3><ul class="sf-rcargo${usePrize ? " sf-rprize" : ""}">${list}</ul>${alsoLost}${stamp}</div>
+        <div><h3>${te("battle.res.ships")}</h3><div class="sf-rcolumns"><span>${te("battle.res.vessel")}</span><span>${te("battle.res.hull_label")}</span><span>${te("battle.res.armament")}</span></div><ul class="sf-rships">${ships}</ul></div>
+        <div class="sf-rledger"><h3>${te("battle.res.account")}</h3>${account}<p class="sf-account-note">${te("battle.res.account_note")}</p>
+          <h3>${te(usePrize ? "battle.res.prize" : "battle.res.cargo")}</h3><ul class="sf-rcargo${usePrize ? " sf-rprize" : ""}">${list}</ul>${alsoLost}</div>
       </div>
       <p class="sf-note">${f.outcome === "wrecked" ? te("battle.res.wreck_note") : hurt ? te("battle.res.repairs") : ""}${more ? " " + te("battle.res.next") : ""}</p>
       <footer>
@@ -490,7 +538,7 @@ const Battle = (() => {
     $(".sf-clock").hidden = true;
     $(".sf-foot").hidden = true;
     $(".sf-enemy").hidden = true;
-    $(".sf-who").hidden = true;
+    hideWho();
     $(".sf-cap").textContent = "";
     $(".sf-tell").textContent = "";
     header("", "");

@@ -615,6 +615,46 @@ def test_no_hold_hits_when_switched_off():
     assert p1["cargo"].get("gold") == 10
 
 
+def test_the_enemy_answers_the_bosun():
+    """The right-hand seat (18 Nov 2026): Madam Shek Yu-lan answers for the pirate junks, Admiral Li Yue
+    for her own war junks, at the key moments, from their own lines, with the mood her picture shows."""
+    from strings import EN
+    pool = lambda who, name: {v for k, v in EN.items() if k.startswith("battle.foe.{}.{}.".format(who, name))}
+    for k, v in EN.items():
+        if k.startswith("battle.foe."):
+            assert not any(ch.isdigit() for ch in v), ("spoken lines carry no numbers", k)
+    # the pirate junks: Madam Shek at the sighting and with her price
+    setup()
+    g = new_game(names=("Ann",))
+    sail(g, present=["p1"])
+    fr = g.s["players"]["p1"]["battle"]["beat"]["frames"]
+    assert fr[0]["foe_by"] == "agent" and fr[0]["foe"] in pool("agent", "sighting") and fr[0]["foe_mood"] == "speaking"
+    assert fr[0]["say"] and fr[1]["foe"] in pool("agent", "price"), fr
+    # the queen's war junks: Admiral Li Yue names her tribute
+    setup(pirates__chance=0.0, liyuen__chance=1.0)
+    g = new_game(names=("Ann",))
+    sail(g, present=["p1"])
+    fr = g.s["players"]["p1"]["battle"]["beat"]["frames"]
+    assert fr[0]["foe_by"] == "pirate" and fr[0]["foe"] in pool("pirate", "sighting")
+    assert fr[1]["foe"] in pool("pirate", "price")
+    # a win: she curses her lost junks and has the last word on the victory picture; the prize pictures are the bosun's
+    setup(battle__parley=False, pirates__gun_hit=1.0, pirates__hit=0.0)
+    g = new_game(names=("Ann",), guns=20)
+    sail(g, present=["p1"])
+    _win(g, ["p1"])
+    f = g.s["players"]["p1"]["fights"][-1]
+    frames = f["beat"]["frames"]
+    v = next(x for x in frames if x["moment"] == "victory")
+    assert v["foe"] in pool("agent", "defeated") and v["foe_mood"] == "angry", v
+    assert not any(x.get("foe") for x in frames[frames.index(v) + 1:]), "she is gone before the prize is counted"
+    json.dumps(f)
+    # switched off: the bosun alone, as before
+    setup(battle__foe_voice=False)
+    g = new_game(names=("Ann",))
+    sail(g, present=["p1"])
+    assert not any(x.get("foe") for x in g.s["players"]["p1"]["battle"]["beat"]["frames"])
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in tests:

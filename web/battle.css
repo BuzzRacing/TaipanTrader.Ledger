@@ -150,12 +150,8 @@
 #seafight[data-mode="wait"] .sf-mid { display: none; }
 
 /* --------------------------------------------------------------- reckoning -- */
-/* Redesigned 18 Nov 2026 (mockup "Crimson Ledger — Sea Battle Reckoning"): the battle picture
-   behind, the reader of the fight (Powder) large on the left with her closing line, and a lacquer
-   ledger card on the right. Fonts: --title for the outcome, --special for labels, --figures for
-   every amount. */
-.sf-result { --figures: "Consolas", "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  position: absolute !important; inset: 0; z-index: 3 !important; display: grid; grid-template-columns: minmax(0, 1fr) min(46rem, 58%);
+.sf-result { --figures: var(--sans);
+  position: absolute !important; inset: 0; z-index: 3 !important; display: grid; grid-template-columns: minmax(0, 1fr) min(66rem, 76%);
   align-items: center; padding: clamp(.6rem, 3vw, 2.2rem); overflow: hidden;
   background: radial-gradient(ellipse 70% 85% at 28% 45%, transparent 0%, color-mix(in srgb, var(--deck-night) 55%, transparent) 62%, color-mix(in srgb, var(--deck-night) 92%, transparent) 100%),
     linear-gradient(90deg, transparent 32%, color-mix(in srgb, var(--deck-night) 78%, transparent) 60%, color-mix(in srgb, var(--deck-night) 90%, transparent) 100%);
@@ -179,7 +175,7 @@ button.sf-rsay:hover { background: color-mix(in srgb, var(--deck-oxblood) 80%, #
 .sf-rline p { margin: 0; font: italic clamp(1.05rem, 1.7vw, 1.3rem)/1.35 var(--serif); color: var(--deck-ivory); }
 
 /* the ledger card */
-.sf-card { grid-column: 2; position: relative; width: 100%; max-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: .8rem;
+.sf-card { grid-column: 2; position: relative; width: 100%; max-height: 100%; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 1rem;
   padding: clamp(1rem, 2.4vw, 1.9rem) clamp(1rem, 2.6vw, 2.3rem); overflow: visible;
   border: 1px solid color-mix(in srgb, var(--deck-brass) 60%, transparent); outline: 1px solid color-mix(in srgb, var(--deck-brass) 22%, transparent); outline-offset: 5px;
   border-radius: 3px; background: linear-gradient(180deg, color-mix(in srgb, var(--deck-lacquer) 94%, transparent), color-mix(in srgb, var(--deck-night) 96%, transparent));
@@ -187,80 +183,125 @@ button.sf-rsay:hover { background: color-mix(in srgb, var(--deck-oxblood) 80%, #
 .sf-card::before, .sf-card::after { content: ""; position: absolute; width: 1.3rem; height: 1.3rem; border: 2px solid var(--deck-brass); pointer-events: none; }
 .sf-card::before { top: -7px; left: -7px; border-width: 2px 0 0 2px; }
 .sf-card::after { bottom: -7px; right: -7px; border-width: 0 2px 2px 0; }
-.sf-card header { padding-right: 6.5rem; }
+.sf-card > header { position: relative; padding-right: 0; }
+.sf-rreason { margin: .6rem 0 0; color: var(--deck-ivory); font-size: 1rem; line-height: 1.4; }
+.sf-rrounds { margin: .45rem 0 0; font-size: .85rem; color: var(--muted); }
 .sf-card .eyebrow { margin: 0; font: .95rem/1.2 var(--special); letter-spacing: .1em; color: var(--brass-hi); }
 .sf-card h2 { margin: .1rem 0 0; font: 400 clamp(2.6rem, 6vw, 4.6rem)/1 var(--title); color: var(--brass-hi); text-shadow: 0 2px 0 var(--deck-night); }
 .sf-card.good h2 { color: var(--jade-hi); text-shadow: 0 0 1.8rem color-mix(in srgb, var(--deck-jade) 60%, transparent), 0 2px 0 var(--deck-night); }
 .sf-card.bad h2 { color: var(--blood-hi); text-shadow: 0 0 1.8rem color-mix(in srgb, var(--deck-oxblood) 75%, transparent), 0 2px 0 var(--deck-night); }
 
-.sf-seal { position: absolute; top: clamp(.9rem, 2vw, 1.6rem); right: clamp(.9rem, 2vw, 2rem); width: 5.6rem; height: 5.6rem; border-radius: 50%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(-12deg);
-  background: radial-gradient(circle at 38% 34%, #a83a3e 0%, var(--deck-oxblood) 55%, #561519 100%);
-  box-shadow: 0 .25rem .9rem rgba(0, 0, 0, .6), inset 0 0 0 4px color-mix(in srgb, var(--deck-ivory) 18%, transparent); animation: sfSeal .5s .35s cubic-bezier(.2, 1.6, .4, 1) both; }
-.sf-card.bad .sf-seal { background: radial-gradient(circle at 38% 34%, #4a5f6e 0%, var(--deck-storm) 55%, #1f3140 100%); }
-@keyframes sfSeal { from { opacity: 0; transform: rotate(-30deg) scale(1.6); } to { opacity: 1; transform: rotate(-12deg) scale(1); } }
-.sf-seal b { font: 600 1.55rem/1 var(--figures); color: var(--deck-ivory); }
-.sf-seal small { font: .75rem/1.2 var(--special); letter-spacing: .2em; color: var(--deck-ivory); }
-
-.sf-rjunks { --j: clamp(1.4rem, 2.6vw, 2.1rem); display: flex; flex-wrap: wrap; gap: .1rem .35rem; padding: .45rem .7rem .3rem;
-  border-block: 1px solid color-mix(in srgb, var(--deck-brass) 30%, transparent);
-  background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--deck-storm) 35%, transparent) 100%); }
-.sf-rjunks i { width: var(--j); height: var(--j); display: block; }
-.sf-rjunks svg { width: 100%; height: 100%; fill: color-mix(in srgb, var(--deck-oxblood) 75%, #b5532e); stroke: var(--blood-hi); stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; }
-.sf-rjunks i.down { opacity: .45; transform: translateY(22%) rotate(16deg); filter: grayscale(.7); }
-.sf-rjunks i.down svg { stroke: var(--jade-hi); }
-
-.sf-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: .6rem; }
+.sf-rows { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
 .sf-rows > div { padding: .45rem .8rem; border: 1px solid color-mix(in srgb, var(--deck-brass) 32%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--deck-night) 50%, transparent); }
 .sf-rows small, .sf-net span { display: block; font: .8rem/1.2 var(--special); letter-spacing: .06em; color: var(--muted); }
 .sf-rows b { font: 600 1.45rem/1.2 var(--figures); font-variant-numeric: tabular-nums; color: var(--deck-ivory); }
 .sf-rows .up b, .sf-net.up b { color: var(--jade-hi); } .sf-rows .dn b, .sf-net.dn b { color: var(--blood-hi); } .sf-rows .gold b { color: var(--brass-hi); }
 
-.sf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.sf-cols { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.6rem; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-gutter: stable; padding-right: .25rem; overscroll-behavior: contain; }
+.sf-cols > div { min-width: 0; }
 .sf-cols h3 { margin: 0 0 .55rem; padding-bottom: .3rem; border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 35%, transparent);
   font: 700 1rem/1.2 var(--special); letter-spacing: .08em; color: var(--brass-hi); }
 .sf-cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
-.sf-rships { gap: .85rem !important; }
-.sf-rships li { display: grid; gap: .3rem; }
-.sf-rsh { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
-.sf-rsh b { font: 700 1.1rem/1.2 var(--serif); color: var(--deck-ivory); }
-.sf-rsh span { font: .85rem var(--figures); color: var(--muted); white-space: nowrap; }
-.sf-rships li.lost b { color: var(--blood-hi); text-decoration: line-through; text-decoration-thickness: 2px; }
-.sf-rships li.lost .sf-rsh span { font-family: var(--special); letter-spacing: .14em; color: var(--blood-hi); }
-.sf-rhull { position: relative; display: block; height: .6rem; border-radius: 2px; overflow: hidden; background: #0b0806; border: 1px solid color-mix(in srgb, var(--deck-brass) 35%, transparent); }
+.sf-rships { gap: 0 !important; }
+.sf-rcolumns, .sf-rships .sf-rship { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(6.2rem, 1fr) minmax(5.5rem, .85fr); gap: .7rem; align-items: center; }
+.sf-rcolumns { font-size: .72rem; color: var(--muted); padding-bottom: .35rem; }
+.sf-rcolumns > :last-child { text-align: right; }
+.sf-rships .sf-rship { padding: .5rem 0 .5rem .6rem; border-bottom: 1px solid var(--rule); }
+.sf-rship > b { min-width: 0; font: 700 1rem/1.2 var(--serif); overflow-wrap: anywhere; }
+.sf-rcondition { display: grid; gap: .3rem; }
+.sf-rcondition > span { font: .8rem/1.2 var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sf-rarms { text-align: right; font: .8rem/1.3 var(--sans); font-variant-numeric: tabular-nums; }
+.sf-rarms span { display: block; }
+.sf-rarms em { color: var(--blood-hi); font-style: normal; white-space: nowrap; }
+.sf-rarms .unarmed { color: var(--muted); }
+.sf-rships .sf-rgroup { display: flex; justify-content: space-between; gap: .5rem; padding: .65rem 0 .3rem; font: .85rem/1.2 var(--special); color: var(--brass-hi); }
+.sf-rgroup span { font-family: var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); }
+.sf-rships li.lost > b { color: var(--blood-hi); text-decoration: line-through; }
+.sf-rships li.lost .sf-rcondition > span { color: var(--blood-hi); }
+.sf-rhull { position: relative; display: block; height: .3rem; border-radius: 2px; overflow: hidden; background: #0b0806; border: 1px solid color-mix(in srgb, var(--deck-brass) 35%, transparent); }
 .sf-rhull i { position: absolute; top: 0; bottom: 0; transition: width 1s .4s ease-out; }
 .sf-rhull i.now { left: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 60%, #8fd6bd), var(--deck-jade)); }
 .sf-rhull.low i.now { background: linear-gradient(180deg, #d0a24a, #a8742a); }
 .sf-rhull i.gone { background: repeating-linear-gradient(135deg, var(--deck-oxblood) 0 4px, #4a1518 4px 8px); }
-.sf-rpips { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
-.sf-rpips i { width: .55rem; height: .55rem; border-radius: 50%; box-sizing: border-box; border: 1.5px solid color-mix(in srgb, var(--deck-brass) 50%, transparent); }
-.sf-rpips i.on { background: var(--deck-brass); border-color: var(--deck-brass); }
-.sf-rpips i.cn { border-radius: 2px; }
-.sf-rpips i.broke { border-color: var(--blood-hi); }
-.sf-rpips small { margin-left: .35rem; font: .8rem var(--figures); color: var(--blood-hi); }
-
-.sf-rledger { display: flex; flex-direction: column; }
-#seafight[data-mode="result"] .sf-top, #seafight[data-mode="result"] .sf-enemy { visibility: hidden; }
-.sf-rcargo li { display: flex; align-items: flex-end; font-size: 1rem; }
+ .sf-account { margin: 0; display: grid; gap: .6rem; font-size: .92rem; }
+.sf-account > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.sf-account dt { color: var(--deck-ivory); }
+.sf-account dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sf-account dd.up { color: var(--jade-hi); }
+.sf-account dd.dn { color: var(--blood-hi); }
+.sf-account .estimate { padding-top: .6rem; border-top: 1px solid var(--rule); color: var(--brass-hi); }
+.sf-account-note { color: var(--muted); font-size: .78rem; line-height: 1.5; margin: .7rem 0 1.2rem; }
+.sf-rcargo li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem .7rem; align-items: baseline; font-size: .95rem; padding-bottom: .4rem; border-bottom: 1px dotted var(--rule); }
+.sf-rcargo li > span { min-width: 0; overflow-wrap: anywhere; }
 .sf-rcargo li b { font: 600 1em var(--figures); color: var(--deck-ivory); }
-.sf-rcargo li > i { flex: 1 1 auto; margin: 0 .45rem .3rem; border-bottom: 1px dotted color-mix(in srgb, var(--deck-brass) 45%, transparent); }
+.sf-rcargo li > i { display: none; }
 .sf-rcargo li em { font: normal 600 1em var(--figures); white-space: nowrap; }
 .sf-rcargo li em.up { color: var(--jade-hi); } .sf-rcargo li em.dn { color: var(--blood-hi); }
-.sf-rcargo li.none { color: var(--muted); font-style: italic; }
-.sf-rcargo li.left { margin-top: .2rem; padding: .4rem .6rem; border: 1px dashed color-mix(in srgb, var(--blood-hi) 60%, transparent); border-radius: 3px; color: var(--blood-hi); font-size: .92rem; }
-.sf-stamp { align-self: flex-end; margin: .9rem .4rem .3rem 0; transform: rotate(-9deg); padding: .25rem .8rem; border: 2px solid color-mix(in srgb, var(--blood-hi) 75%, transparent);
-  border-radius: 3px; font: 700 1rem/1.2 var(--special); letter-spacing: .22em; text-transform: uppercase; color: color-mix(in srgb, var(--blood-hi) 90%, transparent);
-  pointer-events: none; animation: sfStamp .35s .7s cubic-bezier(.3, 1.8, .5, 1) both; }
-@keyframes sfStamp { from { opacity: 0; transform: rotate(-9deg) scale(1.8); } to { opacity: 1; transform: rotate(-9deg) scale(1); } }
-
-.sf-note { margin: 0; min-height: 1.2em; font-size: .9rem; font-style: italic; color: var(--muted); }
-.sf-card footer { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding-top: .8rem; border-top: 3px double color-mix(in srgb, var(--deck-brass) 60%, transparent); }
+.sf-rcargo li.none { display: block; color: var(--muted); font-style: italic; }
+.sf-rcargo li.left { display: block; margin: .2rem 0 .8rem; padding: .4rem .6rem; border: 1px dashed color-mix(in srgb, var(--brass-hi) 60%, transparent); border-radius: 3px; color: var(--brass-hi); font-size: .92rem; }
+.sf-note:empty { display: none; }
+.sf-note { margin: 0; flex-shrink: 0; font-size: .9rem; font-style: italic; color: var(--muted); }
+.sf-card footer { flex-shrink: 0; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding-top: .8rem; border-top: 3px double color-mix(in srgb, var(--deck-brass) 60%, transparent); }
 .sf-net { margin: 0; display: flex; flex-direction: column; }
 .sf-net b { font: 600 clamp(1.8rem, 3.4vw, 2.5rem)/1.05 var(--figures); font-variant-numeric: tabular-nums; color: var(--deck-ivory); }
 .sf-card footer button { margin-left: auto; min-height: 3.4rem; padding: 0 1.8rem; font: 700 1.25rem/1 var(--sans); color: var(--deck-ivory);
   background: linear-gradient(180deg, #8f2c30, #6a1e22); border: 2px solid var(--deck-brass); border-radius: 4px;
   box-shadow: 0 0 0 3px var(--deck-night), 0 0 0 4px color-mix(in srgb, var(--deck-brass) 45%, transparent), 0 .5rem 1.4rem rgba(0, 0, 0, .5); }
 .sf-card footer button:hover { background: linear-gradient(180deg, #a3363b, #7b2428); }
+
+.sf-raftermath { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: var(--deck-brass); }
+.sf-rcompass { position: absolute; left: -5rem; top: 18%; width: clamp(19rem, 32vw, 34rem); opacity: .14; animation: sfCompassArrive 2.2s ease-out both; }
+.sf-rcompass svg { width: 100%; fill: none; stroke: currentColor; stroke-width: 1; }
+.sf-rcompass .rose { fill: color-mix(in srgb, currentColor 20%, transparent); }
+.sf-rswell { position: absolute; left: -10%; bottom: -18%; width: 130%; height: 60%; opacity: .12; transform: rotate(-8deg);
+  background: repeating-radial-gradient(ellipse at 10% 100%, transparent 0 36px, var(--deck-brass) 37px 38px, transparent 39px 66px);
+  -webkit-mask-image: linear-gradient(transparent, #000); mask-image: linear-gradient(transparent, #000);
+  animation: sfSwell 18s ease-in-out infinite alternate; }
+.mood-wrecked, .mood-plundered { color: var(--deck-storm); }
+.sf-card { --result-accent: var(--brass-hi); isolation: isolate; animation: sfLedgerArrive .75s cubic-bezier(.16, 1, .3, 1) both; }
+.sf-card.o-won { --result-accent: var(--jade-hi); }
+.sf-card.o-away { --result-accent: #a7c8d8; }
+.sf-card.o-retreated, .sf-card.o-plundered, .sf-card.o-wrecked { --result-accent: var(--blood-hi); }
+.sf-card > header::before { content: ""; position: absolute; inset: -1.5rem -1rem 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at 12% 35%, color-mix(in srgb, var(--result-accent) 12%, transparent), transparent 70%); }
+.sf-rheading { display: flex; align-items: center; gap: 1rem; margin-top: .35rem; }
+.sf-remblem { flex: 0 0 4.4rem; display: grid; place-items: center; width: 4.4rem; height: 4.8rem; color: var(--result-accent);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--result-accent) 24%, transparent));
+  animation: sfEmblemArrive 1.15s .15s cubic-bezier(.16, 1.3, .3, 1) both; }
+.sf-remblem svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sf-rheading h2 { min-width: 0; color: var(--result-accent) !important; animation: sfTitleArrive .9s .18s ease-out both; }
+.sf-card.o-won .sf-remblem { color: var(--brass-hi); }
+.sf-card .sf-rows > div { animation: sfEntryArrive .6s calc(.25s + var(--entry, 0) * .08s) both; }
+.sf-card .sf-rows > div:nth-child(2) { --entry: 1; }
+.sf-card .sf-rows > div:nth-child(3) { --entry: 2; }
+.sf-card .sf-rows > div:nth-child(4) { --entry: 3; }
+.sf-card .sf-account > div, .sf-card .sf-rcargo > li { animation: sfEntryArrive .65s calc(.45s + var(--entry, 0) * .07s) both; }
+.sf-account > :nth-child(2), .sf-rcargo > :nth-child(2) { --entry: 1; }
+.sf-account > :nth-child(3), .sf-rcargo > :nth-child(3) { --entry: 2; }
+.sf-account > :nth-child(4), .sf-rcargo > :nth-child(4) { --entry: 3; }
+.sf-rcargo > :nth-child(n+5) { --entry: 4; }
+.sf-rhull i.now { animation: sfHullReckoning 1.6s .5s cubic-bezier(.2, .7, .3, 1) both; }
+.sf-rhull i.gone { transform-origin: left; animation: sfDamageReveal 1.6s .5s ease-out both; }
+.sf-card .sf-net b { animation: sfBalanceArrive .9s .7s both; }
+.sf-card footer button { transition: transform .2s, box-shadow .2s; }
+.sf-card footer button:hover { transform: translateY(-2px); box-shadow: 0 0 0 3px var(--deck-night), 0 0 0 4px var(--deck-brass), 0 .6rem 1.5rem rgba(0,0,0,.6); }
+.sf-card footer button:active { transform: translateY(0); }
+.sf-card .sf-rledger > h3:not(:first-child) { margin-top: 1.1rem; }
+.sf-card .sf-rcargo li.left { color: var(--brass-hi); }
+
+@keyframes sfLedgerArrive { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes sfCompassArrive { from { opacity: 0; transform: rotate(-12deg) scale(.94); } to { opacity: .14; transform: none; } }
+@keyframes sfSwell { from { transform: rotate(-8deg) translate(0, 0); } to { transform: rotate(-5deg) translate(2%, -3%); } }
+@keyframes sfEmblemArrive { from { opacity: 0; transform: scale(.65) rotate(-12deg); } to { opacity: 1; transform: none; } }
+@keyframes sfTitleArrive { from { opacity: 0; transform: translateX(-10px); filter: brightness(1.6); } to { opacity: 1; transform: none; filter: brightness(1); } }
+@keyframes sfEntryArrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes sfHullReckoning { from { width: var(--before); } }
+@keyframes sfDamageReveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sfBalanceArrive { from { opacity: .3; filter: brightness(1.7); } to { opacity: 1; filter: brightness(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-result *, .sf-result *::before, .sf-result *::after { animation: none !important; transition: none !important; }
+}
 
 /* While the fight is up the deck underneath is out of reach (and out of the tab order). */
 body.seafighting #app { visibility: hidden; }
@@ -273,7 +314,9 @@ body.seafighting #app { visibility: hidden; }
   .sf-fleet ul { grid-template-columns: 1fr 1fr; column-gap: .9rem; }
   .sf-btns.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sf-cols { grid-template-columns: 1fr; }
-  .sf-result { display: flex; flex-direction: column; justify-content: flex-end; overflow-y: auto; }
+  .sf-result { display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+  .sf-card { flex: 0 1 auto; }
+  .sf-rwho { flex-shrink: 0; }
   .sf-rwho { position: static; width: auto; }
   .sf-rwho > img { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: .45;
     -webkit-mask-image: linear-gradient(0deg, transparent 25%, #000 75%); mask-image: linear-gradient(0deg, transparent 25%, #000 75%); }
@@ -292,12 +335,11 @@ body.seafighting #app { visibility: hidden; }
   .sf-junks { --j: 1.3rem; }
   .sf-card { gap: .4rem; padding: .7rem; }
   .sf-card h2 { font-size: 1.9rem; }
-  .sf-seal { width: 3.6rem; height: 3.6rem; } .sf-seal b { font-size: 1rem; }
-  .sf-rjunks, .sf-rpips, .sf-rline p { display: none; }
+  .sf-rline p { display: none; }
   .sf-rows b { font-size: 1.1rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #seafight, .sf-result, .sf-rwho > img, .sf-seal, .sf-stamp, .sf-cap.in, .sf-who, .sf-who .sf-face.on, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
+  #seafight, .sf-result, .sf-rwho > img, .sf-cap.in, .sf-who, .sf-who .sf-face.on, .sf-pic > img, .sf-pic > video, .sf-sea::after { animation: none; }
   .sf-pic, .sf-junks i, .sf-hull i { transition: none; }
 }
 
@@ -328,9 +370,7 @@ body.seafighting #app { visibility: hidden; }
 .sf-fleet ul.many li { font-size: .78rem; grid-template-columns: minmax(0, 1fr) 3.2rem auto; }
 .sf-fleet ul.many .sf-pips { display: none; }
 .sf-foot:has(ul.many) { grid-template-columns: minmax(18rem, 1.25fr) minmax(0, 2.4fr); }
-.sf-rships li[class*="r-"] { padding-left: .45rem; border-left: 3px solid var(--cls); }
-.sf-rships:has(li:nth-child(7)) { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem .9rem !important; }
-.sf-rships:has(li:nth-child(7)) .sf-rpips { display: none; }
+.sf-rships li.sf-rship { padding-left: .45rem; border-left: 3px solid var(--cls); }
 @media (orientation: portrait) {
   .sf-fleet ul.many { grid-template-columns: 1fr 1fr 1fr; }
 }
@@ -343,3 +383,46 @@ body.seafighting #app { visibility: hidden; }
 .sf-risk.sf-bargain { background: color-mix(in srgb, var(--deck-ivory) 14%, transparent); position: relative; }
 .sf-risk.sf-bargain i { background: var(--jade-hi); border-right: 0; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { #seafight .sf-btn.pay.bargain { animation: none; } }
+
+/* ------------------------------------------------- the enemy's seat (18 Nov 2026) -- */
+/* Admiral Li Yue (her war junks) or Madam Shek Yu-lan (the pirate junks) stands on the right, a
+   mirror of the bosun on the left, and answers her at the key moments. Whoever is speaking stands
+   full bright; the other steps back a little. */
+.sf-who.sf-foe { left: auto; right: clamp(.2rem, 1.5vw, 1.4rem); text-align: right; animation-name: sfFoe; }
+@keyframes sfFoe { from { opacity: 0; transform: translateX(1.2rem); } to { opacity: 1; transform: none; } }
+.sf-who.sf-foe .sf-plate { border-left: 0; border-right: 3px solid var(--who, var(--deck-brass)); }
+.sf-who.sf-foe .sf-frame { border-color: var(--who, #9a3340); }
+.sf-who { transition: filter .45s ease, opacity .45s ease, transform .45s ease; }
+.sf-who.quiet { filter: saturate(.55) brightness(.62); opacity: .85; transform: scale(.96); transform-origin: 50% 100%; }
+.sf-mid:has(.sf-foe:not([hidden]):not(.nopic)) { padding-inline: calc(var(--pw) + 3vw); }
+@media (orientation: portrait) {
+  .sf-mid:has(.sf-foe:not([hidden]):not(.nopic)) { --pw: clamp(6.5rem, 25vw, 12rem); padding-inline: calc(var(--pw) + 2vw); }
+  .sf-mid:has(.sf-foe:not([hidden]):not(.nopic)):not(:has(.sf-who:not(.sf-foe):not([hidden]))) { padding-inline: 0 calc(var(--pw) + 4vw); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-who { transition: none; }
+  .sf-who.quiet { transform: none; }
+}
+
+@media (max-width: 1100px) and (orientation: landscape) {
+  .sf-result { grid-template-columns: minmax(0, 1fr) min(60rem, 90%); }
+}
+@media (max-width: 600px) {
+  .sf-result { padding: .75rem; }
+  .sf-card { padding: 1rem; gap: .75rem; }
+  .sf-card h2 { font-size: clamp(2rem, 9vw, 3rem); overflow-wrap: anywhere; }
+  .sf-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sf-cols { grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
+  .sf-rcolumns, .sf-rships .sf-rship { grid-template-columns: minmax(0, 1fr) 6rem 5rem; gap: .4rem; }
+  .sf-rwho .sf-rline { display: none; }
+  .sf-net b { font-size: 1.8rem; }
+  .sf-card footer { gap: .75rem; }
+  .sf-card footer button { width: 100%; font-size: 1.05rem; }
+  .sf-rreason { font-size: .9rem; }
+  .sf-rheading { gap: .65rem; }
+  .sf-remblem { flex-basis: 2.8rem; width: 2.8rem; height: 3.4rem; }
+  .sf-account > div { flex-wrap: wrap; gap: .25rem .5rem; }
+  .sf-rcargo li { grid-template-columns: minmax(0, 1fr); gap: .2rem; }
+  .sf-rcargo li em { justify-self: end; }
+  .sf-rcolumns, .sf-rships .sf-rship { grid-template-columns: minmax(0, 1fr) 5.4rem 4.8rem; }
+}

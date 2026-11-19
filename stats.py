@@ -30,11 +30,19 @@ import journal
 _lock = threading.Lock()
 _cache = {}          # gid -> (file size, parsed game)
 _results = {}        # (gid, file size, house, running, language) -> worked-out voyage
+_commissions = {}
 _CACHE_MAX = 64
 
 # Actions whose silver change counts as a cost or income line in "where the silver went".
-ACTION_LINES = {"buy_gun": "guns", "repair": "repairs", "buy_ship": "ships_bought", "sell_ship": "ships_sold",
+ACTION_LINES = {"buy_gun": "guns", "buy_cannon": "guns", "sell_gun": "guns_sold", "sell_cannon": "guns_sold",
+                "repair": "repairs", "buy_ship": "ships_bought", "sell_ship": "ships_sold", "trade_down": "ships_sold",
                 "protection": "protection", "gift": "gift", "depot": "depot"}
+
+# Who took (or paid) each line, for "who got your silver": a cast member or port role the screen can picture.
+TAKERS = {"dues": "mayor", "gift": "mayor", "customs": "officer", "loan_interest": "lender", "bank_interest": "banker",
+          "repairs": "shipwright", "ships_bought": "shipwright", "guns": "shipwright", "protection": "agent",
+          "parley": "pirates", "plundered": "pirates", "robbed": "thieves", "wh_robbed": "thieves",
+          "seized": "officer", "depot": "warehouse"}
 
 
 # ------------------------------------------------------------- reading --
@@ -49,7 +57,7 @@ def _read(gid):
         hit = _cache.get(gid)
         if hit and hit[0] == size:
             return hit[1]
-    events, colors = [], {}
+    events, colors, books = [], {}, {}
     try:
         with open(path, encoding="utf-8") as f:
             for raw in f:
@@ -60,12 +68,20 @@ def _read(gid):
                 st = e.pop("state", None)
                 if isinstance(st, dict):
                     for pid, p in (st.get("players") or {}).items():
-                        if isinstance(p, dict) and "color" in p:
+                        if not isinstance(p, dict):
+                            continue
+                        if "color" in p:
                             colors[pid] = p["color"]
+                        # The engine's own account book (the Ledger tab's numbers), as of this saved month.
+                        bk = p.get("books") if isinstance(p.get("books"), dict) else None
+                        if bk and isinstance(bk.get("game"), dict):
+                            books[pid] = {"turn": e.get("turn", 0), "n": len(events),
+                                          "game": {k: round(float(v)) for k, v in bk["game"].items()},
+                                          "home": p.get("home"), "captain": p.get("captain")}
                 events.append(e)
     except OSError:
         return None
-    game = {"events": events, "colors": colors, "size": size}
+    game = {"events": events, "colors": colors, "size": size, "books": books}
     with _lock:
         if len(_cache) >= _CACHE_MAX:
             _cache.pop(next(iter(_cache)))
@@ -105,6 +121,13 @@ def _date(turn):
     return engine.date_label(turn)
 
 
+def _rank_id(title):
+    for r in engine.CFG.get("ranks", []):
+        if r.get("title") == title:
+            return r.get("id")
+    return None
+
+
 def _ended(events):
     return any(e.get("type") == "game_over" for e in events)
 
@@ -115,6 +138,8 @@ class _House:
 
     def __init__(self, pid):
         self.pid = pid
+        self.home = None
+        self.ships_now = []
         self.hold = {}          # good -> [units, total cost], cargo and warehouse together
         self.cargo = {}         # good -> per-cargo totals
         self.trades = []
@@ -134,6 +159,12 @@ class _House:
         self.port_stats = {}    # port -> visits, sales, buys, profit
         self.months = []        # snapshot rows
         self.seen = {}          # good -> list of (turn, port, price) this house saw
+        self.takers = {}        # line -> port -> amount (who got the silver, and where)
+        self.desk = []          # every Port Authority desk visit
+        self.dues = {"paid": 0, "count": 0, "owed": 0, "slipped": 0, "slip_saved": 0, "caught": 0}
+        self.tips = []          # hot tips and price tips from the Registrar and the port officers
+        self.promotions = []    # commissions from the Mayor
+        self.loans = {"borrowed": 0, "repaid": 0, "deposited": 0, "withdrawn": 0}
 
     def _c(self, good):
         return self.cargo.setdefault(good, {"good": good, "bought_qty": 0, "bought_cost": 0, "sold_qty": 0,
@@ -144,9 +175,13 @@ class _House:
         return self.port_stats.setdefault(port, {"port": port, "visits": 0, "buys": 0, "sales": 0, "spent": 0,
                                                  "revenue": 0, "profit": 0})
 
-    def line(self, key, amount):
+    def line(self, key, amount, port=None):
         if amount:
             self.lines[key] = self.lines.get(key, 0) + amount
+            if key in TAKERS:
+                row = self.takers.setdefault(key, {})
+                where = port or "sea"
+                row[where] = row.get(where, 0) + amount
 
     def avg(self, good):
         units, cost = self.hold.get(good, (0, 0))
@@ -176,9 +211,38 @@ class _House:
         return value
 
 
-def _walk(events, ps):
-    """Reads one game's journal once and tallies every house."""
+def _fleet_row(f, prices):
+    """Ships by type and class, guns and cannons, and how net worth splits into its parts, for one
+    house in one monthly snapshot. Cargo (hold, home warehouse and depots) is valued as the engine
+    values it for net worth; the fleet is what is left once silver, bank, debt and cargo are counted."""
+    ships = f.get("ships") or ()
+    types, roles = {}, {}
+    for sh in ships:
+        t = sh.get("type") or "?"
+        types[t] = types.get(t, 0) + 1
+        role = (engine.SHIPS.get(t) or {}).get("role") or "trader"
+        roles[role] = roles.get(role, 0) + 1
+    goods = {}
+    for src in [f.get("cargo") or {}, f.get("wh") or {}] + [(d or {}).get("goods") or {} for d in (f.get("depots") or {}).values()]:
+        for g, q in src.items():
+            goods[g] = goods.get(g, 0) + q
+    stored = sum((f.get("wh") or {}).values()) + sum(sum(((d or {}).get("goods") or {}).values())
+                                                    for d in (f.get("depots") or {}).values())
+    home = (prices or {}).get(engine.HOME) or {}
+    share = float(engine.R.get("market", {}).get("worth_cargo", 1.0))
+    cargo_value = share * sum(q * float(home.get(g, 0)) for g, q in goods.items())
+    fleet_value = f["worth"] - f["cash"] - f["bank"] + f["debt"] - cargo_value
+    return {"types": types, "roles": roles, "cannons": sum(int(sh.get("cannons") or 0) for sh in ships),
+            "hull": sum(int(sh.get("hull") or 0) for sh in ships), "stored": stored,
+            "goods_value": int(round(cargo_value)), "fleet_value": int(round(max(0.0, fleet_value))),
+            "protect": int(f.get("protect") or 0), "depots": len(f.get("depots") or {})}
+
+
+def _walk(events, ps, extra=None):
+    """Reads one game's journal once and tallies every house. extra, when given, is filled with
+    what belongs to the whole game: the booms and crashes ("windfalls")."""
     houses = {p["id"]: _House(p["id"]) for p in ps}
+    windfalls = [] if extra is None else extra.setdefault("windfalls", [])
     prices_by_turn = {}     # turn -> full price table (from snapshots)
     worth = {p["id"]: [] for p in ps}
     contraband = set(engine.contraband())
@@ -198,6 +262,8 @@ def _walk(events, ps):
                        "debt": f["debt"], "worth": f["worth"], "port": f["port"], "ships": len(f.get("ships") or ()),
                        "guns": f.get("guns", 0), "hold": f.get("hold", 0), "used": f.get("used", 0),
                        "rep": f.get("rep") or {}, "rank": f.get("rank", engine.rank_for(f["worth"]))}
+                row.update(_fleet_row(f, e.get("prices")))
+                hh.ships_now = [{k: sh.get(k) for k in ("type", "name", "hull", "guns", "cannons")} for sh in f.get("ships") or ()]
                 if hh.months and hh.months[-1]["turn"] == turn:
                     hh.months[-1] = row
                 else:
@@ -211,9 +277,20 @@ def _walk(events, ps):
                     for g, v in e["prices"][f["port"]].items():
                         hh.seen.setdefault(g, []).append((turn, f["port"], v))
             continue
+        if cat == "market" and typ in ("windfall", "shock") and e.get("port") and e.get("good"):
+            price = e.get("price") if isinstance(e.get("price"), list) else None
+            windfalls.append({"turn": turn, "date": _date(turn), "port": e["port"], "good": e["good"],
+                              "sort": e.get("sort") or ("boom" if float(e.get("mult") or 1) >= 1 else "crash"),
+                              "big": typ == "windfall", "mult": round(float(e.get("mult") or 1), 2),
+                              "turns": int(e.get("turns") or 1), "foretold": bool(e.get("foretold")),
+                              "from": round(price[0]) if price else None, "to": round(price[1]) if price else None})
+            continue
         if h is None:
             continue
 
+        if typ in ("seat_new", "seat_reclaim") and e.get("start_port"):
+            h.home = e["start_port"]
+            continue
         if cat == "trade" and typ in ("buy", "sell") and e.get("good"):
             g, q, total = e["good"], int(e.get("qty") or 0), float(e.get("total") or 0)
             port = e.get("port")
@@ -265,6 +342,20 @@ def _walk(events, ps):
         if typ in ("customs_declare", "customs_auto"):
             # The Port Authority: what she bought counts as a sale at the declared price; the rest of the
             # silver that changed hands (tax, fines, a sweetener) is the Port Authority's line.
+            port = e.get("port")
+            bribe = e.get("bribe") if isinstance(e.get("bribe"), dict) else {}
+            outcomes = [r.get("outcome") for r in e.get("lines") or ()]
+            if "tax" in e:
+                h.desk.append({"turn": turn, "date": _date(turn), "port": port, "rate": e.get("rate"),
+                               "value": int(e.get("value") or 0),
+                               "declared": int(sum((e.get("declared") or {}).values())) if isinstance(e.get("declared"), dict)
+                               else int(e.get("declared") or 0),
+                               "tax": int(e.get("tax") or 0), "fine": int(e.get("fine") or 0),
+                               "bribe": int(bribe.get("cost") or 0) if bribe.get("taken") else 0,
+                               "bribe_refused": bool(bribe) and not bribe.get("taken"),
+                               "caught": "caught" in outcomes,
+                               "bought": sum(int(r.get("paid") or 0) for r in e.get("lines") or ()),
+                               "sealed": outcomes.count("sealed"), "auto": typ == "customs_auto"})
             bought_in = 0
             for r in e.get("lines") or ():
                 if r.get("units"):
@@ -276,9 +367,13 @@ def _walk(events, ps):
                     c["profit"] += paid - basis
                     bought_in += paid
                     h.line("sales", paid)
-            if e.get("cash"):
+            if "tax" in e:
+                # Newer journals give the bill itself (a shortfall goes on the debt, so silver alone misses it).
+                h.line("customs", -(int(e.get("tax") or 0) + int(e.get("fine") or 0)
+                                    + (int(bribe.get("cost") or 0) if bribe.get("taken") else 0)), port)
+            elif e.get("cash"):
                 was, now = e["cash"]
-                h.line("customs", now - was - bought_in)
+                h.line("customs", now - was - bought_in, port)
             continue
         if typ == "customs_buyback" and e.get("good"):
             g, q, cost = e["good"], int(e.get("qty") or 0), float(e.get("cost") or 0)
@@ -290,21 +385,58 @@ def _walk(events, ps):
             h.line("purchases", -cost)
             continue
 
+        if cat == "orders" and typ == "sea":
+            if h.battle is not None and e.get("choice"):
+                ch = h.battle.setdefault("choices", {})
+                ch[e["choice"]] = ch.get(e["choice"], 0) + 1
+            continue
+        if cat == "finance" and typ in ("loan", "bank"):
+            d = e.get("debt") or (e.get("bank") if typ == "bank" else None)
+            if isinstance(d, list) and len(d) == 2:
+                if typ == "loan":
+                    h.loans["borrowed" if d[1] > d[0] else "repaid"] += abs(d[1] - d[0])
+                else:
+                    h.loans["deposited" if d[1] > d[0] else "withdrawn"] += abs(d[1] - d[0])
+            continue
+        if cat == "finance" and typ == "dues":
+            total = int(e.get("total") or 0)
+            h.dues["paid"] += total
+            h.dues["count"] += 1
+            h.dues["owed"] += int(e.get("owed") or 0)
+            h.line("dues", -total, e.get("port"))
+            continue
+        if cat == "finance" and typ == "slip_away":
+            h.dues["slipped"] += 1
+            h.dues["slip_saved"] += int(e.get("bill") or 0)
+            continue
+        if cat == "finance" and typ == "slip_caught":
+            h.dues["caught"] += 1
+            continue
+        if cat == "market" and typ in ("registrar_hot", "port_hot", "registrar_tip"):
+            h.tips.append({"turn": turn, "date": _date(turn), "kind": "price" if typ == "registrar_tip" else "boom",
+                           "by": e.get("by") or "registrar", "at": e.get("port"), "where": e.get("where"),
+                           "good": e.get("good"), "mult": e.get("mult"), "lands": e.get("lands"), "ends": e.get("ends"),
+                           "price": e.get("price")})
+            continue
+        if cat == "players" and typ == "promotion":
+            h.promotions.append({"turn": turn, "date": _date(turn), "rank": e.get("rank"), "port": e.get("port"),
+                                 "rank_id": _rank_id(e.get("rank"))})
+            continue
         if typ in ACTION_LINES and e.get("cash"):
             was, now = e["cash"]
-            h.line(ACTION_LINES[typ], now - was)
+            h.line(ACTION_LINES[typ], now - was, e.get("port"))
             continue
 
         if typ == "interest" and cat == "finance":
             b, d = e.get("bank") or [0, 0], e.get("debt") or [0, 0]
             h.line("bank_interest", b[1] - b[0])
-            h.line("loan_interest", -(d[1] - d[0]))
+            h.line("loan_interest", -(d[1] - d[0]), h.home)
             continue
         if typ == "wh_robbed":
             v = h.lose(e.get("lost"), "wh_robbed", turn)
             h.perils["robbed"] += 1
             h.perils["robbed_value"] += v
-            h.line("wh_robbed", -v)
+            h.line("wh_robbed", -v, e.get("port"))
             h.events.append({"turn": turn, "kind": "robbed", "value": int(round(v))})
             continue
         if typ == "robbed":
@@ -335,7 +467,7 @@ def _walk(events, ps):
                 h.leg["perils"].append("typhoon" if typhoon else "storm")
             h.events.append({"turn": turn, "kind": "typhoon" if typhoon else "storm", "value": dmg})
             continue
-        if typ == "offcourse":
+        if typ == "offcourse" and cat == "voyage":
             h.perils["offcourse"] += 1
             if h.leg is not None:
                 h.leg["perils"].append("offcourse")
@@ -351,7 +483,8 @@ def _walk(events, ps):
                 h.battle = {"turn": turn, "date": _date(turn), "enemy": e.get("enemy"), "count": e.get("count", 0),
                             "orders": e.get("orders"), "guns": e.get("guns", 0), "rounds": 0, "result": "fought",
                             "booty": 0, "plundered": 0, "damage": 0, "sunk": 0, "ships_lost": 0,
-                            "lord": "war" in str(e.get("enemy") or "")}
+                            "lord": "war" in str(e.get("enemy") or ""), "live": bool(e.get("live")),
+                            "asked": int(e.get("parley") or 0), "odds": e.get("hit")}
                 h.battles.append(h.battle)
                 h.perils["battles"] += 1
                 if h.leg is not None:
@@ -383,6 +516,25 @@ def _walk(events, ps):
                     h.perils["retreated"] = h.perils.get("retreated", 0) + 1
                     h.perils["cargo_lost_value"] += v
                     h.line("cargo_lost", -v)
+                elif typ == "prize":
+                    goods = {g: int(q) for g, q in (e.get("goods") or {}).items() if q}
+                    for g, q in goods.items():            # stolen cargo comes aboard at no cost to the house
+                        units, cost = h.hold.get(g, (0, 0))
+                        h.hold[g] = (units + q, cost)
+                        h._c(g)["prize_qty"] = h._c(g).get("prize_qty", 0) + q
+                    b["prize"], b["prize_goods"], b["tier"] = int(e.get("worth") or 0), goods, e.get("tier")
+                    h.perils["prizes"] = h.perils.get("prizes", 0) + 1
+                    h.perils["prize_value"] = h.perils.get("prize_value", 0) + int(e.get("worth") or 0)
+                    h.perils["prize_units"] = h.perils.get("prize_units", 0) + sum(goods.values())
+                elif typ == "lowball":
+                    b["lowball"], b["asked"] = int(e.get("price") or 0), int(e.get("price") or b.get("asked") or 0)
+                    b["full"] = int(e.get("full") or 0)
+                    h.perils["lowballs"] = h.perils.get("lowballs", 0) + 1
+                elif typ in ("lowball_refused", "parley_refused"):
+                    b["refused"] = int(e.get("bargain") or e.get("price") or 0)
+                    if typ == "lowball_refused":
+                        b["asked"] = int(e.get("price") or b.get("asked") or 0)
+                    h.perils["refused"] = h.perils.get("refused", 0) + 1
                 elif typ == "paid":
                     b["result"], b["paid"] = "paid", int(e.get("price") or 0)
                     h.perils["paid_off"] = h.perils.get("paid_off", 0) + 1
@@ -521,7 +673,96 @@ def _routes(h):
     return sorted(agg.values(), key=lambda r: -r["count"])
 
 
-def _house_summary(h, ps_row, prices_by_turn, reveal, goods, ports, months_total):
+def _tips_scored(h, now):
+    """Each tip with what came of it: a boom tip is cashed when the house sold that cargo in that port
+    while the boom was on, missed when the boom ended without it; a price tip is taken up when the house
+    bought that cargo there within three months."""
+    out = []
+    for tp in h.tips:
+        r = dict(tp)
+        if tp["kind"] == "boom" and tp.get("where") and tp.get("lands") is not None:
+            lo, hi = int(tp["lands"]), int(tp.get("ends") or tp["lands"])
+            sells = [t for t in h.trades if t["side"] == "sell" and t["good"] == tp["good"]
+                     and t["port"] == tp["where"] and lo <= t["turn"] <= hi]
+            r["qty"] = sum(t["qty"] for t in sells)
+            r["profit"] = int(sum(t.get("profit", 0) for t in sells))
+            r["status"] = "cashed" if sells else ("missed" if now > hi else "open")
+        else:
+            buys = [t for t in h.trades if t["side"] == "buy" and t["good"] == tp.get("good")
+                    and t["port"] == tp.get("where") and tp["turn"] <= t["turn"] <= tp["turn"] + 3]
+            r["qty"] = sum(t["qty"] for t in buys)
+            r["profit"] = None
+            r["status"] = "taken" if buys else ("missed" if now > tp["turn"] + 3 else "open")
+        out.append(r)
+    return out
+
+
+def _windfalls_for(h, windfalls, reveal):
+    """The booms and crashes, each with what this house made selling (or spent buying) that cargo in that
+    port while it lasted. In fair play only those the house could know of: it was in that port while it
+    lasted, traded there, or was tipped about it."""
+    at = {m["turn"]: m["port"] for m in h.months}
+    tipped = {(tp.get("where"), tp.get("good")) for tp in h.tips}
+    out = []
+    for w in windfalls:
+        lo, hi = w["turn"], w["turn"] + max(1, w["turns"]) - 1
+        mine = [t for t in h.trades if t["good"] == w["good"] and t["port"] == w["port"] and lo <= t["turn"] <= hi]
+        known = reveal or mine or (w["port"], w["good"]) in tipped or any(at.get(tn) == w["port"] for tn in range(lo, hi + 1))
+        if not known:
+            continue
+        r = dict(w)
+        r["end"] = hi
+        r["sold"] = sum(t["qty"] for t in mine if t["side"] == "sell")
+        r["bought"] = sum(t["qty"] for t in mine if t["side"] == "buy")
+        r["profit"] = int(sum(t.get("profit", 0) for t in mine if t["side"] == "sell"))
+        r["spent"] = int(sum(t["total"] for t in mine if t["side"] == "buy"))
+        out.append(r)
+    return out
+
+
+def _desk_summary(h):
+    d = {"visits": len(h.desk), "value": 0, "declared": 0, "tax": 0, "fine": 0, "bribe": 0, "caught": 0,
+         "bought": 0, "sealed": 0, "bribe_refused": 0, "ports": {}}
+    for v in h.desk:
+        for k in ("value", "declared", "tax", "fine", "bribe", "bought", "sealed"):
+            d[k] += v[k]
+        d["caught"] += 1 if v["caught"] else 0
+        d["bribe_refused"] += 1 if v["bribe_refused"] else 0
+        p = d["ports"].setdefault(v["port"], {"port": v["port"], "visits": 0, "tax": 0, "fine": 0, "caught": 0,
+                                              "value": 0, "declared": 0, "bought": 0})
+        p["visits"] += 1
+        for k in ("tax", "fine", "value", "declared", "bought"):
+            p[k] += v[k]
+        p["caught"] += 1 if v["caught"] else 0
+    d["ports"] = sorted(d["ports"].values(), key=lambda p: -(p["tax"] + p["fine"]))
+    d["honesty"] = round(d["declared"] / d["value"], 3) if d["value"] else None
+    d["recent"] = h.desk[-12:]
+    return d
+
+
+def _takers(h):
+    """Who got the silver (or paid it): one row per cast member or port role, with the lines and ports."""
+    out = {}
+    for key, by in h.takers.items():
+        amount = sum(by.values())
+        if not round(amount):
+            continue
+        who = TAKERS.get(key, key)
+        r = out.setdefault(who, {"who": who, "amount": 0.0, "lines": {}, "ports": {}})
+        r["amount"] += amount
+        r["lines"][key] = int(round(amount))
+        for p, v in by.items():
+            r["ports"][p] = r["ports"].get(p, 0) + v
+    rows = []
+    for r in out.values():
+        r["amount"] = int(round(r["amount"]))
+        r["ports"] = {p: int(round(v)) for p, v in sorted(r["ports"].items(), key=lambda x: abs(x[1]), reverse=True)
+                      if round(v)}
+        rows.append(r)
+    return sorted(rows, key=lambda r: -abs(r["amount"]))
+
+
+def _house_summary(h, ps_row, prices_by_turn, reveal, goods, ports, months_total, windfalls=(), books=None):
     first = h.months[0] if h.months else None
     last = h.months[-1] if h.months else None
     peak = max(h.months, key=lambda m: m["worth"]) if h.months else None
@@ -548,6 +789,7 @@ def _house_summary(h, ps_row, prices_by_turn, reveal, goods, ports, months_total
         c["avg_sell"] = round(c["sold_rev"] / c["sold_qty"], 2) if c["sold_qty"] else None
         cargo.append(c)
     cargo.sort(key=lambda c: -c["profit"])
+    h.perils["enemy_sunk"] = sum(int(b.get("sunk") or 0) for b in h.battles)
     perils = {k: int(round(v)) for k, v in h.perils.items()}
     lines = {k: int(round(v)) for k, v in h.lines.items()}
     margin = int(round(sum(c["margin_paid"] for c in h.cargo.values())))
@@ -569,6 +811,8 @@ def _house_summary(h, ps_row, prices_by_turn, reveal, goods, ports, months_total
                             + h.perils["robbed_value"] + h.perils["wreck_cash"] + h.perils["wreck_cargo_value"]
                             + h.perils["cargo_lost_value"])),
         "accuracy": round(h.perils["hits"] / h.perils["shots"], 3) if h.perils["shots"] else None,
+        "enemy_sunk": sum(int(b.get("sunk") or 0) for b in h.battles),
+        "prizes": perils.get("prizes", 0), "prize_value": perils.get("prize_value", 0),
         "debt_free": next((m["date"] for m in h.months if m["debt"] <= 0), None),
     }
     best = sorted(sells, key=lambda t: -t.get("profit", 0))[:6]
@@ -594,6 +838,10 @@ def _house_summary(h, ps_row, prices_by_turn, reveal, goods, ports, months_total
         "ports": sorted(h.port_stats.values(), key=lambda p: -p["profit"]),
         "heat_port_month": heat_pm, "heat_port_good": heat_pg, "turns": turns, "rep": rep,
         "markets": _markets(h, prices_by_turn, reveal, goods, ports),
+        "takers": _takers(h), "desk": _desk_summary(h), "dues": dict(h.dues), "loans": dict(h.loans),
+        "tips": _tips_scored(h, last["turn"] if last else 0), "windfalls": _windfalls_for(h, windfalls, reveal),
+        "promotions": h.promotions, "fleet": h.ships_now, "home": h.home,
+        "books": books,
     }
 
 
@@ -616,6 +864,43 @@ def find_pid(gid, name):
         if (p.get("name") or "").strip().lower() == want:
             return p["id"]
     return None
+
+
+def promotion_record(gid, pid, award):
+    """Only this captain's history, cut at the award event rather than the current month."""
+    key = (gid, pid, award["id"], award["rank_id"])
+    with _lock:
+        if key in _commissions:
+            return _commissions[key]
+    game = _read(gid)
+    if not game:
+        return None
+    events = []
+    for event in game["events"]:
+        events.append(event)
+        if event.get("type") == "promotion" and event.get("pid") == pid and \
+                (event.get("promotion_id") == award["id"] if "promotion_id" in event
+                 else event.get("rank") == award["title"]):
+            break
+    else:
+        return None
+    players = _players(events, game["colors"])
+    if pid not in {p["id"] for p in players}:
+        return None
+    houses, _worth, _prices = _walk(events, players)
+    house = houses[pid]
+    sales = [t for t in house.trades if t["side"] == "sell" and t.get("profit", 0) > 0]
+    best = max(sales, key=lambda t: t["profit"], default=None)
+    record = {"voyages": sum(bool(leg.get("arrived")) for leg in house.legs),
+              "ports": sum(bool(port["visits"]) for port in house.port_stats.values()),
+              "profit": int(round(sum(c["profit"] for c in house.cargo.values()))),
+              "won": house.perils["won"],
+              "best": {k: best[k] for k in ("good", "port", "qty", "profit", "date")} if best else None}
+    with _lock:
+        if len(_commissions) >= _CACHE_MAX * 4:
+            _commissions.clear()
+        _commissions[key] = record
+    return record
 
 
 def voyage(gid, pid, running=False, meta=None):
@@ -644,18 +929,25 @@ def _voyage(gid, pid, running, meta, game):
         return None
     ended = _ended(events)
     reveal = ended or not running
-    houses, worth, prices_by_turn = _walk(events, ps)
+    extra = {}
+    houses, worth, prices_by_turn = _walk(events, ps, extra)
     goods, ports = list(engine.GOODS), list(engine.PORTS)
     months_total = max((len(h.months) for h in houses.values()), default=0)
     rows = {p["id"]: p for p in ps}
-    me = _house_summary(houses[pid], rows[pid], prices_by_turn, reveal, goods, ports, months_total)
+    bk = (game.get("books") or {}).get(pid)
+    books = {"lines": bk["game"], "turn": bk["turn"], "date": _date(bk["turn"])} if bk else None
+    if bk and not houses[pid].home:
+        houses[pid].home = bk.get("home")
+    me = _house_summary(houses[pid], rows[pid], prices_by_turn, reveal, goods, ports, months_total,
+                        extra.get("windfalls", ()), books)
     rivals = []
     for p in ps:
         if p["id"] == pid:
             continue
         if reveal:
             r = _house_summary(houses[p["id"]], p, prices_by_turn, True, goods, ports, months_total)
-            for k in ("trades", "markets", "legs", "heat_port_month", "rep"):
+            for k in ("trades", "markets", "legs", "heat_port_month", "rep", "tips", "windfalls", "desk", "takers",
+                      "books", "fleet"):
                 r.pop(k, None)
             rivals.append(r)
         else:
@@ -686,11 +978,13 @@ def career(name, running_gid=None, running_pid=None, links=None):
     want = (name or "").strip().lower()
     if not want and links is None:
         return None
-    games, cargo, ports, records = [], {}, {}, {}
+    games, cargo, ports, records, promos, takers = [], {}, {}, {}, [], {}
     heat = {}
     totals = {"games": 0, "finished": 0, "wins": 0, "months": 0, "trades": 0, "sells": 0, "realised": 0,
               "voyages": 0, "battles": 0, "won": 0, "wrecks": 0, "booty": 0, "losses": 0, "margin_paid": 0, "impact": 0,
-              "seizures": 0, "storms": 0, "ships_lost": 0, "podiums": 0}
+              "seizures": 0, "storms": 0, "ships_lost": 0, "podiums": 0, "prizes": 0, "prize_value": 0,
+              "enemy_sunk": 0, "dues": 0, "pa_paid": 0, "desk_visits": 0, "caught": 0, "tips": 0, "tips_cashed": 0,
+              "tip_profit": 0, "promotions": 0}
     score_sum = score_n = 0
     for m in journal.games():
         gid = m.get("id")
@@ -713,6 +1007,14 @@ def career(name, running_gid=None, running_pid=None, links=None):
              "wrecks": k["wrecks"], "started": v["game"]["started"], "firm": me["firm"],
              "curve": [mm["worth"] for mm in me["months"]], "score": k["score"]}
         games.append(g)
+        promos.extend(dict(pr, game=gid, firm=me["firm"]) for pr in me["promotions"])
+        for r in me["takers"]:
+            t = takers.setdefault(r["who"], {"who": r["who"], "amount": 0, "lines": {}, "ports": {}})
+            t["amount"] += r["amount"]
+            for key, amt in r["lines"].items():
+                t["lines"][key] = t["lines"].get(key, 0) + amt
+            for port, amt in r["ports"].items():
+                t["ports"][port] = t["ports"].get(port, 0) + amt
         totals["games"] += 1
         if v["game"]["ended"]:
             totals["finished"] += 1
@@ -725,6 +1027,18 @@ def career(name, running_gid=None, running_pid=None, links=None):
             totals[key] += k.get(key) or 0
         for key in ("seizures", "storms", "ships_lost"):
             totals[key] += me["perils"].get(key, 0)
+        totals["prizes"] += k.get("prizes") or 0
+        totals["prize_value"] += k.get("prize_value") or 0
+        totals["enemy_sunk"] += k.get("enemy_sunk") or 0
+        totals["dues"] += me["dues"]["paid"]
+        totals["pa_paid"] += me["desk"]["tax"] + me["desk"]["fine"] + me["desk"]["bribe"]
+        totals["desk_visits"] += me["desk"]["visits"]
+        totals["caught"] += me["desk"]["caught"]
+        totals["tips"] += len(me["tips"])
+        cashed = [tp for tp in me["tips"] if tp["status"] == "cashed"]
+        totals["tips_cashed"] += len(cashed)
+        totals["tip_profit"] += sum(tp["profit"] or 0 for tp in cashed)
+        totals["promotions"] += len(me["promotions"])
         if k["score"] is not None:
             score_sum += k["score"] * k["trades"]
             score_n += k["trades"]
@@ -764,6 +1078,15 @@ def career(name, running_gid=None, running_pid=None, links=None):
             big = max(me["battles"], key=lambda b: b["count"])
             rec("biggest_fight", big["count"], {"date": big["date"], "result": big["result"]})
         rec("most_won", k["won"], {})
+        prized = [b for b in me["battles"] if b.get("prize")]
+        if prized:
+            bp = max(prized, key=lambda b: b["prize"])
+            rec("biggest_prize", bp["prize"], {"date": bp["date"], "tier": bp.get("tier"),
+                                               "units": sum((bp.get("prize_goods") or {}).values())})
+        booms = [w for w in me["windfalls"] if w["sort"] == "boom" and w["profit"] > 0]
+        if booms:
+            bw = max(booms, key=lambda w: w["profit"])
+            rec("best_boom", bw["profit"], {"date": bw["date"], "good": bw["good"], "port": bw["port"]})
         rec("best_score", k["score"], {})
         for ru in me["rankups"]:
             if not ru.get("up"):
@@ -774,7 +1097,8 @@ def career(name, running_gid=None, running_pid=None, links=None):
                 records["rank_" + ru["rank"]] = {"value": months_in, "game": gid, "firm": me["firm"],
                                                  "date": ru["date"], "rank": ru["rank"]}
     if not games:
-        return {"name": name, "games": [], "totals": totals, "cargo": [], "ports": [], "records": {}, "heat": {}}
+        return {"name": name, "games": [], "totals": totals, "cargo": [], "ports": [], "records": {}, "heat": {},
+                "promotions": [], "takers": []}
     games.sort(key=lambda g: g.get("started") or 0, reverse=True)
     totals["score"] = int(round(score_sum / score_n)) if score_n else None
     totals["win_rate"] = round(totals["wins"] / totals["finished"], 3) if totals["finished"] else None
@@ -789,7 +1113,8 @@ def career(name, running_gid=None, running_pid=None, links=None):
     return {"name": name, "games": games, "totals": totals,
             "cargo": sorted(cargo.values(), key=lambda c: -c["profit"]),
             "ports": sorted(ports.values(), key=lambda p: -p["profit"]),
-            "records": records, "heat": heat}
+            "records": records, "heat": heat, "promotions": promos,
+            "takers": sorted(takers.values(), key=lambda r: -abs(r["amount"]))}
 
 
 def players_seen():

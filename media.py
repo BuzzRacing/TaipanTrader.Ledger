@@ -35,6 +35,8 @@ import shutil
 import threading
 import time
 
+import config
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(ROOT, "web")
 MEDIA_DIR = os.path.join(WEB, "media")
@@ -74,6 +76,8 @@ KINDS = {
                        ["keeper", "Market keeper: the woman behind the stalls, on the stage while the Market tab is open"],
                        ["shipmaster", "Ship master: the woman who runs the fleet, on the stage while the Fleet tab is open"],
                        ["mayor", "Mayor: the town's lady mayor who sees the ships off, on the stage and the tab while Set sail is open"],
+                       *[["mayor_" + rank["id"], "Mayor {}: portrait for this rank's promotion certificate".format(rank["title"])]
+                         for rank in config.defaults()["ranks"] if rank["id"] != "debtor"],
                        ["taxlady", "Tax lady: the town's tax collector who keeps the books, on the stage and the tab while the Ledger is open"],
                        # The admin shows the words before the colon on each tick box, so each one must differ.
                        ["taxlady_bored", "Tax lady bored: her tell for an honest or small lie. Several = a new one each time"],
@@ -122,6 +126,7 @@ SCENES = [["title", "Title & lobby"], ["loading", "Loading / holding screen"], [
           ["victory", "Game over / winner"], ["voyage", "At sea"], ["market", "Trading"]]
 SERVICES = [["bank", "Merchants Bank"], ["lender", "Moneylender"], ["warehouse", "Warehouse"], ["agent", "Agent"]]
 BRAND_SLOTS = [["logo", "Logo"], ["favicon", "Browser tab icon"], ["masthead_bg", "Title banner background"],
+               ["admin_masthead_bg", "Command Center banner"],
                ["page_bg", "Player screen background"], ["board_bg", "Harbor board background"],
                ["chart_bg", "Chart artwork"]]
 
@@ -985,7 +990,7 @@ def admin_view(cfg):
     except Exception:
         prompts = {"captain": {}, "house": {}}
     return {"items": items, "rules": lib["rules"], "options": lib["options"], "kinds": KINDS, "modes": MODES,
-            "prompts": prompts,
+            "prompts": prompts, "promotion_styles": config.promotion_styles(),
             "subjects": subjects(cfg), "in_use": sorted(in_use), "counts": counts, "family": family(cfg),
             "rule_defaults": RULE_DEFAULTS, "slots": slot_status(cfg)}
 

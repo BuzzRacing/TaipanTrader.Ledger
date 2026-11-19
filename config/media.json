@@ -10729,6 +10729,63 @@
    "source": "generated",
    "added": "2026-11-18 11:27",
    "replaces": ""
+  },
+  {
+   "id": "m95445707fb",
+   "url": "/media/port/foochow/mayor_taipan/mayor-taipan-d9c52edd.png",
+   "type": "image",
+   "kind": "port",
+   "subject": "foochow",
+   "roles": [
+    "mayor_taipan"
+   ],
+   "tags": [
+    "promotion",
+    "taipan"
+   ],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": false,
+   "weight": 3,
+   "title": "Mayor of Foochow - Taipan audience",
+   "prompt": "Same Mayor of Foochow as port-foochow-47e466b9.png. the highest Taipan commission in an elegant treaty-port reception room, formal imperial-jade silk and black velvet with rich antique gold embroidery, a civic gold chain, an ivory commission on a teak table, carved screens and harbour dusk. Proud warm acknowledgement, direct eye contact, cinematic historical realism, China Seas 1860, fully dressed, no text or modern objects.",
+   "seed": null,
+   "width": 1086,
+   "height": 1448,
+   "bytes": 2637178,
+   "source": "generated",
+   "added": "2026-11-18 18:51",
+   "replaces": ""
+  },
+  {
+   "id": "mac01411215",
+   "url": "/assets/branding/crimson-ledger-command-center-v01.webp",
+   "type": "image",
+   "kind": "brand",
+   "subject": "admin_masthead_bg",
+   "roles": [
+    "main"
+   ],
+   "tags": [
+    "graphics",
+    "chart room",
+    "harbor"
+   ],
+   "nsfw": false,
+   "reviewed": true,
+   "enabled": true,
+   "primary": true,
+   "weight": 3,
+   "title": "Command Center - trading house at dusk",
+   "prompt": "",
+   "seed": null,
+   "width": 2172,
+   "height": 724,
+   "bytes": 252170,
+   "source": "generated",
+   "added": "2026-11-18 19:14",
+   "replaces": ""
   }
  ],
  "rules": {
@@ -11323,6 +11380,38 @@
      "how": "generated"
     }
    ]
+  },
+  "brand:admin_masthead_bg": {
+   "url": "/assets/branding/crimson-ledger-command-center-v01.webp",
+   "item": "mac01411215",
+   "since": "2026-11-18 19:14",
+   "bytes": 252170,
+   "mtime": 1795058028,
+   "history": [
+    {
+     "at": "2026-11-18 19:14",
+     "from": "",
+     "to": "/assets/branding/crimson-ledger-command-center-v01.webp",
+     "item": "mac01411215",
+     "how": "first"
+    }
+   ]
+  },
+  "ship:gunboat": {
+   "url": "",
+   "item": "",
+   "since": "2026-11-18 19:14",
+   "bytes": 0,
+   "mtime": 0,
+   "history": []
+  },
+  "ship:countryship": {
+   "url": "",
+   "item": "",
+   "since": "2026-11-18 19:14",
+   "bytes": 0,
+   "mtime": 0,
+   "history": []
   }
  },
  "fixes": [

@@ -247,7 +247,7 @@ BATTLE_DEFAULTS = {"interactive": True, "parley": True, "parley_per_junk": 60, "
                    "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
                    "round_secs": 10, "first_extra": 10, "voice_grace": 0,
                    "gun_loss": 0.25, "gun_loss_two": 0.25,
-                   "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3}
+                   "cargo_hit": 0.2, "cargo_hit_min": 0.1, "cargo_hit_max": 0.3, "foe_voice": True}
 BATTLE_DEFAULTS.update({
     "match": True, "match_rounds_min": 2.5, "match_rounds_max": 4.5, "match_base": 0.55, "match_cargo": 0.3,
     "match_fame": 0.2, "match_standing": 0.1, "match_spread": 0.1, "match_min": 0.3, "match_max": 1.5,
@@ -276,6 +276,7 @@ class Game:
         self._hold = None         # events queued while an action is being applied
         self._detail = None       # extra facts an action handler wants in its event
         self._say_from, self._said = 0, 0   # which of the bosun's lines comes next (see _frame)
+        self._foe_who, self._foe_n = "", 0  # who speaks for the enemy, and which of her lines comes next
         if seed is None:
             seed = secrets.randbits(62)
         self.rng = random.Random(seed)
@@ -659,9 +660,15 @@ class Game:
         return self.rng.choice(sorted(free))
 
     def _new_ship(self, kind, guns=0, hull=None):
-        names = CFG["ship_names"]
+        # Each class has its own name list (Ships > Ship names); merchantmen use ship_names.
+        role = SHIPS[kind].get("role", "trader")
+        own = CFG.get({"escort": "escort_names", "cargo": "cargo_names"}.get(role, "ship_names")) or []
         used = {sh["name"] for p in self.s["players"].values() for sh in p["ships"]}
+        names = own or CFG["ship_names"]
         free = [n for n in names if n not in used]
+        if not free and own and own is not CFG["ship_names"]:
+            # The class's own list is all at sea: borrow a free Merchantman name before numbering.
+            free = [n for n in CFG["ship_names"] if n not in used]
         if not free:
             # Every name is at sea: a second ship of a name is "II", then "III" (names are how a fight
             # tells the ships apart, so no two may share one).
@@ -763,16 +770,25 @@ class Game:
         if qualified <= current:
             return
         rank = ranks[qualified]
+        previous = ranks[current]
+        following = ranks[qualified + 1] if qualified + 1 < len(ranks) else None
+        record = {"worth": int(self.worth(p)), "ships": len(p["ships"]), "date": date_label(self.s["turn"]),
+                  "turn": self.s["turn"], "name": p["name"], "firm": p["firm"],
+                  "previous": {"id": previous["id"], "title": previous["title"]},
+                  "next": dict(following) if following else None,
+                  "ranks": [{"id": r["id"], "title": r["title"]} for r in ranks]}
         serial = p.get("promotion_serial", 0) + 1
         p["rank_id"], p["promotion_serial"] = rank["id"], serial
         # The Mayor's words (m.promote.N), one of a bank drawn from this house's own deck.
         say = self._draw(p, "m.promote")
         p.setdefault("promotions", []).append(
             {"id": serial, "rank_id": rank["id"], "title": rank["title"], "port": p["port"],
+             "record": record,
              "text": tx(say, name=p["name"], rank=rank["title"], firm=p["firm"],
                         port=PORTS[p["port"]]["name"] if p["port"] in PORTS else "") if say else ""})
         self._ev("players", "promotion", "{} was commissioned as {} in {}".format(
-            p["name"], rank["title"], PORTS[p["port"]]["name"]), p, rank=rank["title"], port=p["port"])
+            p["name"], rank["title"], PORTS[p["port"]]["name"]), p, rank=rank["title"], port=p["port"],
+                 promotion_id=serial)
 
     def _rank_view(self, p, worth):
         ranks = CFG["ranks"]
@@ -3048,8 +3064,21 @@ class Game:
         b = p.get("battle")
         return bool(b) and b.get("seed") is not None and not b.get("auto")
 
-    def _frame(self, moment, cap, say=None, **kw):
-        """One picture-and-caption of a fight. say: the pool of spoken lines to draw from."""
+    # The enemy's voice (the right-hand seat): Admiral Li Yue speaks for her own war junks, Madam Shek
+    # Yu-lan for the ordinary pirate junks. She speaks at the key moments only, after the bosun, from her
+    # own pool of lines (battle.foe.<cast key>.<pool>.<n>). Each pool has the mood her picture shows.
+    FOE_MOOD = {"sighting": "speaking", "price": "speaking", "lowball": "sly", "reprice": "angry", "paid": "happy",
+                "lost_junk": "angry", "sank_ours": "happy", "hit_us": "happy", "noguns": "happy", "got_away": "angry",
+                "broke_off": "angry", "retreat": "happy", "defeated": "angry", "victory": "happy", "plunder": "happy"}
+
+    def _foe_start(self, b):
+        """Called when a step of a fight starts: who speaks for this enemy."""
+        self._foe_who = "pirate" if b.get("kind") == "lord" else "agent"
+        self._foe_n = 0
+
+    def _frame(self, moment, cap, say=None, foe=None, **kw):
+        """One picture-and-caption of a fight. say: the pool of the bosun's spoken lines to draw from;
+        foe: the pool of the enemy's answering line, if she speaks on this picture."""
         f = {"moment": moment, "cap": tx("battle.cap." + cap, **kw)}
         if say:
             count = 0
@@ -3058,6 +3087,17 @@ class Game:
             if count:
                 self._said = getattr(self, "_said", 0) + 1
                 f["say"] = tx("battle.say.{}.{}".format(say, (self._say_from + self._said) % count))
+        who = getattr(self, "_foe_who", "")
+        if foe and who and R["battle"].get("foe_voice", True):
+            base = "battle.foe.{}.{}.".format(who, foe)
+            count = 0
+            while base + str(count) in TEXT:
+                count += 1
+            if count:
+                self._foe_n = getattr(self, "_foe_n", 0) + 1
+                f["foe"] = tx(base + str((self._say_from * 7 + self._foe_n) % count))
+                f["foe_by"] = who
+                f["foe_mood"] = self.FOE_MOOD.get(foe, "speaking")
         return f
 
     # ---- matched fights (rules.battle.match) --------------------------------------------------
@@ -3199,6 +3239,7 @@ class Game:
             b["stage"] = "parley"
         p["battle"] = b
         self._say_from, self._said = (b["seed"] or 0) % 9973, 0
+        self._foe_start(b)
         who = p["name"]
         mt = b.get("match")
         self._ev("battle", "battle", "{} attacked by {} {}: orders {}{}, {} guns, hull {}; enemy hits {} per gun per "
@@ -3214,10 +3255,10 @@ class Game:
                  **({"match": mt, "enemy_hp": list(b["hp"]), "enemy_guns": list(b["eg"])} if mt else {}),
                  **({"live": True} if live else {}), **({"parley": b["price"]} if live or b["price"] else {}))
         where = PORTS[dest]["name"] if dest in PORTS else ""
-        frames = [self._frame("sighting", "sighting", "sighting", n=n, enemy=label, port=where)]
+        frames = [self._frame("sighting", "sighting", "sighting", foe="sighting", n=n, enemy=label, port=where)]
         if b["stage"] == "parley":
             talk = "tribute" if kind == "lord" else "lowball" if b.get("lowball") else "parley"
-            fr = self._frame("sighting", talk, talk, price=money(b["price"]))
+            fr = self._frame("sighting", talk, talk, foe="lowball" if talk == "lowball" else "price", price=money(b["price"]))
             if talk == "lowball":
                 fr["mood"] = "sly"
             frames.append(fr)
@@ -3276,6 +3317,7 @@ class Game:
         who, n, pirates, hit, dmg = p["name"], b["n"], b["hp"], b["hit"], b["dmg"]
         frames = []
         self._say_from, self._said = (b["seed"] or 0) % 9973 + b["step"] * 5, 0
+        self._foe_start(b)
         lord = b["kind"] == "lord"
         if choice == "auto":
             # Standing orders say nothing of tribute: with no captain to choose, the house pays her if it can.
@@ -3293,12 +3335,12 @@ class Game:
                     log.append(tx("l.tribute_paid", cost=money(price), months=p["protect"]))
                     self._ev("battle", "paid", "{} paid {} {} {} in tribute at sea; protected for {} months".format(
                         who, n, b["label"], money(price), p["protect"]), p, price=price, tribute=True)
-                    frames.append(self._frame("got_away", "tribute_paid", "paid", price=money(price)))
+                    frames.append(self._frame("got_away", "tribute_paid", "paid", foe="paid", price=money(price)))
                 else:
                     self._book(p, "parley", -price)
                     log.append(tx("l.parley_paid", n=n, enemy=b["label"], cost=money(price)))
                     self._ev("battle", "paid", "{} paid {} {} {} to pass".format(who, n, b["label"], money(price)), p, price=price)
-                    frames.append(self._frame("got_away", "paid", "paid", price=money(price)))
+                    frames.append(self._frame("got_away", "paid", "paid", foe="paid", price=money(price)))
                 return self._battle_close(p, b, "paid", frames)
             lb = b.get("lowball")
             if lb and not lb.get("seen"):
@@ -3308,7 +3350,7 @@ class Game:
                 cheap, b["price"] = b["price"], int(lb["full"])
                 self._ev("battle", "lowball_refused", "{} refused the bargain of {}; they saw the hold and now ask {}".format(
                     who, money(cheap), money(b["price"])), p, price=b["price"], bargain=cheap)
-                fr = self._frame("sighting", "reprice", "reprice", price=money(b["price"]))
+                fr = self._frame("sighting", "reprice", "reprice", foe="reprice", price=money(b["price"]))
                 fr["mood"] = "angry"
                 frames.append(fr)
                 b["beat"] = {"id": b["step"] + 1, "frames": frames}
@@ -3348,7 +3390,7 @@ class Game:
             names = [sh["name"] for sh in p["ships"]]
             self._check_sunk(p, tx("l.how_sunk"))
             b["round"] = rnd
-            frames.append(self._frame("retreat", "retreat", "retreat", qty=qty))
+            frames.append(self._frame("retreat", "retreat", "retreat", foe="retreat", qty=qty))
             self._hit_frames(p, b, frames, taken_round, names, say=False)
             return self._battle_close(p, b, "retreated", frames)
 
@@ -3381,20 +3423,21 @@ class Game:
                 self._ev("battle", "won", "{} sank all {} in {} round{} and took {} in booty".format(
                     who, n, rnd, s, money(booty)), p, rounds=rnd, booty=booty)
                 b["round"] = rnd
-                frames.append(self._frame("victory", "victory", "victory", n=n, booty=money(booty)))
+                frames.append(self._frame("victory", "victory", "victory", foe="defeated", n=n, booty=money(booty)))
                 self._battle_prize(p, b, frames)
                 return self._battle_close(p, b, "won", frames)
             if sunk:
-                frames.append(self._frame("enemy_hit", "sunk", "enemy_hit", sunk=sunk, left=len(pirates), n=n))
+                frames.append(self._frame("enemy_hit", "sunk", "enemy_hit", foe="lost_junk", sunk=sunk, left=len(pirates), n=n))
             elif hits:
                 frames.append(self._frame("broadside", "broadside", "broadside", hits=hits, shots=shots, left=len(pirates), n=n))
             else:
-                frames.append(self._frame("broadside", "miss" if shots else "noguns", "miss", left=len(pirates), n=n))
+                frames.append(self._frame("broadside", "miss" if shots else "noguns", "miss",
+                                          foe=None if shots else "noguns", left=len(pirates), n=n))
         elif self._chance(pi["run_base"] + (pi["run_fast"] if b["fast"] else 0) + pi["run_round"] * rnd, "escape",
                           "{} round {}: outrun them{}".format(who, rnd, " (every ship is fast)" if b["fast"] else ""), p, round=rnd):
             log.append(tx("l.outran", rounds=rnd, s=s))
             b["round"] = rnd
-            frames.append(self._frame("got_away", "got_away", "got_away"))
+            frames.append(self._frame("got_away", "got_away", "got_away", foe="got_away"))
             return self._battle_close(p, b, "away", frames)
         else:
             b["runs"] += 1
@@ -3410,14 +3453,14 @@ class Game:
         b["round"] = rnd
         self._hit_frames(p, b, frames, taken_round, names)
         if not p["ships"]:
-            frames.append(self._frame("defeat", "defeat", "defeat"))
+            frames.append(self._frame("defeat", "defeat", "defeat", foe="victory"))
             return self._battle_close(p, b, "wrecked", frames)
         if rnd >= pi["rounds"]:
             if b["runs"] == 0:
                 log.append(tx("l.long_fight", n=n - len(pirates)))
                 self._ev("battle", "broke_off", "{}: enemy broke off after {} rounds; {} of {} sunk".format(
                     who, pi["rounds"], n - len(pirates), n), p, sunk=n - len(pirates))
-                frames.append(self._frame("got_away", "broke_off", "broke_off", sunk=n - len(pirates), n=n))
+                frames.append(self._frame("got_away", "broke_off", "broke_off", foe="broke_off", sunk=n - len(pirates), n=n))
                 return self._battle_close(p, b, "broke_off", frames)
             # Every round spent running and failing lets them close: the cargo they carry off is in
             # proportion (all of it when the fleet only ever ran, as before).
@@ -3432,7 +3475,7 @@ class Game:
                 who, pi["rounds"], sum(lost.values()),
                 ", ".join("{} {}".format(q, GOODS[g]["name"]) for g, q in lost.items() if q) or "nothing"),
                 p, lost={g: q for g, q in lost.items() if q})
-            frames.append(self._frame("boarding", "plundered", "plundered", qty=sum(lost.values())))
+            frames.append(self._frame("boarding", "plundered", "plundered", foe="plunder", qty=sum(lost.values())))
             return self._battle_close(p, b, "plundered", frames)
         b["beat"] = {"id": b["step"] + 1, "frames": frames}
 
@@ -3677,18 +3720,25 @@ class Game:
         holed = [h for h in taken_round if h["damage"]]
         dismounted = sum(h.get("guns", 0) for h in taken_round)
         cannons = sum(h.get("cannons", 0) for h in taken_round)
+        gloat = [bool(say)]     # the enemy crows once a round, on the first hit picture the bosun leaves silent
+
+        def foe_if(pool):
+            if pool is None and gloat[0]:
+                gloat[0] = False
+                return "hit_us"
+            return None
         if holed:
             frames.append(self._frame("we_are_hit", "we_are_hit", "we_are_hit" if say else None,
                                       points=sum(h["damage"] for h in holed), n=len(holed)))
         if dismounted:
             left = self.guns(p)
-            frames.append(self._frame("we_are_hit", "guns_lost" if left else "guns_gone",
-                                      "guns_lost" if say and not holed else None,
+            pool = "guns_lost" if say and not holed else None
+            frames.append(self._frame("we_are_hit", "guns_lost" if left else "guns_gone", pool, foe=foe_if(pool),
                                       guns=dismounted, s="" if dismounted == 1 else "s", left=left))
         if cannons:
             left = self.firepower(p)
-            frames.append(self._frame("we_are_hit", "cannon_lost" if left else "guns_gone",
-                                      "guns_lost" if say and not holed and not dismounted else None,
+            pool = "guns_lost" if say and not holed and not dismounted else None
+            frames.append(self._frame("we_are_hit", "cannon_lost" if left else "guns_gone", pool, foe=foe_if(pool),
                                       guns=cannons, n=cannons, s="" if cannons == 1 else "s",
                                       left=self.cannons(p)))
         spilled = {}
@@ -3699,15 +3749,16 @@ class Game:
             gold = "gold" in spilled
             spoke = holed or dismounted or cannons
             rear = any(h.get("role") == "cargo" and h.get("cargo") for h in taken_round)
+            pool = ("cargo_gold" if gold else "cargo_hit") if say and (gold or not spoke) else None
             frames.append(self._frame("we_are_hit", "cargo_gold" if gold else "rear_hit" if rear else "cargo_hit",
-                                      ("cargo_gold" if gold else "cargo_hit") if say and (gold or not spoke) else None,
+                                      pool, foe=foe_if(pool),
                                       goods=self._goods_text(spilled), qty=sum(spilled.values())))
         afloat = {sh["name"] for sh in p["ships"]}
         for sh in b["ships0"]:
             if sh["name"] in names and sh["name"] not in afloat:
                 r = sh.get("role") or role_of(sh["type"])
                 frames.append(self._frame("ship_lost", "escort_lost" if r == "escort" else "cargo_sunk" if r == "cargo"
-                                          else "ship_lost", "ship_lost",
+                                          else "ship_lost", "ship_lost", foe="sank_ours",
                                           ship=SHIPS[sh["type"]]["name"] if sh["type"] in SHIPS else sh["type"], name=sh["name"]))
 
     def _battle_close(self, p, b, outcome, frames):
@@ -4049,6 +4100,7 @@ def static_data():
             "dues_rules": {k: R["dues"][k] for k in ("slip_caught", "slip_mult", "slip_rep")},
             "forecast_accuracy": R["weather"]["forecast_accuracy"],
             "brand": b, "graphics": CFG["graphics"], "colors": CFG["theme"]["player_colors"],
+            "ranks": CFG["ranks"], "promotion_styles": _config.promotion_styles(),
             "rating": CFG["content"]["rating"],
             "difficulty": MULT.get("name", ""), "yards": [p["name"] for p in PORTS.values() if p["shipyard"]],
             "tokens": TOKENS, "text": TEXT, "lang": CFG["language"]["active"]}

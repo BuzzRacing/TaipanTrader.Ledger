@@ -75,6 +75,28 @@ def books_balance(gid, pid):
     return realised
 
 
+def books_agree(gid, pid):
+    """The Tally Book's money lines match the engine's own account book (the Ledger tab), read from the
+    saved state at the last monthly snapshot, for every line both of them keep."""
+    game = stats._read(gid)
+    bk = game["books"].get(pid)
+    if not bk:
+        return 0
+    events = game["events"][:bk["n"]]
+    ps = stats._players(events, game["colors"])
+    if pid not in {p["id"] for p in ps}:
+        return 0
+    houses, _w, _p = stats._walk(events, ps)
+    lines, b = houses[pid].lines, bk["game"]
+    pairs = {"dues": ["dues"], "customs": ["pa_tax", "pa_fine", "pa_bribe"], "booty": ["booty"], "gift": ["gift"],
+             "repairs": ["repairs"], "bank_interest": ["bank_interest"], "loan_interest": ["interest"],
+             "robbed": ["robbed"]}
+    for ours, theirs in pairs.items():
+        a, z = lines.get(ours, 0), sum(b.get(k, 0) for k in theirs)
+        assert abs(a - z) <= 2 + 0.001 * abs(z), (gid, pid, ours, a, z)
+    return len(pairs)
+
+
 def main():
     keep = sys.argv[sys.argv.index("--keep") + 1] if "--keep" in sys.argv else None
     tmp = keep or tempfile.mkdtemp(prefix="seatrader-stats-")
@@ -89,6 +111,11 @@ def main():
             g = stats._read(gid)
             for p in stats._players(g["events"], g["colors"]):
                 books_balance(gid, p["id"])
+
+        # The money lines agree with the engine's own books.
+        checked = sum(books_agree(gid, p["id"]) for gid in finished + [running]
+                      for p in stats._players(stats._read(gid)["events"], stats._read(gid)["colors"]))
+        assert checked, "no saved books to check against"
 
         # A finished game unlocks everything.
         pid = stats.find_pid(finished[0], "anthony")
@@ -123,6 +150,11 @@ def main():
         c2 = stats.career("Anthony", running_gid=running, running_pid=None)
         assert c2["totals"]["games"] == 3, "someone else could see the running game"
         assert "Ada" in stats.players_seen()
+        me = stats.voyage(finished[0], stats.find_pid(finished[0], "anthony"), running=False)["me"]
+        for key in ("takers", "desk", "dues", "tips", "windfalls", "promotions", "fleet", "books"):
+            assert key in me, key
+        assert all("goods_value" in m and "fleet_value" in m for m in me["months"])
+        assert me["perils"]["offcourse"] <= me["kpis"]["voyages"]
         json.dumps(c)
         json.dumps(v)
         print("OK: {} games; Anthony career {} games, realised {}, best finish {}, wins {}".format(

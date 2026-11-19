@@ -76,7 +76,7 @@ body.tally #ambient::after { background: radial-gradient(ellipse 120% 95% at 50%
 .pg-routes { grid-template-columns: 1.55fr 1fr; grid-template-rows: minmax(17rem, 1.35fr) minmax(13rem, 1fr);
   grid-template-areas: "map ports" "pheat pheat"; }
 .pg-markets { grid-template-columns: 1.3fr 1fr .9fr; grid-template-rows: minmax(16rem, 1.1fr) minmax(14rem, 1fr);
-  grid-template-areas: "prices prices scores" "history history history"; }
+  grid-template-areas: "prices prices scores" "history history booms"; }
 .pg-perils { height: auto; grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: minmax(16.5rem, 17.5rem) minmax(15rem, 16.5rem) auto;
   grid-template-areas: "race race racebars" "tiles losses battles" "h2h h2h h2h"; }
 .pg-cfortune { grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: minmax(14rem, 1fr) minmax(14rem, 1fr);
@@ -333,3 +333,174 @@ body.tally.embed .tl { padding: .5rem; }
 .tl-house .crest.tl-crest { width: 3.2rem; height: 3.2rem; margin: 0; }
 .rb .rn .crest { width: 1.35rem; height: 1.35rem; margin-right: .4rem; }
 @media (orientation: portrait), (max-aspect-ratio: 1/1) { .tl-house .crest.tl-crest { width: 2.6rem; height: 2.6rem; } }
+
+/* ===================================================================== 18 Nov 2026 ==
+   Purse & Fleet tab, and Media Library pictures through the whole Tally Book.
+   Pictures are always rectangles big enough to see (never small round medallions). */
+
+/* The keeper of the Tally Book, Fan-Tan Bella, in the top bar; her picture follows the mood of the numbers. */
+.tl-host { display: flex; align-items: center; gap: .55rem; margin: 0; flex: none; max-width: 17rem; }
+.tl-host .tl-host-img { width: 4.4rem; height: 5.4rem; object-fit: cover; object-position: 50% 18%; border-radius: 6px;
+  border: 1px solid var(--edge-hi); box-shadow: 0 8px 20px -10px #000, 0 0 0 1px color-mix(in srgb, #8c5a9e 45%, transparent); }
+.tl-host figcaption { min-width: 0; }
+.tl-host figcaption b { display: block; font: .7rem var(--special); letter-spacing: .07em; color: #d9b3e6; }
+.tl-host figcaption small { display: block; font: italic .8rem/1.3 var(--sans); color: var(--ink-2); }
+/* The Captain's portrait beside the House crest. */
+.tl-captain { width: 3.9rem; height: 4.8rem; object-fit: cover; object-position: 50% 20%; border-radius: 6px; flex: none;
+  border: 1px solid var(--edge-hi); box-shadow: 0 8px 20px -10px #000; }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .tl-host figcaption { display: none; }
+  .tl-host .tl-host-img { width: 3.4rem; height: 4.2rem; }
+  .tl-captain { width: 3.2rem; height: 4rem; }
+}
+
+/* Bella in an empty panel. */
+.bella-empty { display: flex; align-items: center; gap: .8rem; padding: .4rem .2rem; height: 100%; }
+.bella-empty .be-img { width: 6.2rem; height: 7.6rem; object-fit: cover; object-position: 50% 18%; border-radius: 6px; flex: none;
+  border: 1px solid var(--edge); opacity: .92; }
+.bella-empty p { margin: 0; font: italic .9rem/1.4 var(--sans); color: var(--ink-2); }
+
+/* Purse & Fleet layout. */
+.pg-purse { height: auto; grid-template-columns: 1.15fr 1fr 1fr; grid-auto-rows: 17rem;
+  grid-template-rows: 18.5rem 17rem 17rem 17rem;
+  grid-template-areas: "parts parts takers" "desk deskports takers" "fleetc ships tips" "promos books tips"; }
+.pg-cpurse { height: auto; grid-template-columns: 1.3fr 1fr; grid-template-rows: auto minmax(20rem, 1fr); grid-template-areas: "cptiles cptiles" "ctakers cpromos"; }
+
+.lc.stack .sa { opacity: .82; }
+.lc.stack .sa.neg { opacity: .7; }
+.lc.stack .lgd { font-size: 11px; }
+.lc .wf path { stroke: none; } .lc .wf-boom path { fill: var(--gain); } .lc .wf-crash path { fill: var(--loss); }
+.lc .mk-badge { filter: drop-shadow(0 2px 4px #000); }
+
+/* Who got your silver. */
+.takers { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: .45rem; overflow: auto; }
+.takers li { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: .55rem; align-items: center; padding: .35rem;
+  border: 1px solid var(--pn-edge); border-radius: 6px; background: color-mix(in srgb, var(--deck-night) 45%, transparent); }
+.tk-pic { width: 4.6rem; height: 5.8rem; border-radius: 5px; overflow: hidden; background: color-mix(in srgb, var(--deck-brass) 8%, transparent); }
+.tk-pic .tk-img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.tk-txt { min-width: 0; }
+.tk-txt span { display: block; font: .66rem var(--special); letter-spacing: .07em; color: var(--brass-hi); }
+.tk-txt b { display: block; font: 700 1.05rem var(--sans); font-variant-numeric: tabular-nums; }
+.takers li.out b { color: #f09a9a; } .takers li.in b { color: #9cc4f3; }
+.tk-txt small { display: block; font: .72rem/1.25 var(--sans); color: var(--muted); }
+.tk-txt .tk-ports { color: var(--ink-2); }
+
+/* The Port Authority desk. */
+.desk { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .7rem; align-items: start; }
+.dk-pic .dk-img { width: 6rem; height: 7.6rem; object-fit: cover; object-position: 50% 18%; border-radius: 6px; border: 1px solid var(--edge); display: block; }
+.dk-rows > div { display: flex; justify-content: space-between; gap: .5rem; padding: .22rem 0; border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 12%, transparent); }
+.dk-rows span { font: .74rem var(--sans); color: var(--muted); }
+.dk-rows b { font: 700 .86rem var(--sans); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Ships, tips, commissions, booms. */
+.ships, .tips, .promos, .booms { list-style: none; margin: 0; padding: 0; overflow: auto; }
+.ships { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .45rem; }
+.ships li { border: 1px solid var(--pn-edge); border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--deck-night) 45%, transparent); }
+.ships .sh-img { width: 100%; height: 5.6rem; object-fit: cover; display: block; }
+.ships li > div { padding: .3rem .45rem .4rem; }
+.ships b { display: block; font: 400 .92rem var(--serif); color: var(--deck-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ships small, .tips small, .promos small, .booms small { display: block; font: .72rem/1.3 var(--sans); color: var(--muted); }
+.tips li, .booms li { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr) auto; gap: .55rem; align-items: center; padding: .3rem .1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 12%, transparent); }
+.tp-pic, .bm-pic { position: relative; width: 3.6rem; height: 4.4rem; border-radius: 5px; overflow: hidden; background: color-mix(in srgb, var(--deck-brass) 8%, transparent); }
+.tp-pic .tp-img, .bm-pic .bm-img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.bm-pic { height: 3.6rem; } .bm-pic .bm-img { object-fit: contain; padding: .2rem; box-sizing: border-box; }
+.bm-pic i { position: absolute; right: .15rem; bottom: .05rem; font: 700 .8rem var(--sans); font-style: normal; }
+.booms li.wf-boom .bm-pic i { color: #9cc4f3; } .booms li.wf-crash .bm-pic i { color: #f09a9a; }
+.tips b, .booms b { display: block; font: 700 .84rem/1.25 var(--sans); }
+.tips em, .booms em { font: 700 .86rem var(--sans); font-style: normal; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tips em.up, .booms em.up { color: #9cc4f3; } .tips em.down, .booms em.down { color: #f09a9a; }
+.tips li.s-missed { opacity: .72; }
+.promos { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .5rem; }
+.promos li { border: 1px solid var(--pn-edge); border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--deck-night) 45%, transparent); }
+.pm-pic { position: relative; height: 8.4rem; }
+.pm-pic .pm-img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; display: block; }
+.pm-pic .pm-badge { position: absolute; right: .35rem; bottom: .35rem; width: 3.4rem; height: 3.4rem; object-fit: contain; filter: drop-shadow(0 3px 6px #000); }
+.promos li > div:last-child { padding: .35rem .5rem .45rem; }
+.promos b { display: block; font: 400 1rem var(--serif); color: var(--brass-hi); }
+
+/* Battle log with its sea-fight picture and the enemy's face. */
+.blist li.has-pic { grid-template-columns: 6.4rem minmax(0, 1fr) auto auto; }
+.bl-pic { width: 6.4rem; height: 4.2rem; border-radius: 5px; overflow: hidden; background: color-mix(in srgb, var(--deck-brass) 8%, transparent); }
+.bl-pic .bl-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bf-pic { width: 3.3rem; height: 4.2rem; border-radius: 5px; overflow: hidden; }
+.bf-pic .bf-img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.blist .bl-x { color: var(--ink-2); }
+
+/* Records wall with a picture per record. */
+.records li.has-pic { grid-template-columns: 4.4rem 1fr auto; }
+.records li.has-pic > .rc-pic { grid-row: span 2; width: 4.4rem; height: 3.2rem; border-radius: 5px; overflow: hidden; }
+.rc-pic .rc-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Booms and crashes on the price charts. */
+.smalls rect.band { opacity: .2; } .smalls rect.band.boom { fill: var(--gain); } .smalls rect.band.crash { fill: var(--loss); }
+
+@media (max-width: 900px), (orientation: portrait) {
+  .blist li.has-pic { grid-template-columns: 5rem minmax(0, 1fr) auto; }
+  .blist li.has-pic .bf-pic { display: none; }
+  .bl-pic { width: 5rem; height: 3.6rem; }
+}
+
+/* Bigger faces (18 Nov 2026, evening). Every picture of a person sits in a frame and is zoomed in on the
+   top of the picture, where the head usually is (img.pz). Lists of faces have fewer, wider items per row.
+   Tap any picture to see it full size (#picbox). */
+.pfr { display: block; flex: none; overflow: hidden; border-radius: 6px; border: 1px solid var(--edge-hi);
+  background: color-mix(in srgb, var(--deck-brass) 8%, transparent); box-shadow: 0 8px 20px -10px #000; }
+img.pz { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; border: 0; border-radius: 0;
+  box-shadow: none; transform: scale(1.25); transform-origin: 50% 10%; }
+img.pz, img.bl-img, img.rc-img, img.sh-img, img.pm-img { cursor: zoom-in; }
+
+.host-fr { width: 6.2rem; height: 7.8rem; }
+.tl-host { max-width: 21rem; }
+.tl-host .tl-host-img { width: 100%; height: 100%; border: 0; box-shadow: none; border-radius: 0; }
+.cap-fr { width: 5.6rem; height: 7rem; }
+.tl-captain { width: 100%; height: 100%; border: 0; box-shadow: none; border-radius: 0; }
+.be-fr { width: 9rem; height: 11.5rem; }
+.bella-empty .be-img { width: 100%; height: 100%; border: 0; opacity: 1; }
+.bella-empty p { font-size: 1rem; }
+
+.takers { grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: .55rem; }
+.takers li { grid-template-columns: 7.8rem minmax(0, 1fr); gap: .7rem; padding: .4rem; }
+.tk-pic { width: 7.8rem; height: 10rem; }
+.tk-txt b { font-size: 1.2rem; }
+
+.desk { grid-template-columns: 9.8rem minmax(0, 1fr); }
+.dk-pic { width: 9.8rem; height: 12.8rem; overflow: hidden; border-radius: 6px; border: 1px solid var(--edge); }
+.dk-pic .dk-img { width: 100%; height: 100%; border: 0; border-radius: 0; }
+
+.tips li { grid-template-columns: 5.6rem minmax(0, 1fr) auto; gap: .7rem; }
+.tp-pic { width: 5.6rem; height: 7.2rem; }
+
+.promos { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .6rem; }
+.pm-pic { height: 13rem; overflow: hidden; }
+.pm-pic .pm-badge { width: 4.2rem; height: 4.2rem; z-index: 1; }
+
+.blist li.has-pic { grid-template-columns: 10rem minmax(0, 1fr) auto 5.6rem; gap: .7rem; padding: .45rem .1rem; }
+.bl-pic { width: 10rem; height: 6.4rem; }
+.bf-pic { width: 5.6rem; height: 7.2rem; }
+
+.ships { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+.ships .sh-img { height: 7.6rem; }
+.records li.has-pic { grid-template-columns: 6.6rem 1fr auto; }
+.records li.has-pic > .rc-pic { width: 6.6rem; height: 4.6rem; }
+
+/* More room for the panels that carry faces. */
+.pg-purse { grid-template-rows: 19rem 20rem 19rem 21rem; }
+.pg-perils { grid-template-rows: minmax(16.5rem, 17.5rem) 17rem 17rem auto;
+  grid-template-areas: "race race racebars" "tiles battles battles" "losses battles battles" "h2h h2h h2h"; }
+
+#picbox { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 3vmin;
+  background: rgba(6, 4, 3, .88); cursor: zoom-out; }
+#picbox[hidden] { display: none; }
+#picbox img { max-width: 94vw; max-height: 94vh; object-fit: contain; border-radius: 8px; box-shadow: 0 20px 60px -10px #000; }
+
+@media (orientation: portrait), (max-aspect-ratio: 1/1) {
+  .host-fr { width: 4.8rem; height: 6rem; }
+  .cap-fr { width: 4.4rem; height: 5.6rem; }
+  .takers { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px), (orientation: portrait) {
+  .blist li.has-pic { grid-template-columns: 8rem minmax(0, 1fr) auto 4.6rem; }
+  .blist li.has-pic .bf-pic { display: block; width: 4.6rem; height: 6rem; }
+  .bl-pic { width: 8rem; height: 5.4rem; }
+}
