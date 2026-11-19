@@ -1,21 +1,18 @@
-/* The Captain's Options popup (captain button > Options), decided with Anthony 19 Nov 2026
-   (project doc "SeaTrader Captain Options"):
-
-     The Voyage Clock   game date, month n of N, months left, the season's end; who has set sail
-     My Captain         pick a portrait from the Media Library, or have a new one painted
-     My House           rename and re-colour the House, pick or make its seal. The House is its id:
-                        a new name shows everywhere, old log lines, news and records included
-     Table settings     Mode is shown, locked (the host changes it in Admin); Family-friendly for
-                        this screen only
-     This screen        how fast the backgrounds change and how dark they are (this device only)
-     Exit Game          closes the game on this screen only; the House stays and the table waits
-
-   Uses the player screen's globals (S, D, token, stream, post, t, te, esc, toast). */
+/* Captain button > Options. Uses the player screen's state and shared media library.
+   House changes apply by id, including historical records; screen preferences stay on this device. */
 "use strict";
 
 const Options = (() => {
   const KEY_SECS = "seatrader_bg_secs", KEY_DIM = "seatrader_bg_dim", KEY_FAMILY = "seatrader_family";
-  let dlg = null, info = null, timer = null, poll = null, exiting = false, busy = false;
+  const ICONS = {
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
+    captain: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+    house: '<path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7zM8 10h8M12 7v10"/>',
+    table: '<path d="M4 9h16v5H4zM6 14v7M18 14v7M8 9V4h8v5"/>',
+    screen: '<rect x="3" y="4" width="18" height="13" rx="1"/><path d="M12 17v4M8 21h8M7 8h5M12 12h5"/>',
+    exit: '<path d="M10 4H4v16h6M9 12h12M16 7l5 5-5 5"/>',
+  };
+  let dlg = null, info = null, timer = null, poll = null, exiting = false, busy = false, page = "clock", opener = null;
 
   const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const put = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
@@ -65,6 +62,7 @@ const Options = (() => {
     }).join("");
     const all = (S.players || []).length && (S.players || []).every(q => q.ready);
     return `<p class="op-date">${esc(S.date || "")}</p>${lines}
+      ${total && !S.free_play ? `<progress class="op-progress" max="${total}" value="${n}" aria-label="${tx("opt.clock", "The Voyage Clock")}"></progress>` : ""}
       <ul class="op-seats">${seats}</ul>${all ? `<p class="op-note">${tx("opt.all_sailed", "Everyone has set sail.")}</p>` : ""}`;
   }
 
@@ -73,9 +71,9 @@ const Options = (() => {
     const fam = screenFamily();
     const shown = list.filter(i => !(fam && i.nsfw));
     if (!shown.length) return "";
-    return `<div class="op-tiles ${what}">${shown.map(i =>
-      `<button type="button" class="op-tile${i.primary ? " on" : ""}" data-op="pick" data-what="${what}" data-id="${esc(i.id)}" aria-pressed="${i.primary}">
-         <img src="${esc(i.url)}" alt="" loading="lazy"></button>`).join("")}</div>`;
+    return `<div class="op-tiles op-tiles--${what}">${shown.map((i, n) =>
+      `<button type="button" class="op-tile${i.primary ? " on" : ""}" data-op="pick" data-what="${what}" data-id="${esc(i.id)}" aria-pressed="${!!i.primary}" aria-label="${what === "portrait" ? tx("opt.portrait_number", "Portrait {n}", { n: n + 1 }) : tx("opt.seal_number", "Seal {n}", { n: n + 1 })}">
+         <img src="${esc(i.url)}" alt="" loading="lazy"><span>${i.primary ? tx("opt.selected", "Selected") : tx("opt.select", "Select")}</span></button>`).join("")}</div>`;
   }
 
   function captainHtml() {
@@ -147,7 +145,34 @@ const Options = (() => {
   }
 
   function section(id, title, body) {
-    return `<section class="op-sec op-${id}"><h3>${title}</h3><div data-sec="${id}">${body}</div></section>`;
+    return `<section class="op-sec op-${id}" id="op-panel-${id}" role="tabpanel" aria-labelledby="op-tab-${id}" tabindex="0" ${id === page ? "" : "hidden"}><h3>${title}</h3><div data-sec="${id}">${body}</div></section>`;
+  }
+
+  function personaHtml() {
+    const who = (typeof VS !== "undefined" && VS.cast && VS.cast.narrator) || {};
+    const art = Media.html("persona", "narrator", "portrait", "op-persona-image", who.portrait || "", { mode: "fixed", slot: "options" });
+    return `<figure class="op-persona">${art}<figcaption><span>${tx("opt.first_mate", "Your First Mate")}</span>
+      <strong>${esc(who.name || "Roxana Cama")}</strong></figcaption></figure>
+      <div class="op-welcome"><span class="op-eyebrow">${tx("opt.at_your_service", "At your service, Captain")}</span>
+      <p>${tx("opt.welcome_captain", "Welcome aboard, Captain {name}. Your voyage, your colours, your command.", { name: (S && S.me && S.me.name) || "" })}</p></div>`;
+  }
+
+  function identityHtml() {
+    const me = (S && S.me) || {}, faces = Faces.of(me);
+    const portrait = info && (info.portraits || []).find(p => p.primary && !(screenFamily() && p.nsfw));
+    const url = portrait ? portrait.url : faces.portrait;
+    return `${url ? `<img src="${esc(url)}" alt="">` : ""}<div><span>${tx("opt.captain", "My Captain")}</span>
+      <b>${esc((info && info.captain && info.captain.name) || me.name || "")}</b><small>${esc((info && info.house && info.house.name) || me.firm || "")}</small></div>`;
+  }
+
+  function selectPage(id) {
+    page = id;
+    dlg.querySelectorAll("[data-page]").forEach(b => {
+      const active = b.dataset.page === id;
+      b.setAttribute("aria-selected", String(active)); b.tabIndex = active ? 0 : -1;
+    });
+    dlg.querySelectorAll("[role=tabpanel]").forEach(p => { p.hidden = p.id !== "op-panel-" + id; });
+    dlg.querySelector(".op-body").scrollTop = 0;
   }
 
   function draw(only) {
@@ -163,12 +188,17 @@ const Options = (() => {
   }
 
   async function load() {
+    const current = dlg;
     try {
       const r = await fetch("/api/options?token=" + encodeURIComponent(token || ""));
       const res = await r.json();
+      if (!current || dlg !== current) return;
       if (res.ok) info = res;
     } catch (e) { /* offline: keep what we have */ }
+    if (dlg !== current) return;
     draw(["captain", "house", "table"]);
+    const identity = dlg && dlg.querySelector(".op-identity");
+    if (identity) identity.innerHTML = identityHtml();
     const painting = info && info.painting && (info.painting.captain || info.painting.house);
     clearTimeout(poll);
     if (painting && dlg) poll = setTimeout(load, 5000);
@@ -199,6 +229,8 @@ const Options = (() => {
   }
 
   function onClick(e) {
+    const nav = e.target.closest("[data-page]");
+    if (nav) return selectPage(nav.dataset.page);
     const b = e.target.closest("[data-op]");
     if (!b || b.tagName === "FORM" || b.tagName === "INPUT") return;
     const op = b.dataset.op;
@@ -223,7 +255,9 @@ const Options = (() => {
       applyBg();
       const out = el.parentElement.querySelector("output");
       if (out) out.innerHTML = op === "bg_secs" ? tx("opt.secs", "{n} s", { n: el.value }) : tx("opt.pct", "{n}%", { n: el.value });
-      if (e.type === "change") draw(["screen"]);
+      const panel = el.closest("[data-sec=screen]");
+      panel.dataset.html = "";
+      panel.querySelector('[data-op="bg_reset"]').disabled = false;
     } else if (op === "family" && e.type === "change") {
       put(KEY_FAMILY, el.checked ? "1" : null);
       setTimeout(() => location.reload(), 350);
@@ -242,14 +276,18 @@ const Options = (() => {
 
   function open() {
     if (dlg) return;
-    exiting = false;
+    exiting = false; info = null; page = "clock"; opener = document.activeElement;
     dlg = document.createElement("dialog");
     dlg.className = "op";
     dlg.setAttribute("aria-labelledby", "op-title");
     dlg.innerHTML = `<div class="op-card">
-      <header class="op-head"><div><p class="op-eyebrow">${tx("opt.eyebrow", "The Captain's Options")}</p>
-        <h2 id="op-title">${esc((S && S.me && (S.me.firm || S.me.name)) || "")}</h2></div>
+      <header class="op-head"><div><p class="op-eyebrow">${esc(typeof brandName === "function" && D && D.brand ? brandName(D.brand) : "")}</p>
+        <h2 id="op-title">${tx("opt.eyebrow", "The Captain's Options")}</h2></div>
         <button type="button" class="op-x" data-op="close" aria-label="${tx("opt.close", "Close")}">&times;</button></header>
+      <aside class="op-companion">${personaHtml()}</aside>
+      <div class="op-workspace"><aside class="op-identity">${identityHtml()}</aside>
+      <div class="op-settings"><nav class="op-nav" role="tablist" aria-label="${tx("opt.eyebrow", "The Captain's Options")}">
+      ${[["clock", "opt.clock", "The Voyage Clock"], ["captain", "opt.captain", "My Captain"], ["house", "opt.house", "My House"], ["table", "opt.table", "Table settings"], ["screen", "opt.screen", "This screen"], ["exit", "opt.exit", "Exit Game"]].map(([id, key, label]) => `<button type="button" role="tab" id="op-tab-${id}" aria-controls="op-panel-${id}" aria-selected="${id === page}" aria-label="${tx(key, label)}" title="${tx(key, label)}" tabindex="${id === page ? 0 : -1}" data-page="${id}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id]}</svg></button>`).join("")}</nav>
       <div class="op-body">
         ${section("clock", tx("opt.clock", "The Voyage Clock"), "")}
         ${section("captain", tx("opt.captain", "My Captain"), "")}
@@ -257,13 +295,20 @@ const Options = (() => {
         ${section("table", tx("opt.table", "Table settings"), "")}
         ${section("screen", tx("opt.screen", "This screen"), "")}
         ${section("exit", tx("opt.exit", "Exit Game"), "")}
-      </div>
+      </div></div></div>
       <footer class="op-foot"><button type="button" class="primary" data-op="close">${tx("opt.close", "Close")} <span aria-hidden="true">&rarr;</span></button></footer>
     </div>`;
     dlg.addEventListener("click", e => { if (e.target === dlg) close(); else onClick(e); });
     dlg.addEventListener("input", onInput);
     dlg.addEventListener("change", onInput);
     dlg.addEventListener("submit", onSubmit);
+    dlg.addEventListener("keydown", e => {
+      if (!e.target.matches("[role=tab]") || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+      const tabs = [...dlg.querySelectorAll("[role=tab]")], i = tabs.indexOf(e.target);
+      const next = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+      selectPage(tabs[next].dataset.page); tabs[next].focus();
+    });
     dlg.addEventListener("close", () => { if (dlg) close(); });
     document.body.appendChild(dlg);
     draw();
@@ -271,9 +316,6 @@ const Options = (() => {
     load();
     timer = setInterval(() => {
       draw(["clock"]);
-      const h2 = dlg && dlg.querySelector("#op-title");
-      const firm = S && S.me && (S.me.firm || S.me.name);
-      if (h2 && firm && h2.textContent !== firm) h2.textContent = firm;
     }, 1500);
   }
 
@@ -283,6 +325,8 @@ const Options = (() => {
     dlg = null;
     if (d) { try { if (d.open) d.close(); } catch (e) { /* ignore */ } d.remove(); }
     if (typeof render === "function") render();
+    const focus = opener && opener.isConnected && opener !== document.body ? opener : document.querySelector('[data-act="me"]');
+    if (focus) focus.focus({ preventScroll: true });
   }
 
   return { open, close, isOpen: () => !!dlg };

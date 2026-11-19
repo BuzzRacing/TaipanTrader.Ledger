@@ -473,6 +473,11 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "dues.wh": "Wharfage", "dues.wh_sub": "{n} units × {rate} per 100",
     "dues.standing_off": "Mayor's courtesy", "dues.standing_off_sub": "standing {n}: {rate} off",
     "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra",
+    "stat.bankrupt_in": "bankrupt in {n} months", "stat.bankrupt_in_1": "bankrupt this month",
+    "port.todo.bankrupt": "Your house is worth less than nothing. {lender} declares you bankrupt in {n} months unless your worth climbs {amount}",
+    "port.todo.bankrupt_1": "{lender} declares you bankrupt at the end of this month unless your worth climbs {amount}",
+    "port.owe.bankrupt": "Bankruptcy", "port.owe.bankrupt_in": "in {n} months", "port.owe.bankrupt_in_1": "end of this month",
+    "port.owe.bankrupt_note": "Worth below zero {m} of {need} months. Climb {amount} to stop it; she takes everything and starts you again in {home}",
     "port.owe.grp_lender": "Moneylender", "port.owe.grp_collect": "Debt collectors", "port.owe.grp_port": "Leaving port", "port.owe.grp_bank": "Counting-house",
     "voy.left": "{n} months left", "voy.left_1": "Final month", "voy.closed": "The books are closed",
     "voy.close": "Books close {date}", "voy.seal": "終", "voy.aria": "Voyage: {date}. {left}. Books close {end}." });
@@ -689,13 +694,16 @@ function topHtml() {
   const dir = (to, from) => to > from ? " up" : to < from ? " dn" : "";
   // The debt clock: months until the moneylender's collectors next call, if nothing changes.
   const due = (me.collectors || {}).calls_in;
+  // Bankruptcy (19 Nov 2026) uses the same alert, and takes it over: worth below zero, months to go.
+  const bk = me.bankrupt;
   // Money plaques show a short figure ($112K, $1.25M) with the exact sum in the tooltip (s[4]).
   const ms = n => [moneyShort(n), money(n)];
   const cash = ms(p.cash), bank = ms(me.bank), debt = ms(me.debt), worth = ms(me.worth);
   // Weapons: guns / cannons on one line (the full wording in the tooltip).
   const cn = cannons();
   const stats = [["stat.silver", cash[0], "silver" + dir(p.cash, me.cash), "", cash[1]], ["stat.bank", bank[0], "", "", bank[1]],
-                 ["stat.debt", debt[0], (me.debt > 0 ? "bad" : "") + (due ? " due" : "") + (due === 1 ? " due-now" : ""), due ? ten("stat.debt_due", due) : "", debt[1]],
+                 ["stat.debt", debt[0], (me.debt > 0 || bk ? "bad" : "") + (due || bk ? " due" : "") + (bk ? (bk.in <= 3 ? " due-now" : "") : due === 1 ? " due-now" : ""),
+                  bk ? ten("stat.bankrupt_in", bk.in) : due ? ten("stat.debt_due", due) : "", debt[1]],
                  ["stat.worth", worth[0], "worth", "", worth[1]], ["stat.hold", p.used + " / " + me.capacity, dir(p.used, me.used).trim()],
                  ["stat.weapons", guns() + " / " + cn, "guns", "", t("stat.weapons_tip", { guns: guns(), cannons: cn })]]
     .map(s => `<div class="plq ${s[2] || ""}"${s[4] && s[4] !== s[1] ? ` title="${esc(s[4])}"` : ""}><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("") +
@@ -1862,6 +1870,8 @@ function portTodo() {
     home ? goView("services") : ""]);
   if (me.debt > 0) items.push(["down", te(home ? "port.todo.debt_home" : "port.todo.debt", { interest: money(me.debt * D.loan_rate) }),
     goView(home ? "services" : "accounts")]);
+  const bkr = me.bankrupt;
+  if (bkr) items.push([bkr.in <= 3 ? "down" : "warn", ten("port.todo.bankrupt", bkr.in, { amount: money(bkr.short) }), goView("accounts")]);
   const coll = me.collectors;
   if (coll && coll.calls_in) items.push([coll.calls_in === 1 ? "down" : "warn", ten("port.todo.collectors", coll.calls_in, { amount: money(coll.to_clear) }),
     goView("accounts")]);
@@ -1998,6 +2008,9 @@ function portOwe() {
       ? row(`<b>${te("port.owe.call")}</b>`, count(ten("port.owe.call_in", c.calls_in), "down"), te("port.owe.call_note", { rep: c.penalty, amount: money(c.to_clear) }), "warn")
       : row(te("port.owe.call"), state(te("port.owe.call_none"), "up"), te("port.owe.call_none_note"));
   }
+  const bk = me.bankrupt;
+  if (bk) collect += row(`<b>${te("port.owe.bankrupt")}</b>`, count(ten("port.owe.bankrupt_in", bk.in), "down"),
+    te("port.owe.bankrupt_note", { m: bk.months, need: bk.need, amount: money(bk.short), home: esc(portName(myHome())) }), "warn");
   let port = row(te("port.owe.dues", { port: esc(portName(me.port)) }), bill > 0 ? amt(bill) : state(te("port.owe.nothing"), "up"), te("port.owe.dues_note"));
   port += row(te("port.owe.protect"), me.protect > 0 ? count(ten("port.owe.months", me.protect), me.protect <= D.renew_at ? "down" : "up")
     : state(te("port.owe.no_protect"), "down"));

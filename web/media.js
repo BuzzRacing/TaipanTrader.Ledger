@@ -12,6 +12,15 @@
    Screens redraw often, so the current pick for each place is remembered here and survives redraws. */
 "use strict";
 
+// Rank badges made on the AI farm are square pictures of a round medallion: show them cut to a circle
+// everywhere (fleet card, promotion certificate, Captain's ledger, Tally Book), so the corners never show.
+// The hand-drawn badges in /assets/rank-badges/ have ribbon tails and are left as they are.
+try {
+  const s = document.createElement("style");
+  s.textContent = 'img[src*="/media/rank/"]{border-radius:50%}';
+  (document.head || document.documentElement).appendChild(s);
+} catch (e) { /* no DOM */ }
+
 const Media = (() => {
   let L = { items: {}, rules: { defaults: {}, subjects: {} }, options: {}, fallback: {}, family: false };
   const st = {};            // slot key -> {id, at, seen}

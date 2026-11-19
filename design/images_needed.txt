@@ -1,0 +1,227 @@
+CRIMSON LEDGER - IMAGES NEEDED
+==============================
+Review date: 19 Nov 2026
+Source: the live Media Library on the Pi (690 enabled items, read from /api/info),
+checked against every kind, subject and role the game defines in media.py and config.py.
+Family-friendly counts come from the 18 Nov copy on BIGBOX (config/media.json), so
+treat that section as approximate.
+
+House rules for every prompt below: women only (no men anywhere, either side of a
+fight), 1860 China Seas, the Art Bible style. Persona mood shots reuse that persona's
+own cast portrait prompt with the mood clause added (as the mood-set did).
+Shapes: personas 3:4, ports/scenes/services 16:9, ship cards 16:9, cargo icons 1:1,
+rank badges 1:1 (256 px like the others).
+
+Totals at a glance
+------------------
+  Priority 1 - real gaps (something shows nothing or the wrong thing) ....  ~60
+  Priority 2 - thin spots (one picture repeats every time) .................  ~95
+  Priority 3 - variety and polish ...........................................  ~70
+  Family-friendly backups (only matters with the switch on) .................  ~25
+
+
+=====================================================================
+PRIORITY 1 - REAL GAPS
+=====================================================================
+
+[ ] 1. RANK BADGES for the three new ranks above Taipan          3 pictures
+       Kind: Rank Badges, role: badge, 1:1, match the existing 7 badges' style.
+       - tai_pan_china_seas  "Tai-Pan of the China Seas"
+       - merchant_lord       "Merchant Lord"
+       - hong_master         "Hong Master"
+       Right now a captain promoted past Taipan gets no badge on the fleet card
+       or the promotion announcement.
+
+[ ] 2. SHIP pictures: "sailing" and "battle" roles for every ship  14 pictures
+       Every ship except the flagship has only a card picture, so the battle
+       screen's fallback ("a ship of the fleet in its In battle role") finds nothing.
+       One sailing + one battle each:
+       - junk, lorcha, barque, clipper, indiaman (East Indiaman)
+       - gunboat (Paddle Gunboat - escort, guns only, sails in the van)
+       - countryship (Country Ship - big teak Indian cargo ship, no guns, sails in the rear)
+       Kind: Ships, subject = ship id, tick sailing or battle.
+
+[ ] 3. REGISTRAR (Mrs. Evelyn Marlowe, persona "taxlady") - speaking   3 pictures
+       She now reads her price tip aloud at each captain's home port, but she has
+       no "while speaking" picture at all.
+       - 2 x speaking (spectacles up, leaning in, mid-sentence)
+       - 1 x sly (the secret-tip look: finger to lips / passing a note)
+
+[ ] 4. SHIPWRIGHT (Tang Wai-lin) - speaking and happy            4 pictures
+       She voices ship bought, ship sold, gun mounted, repaired - but has no
+       speaking or happy picture.
+       - 2 x speaking, 2 x happy (a sale closed, a new hull launched)
+
+[ ] 5. PORT "arrival" pictures - 9 ports have none                 9 pictures
+       The log shows an arrival picture after landing; only Foochow has one.
+       One each: Hong Kong, Shanghai, Nagasaki, Manila, Saigon, Bangkok,
+       Singapore, Batavia, Calcutta. (Ship coming in to the quay, harbour women
+       at the lines, the town behind.)
+
+[ ] 6. HONG KONG PORT AUTHORITY desk set (Senhora Isabel Rebelo)    4 pictures
+       Hong Kong is missing four of the six desk roles. Port kind, subject hongkong:
+       - taxlady_curious, taxlady_hungry, taxlady_tax, taxlady_buyout
+       (Use her look: Portuguese from Macau, smuggler's daughter, flirtatious.)
+
+[ ] 7. OTHER MISSING DESK ROLES                                    8 pictures
+       - Saigon: taxlady_tax, taxlady_buyout, taxlady_caught
+       - Batavia: taxlady_buyout
+       - Manila: taxlady_buyout
+       - Foochow: taxlady_tax
+       - Shanghai: (complete)  - Bangkok: (complete)
+       - Hong Kong: taxlady_curious etc. are in item 6
+       Plus Saigon has only 1 plain "taxlady" picture: add 2 more.      (+2)
+
+[ ] 8. PERSONAS WHOSE LOOK WAS CHANGED ON 17 NOV                    ~16 pictures
+       Names and bios stayed but the looks changed; their existing pictures still
+       show the old look. Regenerate a fresh 4-set (profile, speaking, happy, angry)
+       from the new cast prompt, then switch the old ones off:
+       - Her Worship the Mayor (mayor)       - now tall full-figured Zanzibari, oxblood headwrap
+       - Inspector Arabella Vane (customs)   - now tall, muscular, strawberry-blonde braid
+       - Mrs. Honoria Blackwood (officer_calcutta) - heavyset, platinum-blonde hair piled high
+       - Lau Siu-wah (comprador)             - heavy-set, full-figured
+       (Mrs. Eliza Thornbury / officer_singapore already has 16 profile pictures -
+       check by eye that the newest show the honey-blonde, plump look; if so, skip her.)
+
+
+=====================================================================
+PRIORITY 2 - THIN SPOTS (the same single picture every time)
+=====================================================================
+
+[ ] 9. PORT BANNERS - 7 ports have just one                       15 pictures
+       Banner sits on top of the Market and Port tabs and rotates by the rules.
+       +2 each: Hong Kong, Shanghai, Manila, Bangkok, Singapore, Batavia, Calcutta.
+       +1: Foochow (has 2). Nagasaki and Saigon already have 3.
+
+[ ] 10. PORT STAGE WOMEN with only one picture                     10 pictures
+       Market keeper (keeper):   Bangkok, Manila, Nagasaki, Singapore  - +1 each
+       Ship master (shipmaster): Nagasaki, Saigon, Foochow             - +1 each
+       Mayor (mayor):            Hong Kong, Nagasaki, Shanghai          - +1 each
+       Use each port's own PORT_WOMEN look so she stays the same woman.
+
+[ ] 11. MAYOR CONGRATULATIONS (arms open in gratitude)              4 pictures
+       Shown on every promotion certificate in that port.
+       Hong Kong 1 and Manila 1 -> +2 each; Shanghai, Singapore, Saigon,
+       Batavia, Calcutta, Foochow have 2 -> optional +1 each later.
+       Do the four for HK and Manila now; the rest are Priority 3 (+6).
+
+[ ] 12. PERSONA "idle" pictures (harbor board gallery between lines)  14 pictures
+       None at all for: customs, mayor, pirate (Admiral Li Yue), officer_manila,
+       officer_foochow, officer_bangkok, officer_calcutta.
+       Two each.
+
+[ ] 13. ONE-PICTURE MOODS on the busier speakers                    ~16 pictures
+       - comprador (Lau Siu-wah, every buy/sell line): +3 speaking, +2 happy
+       - officer_shanghai (Madam Fong Mei-lin): +2 speaking (she has none)
+       - officer_manila, officer_foochow, officer_bangkok: +1 speaking, +1 angry each
+       - bookmaker (Fan-Tan Bella): +1 happy, +1 sly
+       - mayor: +1 happy (gift thanks are read aloud)
+
+[ ] 14. "sly" pictures for the bargain/secret moments                8 pictures
+       Only Powder, Admiral Li Yue and Roxana have sly. Add 2 each:
+       - agent (Madam Shek Yu-lan - pirate-junk commentator, pay-to-pass bargain)
+       - pirate (Admiral Li Yue - more, she's the war-junk commentator)
+       - lender (Madam Wu Lian - "her books, +10%" when paying pirates)
+       - comprador (bonded/sealed cargo whispers)
+
+[ ] 15. SEA BATTLE - second picture per moment                     20 pictures
+       Pirate junks (seafight_pirates) and war junks (seafight_lord) each have
+       exactly 1 picture per moment. Agreed target is 2-3. Second round now:
+       10 moments x 2 enemies = 20, using the Generate panel's starter prompts
+       (sighting, broadside, enemy_hit, we_are_hit, ship_lost, boarding,
+       got_away, retreat, victory, defeat). Check every one by eye for men.
+
+[ ] 16. CARGO ICONS - second icon each                               9 pictures
+       arms, general, gold, opium, porcelain, rice, silk, spices, tea.
+       1:1, plain ground so it reads small beside the market rows.
+
+
+=====================================================================
+PRIORITY 3 - VARIETY AND POLISH
+=====================================================================
+
+[ ] 17. SEA EVENT SCENES - one picture each today                   22 pictures
+       +2 each: storm, typhoon, wreck (shipwreck), robbery (street mugging and
+       warehouse robbery share it), seizure (customs seizure), pirates
+       (pirates sighted), voyage (at sea), market (trading), victory (game over),
+       loading, title.
+
+[ ] 18. SCENE BACKGROUNDS (role "background")                       6 pictures
+       No scene has a picture tagged background, so the slow-changing player
+       backgrounds have little to rotate. Make wide, dark, low-detail 16:9:
+       - 2 x voyage background (open sea, calm, dusk)
+       - 2 x storm background (rain, dark swell)
+       - 2 x title background (harbour at night, lanterns)
+
+[ ] 19. PORT "night" pictures - none exist                         10 pictures
+       One per port: the harbour at night, lanterns, junks at anchor.
+       (Also fits the "slipped out of port at night" line.)
+
+[ ] 20. PORT "board" pictures - none exist                           optional
+       The harbor board gallery uses whatever the port has; if you want board-
+       specific wide shots, 1 per port (10). Skip unless the board looks repetitive.
+
+[ ] 21. SEA BATTLE third picture per moment                         20 pictures
+       Same as item 15 once the second round looks good (reaches the 3-per-moment target).
+
+[ ] 22. FLAGSHIP battle set - moments with one picture               6 pictures
+       seafight_flagship has 2 for sighting/broadside/enemy_hit/we_are_hit/victory,
+       but 1 for ship_lost, boarding, got_away, retreat, defeat -> +1 each (5),
+       and ship "flagship" battle role +1 (1).
+
+[ ] 23. GREAT HOUSE empty plot (service estate_0)                    1 picture
+       Has 2; every other service background has 3.
+
+[ ] 24. MAYOR CONGRATULATIONS third picture                          6 pictures
+       Shanghai, Singapore, Saigon, Batavia, Calcutta, Foochow (from item 11).
+
+
+=====================================================================
+FAMILY-FRIENDLY BACKUPS (only if you play with the switch on)
+=====================================================================
+As of the 18 Nov copy, these personas had no family-friendly picture at all, so
+with the switch on they show nobody when they talk. One clean profile + one
+clean speaking picture each:
+
+[ ] officer_bangkok (Khun Ying Malai)             2
+[ ] officer_batavia (Mevrouw Anneke van der Berg)  2
+[ ] officer_nagasaki (Okada Suzu)                 2
+[ ] officer_saigon (Madame Celeste Durand)        2
+[ ] shipwright (Tang Wai-lin)                     2  (can be the same as item 4 if made clean)
+[ ] taxlady / Registrar (Mrs. Evelyn Marlowe)     2  (can be item 3 if made clean)
+[ ] mayor (happy and angry were NSFW only)        2
+[ ] officer_hongkong, officer_singapore, officer_shanghai, taxlady: only 1 clean picture each  +1 each
+[ ] Port desk roles: most taxlady_* port pictures are NSFW-only in Bangkok, Nagasaki,
+    Manila, Saigon - one clean taxlady + taxlady_caught per port                   ~8
+Re-check this list in Admin with the family-friendly filter before generating;
+the Pi has gained pictures since the 18 Nov copy.
+
+
+=====================================================================
+ALREADY COVERED - nothing needed
+=====================================================================
+- Late-game service pictures: Port Shares, Townhouse, Mansion, Palace, the Mayor's
+  commissions (3 each), and the flagship card/sailing/battle set.
+- Mayor rank portraits for the three new ranks: all 10 ports have one each.
+- Bank, Lender, Warehouse, Agent service backgrounds (3 each).
+- Brand slots: logo, favicon, both mastheads, page and board backgrounds, chart art.
+- Rank badges Debtor through Taipan.
+- Captains and Houses (made per player as they join).
+- Big persona sets: Powder, Roxana, Madam Wu, Moira Haig, Tilly Marsh, Madam Shek,
+  Senhora Rebelo, Okada Suzu, Eliza Thornbury (15+ pictures each).
+
+
+=====================================================================
+OPTIONAL - would need a new slot in the code first
+=====================================================================
+These events have no subject of their own and borrow another scene today:
+- Moneylender's collectors calling (debt clock)
+- Price boom / price crash ("hot tip") moment
+- Pirate tribute demand at sea (pay to pass)
+- Warehouse robbery (shares "robbery" with the street mugging)
+- Shipyard trade-down after going broke
+Say the word if you want any of these added as scene subjects before generating.
+
+- Video clips: the library has none yet. The video-chance setting is ready, so a few
+  short muted "speaking" clips for the most-heard voices (Roxana, Powder, Lau Siu-wah,
+  the Registrar) would be the best first use.

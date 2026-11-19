@@ -422,7 +422,7 @@ def test_bot_games_keep_the_books():
         for n in ("Ann", "Bo", "Cy"):
             g.join(n, "")
         order = g.s["order"]
-        g.act("p1", {"type": "settings", "years": 2}, present=order)
+        g.s["years"] = 2          # shorter than any lobby length (5, 10, 20, 50), set directly
         g.act("p1", {"type": "start"}, present=order)
         r, fights, kinds = random.Random(seed), 0, set()
         while g.s["phase"] == "port":

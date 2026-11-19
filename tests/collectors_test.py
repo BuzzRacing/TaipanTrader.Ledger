@@ -14,7 +14,8 @@ def play(months, grace, every, debt=10 ** 6, penalty=1.0):
     """Months (1 = first month over the line) in which the collectors called."""
     bank = R["bank"]
     keep = dict(bank)
-    bank.update(debt_grace_months=grace, debt_call_every=every, debt_rep_penalty=penalty)
+    bank.update(debt_grace_months=grace, debt_call_every=every, debt_rep_penalty=penalty,
+                bankrupt_enabled=False)        # bankruptcy has its own test (bankrupt_test.py)
     try:
         game = Game(seed=7)
         p = game.s["players"][game.pid_for_token(game.join("Tester", ""))]

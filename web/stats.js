@@ -241,7 +241,6 @@ function render(animate) {
         ${btn(te("st.voyage"), "scope", `data-s="voyage" ${V ? "" : "disabled"}`, scope === "voyage" ? "on" : "")}
         ${btn(te("st.career"), "scope", 'data-s="career"', scope === "career" ? "on" : "")}</div>
       ${vs && games ? `<label class="tl-game"><span>${te("st.game")}</span><select data-act="game">${games}</select></label>` : ""}
-      ${hostHtml()}
       ${btn(icon("close"), "back", `aria-label="${te("st.back")}" title="${te("st.back")}"`, "ghost tl-x")}
     </header>
     <section class="tl-kpis">${vs ? voyageKpis() : careerKpis()}</section>

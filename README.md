@@ -10,6 +10,8 @@ A turn-based trading game for 1 to 8 players, set in the Far East of the 1860s a
 4. The first player to join is the host, who picks the game length and starts the game.
 5. To change anything about the game, double-click **Launch_Admin.bat** (see Admin below).
 
+The bottom-left Captain portrait opens **Options**: a brass-and-lacquer desk with your Captain portrait on the left, Roxana Cama's full-height First Mate panel and welcome on the right, a compact row of icon tabs, and one page at a time for the voyage, Captain portraits, House name/colour/seals, table settings, screen preferences and exit. The phone layout keeps both identities above the pages. Arrow keys move between pages; Escape closes the desk. `web/options.js` and `web/options.css` own this popup. Run `python tools/preview_options.py` for an isolated browser preview at `http://localhost:18878`; its fixture edits stay in memory and it never loads a saved game.
+
 | File | What it does |
 |---|---|
 | `Launch_SeaTrader.bat` | Starts the server if needed and opens the player screen |

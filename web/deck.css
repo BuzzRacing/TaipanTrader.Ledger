@@ -1782,6 +1782,8 @@ body.player button.mk-allcargo.lined { color: #fff6e3; border-color: var(--brass
 body.player .mk-avg { display: block; font: 600 .66rem/1.1 var(--sans); font-style: normal; opacity: .85; white-space: nowrap; margin-top: .08rem; }
 body.player .mk-avg.amber { color: #ffd27a; opacity: 1; }
 body.player .mk-avg.red { color: #ff8a7a; opacity: 1; font-weight: 800; }
+/* Hidden for now (19 Nov 2026): the avg line hung off the buttons. Delete this rule to bring it back. */
+body.player .mk-avg { display: none; }
 body.player .dl-row.move b { color: #ffd27a; }
 
 /* Bank the rest (19 Nov 2026), under the Set Sail orders. */

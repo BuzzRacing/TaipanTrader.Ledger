@@ -957,6 +957,109 @@ class Game:
                 "calls_in": calls_in, "penalty": b["debt_rep_penalty"], "grace": grace, "every": every,
                 "to_clear": int(math.ceil(to_clear)) if calls_in else 0}
 
+    # ------------------------------------------------- debt cap and bankruptcy (19 Nov 2026) --
+    # Both are in Admin > Economy > Bank and moneylender. The cap stops a runaway debt growing for
+    # ever; bankruptcy is the way back for a house worth less than nothing: after bankrupt_months in a
+    # row under water, the moneylender takes everything, clears the books and sets the captain up again
+    # at home with a sound junk and a small stake. Ranks are kept (they are for life).
+    def debt_cap(self, p):
+        mult = float(R["bank"].get("debt_cap_mult", 0) or 0)
+        return mult * self.collectors_line(p) if mult > 0 else None
+
+    def _debt_after_interest(self, p):
+        grown = p["debt"] * (1 + loan_rate())
+        cap = self.debt_cap(p)
+        if cap is None or grown <= cap:
+            p.pop("debt_capped", None)
+            return grown
+        new = max(p["debt"], cap)              # never adds past the cap; never forgives what is owed
+        if not p.get("debt_capped"):
+            p["debt_capped"] = True
+            p["log"].append(tx("l.debt_capped", home=PORTS[home_of(p)]["name"]))
+            self._ev("finance", "debt_capped", "{}: debt {} has reached the cap {} ({} x the collectors' line); "
+                     "no more interest is added while it stays there".format(
+                         p["name"], money(p["debt"]), money(cap), R["bank"].get("debt_cap_mult")), p)
+        return new
+
+    def bankruptcy(self, p):
+        """For the debt clock: months under water so far, and month-ends until the books are closed
+        (None when the house is not under water or bankruptcy is off)."""
+        b = R["bank"]
+        if not b.get("bankrupt_enabled", True) or self.worth(p) >= 0:
+            return None
+        need = max(1, int(b.get("bankrupt_months", 12)))
+        under = int(p.get("under_water", 0))
+        return {"months": under, "need": need, "in": max(1, need - under),
+                "short": int(math.ceil(-self.worth(p)))}
+
+    def _bankruptcy_month(self, p, news):
+        b = R["bank"]
+        if not b.get("bankrupt_enabled", True):
+            p.pop("under_water", None)
+            return
+        if self.worth(p) >= 0:
+            if p.get("under_water"):
+                self._ev("finance", "above_water", "{}: net worth is back above zero".format(p["name"]), p)
+            p.pop("under_water", None)
+            return
+        need = max(1, int(b.get("bankrupt_months", 12)))
+        warn = max(0, int(b.get("bankrupt_warn", 3)))
+        p["under_water"] = int(p.get("under_water", 0)) + 1
+        left = need - p["under_water"]
+        home = PORTS[home_of(p)]["name"]
+        if left <= 0:
+            self._bankrupt(p, news)
+        elif p["under_water"] == 1 or left <= warn:
+            p["log"].append(tx("l.bankrupt_warn", months=left, s="" if left == 1 else "s", home=home))
+            self._ev("finance", "bankrupt_warn", "{}: worth {} is below zero ({} month(s) running); the books are "
+                     "closed in {} month(s)".format(p["name"], money(self.worth(p)), p["under_water"], left), p)
+
+    def _bankrupt(self, p, news):
+        b, s = R["bank"], self.s
+        home = home_of(p)
+        worth0 = int(self.worth(p))
+        seized = {"cash": int(p["cash"]), "bank": int(p["bank"]), "debt": int(p["debt"]),
+                  "ships": [sh["name"] for sh in p["ships"]], "cargo": dict(p["cargo"]), "wh": dict(p["wh"]),
+                  "depots": {k: dict((d or {}).get("goods") or {}) for k, d in (p.get("depots") or {}).items()},
+                  "shares": {},
+                  "estate": int(p.get("estate", 0) or 0)}
+        # Port shares go back to each port's pool; the Patron is worked out again.
+        for port, held in list((s.get("shares") or {}).items()):
+            if isinstance(held, dict) and held.get(p["id"]):
+                seized["shares"][port] = int(held.pop(p["id"]))
+                self.patron_of(port)
+        stake = float(int(b.get("bankrupt_stake", 2000)))
+        p["cash"], p["bank"], p["debt"] = stake, 0.0, 0.0
+        p["cargo"], p["wh"] = {}, {}
+        for d in (p.get("depots") or {}).values():
+            if isinstance(d, dict):
+                d["goods"] = {}
+        p["share_paid"] = {}
+        p["estate"], p["estate_paid"] = 0, 0.0
+        p["basis"] = {}
+        p.pop("debt_over", None)
+        p.pop("debt_capped", None)
+        p.pop("under_water", None)
+        p["port"] = home
+        p["customs"], p["bond"] = None, None
+        p["tab"] = self._new_tab()
+        p["net"] = {}
+        wk = R["wreck"]
+        kind = SHIPS[wk["ship"]]
+        p["ships"] = [self._new_ship(wk["ship"], guns=max(0, min(int(wk.get("guns", 2)), kind["slots"])),
+                                     hull=kind["hull"])]
+        self._gain_rep(p, home, -float(b.get("bankrupt_rep", 10)))
+        p["bankruptcies"] = int(p.get("bankruptcies", 0)) + 1
+        self._book(p, "bankrupt", stake - worth0)
+        p["log"].append(tx("l.bankrupt", home=PORTS[home]["name"], stake=money(stake),
+                           ship=kind["name"].lower()))
+        news.append(tx("n.bankrupt", name=p["name"], firm=p["firm"], home=PORTS[home]["name"]))
+        self._ev("finance", "bankrupt", "{} ({}) went bankrupt: worth {}; the moneylender took everything "
+                 "and cleared the books; set up again in {} with a {} and {}".format(
+                     p["name"], p["firm"], money(worth0), PORTS[home]["name"], kind["name"].lower(), money(stake)),
+                 p, worth=worth0, seized=seized, stake=int(stake))
+        self._mayor_greeting(p)
+
     def repair_rate(self, p, sh):
         f = R["fleet"]
         rate = f["repair_base"] + SHIPS[sh["type"]]["price"] / float(f["repair_price_div"])
@@ -3305,7 +3408,9 @@ class Game:
             if p["bank"] > 0:
                 p["bank"] *= 1 + b["bank_rate"]
             if p["debt"] > 0:
-                p["debt"] *= 1 + loan_rate()
+                # The debt cap (19 Nov 2026): interest stops adding once the debt reaches debt_cap_mult x the
+                # collectors' line, so a house that falls behind in a long game can't owe trillions.
+                p["debt"] = self._debt_after_interest(p)
                 # Collectors: a grace period after debt first passes the line, then a call every few months.
                 # "debt_over" counts the months in a row spent over the line (old saves start at 0).
                 if p["debt"] > self.collectors_line(p):
@@ -3362,6 +3467,7 @@ class Game:
                 p["log"].append(tx("l.robbed", lost=money(lost)))
                 self._ev("finance", "robbed", "{} was robbed of {}".format(p["name"], money(lost)), p, lost=lost)
             self._rob_warehouses(p, news, b, rng)
+            self._bankruptcy_month(p, news)
 
         self._move_markets(news)
         for p in players:
@@ -4696,6 +4802,7 @@ class Game:
                 "protect": p["protect"], "protect_cost": self.protection_cost(p),
                 "loan_room": max(0, int(self.loan_limit(p) - p["debt"])),
                 "collectors": self.collectors(p),
+                "bankrupt": self.bankruptcy(p), "debt_cap": int(self.debt_cap(p) or 0),
                 "ready": p["ready"], "dest": p["dest"], "orders": p["orders"],
                 "log": p["log"], "known": p["known"],
                 "tips": p.get("tips") or {},                 # the Registrar's prices: {port: {good: {turn, price}}}

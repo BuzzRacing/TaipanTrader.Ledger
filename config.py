@@ -131,7 +131,7 @@ DEFAULTS = {
     ],
     "rules": {
         "game": {"start_year": 1860, "home": "hongkong", "max_players": 8,
-                 "lengths": [1, 2, 3, 5, 10], "default_years": 5, "grace_seconds": 25,
+                 "lengths": [5, 10, 20, 50], "default_years": 10, "grace_seconds": 25,
                  "rank_years": 10, "late_ranks_v1": False},
         "start": {"cash": 3500, "debt": 5000, "ship": "junk", "guns": 2, "rep": 50, "home_rep": 60,
                   "where": "random"},
@@ -142,7 +142,9 @@ DEFAULTS = {
                    "own_fade": 0.7, "avg_amber": 1.5, "avg_red": 2.5, "depth_v2": False},
         "bank": {"bank_rate": 0.005, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
-                 "debt_grace_months": 3, "debt_call_every": 3, "wu_advice": True, "wu_easy_share": 0.25,
+                 "debt_grace_months": 3, "debt_call_every": 3,
+                 "debt_cap_mult": 3.0, "bankrupt_enabled": True, "bankrupt_months": 12, "bankrupt_warn": 3,
+                 "bankrupt_stake": 2000, "bankrupt_rep": 10, "wu_advice": True, "wu_easy_share": 0.25,
                  "mug_threshold": 20000, "mug_chance": 0.06, "mug_rep": 0.6,
                  "mug_min": 0.07, "mug_max": 0.15,
                  "whrob_chance": 0.02, "whrob_rep": 0.6, "whrob_min": 0.10, "whrob_max": 0.30},
@@ -573,6 +575,19 @@ SECTIONS = [
                "Months in a row over the line before the collectors first call.", min=0, max=120),
              F("rules.bank.debt_call_every", "Then they call every (months)", "int", min=1, max=120),
              F("rules.bank.debt_rep_penalty", "Standing lost each time they call", "num", min=0, max=100, step=0.5),
+             F("rules.bank.debt_cap_mult", "Debt cap: interest stops at (x the collectors' line)", "num",
+               "Once the debt reaches this many times the collectors' line, no more interest is added (the debt "
+               "is never reduced). 0 = no cap.", min=0, max=1000, step=0.5),
+             F("rules.bank.bankrupt_enabled", "Bankruptcy", "bool",
+               "On: a house worth less than nothing for the months below loses everything (ships, cargo, "
+               "warehouses, depots, port shares, the great house), its debt is cleared, and it starts again at home "
+               "with a sound junk (the shipwreck ship) and a stake. Ranks are kept."),
+             F("rules.bank.bankrupt_months", "Bankruptcy after (months in a row worth less than nothing)", "int",
+               min=1, max=600),
+             F("rules.bank.bankrupt_warn", "Warn each month in the last (months)", "int",
+               "Also warned in the first month under water.", min=0, max=600),
+             F("rules.bank.bankrupt_stake", "Stake after bankruptcy (silver)", "int", min=0, max=10**9),
+             F("rules.bank.bankrupt_rep", "Home standing lost on bankruptcy", "num", min=0, max=100, step=0.5),
              F("rules.bank.wu_advice", "The moneylender gives advice when you borrow or repay", "bool",
                "On: after the receipt she adds a word that follows how close the debt is to the collectors' line. "
                "Off: the receipt only. Her lines are in Language & Text (Confirmations, m.borrowed.* and m.repaid.*)."),

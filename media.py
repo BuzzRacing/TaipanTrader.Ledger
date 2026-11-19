@@ -24,9 +24,12 @@ Files live in web/media/<kind>/<subject>/ (older artwork stays in web/uploads/).
 config/media.json. Files dropped straight into web/media/<kind>/<subject>/ (or a <role> folder inside it)
 are picked up by "Scan folders"; a folder or file name containing "nsfw" marks them NSFW.
 
-Nothing here needs anything beyond the Python standard library.
+Nothing here needs anything beyond the Python standard library. If Pillow is installed, generated pictures
+are saved as WebP (about a tenth the size of the farm's PNGs); without it they stay PNG until
+Shrink_Images.bat converts them.
 """
 import copy
+import io
 import json
 import os
 import re
@@ -761,6 +764,30 @@ def _url_for(path):
     return "/" + os.path.relpath(path, WEB).replace(os.sep, "/")
 
 
+def compact_picture(data, ext=".png"):
+    """(bytes, ext): a big PNG from the image farm as WebP when Pillow is installed, else unchanged.
+    Same pixels and quality settings as tools/shrink_images.py."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return data, ext
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            im.load()
+            if im.mode in ("P", "LA") or (im.mode not in ("RGB", "RGBA") and "A" in im.getbands()):
+                im = im.convert("RGBA")
+            elif im.mode not in ("RGB", "RGBA"):
+                im = im.convert("RGB")
+            if im.mode == "RGBA" and im.getchannel("A").getextrema()[0] >= 240:
+                im = im.convert("RGB")      # the farm's alpha is nearly solid; keep real transparency only
+            out = io.BytesIO()
+            im.save(out, "WEBP", quality=85, method=4)
+        small = out.getvalue()
+        return (small, ".webp") if 0 < len(small) < len(data) * 0.9 else (data, ext)
+    except Exception:
+        return data, ext
+
+
 def add_bytes(data, ext, kind, subject, roles=(), tags=(), nsfw=False, source="upload", prompt="", seed=None,
               title="", stem=None, reviewed=None, primary=False, replaces=""):
     """Save a file into web/media/<kind>/<subject>/ and register it. Returns the new item."""
@@ -1068,7 +1095,8 @@ class Jobs:
                     data, seed = self.render(job["prompt"], "seatrader/{}-{}".format(job["kind"], job["subject"] or "item"),
                                              job["width"], job["height"], job["negative"])
                     nsfw = nsfw_from_prompt(job["prompt"], {"new_nsfw": job["nsfw"]})
-                    it = add_bytes(data, ".png", job["kind"], job["subject"], job["roles"], job["tags"], nsfw,
+                    data, ext = compact_picture(data)
+                    it = add_bytes(data, ext, job["kind"], job["subject"], job["roles"], job["tags"], nsfw,
                                    "generated", job["prompt"], seed, stem="{}-{}".format(job["kind"], job["subject"]),
                                    reviewed=not nsfw, replaces=job.get("replaces") or "")
                     job["items"].append(it["id"])
