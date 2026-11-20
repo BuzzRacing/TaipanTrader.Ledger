@@ -3,6 +3,7 @@
 Run from the project folder:  python tests/customs_test.py
 """
 import json
+import math
 import os
 import sys
 
@@ -360,6 +361,57 @@ def main():
     # A desk opened before the officers' own lines (a number) still shows its shared greeting.
     cu["say"] = 4
     assert g.view("p1", ["p1"])["me"]["customs"]["welcome"] == engine.tx(keys[4], port=PORTS[cu["port"]]["name"])
+    # The four pay buttons (19 Nov 2026): one choice for the whole hold.
+    fresh = no_spot(config.defaults())
+    fresh["rules"]["start"]["where"] = "home"
+    engine.configure(fresh)
+    c = engine.R["customs"]
+    tried = {"nothing": 0, "less": 0, "correct": 0, "more": 0}
+    for seed in range(60):
+        for choice in tried:
+            g, p = arrive(seed, "calcutta")
+            cu = p.get("customs")
+            if not cu or cu["status"] != "declare":
+                continue
+            lines = {ln["good"]: ln for ln in cu["lines"]}
+            if choice == "less":                                   # drawn per line, fixed for the visit
+                again = Game(state=json.loads(json.dumps(g.s)), seed=seed + 99)
+                q = again.s["players"]["p1"]
+                for gd in lines:
+                    a1 = g.pay_share(p, cu, gd, "less")
+                    assert a1 == again.pay_share(q, q["customs"], gd, "less"), gd
+                    assert c["pay_less_lo"] - 1e-9 <= a1 <= c["pay_less_hi"] + 1e-9, a1
+            rep0 = p["rep"][p["port"]]
+            g.act("p1", {"type": "customs_declare", "choice": choice, "bribe": True}, present=["p1"])
+            res = p["customs"]["result"]
+            assert res["choice"] == choice and res["bribe"] is None, res        # no sweetener with the buttons
+            for r in res["lines"]:
+                v = lines[r["good"]]["value"]
+                if choice == "nothing":
+                    assert r["declared"] == 0
+                elif choice == "less":
+                    assert abs(r["declared"] - v * r["share"]) <= v * 1e-4 + 1 and r["declared"] <= v, r
+                elif choice == "correct":
+                    assert r["declared"] == v and r["outcome"] == "tax" and r["buy"] == r["audit"] == 0, r
+                    assert r["tax"] == int(math.ceil(cu["rate"] * v - 1e-9))
+                else:
+                    assert r["declared"] == int(math.ceil(v * 1.1 - 1e-9)) and r["outcome"] == "tax", r
+                    assert r["buy"] == r["audit"] == 0
+            if choice in ("correct", "more"):
+                assert not res["caught"] and not res["paid"]
+            if choice == "more":
+                assert p["rep"][p["port"]] > rep0 - 1e-9
+            tried[choice] += 1
+    assert all(n > 5 for n in tried.values()), tried
+    # The desk tells the screen what Pay More declares.
+    for seed in range(40):
+        g, p = arrive(seed, "calcutta")
+        if p.get("customs") and p["customs"]["status"] == "declare":
+            assert g.view("p1", ["p1"])["me"]["customs"]["rules"]["pay_more_share"] == 1.1
+            break
+    for k in ("customs.pay.nothing", "customs.pay.less", "customs.pay.correct", "customs.pay.more",
+              "customs.pay_sub.less", "customs.pay_warn.nothing", "customs.share"):
+        assert str(engine.TEXT.get(k, "")).strip(), k
     print("OK: Port Authority checks passed")
 
 

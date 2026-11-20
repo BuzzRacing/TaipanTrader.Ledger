@@ -1,10 +1,10 @@
 /* SeaTrader: the Port Authority desk (engine.py, "port authority").
 
-   On arrival in a port the house meets that port's tax officer before anything else. One slider per
-   line of cargo sets what the captain declares it is worth (0 to 150% of its true worth here). While a
-   slider moves, the tax, what a buyout or an audit would cost, her odds and her face all change in
-   place. How much of her odds the captain sees depends on the difficulty level (Admin > Ratings &
-   Difficulty > "Port Authority odds shown"): exact numbers, a bar without numbers, or only her tell.
+   On arrival in a port the house meets that port's tax officer before anything else. Four buttons
+   decide the declaration for the whole hold (19 Nov 2026): Pay Nothing, Pay Less (a hidden share of
+   each line's worth, drawn by the engine and shown only in her ruling), Pay Correct and Pay More (both
+   fully safe). No odds are shown at any difficulty; her face and tell react to the button chosen.
+   Any line can still be kept sealed in bond.
 
    Portraits belong to the active officer, including the Registrar at the house's home port.
    Persona media takes precedence over legacy port art. Legacy tax-lady art is only used for
@@ -46,62 +46,31 @@ const Customs = (() => {
   const cu = () => (S && S.me && S.me.customs) || null;
   const key = c => c.port + ":" + S.turn + ":" + c.officer;
 
-  /* The same sums as engine.Game.customs_odds. */
-  function odds(c, line, declared, bribe) {
-    const r = c.rules, x = c.cx, value = Math.max(1, line.value), q = declared / value;
-    const k = x.greed * x.mood * line.appetite * (x.rep_buy == null ? 1 : x.rep_buy);
-    let buy, audit;
-    if (q > 1 + 1e-9) { buy = 0; audit = 0; }
-    else if (q >= 1 - 1e-9) { buy = r.buy_base * k; audit = 0; }
-    else {
-      const gap = 1 - q;
-      buy = (r.buy_base + r.buy_k * Math.pow(gap, r.buy_exp)) * k;
-      audit = (r.audit_base + r.audit_k * gap) * x.cunning * x.rep * x.diff * x.mood * bribe;
-    }
-    buy = Math.min(r.buy_cap, Math.max(0, buy)); audit = Math.min(r.audit_cap, Math.max(0, audit));
-    if (buy + audit > 0.95) { const f = 0.95 / (buy + audit); buy *= f; audit *= f; }
-    return [buy, audit];
-  }
-
-  /* Percent declared for each line (100 = honest), kept in ui.vals while the desk is open. */
-  function pctOf(c, g) {
-    const v = ui.vals["cx_" + g];
-    return v == null ? 100 : Math.max(0, Math.min(Math.round(c.rules.max_declare * 100), +v));
-  }
+  /* The four buttons and the face each one puts on her (no odds: the button chosen is the tell). */
+  const PAYS = ["nothing", "less", "correct", "more"];
+  const PAY_STATE = { nothing: "hungry", less: "curious", correct: "bored", more: "over" };
+  const payOf = () => (PAYS.includes(ui.cxPay) ? ui.cxPay : null);
 
   /* A cargo left sealed in bond: no tax and no risk on it, and none of it sold here this visit. */
   const sealedOn = (c, g) => !!c.bond && ui.vals["cxs_" + g] === "1";
 
   function numbers(c) {
-    const r = c.rules, bribe = !!ui.cxBribe;
-    const lines = c.lines.map(ln => {
-      const p = pctOf(c, ln.good), sealed = sealedOn(c, ln.good), d = sealed ? 0 : Math.round(ln.value * p / 100);
-      return { ln, p, d, sealed, tax: Math.ceil(c.rate * d - 1e-9) };
-    });
-    const declared = lines.reduce((n, l) => n + l.d, 0);
-    const bribeCost = Math.max(r.bribe_min, Math.ceil(r.bribe_share * c.rate * declared));
-    const mult = bribe ? 1 - r.bribe_cut : 1;
-    let worth = 0, tax = 0, lose = 0, caught = 0, wb = 0, wa = 0, under = 0, over = 0, hungry = null;
-    lines.forEach(l => {
-      if (l.sealed) { l.buy = 0; l.audit = 0; return; }
-      const [b, a] = odds(c, l.ln, l.d, mult);
-      l.buy = b; l.audit = a;
-      worth += l.ln.value; tax += l.tax; wb += b * l.ln.value; wa += a * l.ln.value;
-      if (l.d < l.ln.value) {
-        under++;
-        lose += l.ln.value - l.d;
-        caught += Math.ceil(c.rate * l.ln.value - 1e-9) + Math.ceil(r.fine_mult * c.rate * (l.ln.value - l.d) - 1e-9);
-      } else {
-        caught += l.tax;
-        if (l.d > l.ln.value) over++;
-      }
-      if (!hungry || b > hungry.buy) hungry = l;
-    });
-    const pb = worth ? wb / worth : 0, pa = worth ? wa / worth : 0;
-    const risk = pb + pa;
-    const state = under === 0 && over > 0 ? "over" : risk < r.tell_curious ? "bored" : risk < r.tell_hungry ? "curious" : "hungry";
-    return { lines, declared, worth, tax, lose, caught, pb, pa, pt: Math.max(0, 1 - pb - pa), state, under, over,
-             hungry, bribe, bribeCost, total: tax + (bribe ? bribeCost : 0) };
+    const more = (c.rules && c.rules.pay_more_share) || 1.1;
+    const lines = c.lines.map(ln => ({ ln, sealed: sealedOn(c, ln.good) }));
+    const open = lines.filter(l => !l.sealed);
+    const worth = open.reduce((n, l) => n + l.ln.value, 0);
+    const taxOf = l => Math.ceil(c.rate * l.ln.value - 1e-9);
+    const taxMore = l => Math.ceil(c.rate * Math.ceil(l.ln.value * more - 1e-9) - 1e-9);
+    const tax = { nothing: 0, less: open.reduce((n, l) => n + taxOf(l), 0),
+                  correct: open.reduce((n, l) => n + taxOf(l), 0), more: open.reduce((n, l) => n + taxMore(l), 0) };
+    const pay = payOf();
+    // The cargo she would like best (for "eyeing your {good}"): the dearest line not sealed.
+    const hungry = open.slice().sort((a, b) => b.ln.value * (b.ln.appetite || 1) - a.ln.value * (a.ln.appetite || 1))[0] || null;
+    const state = pay ? PAY_STATE[pay] : "bored";
+    // "less" owes less than the correct tax, by a share the player does not see; "due" is what is sure.
+    const due = pay === "less" ? null : pay ? tax[pay] : null;
+    return { lines, open, worth, tax, pay, due, state, hungry, more,
+             total: pay === "less" ? tax.correct : due || 0 };
   }
 
   /* ---------------------------------------------------------------- her face -- */
@@ -202,49 +171,36 @@ const Customs = (() => {
       <div><p class="eyebrow">${te("customs.tip_head")}</p><p class="cx-tip-say">${esc(tp.text || "")}</p></div></aside>`;
   }
 
-  function oddsBar(c, n) {
-    if (c.view === "tell") return `<p class="cx-hidden">${te("customs.odds_hidden")}</p>`;
-    const showNum = c.view === "exact";
-    const seg = (cls, v, label) => `<i class="${cls}" style="flex-basis:${(v * 100).toFixed(2)}%" title="${esc(label)}${showNum ? " " + pct(v) + "%" : ""}"></i>`;
-    const legend = showNum ? `<div class="cx-legend">
-        <span class="t"><i></i>${te("customs.odds_tax")} <b data-cx="pt">${pct(n.pt)}%</b></span>
-        <span class="b"><i></i>${te("customs.odds_buy")} <b data-cx="pb">${pct(n.pb)}%</b></span>
-        <span class="a"><i></i>${te("customs.odds_caught")} <b data-cx="pa">${pct(n.pa)}%</b></span></div>`
-      : `<div class="cx-legend"><span class="t"><i></i>${te("customs.odds_tax")}</span><span class="b"><i></i>${te("customs.odds_buy")}</span><span class="a"><i></i>${te("customs.odds_caught")}</span></div>`;
-    return `<div class="cx-odds"><small>${te("customs.odds_title")}</small><div class="cx-bar" data-cx="bar">${seg("t", n.pt, t("customs.odds_tax"))}${seg("b", n.pb, t("customs.odds_buy"))}${seg("a", n.pa, t("customs.odds_caught"))}</div>${legend}</div>`;
+  /* Pay Nothing or Pay Less: say plainly, in silver, what she may do with the cargo (no odds). */
+  function payWarn(c, n) {
+    if (!n.pay || n.pay === "correct" || n.pay === "more" || !n.worth) return "";
+    return te("customs.pay_warn." + n.pay, { value: money(n.worth) });
   }
 
-  /* A line declared under half its worth: say plainly, in silver, what she may do with it (19 Nov 2026):
-     the cargo handed over for the declared price, against the tax the low price saves. Her chance to buy
-     shows only where the difficulty shows exact odds. */
-  function lowWarn(c, l) {
-    if (l.sealed || l.p >= 50) return "";
-    const words = { price: money(l.d), value: money(l.ln.value), good: esc(D.goods[l.ln.good].name.toLowerCase()),
-                    saved: money(Math.max(0, Math.ceil(c.rate * (l.ln.value - l.d)))), odds: pct(l.buy || 0) };
-    return te(c.view === "exact" ? "customs.low_warn_odds" : "customs.low_warn_silver", words);
+  function paySub(n, k) {
+    return te("customs.pay_sub." + k, { tax: money(n.tax[k]), over: Math.round((n.more - 1) * 100) });
   }
 
-  function chip(p, sealed) {
-    return sealed ? `<em class="cx-chip sealed">${te("customs.sealed")}</em>` : p > 100 ? `<em class="cx-chip over">${te("customs.over")} +${p - 100}%</em>`
-      : p < 100 ? `<em class="cx-chip under">${te("customs.under")} −${100 - p}%</em>`
-      : `<em class="cx-chip honest">${te("customs.honest")}</em>`;
+  function payButtons(c, n) {
+    return `<div class="cx-pay" role="radiogroup" aria-label="${te("customs.pay_head")}">
+      ${PAYS.map(k => `<button type="button" class="cx-pay-btn ${k}${n.pay === k ? " on" : ""}" data-act="cx_pay" data-pay="${k}"
+          role="radio" aria-checked="${n.pay === k}"${n.open.length ? "" : " disabled"}><b>${te("customs.pay." + k)}</b><small data-cx="ps_${k}">${paySub(n, k)}</small></button>`).join("")}
+    </div>`;
   }
 
   function lineRow(c, l) {
     const g = l.ln.good, gi = (D.graphics.goods || {})[g];
-    const max = Math.round(c.rules.max_declare * 100);
-    // "Keep sealed aboard" is a small pill on the slider's own caption line (opposite her chip), so it
-    // costs the row no height. Ticking it greys the slider; the chip then reads "sealed in bond".
     const seal = c.bond ? `<label class="cx-seal" title="${te("customs.seal_tip")}"><input type="checkbox" data-act="cx_seal" data-good="${g}" ${l.sealed ? "checked" : ""}>
         <span>${te("customs.seal")}</span></label>` : "";
-    return `<div class="cx-line${l.sealed ? " sealed" : ""}" data-good="${g}">
+    return `<div class="cx-line cx-line-pay${l.sealed ? " sealed" : ""}" data-good="${g}">
       <span class="cx-good">${gi ? `<img src="${esc(gi)}" alt="">` : ""}<b>${esc(D.goods[g].name)}</b>
         <small title="${te("customs.worth")}">${l.ln.qty.toLocaleString()} × ${money(l.ln.unit)} = <i>${money(l.ln.value)}</i></small></span>
-      <span class="cx-slide" style="--h:${(100 / max * 100).toFixed(1)}%"><input type="range" class="cx-range" data-k="cx_${g}" min="0" max="${max}" step="1" value="${l.p}" ${l.sealed ? "disabled" : ""}
-        aria-label="${te("customs.declare")} ${esc(D.goods[g].name)}"><span class="cx-slide-foot"><span data-cx="chip_${g}">${chip(l.p, l.sealed)}</span>${seal}</span></span>
-      <span class="cx-decl"><small>${te("customs.declare")}</small><b data-cx="d_${g}">${l.sealed ? "—" : money(l.d)}</b></span>
-      <span class="cx-tax"><small>${te("customs.tax")}</small><b data-cx="t_${g}">${money(l.tax)}</b></span>
-      <p class="cx-warn" data-cx="w_${g}">${lowWarn(c, l)}</p></div>`;
+      <span class="cx-line-foot">${l.sealed ? `<em class="cx-chip sealed">${te("customs.sealed")}</em>` : ""}${seal}</span></div>`;
+  }
+
+  function dueText(n) {
+    if (!n.pay) return "—";
+    return n.pay === "less" ? "< " + money(n.tax.correct) : money(n.due);
   }
 
   function declareHtml(c) {
@@ -257,17 +213,13 @@ const Customs = (() => {
       ${tipHtml(c)}
       <p class="cx-tell" data-cx="tell">${esc(tell(c, n))}</p>
       <div class="cx-lines">${n.lines.map(l => lineRow(c, l)).join("")}</div>
-      <div class="cx-quick">${btn(te("customs.all_low"), "cx_all", 'data-p="90"', "ghost")}${btn(te("customs.all_honest"), "cx_all", 'data-p="100"', "ghost")}${btn(te("customs.all_over"), "cx_all", 'data-p="110"', "ghost")}</div>
+      <p class="eyebrow cx-pay-head">${te(n.pay ? "customs.pay_head" : "customs.pay_pick")}</p>
+      ${payButtons(c, n)}
+      <p class="cx-warn" data-cx="warn">${payWarn(c, n)}</p>
       <div class="cx-sums">
-        <span><small>${te("customs.total_worth")}</small><b>${money(n.worth)}</b></span>
-        <span><small>${te("customs.total_declared")}</small><b data-cx="declared">${money(n.declared)}</b></span>
-        <span class="due"><small>${te("customs.total_tax")}</small><b data-cx="tax">${money(n.tax)}</b></span>
-        <span class="risk b" data-cx="ifb"><small>${te("customs.if_bought")}</small><b>${n.under ? te("customs.if_bought_sub", { amount: money(n.lose) }) : "—"}</b></span>
-        <span class="risk a" data-cx="ifa"><small>${n.under ? te("customs.if_caught") : n.over ? te("customs.if_over") : te("customs.if_caught")}</small><b>${n.under ? te("customs.if_caught_sub", { amount: money(n.caught) }) : n.over ? te("customs.if_over_sub") : "—"}</b></span>
+        <span><small>${te("customs.total_worth")}</small><b data-cx="worth">${money(n.worth)}</b></span>
+        <span class="due"><small>${te("customs.total_tax")}</small><b data-cx="tax">${dueText(n)}</b></span>
       </div>
-      ${oddsBar(c, n)}
-      <label class="cx-bribe${n.bribe ? " on" : ""}"><input type="checkbox" data-act="cx_bribe" ${n.bribe ? "checked" : ""}>
-        <span><b data-cx="bribe">${te("customs.bribe", { cost: money(n.bribeCost) })}</b><small>${te("customs.bribe_note")}</small></span></label>
       <p class="cx-short" data-cx="short">${short ? te("customs.debt", { amount: money(short) }) : ""}</p>
     </div>`;
   }
@@ -286,7 +238,7 @@ const Customs = (() => {
       else amount = money(r.tax);
       const back = r.units && !r.back
         ? btn(te("customs.buyback", { cost: money(r.back_price) }), "cx_back", `data-good="${g}"`, "ghost", r.back_price > S.me.cash) : "";
-      return `<div class="cx-vline ${r.outcome}${r.back ? " back" : ""}"><span class="cx-good"><b>${name}</b><small>${r.outcome === "sealed" ? money(r.value) : money(r.declared) + " / " + money(r.value)}</small></span>
+      return `<div class="cx-vline ${r.outcome}${r.back ? " back" : ""}"><span class="cx-good"><b>${name}</b><small>${r.outcome === "sealed" ? money(r.value) : money(r.declared) + " / " + money(r.value)}${res.choice === "less" && r.share != null ? " · " + te("customs.share", { pct: Math.round(r.share * 100) }) : ""}</small></span>
         <em class="cx-out ${r.outcome}">${te("customs.out." + out)}${r.outcome === "partial" ? ` (${r.units}/${r.qty})` : ""}${r.hid ? ` · <span class="cx-hid" title="${te("customs.hid_tip")}">${te("customs.hid", { qty: r.hid })}</span>` : ""}</em>
         <b class="cx-amt">${amount}</b>${back}</div>`;
     }).join("");
@@ -315,34 +267,26 @@ const Customs = (() => {
     if (ui.cxKey !== key(c)) {            // a new visit: start honest, no sweetener
       ui.cxKey = key(c);
       Object.keys(ui.vals).filter(k => k.startsWith("cx_") || k.startsWith("cxs_")).forEach(k => delete ui.vals[k]);
-      ui.cxBribe = false; ui.cxTell = null; ui.cxSpoken = null;
+      ui.cxBribe = false; ui.cxPay = null; ui.cxTell = null; ui.cxSpoken = null;
     }
     const body = c.status === "declare" ? declareHtml(c) : c.status === "verdict" ? verdictHtml(c) : welcomeHtml(c);
     const label = c.status === "declare" ? "customs.declare_btn" : c.status === "verdict" ? "customs.continue" : "customs.welcome_btn";
     return `<div class="veil cx-veil"><section class="modal cx-desk ${c.status}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}" data-key="${esc(key(c))}">
       <div class="cx-art" aria-hidden="true">${face(c, shownState, "cl-art-media")}</div>
-      <div class="cx-panel">${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary")}</footer></div>
+      <div class="cx-panel">${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary", c.status === "declare" && !payOf() && c.lines.some(ln => !sealedOn(c, ln.good)))}</footer></div>
     </section></div>`;
   }
 
-  /* While a slider moves: rewrite the numbers, the odds, her tell and (if her mood changed) her face. */
-  function live(el) {
+  /* After a button or a seal changes: rewrite the numbers, the warning, her tell and (if her mood
+     changed) her face, in place. */
+  function live() {
     const c = cu();
     if (!c || c.status !== "declare") return;
     const n = numbers(c), box = app.querySelector(".cx-desk");
     if (!box) return;
     const set = (k, h) => { const o = box.querySelector(`[data-cx="${k}"]`); if (o) o.innerHTML = h; };
-    n.lines.forEach(l => {
-      const g = l.ln.good;
-      set("d_" + g, l.sealed ? "—" : money(l.d)); set("t_" + g, money(l.tax)); set("chip_" + g, chip(l.p, l.sealed)); set("w_" + g, lowWarn(c, l));
-    });
-    set("declared", money(n.declared)); set("tax", money(n.tax));
-    set("ifb", `<small>${te("customs.if_bought")}</small><b>${n.under ? te("customs.if_bought_sub", { amount: money(n.lose) }) : "—"}</b>`);
-    set("ifa", `<small>${n.over && !n.under ? te("customs.if_over") : te("customs.if_caught")}</small><b>${n.under ? te("customs.if_caught_sub", { amount: money(n.caught) }) : n.over ? te("customs.if_over_sub") : "—"}</b>`);
-    set("pt", pct(n.pt) + "%"); set("pb", pct(n.pb) + "%"); set("pa", pct(n.pa) + "%");
-    const bar = box.querySelector('[data-cx="bar"]');
-    if (bar) [n.pt, n.pb, n.pa].forEach((v, i) => { if (bar.children[i]) bar.children[i].style.flexBasis = (v * 100).toFixed(2) + "%"; });
-    set("bribe", te("customs.bribe", { cost: money(n.bribeCost) }));
+    PAYS.forEach(k => set("ps_" + k, paySub(n, k)));
+    set("worth", money(n.worth)); set("tax", dueText(n)); set("warn", payWarn(c, n));
     const short = Math.max(0, n.total - S.me.cash);
     set("short", short ? te("customs.debt", { amount: money(short) }) : "");
     const was = shownState;
@@ -355,27 +299,32 @@ const Customs = (() => {
     }
   }
 
-  /* The declaration desk already on screen is kept and brought up to date in place (sliders, the
-     sweetener, every number), never rebuilt: rebuilding it restarts the veil's fade and reloads her
-     picture, which reads as the whole screen blinking. True when the desk was kept. */
+  /* The declaration desk already on screen is kept and brought up to date in place (buttons, seals,
+     every number), never rebuilt: rebuilding it restarts the veil's fade and reloads her picture,
+     which reads as the whole screen blinking. True when the desk was kept. */
   function keep() {
     const c = cu(), box = app.querySelector(".cx-desk.declare");
     if (!c || S.me.ready || c.status !== "declare" || !box) return false;
     if (ui.cxKey !== key(c) || box.dataset.key !== key(c)) return false;
     if (box.querySelectorAll(".cx-line").length !== c.lines.length) return false;
-    box.querySelectorAll(".cx-range").forEach(r => {
-      const g = r.dataset.k.slice(3), p = String(pctOf(c, g)), sealed = sealedOn(c, g);
-      if (r.value !== p) r.value = p;
-      r.disabled = sealed;
-      const row = r.closest(".cx-line"), seal = row && row.querySelector('[data-act="cx_seal"]');
-      if (row) row.classList.toggle("sealed", sealed);
+    const pay = payOf();
+    box.querySelectorAll(".cx-line").forEach(row => {
+      const g = row.dataset.good, sealed = sealedOn(c, g), seal = row.querySelector('[data-act="cx_seal"]');
+      row.classList.toggle("sealed", sealed);
       if (seal) seal.checked = sealed;
+      const foot = row.querySelector(".cx-line-foot"), chip = foot && foot.querySelector(".cx-chip");
+      if (sealed && foot && !chip) foot.insertAdjacentHTML("afterbegin", `<em class="cx-chip sealed">${te("customs.sealed")}</em>`);
+      if (!sealed && chip) chip.remove();
     });
-    const tick = box.querySelector('[data-act="cx_bribe"]');
-    if (tick) {
-      tick.checked = !!ui.cxBribe;
-      tick.closest(".cx-bribe").classList.toggle("on", !!ui.cxBribe);
-    }
+    const anyOpen = c.lines.some(ln => !sealedOn(c, ln.good));
+    box.querySelectorAll(".cx-pay-btn").forEach(b => {
+      const on = b.dataset.pay === pay;
+      b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); b.disabled = !anyOpen;
+    });
+    const headLine = box.querySelector(".cx-pay-head");
+    if (headLine) headLine.innerHTML = te(pay ? "customs.pay_head" : "customs.pay_pick");
+    const go = box.querySelector('footer [data-act="cx_declare"]');
+    if (go) go.disabled = !pay && anyOpen;
     live();
     return true;
   }
@@ -384,19 +333,19 @@ const Customs = (() => {
     const c = cu();
     if (!c) return false;
     switch (d.act) {
-      case "cx_all":
-        c.lines.forEach(ln => { ui.vals["cx_" + ln.good] = String(+d.p); });
+      case "cx_pay":
+        if (PAYS.includes(d.pay)) ui.cxPay = d.pay;
         render();
         return true;
-      case "cx_bribe": ui.cxBribe = !ui.cxBribe; render(); return true;
       case "cx_seal":
         if (sealedOn(c, d.good)) delete ui.vals["cxs_" + d.good]; else ui.vals["cxs_" + d.good] = "1";
         render();
         return true;
       case "cx_declare": {
-        const values = {}, sealed = c.lines.filter(ln => sealedOn(c, ln.good)).map(ln => ln.good);
-        c.lines.forEach(ln => { if (!sealed.includes(ln.good)) values[ln.good] = Math.round(ln.value * pctOf(c, ln.good) / 100); });
-        await act("customs_declare", { values, sealed, bribe: !!ui.cxBribe });
+        const sealed = c.lines.filter(ln => sealedOn(c, ln.good)).map(ln => ln.good);
+        const choice = payOf();
+        if (!choice && sealed.length < c.lines.length) return true;          // pick a button first
+        await act("customs_declare", { choice: choice || "correct", sealed });
         return true;
       }
       case "cx_back": await act("customs_buyback", { good: d.good }); return true;

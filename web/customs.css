@@ -200,3 +200,29 @@
 
 /* The crew hid part of a line before she counted (19 Nov 2026). */
 .cx-out .cx-hid { color: #a8e6bd; white-space: nowrap; }
+
+/* The four pay buttons (19 Nov 2026): one choice for the whole hold, in place of a slider per line.
+   Each cargo row is just its name, worth and the "Keep sealed aboard" pill. */
+.cx-desk .cx-line.cx-line-pay { grid-template-columns: minmax(0, 1fr) auto; }
+.cx-line-foot { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; }
+.cx-pay-head { margin: .15rem 0 0; }
+.cx-pay { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem; }
+.deck .cx-desk button.cx-pay-btn { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .15rem;
+  min-height: 4.2rem; padding: .4rem .55rem; text-align: left; white-space: normal; border: 1px solid var(--edge); border-radius: var(--radius);
+  background: var(--glass-2); color: var(--deck-ivory); cursor: pointer; }
+.cx-pay-btn b { font: 1rem var(--title); }
+.cx-pay-btn small { font-size: .7rem; line-height: 1.25; color: var(--muted); }
+.deck .cx-desk button.cx-pay-btn:hover:not(:disabled) { border-color: var(--edge-hi); }
+.deck .cx-desk button.cx-pay-btn.on { border-color: var(--brass-hi); background: color-mix(in srgb, var(--brass-hi) 16%, transparent);
+  box-shadow: 0 0 0 1px var(--brass-hi) inset; }
+.deck .cx-desk button.cx-pay-btn.nothing.on { border-color: var(--blood-hi); background: color-mix(in srgb, var(--blood-hi) 16%, transparent);
+  box-shadow: 0 0 0 1px var(--blood-hi) inset; }
+.deck .cx-desk button.cx-pay-btn.more.on { border-color: var(--jade-hi); background: color-mix(in srgb, var(--jade-hi) 14%, transparent);
+  box-shadow: 0 0 0 1px var(--jade-hi) inset; }
+.cx-pay-btn.on small { color: var(--deck-ivory); }
+.cx-pay-btn:disabled { opacity: .45; cursor: default; }
+.cx-desk > .cx-panel .cx-warn, .cx-body > .cx-warn { margin: 0; }
+@media (max-width: 760px), (orientation: portrait) {
+  .cx-pay { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .deck .cx-desk button.cx-pay-btn { min-height: 3.4rem; }
+}

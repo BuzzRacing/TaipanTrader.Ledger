@@ -333,6 +333,7 @@ DEFAULTS = {
                     "strongbox": 9000, "strongbox_swing": 0.4, "buyback_premium": 0.25,
                     "bribe_share": 0.3, "bribe_min": 50, "bribe_cut": 0.5, "bribe_honest": 0.25,
                     "bribe_refused_mult": 1.5, "bribe_rep": 8, "over_rep": 5, "max_declare": 1.5,
+                    "pay_less_lo": 0.7, "pay_less_hi": 0.95, "pay_more_share": 1.1,
                     "tell_curious": 0.08, "tell_hungry": 0.25, "seeded": [],
                     "greet_aloud_min": 2, "greet_aloud_max": 4},
         # Reputation swings (owner's decisions, 19 Nov 2026; project doc "SeaTrader Reputation Swings").
@@ -969,6 +970,12 @@ SECTIONS = [
              _pct("rules.customs.max_rate", "Highest rate anywhere", "", 0, 1),
              _pct("rules.customs.max_declare", "Highest declaration allowed (share of true worth)",
                   "Above 100% is over-declaring: she never buys, you pay more tax, and your standing rises.", 1, 5),
+             _pct("rules.customs.pay_less_lo", "Pay Less: declares at least (share of true worth)",
+                  "The desk's four buttons. Pay Less draws a share of each cargo's worth between these two, "
+                  "hidden until her ruling.", 0, 1),
+             _pct("rules.customs.pay_less_hi", "Pay Less: declares at most (share of true worth)", "", 0, 1),
+             _pct("rules.customs.pay_more_share", "Pay More: declares (share of true worth)",
+                  "Pay Correct and Pay More are never bought out or searched. Pay More also earns standing.", 1, 5),
              F("rules.customs.greet_aloud_min", "Her greeting is read aloud every (landings), at least", "int",
                "Her greeting is always written on her desk; this only sets how often it is spoken. After she reads "
                "it, the next landings are quiet. 1 and 1: every landing. The Registrar's price tip is always read.",

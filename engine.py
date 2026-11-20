@@ -2073,6 +2073,25 @@ class Game:
             p, port=port, band=band, hidden=found, fine=total)
         return sum(r["fine"] for r in caught)
 
+    PAY_DESK = ("nothing", "less", "correct", "more")
+
+    def pay_share(self, p, cu, good, choice):
+        """The share of a line's true worth each pay button declares. Pay Less is drawn per cargo line
+        between pay_less_lo and pay_less_hi from its own seed (game, house, month, port, cargo), so it is
+        fixed for the visit, never redrawn, and never touches the game's dice. The player is not shown it
+        until her ruling."""
+        c = R["customs"]
+        if choice == "nothing":
+            return 0.0
+        if choice == "correct":
+            return 1.0
+        if choice == "more":
+            return max(1.0, min(float(c["max_declare"]), float(c.get("pay_more_share", 1.1))))
+        lo, hi = sorted((float(c.get("pay_less_lo", 0.7)), float(c.get("pay_less_hi", 0.95))))
+        roll = random.Random("payless:{}:{}:{}:{}:{}".format(self.s.get("game_id", ""), p.get("id", p.get("name", "")),
+                                                             self.s["turn"], cu.get("port", ""), good)).random()
+        return max(0.0, min(1.0, lo + (hi - lo) * roll))
+
     def bribe_cost(self, p, declared_total):
         c, cu = R["customs"], p["customs"]
         return int(max(c["bribe_min"], math.ceil(c["bribe_share"] * cu["rate"] * declared_total)))
@@ -2087,16 +2106,26 @@ class Game:
         seal = a.get("sealed") if isinstance(a.get("sealed"), (list, tuple)) else []
         seal = {ln["good"] for ln in cu["lines"] if ln["good"] in seal} if c.get("bond", True) else set()
         open_lines = [ln for ln in cu["lines"] if ln["good"] not in seal]
-        declared = {}
+        # The four pay buttons (19 Nov 2026): one choice for the whole hold instead of a slider per line.
+        # Pay Less draws a hidden share of each line's worth; Pay Correct and Pay More are fully safe
+        # (she neither buys nor searches). With no choice, the old per-line values are used.
+        choice = a.get("choice") if a.get("choice") in self.PAY_DESK else None
+        declared, shares = {}, {}
         for ln in open_lines:
-            try:
-                v = int(round(float(raw.get(ln["good"], ln["value"]))))
-            except (TypeError, ValueError):
-                raise GameError(tx("e.whole_number"))
+            if choice:
+                share = self.pay_share(p, cu, ln["good"], choice)
+                shares[ln["good"]] = share
+                v = int(math.ceil(ln["value"] * share - 1e-9)) if share > 1 else int(math.floor(ln["value"] * share + 1e-9))
+            else:
+                try:
+                    v = int(round(float(raw.get(ln["good"], ln["value"]))))
+                except (TypeError, ValueError):
+                    raise GameError(tx("e.whole_number"))
             declared[ln["good"]] = max(0, min(int(math.floor(ln["value"] * top)), v))
+        safe = choice in ("correct", "more")
         total_declared = sum(declared.values())
         bribe_mult, bribe = 1.0, None
-        if a.get("bribe"):
+        if a.get("bribe") and not choice:
             cost = self.bribe_cost(p, total_declared)
             if cost > p["cash"]:
                 raise GameError(tx("e.customs_bribe_cost", cost=money(cost)))
@@ -2114,10 +2143,12 @@ class Game:
         desk_hid = {}
         for ln in sorted(open_lines, key=lambda x: -x["appetite"]):
             g, q, value, d = ln["good"], ln["qty"], ln["value"], declared[ln["good"]]
-            buy, audit = self.customs_odds(cx, ln, d, bribe_mult)
+            buy, audit = (0.0, 0.0) if safe else self.customs_odds(cx, ln, d, bribe_mult)
             roll = self.rng.random()
             res = {"good": g, "qty": q, "value": value, "declared": d, "buy": buy, "audit": audit,
                    "roll": round(roll, 5), "outcome": "tax", "units": 0, "paid": 0, "tax": 0, "fine": 0, "back": False}
+            if choice:
+                res["share"] = round(shares[g], 4)
             if roll < buy:
                 per = d / float(q)
                 # The crew slips a share below decks before she counts (rules.hide.desk): kept aboard, untaxed.
@@ -2208,7 +2239,7 @@ class Game:
         cu["status"] = "verdict"
         cu["result"] = {"lines": out, "declared": total_declared, "value": value_total, "tax": tax_total,
                         "fine": fine_total, "paid": paid_in, "owed": owed, "caught": caught, "bribe": bribe,
-                        "rep": round(rep_change, 2)}
+                        "rep": round(rep_change, 2), "choice": choice}
         bought = [r for r in out if r["units"]]
         if caught:
             p["log"].append(tx("l.customs_caught", port=name, total=money(tax_total + fine_total), fine=money(fine_total)))
@@ -2223,7 +2254,7 @@ class Game:
                                tax=money(tax_total)))
         self._detail = {"port": port, "rate": rate, "declared": declared, "value": value_total, "tax": tax_total,
                         "fine": fine_total, "paid": paid_in, "owed": owed, "bribe": bribe, "rep": round(rep_change, 2),
-                        "lines": out,
+                        "lines": out, "choice": choice,
                         "sealed": sorted(seal),
                         "note": "declared {} of {} at {}: tax {}{}{}{}{}".format(
                             money(total_declared), money(value_total), pct(rate), money(tax_total),
@@ -2399,6 +2430,7 @@ class Game:
                                           "fine_mult", "caught_rep", "max_declare", "bribe_min", "bribe_share",
                                           "bribe_cut", "bribe_refused_mult", "bribe_rep", "buyback_premium", "over_rep",
                                           "tell_curious", "tell_hungry")}
+        out["rules"]["pay_more_share"] = max(1.0, min(float(c["max_declare"]), float(c.get("pay_more_share", 1.1))))
         if cu["status"] == "verdict":
             for r in out["result"]["lines"]:
                 r["back_price"] = self.buyback_cost(r) if r["units"] and not r["back"] else 0

@@ -21,8 +21,18 @@ const Jail = (() => {
   }
   function portName(k) { return (D.ports && D.ports[k] && D.ports[k].name) || k; }
 
+  /* Her photo: the nude one first; a family-friendly screen never receives it, so it gets her clean
+     photo (tagged "clean", tools/queue_jail_clean_pictures.py). One photo each: the newest of its kind. */
+  function wardenItem(cid) {
+    const all = Media.items("persona", cid, "portrait").filter(i => i.t === "image");
+    const clean = i => (i.g || []).includes("clean");
+    const pick = all.filter(i => !clean(i));
+    const list = pick.length ? pick : all;
+    return list.length ? list[list.length - 1] : null;
+  }
+
   function wardenImg(cid, cls) {
-    const item = Media.choose("persona", cid, "portrait", { mode: "fixed", slot: "jail-warden" });
+    const item = wardenItem(cid) || Media.choose("persona", cid, "portrait", { mode: "fixed", slot: "jail-warden" });
     const url = item ? item.u : castOf(cid).portrait;
     return url ? `<img class="${cls}" src="${esc(url)}" alt="">` : `<div class="${cls} jl-noface" aria-hidden="true">⚿</div>`;
   }
