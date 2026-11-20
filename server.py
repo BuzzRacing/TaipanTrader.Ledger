@@ -367,6 +367,41 @@ class Hub:
             out["now"] = clips(me["battle"].get("beat"))
         return out
 
+    def _jail_story(self, me):
+        """What the jail story (web/jail.js, 20 Nov 2026) says aloud, found on the month's log by its wording
+        so the Captain's Log reading limit cannot drop it: the line of whoever caught the Captain, the
+        warden's line as the door shuts, and the warden's line when she walks free. Each is {text, clip}
+        (clip is None with voices off). The screens play these themselves and the log reading stays quiet
+        over them (player.js). None when nobody is locked up."""
+        jv = me.get("jail") or {}
+        if not (jv.get("jail") or jv.get("freed")):
+            return None
+        plan, port = voice.PLAN, me.get("port")
+        matcher = getattr(plan, "matcher", None)
+        found = {}
+        for text in me.get("log") or []:
+            try:
+                key = matcher.match(text)[0] if matcher else None
+            except Exception:
+                key = None
+            if key:
+                found.setdefault(key, text)
+
+        def pick(keys):
+            for k in keys:
+                if k in found:
+                    clip = plan.line(found[k], "log", port) if plan.ready() else None
+                    return {"text": found[k], "clip": clip}
+            return None
+        caught = {"slip": ("l.slip_caught",), "contraband": ("l.seized",), "desk": ("l.customs_caught",),
+                  "debt": ("l.collectors",), "bankrupt": ("l.bankrupt",), "hostile": ("l.band_hostile",),
+                  "standing": ("l.band_hostile",)}
+        j = jv.get("jail") or {}
+        out = {"caught": pick(caught.get(j.get("charge"), ())) if j.get("fresh") else None,
+               "warden": pick(["l.jail_" + c for c in engine.jail.CHARGES]) if j else None,
+               "free": pick(["l.jail_release"]) if jv.get("freed") and not j else None}
+        return out if any(out.values()) else {"caught": None, "warden": None, "free": None}
+
     def present(self):
         now = time.time()
         grace = engine.R["game"]["grace_seconds"]
@@ -426,6 +461,9 @@ class Hub:
         if me.get("battle") or me.get("fights"):
             v["voice"]["battle"] = self._battle_voice(me)
             v["voice"]["battle_foe"] = self._battle_foe_voice(me)
+        jstory = self._jail_story(me)
+        if jstory:
+            v["voice"]["jail"] = jstory
         promo = me.get("promotion") or {}
         if promo:
             me["promotion"] = dict(promo, achievements=stats.promotion_record(v["game_id"], pid, promo))

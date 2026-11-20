@@ -109,22 +109,34 @@
 /* ---------------------------------------------------- the fleet and the buttons -- */
 .sf-foot { display: grid; grid-template-columns: minmax(13rem, 1fr) minmax(0, 2.6fr); gap: clamp(.6rem, 2vw, 1.4rem); align-items: end; }
 .sf-foot[hidden] { display: none; }
-.sf-fleet { padding: .55rem .7rem; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass); min-width: 0; }
+.sf-fleet { --fp: .6rem; padding: .45rem var(--fp) 0; border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass); min-width: 0; overflow: hidden; }
 .sf-fleet h3, .sf-card h3 { margin: 0 0 .3rem; font: 400 .95rem var(--special); color: var(--brass-hi); }
-.sf-fleet ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .22rem; }
-.sf-fleet li { display: grid; grid-template-columns: minmax(0, 1fr) 4.5rem auto; column-gap: .45rem; align-items: center; font-size: .85rem; }
-.sf-fleet li b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sf-fleet li small { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .72rem; }
-.sf-hull { display: block; height: 7px; border-radius: 4px; background: color-mix(in srgb, var(--deck-ivory) 14%, transparent); overflow: hidden; }
-.sf-hull i { display: block; height: 100%; background: var(--jade-hi); transition: width .7s ease-out; }
-.sf-fleet li.low .sf-hull i { background: var(--blood-hi); }
-.sf-pips { grid-column: 1 / -1; display: flex; gap: 3px; margin-bottom: .1rem; }
-.sf-pips i { width: 9px; height: 5px; border-radius: 2px; background: color-mix(in srgb, var(--deck-ivory) 16%, transparent); }
+/* Compact fleet (20 Nov 2026): heading and rank key share a line; each ship is one slim bar with its name on it. */
+.sf-fhead { display: flex; align-items: baseline; justify-content: space-between; gap: .3rem .8rem; flex-wrap: wrap; margin-bottom: .3rem; }
+.sf-fhead h3 { margin: 0; }
+.sf-key { display: flex; gap: .15rem .7rem; flex-wrap: wrap; font: .62rem/1.2 var(--special); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.sf-key span { display: inline-flex; align-items: center; gap: .3rem; }
+.sf-key i { width: 3px; height: .7rem; border-radius: 2px; background: var(--cls); }
+.sf-fleet ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; }
+.sf-fleet li { min-width: 0; }
+.sf-hull { position: relative; display: flex; align-items: center; gap: .35rem; height: 1.4rem; padding: 0 .4rem 0 .5rem; border-radius: 4px; overflow: hidden;
+  border-left: 3px solid var(--cls, var(--deck-brass)); background: color-mix(in srgb, var(--deck-ivory) 9%, #0b0806); }
+.sf-hull > i { position: absolute; left: 0; top: 0; bottom: 0; z-index: 0; background: color-mix(in srgb, var(--jade-hi) 52%, #0b0806); transition: width .7s ease-out; }
+.sf-fleet li.low .sf-hull > i { background: color-mix(in srgb, var(--blood-hi) 70%, #0b0806); }
+.sf-hull > b, .sf-hull > small, .sf-hull > .sf-pips { position: relative; z-index: 1; }
+.sf-hull > b { flex: 1 1 auto; min-width: 0; font: 600 .78rem/1 var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+.sf-hull > small { flex: none; color: var(--deck-ivory); font-variant-numeric: tabular-nums; font-size: .68rem; text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+.sf-pips { flex: none; display: flex; gap: 2px; }
+.sf-pips i { width: 6px; height: 4px; border-radius: 1px; background: color-mix(in srgb, var(--deck-ivory) 22%, transparent); }
 .sf-pips i.on { background: var(--deck-brass); }
-.sf-pips i.cn { width: 21px; }
+.sf-pips i.cn { width: 14px; }
 .sf-pips i.cn.on { background: #c8743a; }
-.sf-stake { margin: .4rem 0 0; padding-top: .35rem; border-top: 1px solid var(--edge); font-size: .85rem; }
-.sf-stake small { display: block; color: var(--muted); font-size: .7rem; }
+/* The cargo at stake: a band joined to the foot of the panel, label first, one chip per good. */
+.sf-stake { display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem .7rem; margin: .45rem calc(var(--fp) * -1) 0; padding: .3rem var(--fp); border-top: 1px solid var(--edge);
+  background: color-mix(in srgb, var(--deck-brass) 10%, rgba(0, 0, 0, .35)); font-size: .8rem; }
+.sf-stake small { color: var(--brass-hi); font: .62rem/1.2 var(--special); letter-spacing: .1em; text-transform: uppercase; }
+.sf-stake span b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sf-stake .more, .sf-stake .none { color: var(--muted); }
 
 .sf-btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(.4rem, 1.2vw, .8rem); }
 .sf-btns.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -347,8 +359,8 @@ body.seafighting #app { visibility: hidden; }
   .sf-tell { font-size: .9rem; }
   .sf-mid { --pw: 24vw; }
   .sf-plate { margin-bottom: 8rem; }
-  .sf-fleet { padding: .35rem .5rem; }
-  .sf-fleet h3, .sf-pips, .sf-enemy p { display: none; }
+  .sf-fleet { --fp: .5rem; padding: .35rem var(--fp) 0; }
+  .sf-fleet h3, .sf-enemy p { display: none; }
   #seafight .sf-btn { min-height: 3.4rem; }
   .sf-junks { --j: 1.3rem; }
   .sf-card { gap: .4rem; padding: .7rem; }
@@ -372,15 +384,12 @@ body.seafighting #app { visibility: hidden; }
 /* ------------------------------------------------ the fleet's classes (18 Nov 2026) -- */
 /* The flagship (first) is a little larger. */
 .sf-junks i.flag:not(.down) { transform: scale(1.18); transform-origin: 50% 80%; }
-/* The fleet in formation: a small heading per rank (van, line, rear) with its colour. */
-.sf-fleet ul.formed li.sf-rank { display: block; grid-column: 1 / -1; margin: .2rem 0 0; padding-left: .4rem; border-left: 3px solid var(--cls); }
-.sf-fleet ul.formed li.sf-rank small { font: .66rem/1.2 var(--special); letter-spacing: .1em; text-transform: uppercase; color: var(--brass-hi); }
-.sf-fleet .r-escort, .sf-rships .r-escort { --cls: #b3402a; }
-.sf-fleet .r-trader, .sf-rships .r-trader { --cls: var(--deck-brass); }
-.sf-fleet .r-cargo, .sf-rships .r-cargo { --cls: #3f9a7a; }
-/* A big fleet (up to 15): two columns, no gun pips, so the screen never scrolls. */
-.sf-fleet ul.many { grid-template-columns: 1fr 1fr; column-gap: .8rem; gap: .12rem .8rem; }
-.sf-fleet ul.many li { font-size: .78rem; grid-template-columns: minmax(0, 1fr) 3.2rem auto; }
+/* Rank colours: the edge of each ship's bar, and the key beside the heading. */
+.sf-fleet .r-escort, .sf-key .r-escort, .sf-rships .r-escort { --cls: #b3402a; }
+.sf-fleet .r-trader, .sf-key .r-trader, .sf-rships .r-trader { --cls: var(--deck-brass); }
+.sf-fleet .r-flagship, .sf-key .r-flagship { --cls: #d8b45a; }
+.sf-fleet .r-cargo, .sf-key .r-cargo, .sf-rships .r-cargo { --cls: #3f9a7a; }
+/* A big fleet (up to 15): three columns of bars; the gun pips go so the names have room. */
 .sf-fleet ul.many .sf-pips { display: none; }
 .sf-foot:has(ul.many) { grid-template-columns: minmax(18rem, 1.25fr) minmax(0, 2.4fr); }
 .sf-rships li.sf-rship { padding-left: .45rem; border-left: 3px solid var(--cls); }
@@ -453,7 +462,6 @@ body.seafighting #app { visibility: hidden; }
 .sf-foot, .sf-foot:has(ul.many) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .sf-foot .sf-fleet ul { grid-template-columns: 1fr 1fr; column-gap: 1.1rem; }
 .sf-foot .sf-fleet ul.many { grid-template-columns: 1fr 1fr 1fr; column-gap: .9rem; }
-.sf-foot .sf-fleet ul.many li { grid-template-columns: minmax(0, 1fr) 3.4rem auto; }
 .sf-btns.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .sf-btns.five { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .sf-btns.five > * { grid-column: span 2; }

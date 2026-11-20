@@ -279,6 +279,8 @@ const Customs = (() => {
   function html() {
     const c = cu();
     if (!c || S.me.ready) return "";
+    // Nothing to decide: no stop (auto() lets her speak or flashes the receipt, and clears the desk).
+    if (c.status === "welcome" || plainVerdict(c)) return "";
     if (ui.cxKey !== key(c)) {            // a new visit: start honest, no sweetener
       ui.cxKey = key(c);
       Object.keys(ui.vals).filter(k => k.startsWith("cx_") || k.startsWith("cxs_")).forEach(k => delete ui.vals[k]);
@@ -425,7 +427,9 @@ const Customs = (() => {
     if (c.home_free && c.officer !== "taxlady") return;
     const plans = S.voice.customs, plan = plans[0];
     plans.forEach(pl => { if (pl && pl.u && !warmed.includes(pl.u)) { warmed += " " + pl.u; fetch(pl.u).catch(() => {}); } });
-    if (!document.querySelector(".cx-desk")) return;
+    // A welcome has no desk on screen: she speaks over the Port screen once the log is closed and no
+    // fight, storm or jail card is up (the stage shows her and her words while she does).
+    if (c.status === "welcome" ? (document.querySelector(".captains-log") || otherScreenUp()) : !document.querySelector(".cx-desk")) return;
     if (ui.cxSpoken === key(c)) return;
     ui.cxSpoken = key(c);
     const texts = [c.welcome, c.tip && c.tip.text];
@@ -446,5 +450,75 @@ const Customs = (() => {
     }
   }
 
-  return { html, live, keep, click, speak, stage, markSpeaking, isOpen: () => !!(cu() && !S.me.ready) };
+  /* ------------------------------------------------- stops that were only a click (20 Nov 2026) --
+     Two stages of the desk had nothing to decide, so they no longer stop the game:
+       - the WELCOME (home port, a free port, an empty hold): no popup. Her greeting (and her tip) is still
+         read aloud, with her face and words on the stage, and the desk is cleared at once. The tip is in
+         the month's log and the Price Book already; a hot tip is pinned on the Port screen.
+       - a plain VERDICT (tax paid, nothing bought, nobody caught): no popup. The Port screen opens and a
+         small receipt flashes with her happy picture. A ruling with a choice or a story keeps its screen:
+         she bought cargo (Buy back is on it) or the house was caught (fine, jail plea).
+     The server still gets customs_done, so the cargo she bought is sold on and the books settle as before. */
+  const otherScreenUp = () => (typeof Battle !== "undefined" && Battle.busy())
+    || (typeof Jail !== "undefined" && Jail.busy()) || (typeof Storm !== "undefined" && Storm.busy());
+  const plainVerdict = c => !!(c && c.status === "verdict" && c.result && !c.result.caught
+    && !c.result.lines.some(r => r.units));
+  let closing = "";              // the visit being cleared now, so a redraw never sends it twice
+  let receiptTimer = null;
+
+  /* Called from every redraw. */
+  function auto() {
+    const c = cu();
+    if (!c || S.me.ready || closing === key(c)) return;
+    if (document.querySelector(".captains-log") || otherScreenUp()) return;   // wait for the log, a fight, a storm
+    if (c.status === "welcome") { speak(); release(c, null); }
+    else if (plainVerdict(c)) release(c, receiptOf(c));
+  }
+
+  async function release(c, flash) {
+    const k = closing = key(c);
+    const res = await post("/api/act", { token, type: "customs_done" });   // silent: no toast, no cue
+    if (res && res.ok) {
+      ui.tab = "port"; ui.tally = false; ui.ledger = false;
+      render();
+      if (flash) showReceipt(flash);
+    } else setTimeout(() => { if (closing === k) closing = ""; }, 2500);     // try again on a later redraw
+  }
+
+  /* What the receipt says, taken from the ruling before the desk is cleared. */
+  function receiptOf(c) {
+    const res = c.result, sealed = res.lines.filter(r => r.outcome === "sealed").length;
+    return { name: c.name, port: c.port, key: key(c), art: face(c, "tax", "cx-rc-img"),
+             paid: Math.round(res.tax + res.fine), owed: res.owed || 0, rep: res.rep || 0, sealed,
+             bribe: res.bribe && res.bribe.taken ? res.bribe.cost : 0 };
+  }
+
+  function showReceipt(r) {
+    hideReceipt();
+    const tl = (k, fb, v) => (T[k] == null ? esc(t(fb, v)) : te(k, v));
+    const chips = [];
+    if (r.rep) chips.push(`<span class="${r.rep > 0 ? "up" : "dn"}">${te("customs.standing", { port: esc(portName(r.port)) })} <b>${r.rep > 0 ? "+" : ""}${Math.round(r.rep * 10) / 10}</b></span>`);
+    if (r.sealed) chips.push(`<span>${tl("customs.flash.sealed", "{n} kept sealed in bond", { n: r.sealed })}</span>`);
+    if (r.bribe) chips.push(`<span>${te("customs.bribe_taken", { cost: money(r.bribe) })}</span>`);
+    if (r.owed) chips.push(`<span class="dn">${te("customs.debt", { amount: money(r.owed) })}</span>`);
+    const el = document.createElement("div");
+    el.id = "cx-receipt";
+    el.className = "cx-receipt";
+    el.setAttribute("role", "status");
+    el.innerHTML = `<span class="cx-rc-art" aria-hidden="true">${r.art}</span>
+      <div><small>${esc(r.name)}</small>
+      <b>${r.paid ? tl("customs.flash.paid", "Tax paid: {amount}", { amount: money(r.paid) }) : tl("customs.flash.none", "Nothing to pay")}</b>
+      ${chips.length ? `<p>${chips.join("")}</p>` : ""}</div>`;
+    el.addEventListener("click", hideReceipt);
+    document.body.appendChild(el);
+    receiptTimer = setTimeout(hideReceipt, 6500);
+  }
+  function hideReceipt() {
+    clearTimeout(receiptTimer);
+    const el = document.getElementById("cx-receipt");
+    if (el) el.remove();
+  }
+
+  return { html, live, keep, click, speak, stage, markSpeaking, auto, hideReceipt,
+           isOpen: () => !!(cu() && cu().status !== "welcome" && !plainVerdict(cu()) && !S.me.ready) };
 })();

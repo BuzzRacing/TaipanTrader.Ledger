@@ -32,6 +32,9 @@ const SeaAudio = (() => {
     atmosphere: { on: true, vol: 0.3 },
     dialogue: { on: true, vol: 1 },
   };
+  // Extra switches on the Sound tab: ease the music and atmosphere down while someone speaks, and Night mode
+  // (a tighter limiter so cannons and thunder cannot startle anyone).
+  const OPT_DEFAULTS = { duck: true, night: false };
   const KEY = "seatrader_audio_";
   const AUDIO_BASE = "/media/audio/";           // clip paths in the catalog are relative to this
   const CATALOG_URL = "/audio/catalog.json";
@@ -58,7 +61,7 @@ const SeaAudio = (() => {
   }
 
   /* ---------------- settings ---------------- */
-  const st = {};
+  const st = {}, opts = {};
   let listeners = [];
   function loadSettings() {
     // Anyone who muted the voices before now has Dialogue off, so they do not suddenly hear music and
@@ -71,6 +74,7 @@ const SeaAudio = (() => {
       const d = DEFAULTS[k], on = lsGet(KEY + k + "_on"), vol = parseFloat(lsGet(KEY + k + "_vol"));
       st[k] = { on: on === null ? d.on : on === "1", vol: Number.isFinite(vol) ? clamp(vol) : d.vol };
     }
+    for (const k in OPT_DEFAULTS) { const v = lsGet(KEY + "opt_" + k); opts[k] = v === null ? OPT_DEFAULTS[k] : v === "1"; }
   }
   function settings() {
     const o = {};
@@ -82,6 +86,12 @@ const SeaAudio = (() => {
     if (typeof patch.on === "boolean") { st[cat].on = patch.on; lsSet(KEY + cat + "_on", patch.on ? "1" : "0"); }
     if (Number.isFinite(patch.vol)) { st[cat].vol = clamp(patch.vol); lsSet(KEY + cat + "_vol", String(st[cat].vol)); }
     applyLevels();
+    listeners.forEach(fn => { try { fn(settings()); } catch (e) { /* a listener's problem */ } });
+  }
+  function setOption(k, on) {
+    if (!(k in OPT_DEFAULTS)) return;
+    opts[k] = !!on; lsSet(KEY + "opt_" + k, on ? "1" : "0");
+    applyLevels(); applyDuck();
     listeners.forEach(fn => { try { fn(settings()); } catch (e) { /* a listener's problem */ } });
   }
   const audible = cat => st.master.on && st.master.vol > 0 && st[cat].on && st[cat].vol > 0;
@@ -126,6 +136,8 @@ const SeaAudio = (() => {
     if (!nodes) return;
     ramp(nodes.master.gain, st.master.on ? st.master.vol : 0);
     for (const c of CATS) ramp(nodes[c].gain, st[c].on ? st[c].vol : 0);
+    // Night mode: the limiter bites much earlier, so loud moments are pulled down toward the quiet ones.
+    nodes.comp.threshold.value = opts.night ? -30 : -10; nodes.comp.ratio.value = opts.night ? 10 : 3; nodes.comp.knee.value = opts.night ? 20 : 12;
     refresh();
   }
 
@@ -403,7 +415,7 @@ const SeaAudio = (() => {
     for (const name of [...overlays].reverse().concat(base)) {
       const sc = all[name];
       if (!sc || sc[kind] === undefined || sc[kind] === "inherit") continue;
-      return { list: (sc[kind] || []).map(String), gap: sc.gap_s || 0 };
+      return { list: (sc[kind] || []).map(String), gap: (kind === "music" ? sc.gap_s : sc.atmosphere_gap_s) || 0 };
     }
     return { list: [], gap: 0 };
   }
@@ -425,7 +437,7 @@ const SeaAudio = (() => {
   let duckTimer = null;
   function applyDuck() {
     if (!nodes) return;
-    const target = duckers.size ? DUCK_GAIN : 1;
+    const target = duckers.size && opts.duck ? DUCK_GAIN : 1;
     ramp(nodes.musicDuck.gain, target, duckers.size ? DUCK_ATTACK / 3 : 0.4);
     ramp(nodes.ambDuck.gain, target, duckers.size ? DUCK_ATTACK / 3 : 0.4);
   }
@@ -482,6 +494,7 @@ const SeaAudio = (() => {
 
   return {
     settings, set,
+    option: k => opts[k], setOption,
     onChange(fn) { if (typeof fn === "function") listeners.push(fn); },
     audible, running, unlock,
     onRunning(fn) { if (typeof fn === "function") runningFns.push(fn); },

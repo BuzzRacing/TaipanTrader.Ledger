@@ -77,7 +77,10 @@ function speak() {
   if (!S || !S.voice) return;
   if (S.voice.log && document.querySelector(".captains-log") && ui.spokenTurn !== S.turn) {
     ui.spokenTurn = S.turn;
-    Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + S.turn + ":" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
+    // A jail story (jail.js) reads its own lines in order, so the log stays quiet over it (20 Nov 2026).
+    if (!(typeof Jail !== "undefined" && Jail.telling())) {
+      Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + S.turn + ":" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
+    }
   }
   const news = S.news || [], plans = S.voice.news || [];
   if (ui.newsSeen === null) { ui.newsSeen = new Set(news); return; }
@@ -387,6 +390,7 @@ function render() {
   }
   deckArt(inGame);
   Pulse.sync(inGame && ui.tab === "market" && !ui.tally);
+  if (inGame) Customs.auto();     // a welcome or a plain ruling is not a stop (customs.js)
   markSpeaking();
   if (typeof Battle !== "undefined") Battle.sync();
   if (typeof Jail !== "undefined") Jail.sync();
@@ -1223,25 +1227,10 @@ function noteRepMove() {
 /* The captain button at the foot of the rail: the Captain's portrait from the Media Library, square and
    as big as the tab pictures above it, with the name in white across its foot (the same "face" look as the
    tabs). Without a portrait: their initials on the house colour, with their name under it. Tapping it opens
-   a small fly-out beside it (above it in portrait) with Voices on/off and Options. Tapping outside it
+   a small fly-out beside it (above it in portrait) with just Voices on/off and Options. Tapping outside it
    or pressing Escape closes it. */
-/* The host's two controls (End the month now, start a new game), in the captain fly-out since the Ledger
-   tab they sat under was removed (19 Nov 2026). Starting a new game asks first: the two buttons turn into
-   "Yes, new game" and "Keep playing". Nothing for players who are not the host. */
-const HOST_ICONS = {
-  force: '<svg viewBox="0 0 24 24"><path d="M5 5l8 7-8 7zM13 5l8 7-8 7z"/></svg>',
-  newgame: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>',
-  keep: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-};
-function hostFly() {
-  if (!S.me.host) return "";
-  const b = (act, icon, label, tip, cls = "") =>
-    `<button type="button" class="dk-host${cls}" data-act="${act}" title="${te(tip)}">${HOST_ICONS[icon]}<span>${te(label)}</span></button>`;
-  return `<i class="dk-fly-rule" aria-hidden="true"></i>` + (ui.confirmNew
-    ? b("newgame", "newgame", "host.new_yes_short", "host.new_confirm", " bad") + b("newgame_no", "keep", "host.new_no_short", "host.new_no")
-    : b("force", "force", "host.end_short", "host.end_month") + b("newgame_ask", "newgame", "host.new_short", "host.new_ask"));
-}
-
+/* The host's two controls (End the month now, start a new game) live in Options > Exit Game
+   (options.js), under the Host heading; they used to sit in this fly-out (19-20 Nov 2026). */
 function meButton() {
   const me = S.me, open = !!ui.meOpen;
   const name = me.name || me.firm || "";
@@ -1256,8 +1245,7 @@ function meButton() {
       : `<button type="button" class="${muted ? "" : "on"}" data-act="speech" aria-pressed="${!muted}" title="${te(muted ? "deck.speech_off" : "deck.speech_on")}">` +
         `${DECK_ICONS[muted ? "speech_off" : "speech_on"]}<span>${te("deck.speech")}</span></button>`;
     fly = `<div class="dk-fly" role="menu">${voice}` +
-      `<button type="button" data-act="options" title="${te("deck.options_soon")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button>` +
-      hostFly() + `</div>`;
+      `<button type="button" data-act="options" title="${te("deck.options_soon")}">${DECK_ICONS.options}<span>${te("deck.options")}</span></button></div>`;
   }
   return `<div class="dk-me${open ? " open" : ""}" style="--house:${COLORS[me.color % 8]}">${fly}` +
     `<button type="button" class="dk-face${portrait ? " face" : ""}" data-act="me" aria-haspopup="menu" aria-expanded="${open}" aria-label="${te("deck.me", { name })}" title="${te("deck.me", { name })}">` +

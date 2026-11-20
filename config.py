@@ -197,7 +197,7 @@ DEFAULTS = {
                    "stack_booms": False, "boom_eat_depths": 3.0},
         "contraband": {"seize_chance": 0.03, "seize_banned": 0.55, "seize_rep_relief": 0.003,
                        "fine_per_unit": 300, "rep_penalty": 15},
-        "weather": {"forecast_accuracy": 0.8, "storm_chance": [0.0, 0.04, 0.20, 0.60],
+        "weather": {"forecast_accuracy": 0.8, "storm_chance": [0.0, 0.02, 0.10, 0.30],
                     "storm_dmg_min": 5, "storm_dmg_max": 20, "typhoon_dmg_min": 20,
                     "typhoon_dmg_max": 60, "fast_dmg_mult": 0.8, "offcourse": 0.15,
                     "risk_div": 350, "risk_min": 0.6, "risk_max": 1.8},
@@ -256,6 +256,11 @@ DEFAULTS = {
                    "fleet_types": True, "band_share": 0.3, "raider_guns": 0.6, "raider_run": 0.25,
                    "band_strength": 0.45, "band_ships_max": 4, "band_booty": 0.5, "lord_booty": 2.0,
                    "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
+                   # Each fight rolls its own round limit between limit_min and limit_max (20 Nov 2026), so a
+                   # captain cannot count on the last round; equal numbers give a fixed limit. Powder hints at
+                   # it the round before the last (limit_hint). rules.pirates.rounds is only the fallback for a
+                   # fight saved before this existed.
+                   "limit_min": 4, "limit_max": 8, "limit_hint": True,
                    "round_secs": 10, "first_extra": 10, "voice_grace": 0,
                    "gun_loss": 0.25, "gun_loss_two": 0.25,
                    # Hits that miss the guns may land in the hold: one kind of goods (gold as likely as rice)
@@ -377,7 +382,9 @@ DEFAULTS = {
                       "rep_short": 3, "rep_year": 8, "fee_wealth": True},
         # Under the Counter (counter.py, 20 Nov 2026): the port's tax lady sells a tip. Her price is a share
         # of the tip's worth, from fee_min at the lowest rank to fee_max at the top.
-        "counter": {"enabled": True, "fee_min": 0.10, "fee_max": 0.30, "fee_floor": 25, "min_worth": 150,
+        # Hidden for now (20 Nov 2026): Anthony isn't ready for it, so the tab is off until the next phase.
+        # Admin > Rules > Under the Counter switches it back on.
+        "counter": {"enabled": False, "fee_min": 0.10, "fee_max": 0.30, "fee_floor": 25, "min_worth": 150,
                     "risk_loss": 0.4},
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
                       "hot_enabled": True, "hot_home_chance": 0.25, "hot_away_chance": 0.1,
@@ -1442,6 +1449,14 @@ SECTIONS = [
              F("rules.battle.first_extra", "Extra seconds on the first round", "int", min=0, max=600),
              F("rules.battle.voice_grace", "Seconds allowed for the bosun's line", "int",
                "Added to every round so the clock does not run while she is speaking.", min=0, max=60),
+             F("rules.battle.limit_min", "Round limit of a fight: least", "int",
+               "Each fight rolls its own limit between the least and the most (every number equally likely), so a "
+               "captain cannot count on the last round. Make both the same for a fixed limit. When a fight reaches "
+               "it the enemy breaks off, or boards a fleet that ran and failed.", min=2, max=30),
+             F("rules.battle.limit_max", "Round limit of a fight: most", "int", min=2, max=30),
+             F("rules.battle.limit_hint", "Powder hints the round before the last", "bool",
+               "On: the round before the limit she says the enemy is tiring and it cannot go on much longer. "
+               "She names no number."),
              F("rules.battle.foe_voice", "The enemy answers the bosun", "bool",
                "On: Admiral Li Yue (her war junks) or Madam Shek Yu-lan (the pirate junks) stands on the right and "
                "answers at the key moments: the sighting, the price, a ship sunk on either side, and the ending. "

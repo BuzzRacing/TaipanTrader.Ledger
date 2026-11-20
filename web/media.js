@@ -25,6 +25,11 @@ const Media = (() => {
   let L = { items: {}, rules: { defaults: {}, subjects: {} }, options: {}, fallback: {}, family: false };
   const st = {};            // slot key -> {id, at, seen}
   const GONE_MS = 2500;     // off screen this long = "appears again" for random mode
+  // "Images only" (Options > This screen, 20 Nov 2026): this screen never plays a clip, anywhere. Every pick below
+  // (and every list handed to a screen) leaves the clips out, so stills show wherever a clip would have played.
+  const KEY_IMG = "seatrader_images_only";
+  let imagesOnly = false;
+  try { imagesOnly = localStorage.getItem(KEY_IMG) === "1"; } catch (e) { /* private mode */ }
 
   const a = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -46,7 +51,7 @@ const Media = (() => {
       if (!list.length && kind === "persona") list = fits("portrait");
       if (!list.length) list = all;
     }
-    if (!opts.video) list = list.filter(i => i.t === "image");
+    if (!opts.video || imagesOnly) list = list.filter(i => i.t === "image");
     return list;
   }
 
@@ -157,6 +162,12 @@ const Media = (() => {
     });
   }
   setInterval(tick, 1000);
+  // The same switch changed on another window of this device (the harbor board, say).
+  window.addEventListener("storage", e => {
+    if (e.key !== KEY_IMG) return;
+    imagesOnly = e.newValue === "1";
+    tick();
+  });
 
   function find(id) {
     for (const k of Object.keys(L.items)) for (const s of Object.keys(L.items[k])) {
@@ -184,7 +195,7 @@ const Media = (() => {
     items(kind, subjects, role, video) {
       const out = [];
       [].concat(subjects).forEach(s => ((L.items[kind] || {})[s] || []).forEach(i => {
-        if ((!role || !i.r.length || i.r.includes(role)) && (video || i.t === "image")) out.push(i);
+        if ((!role || !i.r.length || i.r.includes(role)) && ((video && !imagesOnly) || i.t === "image")) out.push(i);
       }));
       return out;
     },
@@ -200,5 +211,13 @@ const Media = (() => {
     },
     options: () => L.options || {},
     family: () => !!L.family,
+    imagesOnly: () => imagesOnly,
+    /* Images only on or off for this screen. Anything on screen changes at once (the next tick); a clip
+       played by a screen's own markup changes when that screen next redraws. */
+    setImagesOnly(on) {
+      imagesOnly = !!on;
+      try { if (imagesOnly) localStorage.setItem(KEY_IMG, "1"); else localStorage.removeItem(KEY_IMG); } catch (e) { /* private mode */ }
+      tick();
+    },
   };
 })();

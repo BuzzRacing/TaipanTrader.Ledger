@@ -28,6 +28,7 @@ def setup(level="normal", **rules):
     cfg["rules"]["customs"]["enabled"] = False
     cfg["rules"]["battle"]["match"] = False        # these tests drive the fleet sizes themselves (see fleet_test)
     cfg["rules"]["battle"]["lowball"] = False      # and expect the pirates to name their usual price
+    cfg["rules"]["battle"].update({"limit_min": 6, "limit_max": 6, "limit_hint": False})   # six rounds, no hint, unless a test says so
     cfg["rules"]["contraband"].update({"seize_chance": 0.0, "seize_banned": 0.0})
     cfg["rules"]["fleet"]["upkeep_enabled"] = False   # these tests count silver to the dollar (wages: review3_test)
     cfg["rules"]["hide"]["enabled"] = False           # and cargo to the unit (the crew hiding a share: hide_test)
@@ -655,6 +656,87 @@ def test_the_enemy_answers_the_bosun():
     g = new_game(names=("Ann",))
     sail(g, present=["p1"])
     assert not any(x.get("foe") for x in g.s["players"]["p1"]["battle"]["beat"]["frames"])
+
+
+def test_round_count_follows_difficulty():
+    """Calm waters shows "Round 4 of 6", Trade winds "Round 4", Typhoon season no round at all (20 Nov 2026):
+    the server sends only what the difficulty shows, so the cap cannot be read off the page."""
+    for level, round_shown, rounds_shown in (("easy", True, True), ("normal", True, False), ("hard", False, False)):
+        setup(level=level, battle__parley=False)
+        g = new_game(names=("Ann", "Bo"))
+        g.s["players"]["p2"]["protect"] = 5
+        R["liyuen"]["protect_save"] = 1.0
+        assert sail(g, present=["p1", "p2"])
+        p1 = g.s["players"]["p1"]
+        assert p1.get("battle"), level
+        v, sea = g.battle_view(p1), g.sea_view()[0]
+        for row in (v, sea):
+            assert (row["round"] > 0) == round_shown, (level, row["round"])
+            assert (row["rounds"] > 0) == rounds_shown, (level, row["rounds"])
+            if rounds_shown:
+                assert row["rounds"] == p1["battle"]["limit"]
+        g.fight_out(["p1", "p2"], pick=lambda v: "run")
+    setup()
+
+
+def test_each_fight_rolls_its_own_limit():
+    """Every fight rolls a limit between limit_min and limit_max (20 Nov 2026): 4 to 8 by default."""
+    setup(battle__limit_min=4, battle__limit_max=8, battle__parley=False)
+    seen = set()
+    for _ in range(40):
+        g = new_game(names=("Ann",))
+        assert sail(g, present=["p1"])
+        limit = g.s["players"]["p1"]["battle"]["limit"]
+        assert 4 <= limit <= 8, limit
+        seen.add(limit)
+    assert len(seen) >= 4, seen                      # not stuck on one number
+    setup(battle__limit_min=5, battle__limit_max=5, battle__parley=False)
+    g = new_game(names=("Ann",))
+    assert sail(g, present=["p1"])
+    assert g.s["players"]["p1"]["battle"]["limit"] == 5          # equal numbers fix it
+    setup()
+
+
+def test_the_fight_ends_at_its_limit_and_powder_hints_the_round_before():
+    setup(battle__limit_min=5, battle__limit_max=5, battle__limit_hint=True, pirates__hit=0.0, pirates__gun_hit=0.0,
+          battle__parley=False)
+    hint = engine.tx("battle.cap.limit_near", left=6)
+    g = new_game(names=("Ann",), cargo={"rice": 20})
+    assert sail(g, present=["p1"])
+    p = g.s["players"]["p1"]
+    hints = []
+    for rnd in range(1, 6):
+        assert g.s["phase"] == "sea", rnd
+        g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1"])
+        if p.get("battle"):
+            hints.append(any(f["cap"] == hint for f in p["battle"]["beat"]["frames"]))
+    assert hints == [False, False, False, True], hints          # round 4 of 5: the round before the last
+    said = [f.get("say") for f in p["battle"]["beat"]["frames"]] if p.get("battle") else []
+    assert p["fights"][0]["outcome"] == "broke_off" and p["fights"][0]["rounds"] == 5
+    assert not any("5" in (s or "") for s in said)               # she never names a number
+    for key in ("battle.say.limit_near.0", "battle.say.limit_near.1", "battle.say.limit_near.2"):
+        assert not any(ch.isdigit() for ch in engine.TEXT[key]), key
+    # switched off: no hint at all
+    setup(battle__limit_min=5, battle__limit_max=5, battle__limit_hint=False, pirates__hit=0.0, pirates__gun_hit=0.0,
+          battle__parley=False)
+    g = new_game(names=("Ann",), cargo={"rice": 20})
+    assert sail(g, present=["p1"])
+    p = g.s["players"]["p1"]
+    for rnd in range(1, 5):
+        g.act("p1", {"type": "sea", "choice": "fight"}, present=["p1"])
+        assert not any(f["cap"] == hint for f in p["battle"]["beat"]["frames"]), rnd
+    setup()
+
+
+def test_a_fight_saved_before_the_limit_existed_keeps_six():
+    setup(battle__parley=False)
+    g = new_game(names=("Ann",))
+    assert sail(g, present=["p1"])
+    p = g.s["players"]["p1"]
+    p["battle"].pop("limit")                                      # as an old save has it
+    assert g.battle_view(p)["rounds"] in (0, R["pirates"]["rounds"])
+    assert g._round_limit(p["battle"]) == R["pirates"]["rounds"]
+    setup()
 
 
 if __name__ == "__main__":

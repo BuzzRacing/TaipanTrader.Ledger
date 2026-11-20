@@ -171,14 +171,6 @@ body.board #ambient { display: none; }
 .dk-nav .dk-fly button.on::before { display: none; }
 .dk-nav .dk-fly button:disabled { opacity: .45; }
 @keyframes flyIn { from { opacity: 0; transform: translateX(-6px); } }
-/* Host controls in the captain fly-out (player.js hostFly(), 19 Nov 2026; they used to sit under the Ledger). */
-.dk-fly-rule { display: block; flex: none; align-self: stretch; height: 1px; margin: .15rem .2rem; background: var(--edge-hi); }
-.dk-nav .dk-fly button.dk-host { color: var(--brass-hi); }
-.dk-nav .dk-fly button.dk-host.bad { color: var(--blood-hi); border-color: color-mix(in srgb, var(--blood-hi) 55%, transparent);
-  background: color-mix(in srgb, var(--deck-oxblood) 30%, transparent); }
-@media (orientation: portrait), (max-aspect-ratio: 1/1) {
-  .dk-fly-rule { width: 1px; height: auto; margin: .2rem .15rem; }
-}
 
 /* -------------------------------------------------------------------- working pane -- */
 .deck main.dk-main { max-width: none; margin: 0; padding: 0; position: relative; overflow: hidden; container: pane / inline-size; }

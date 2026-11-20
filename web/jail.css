@@ -1,57 +1,92 @@
-/* The jail (jail.js), dressed as the sea battle's Reckoning (owner's decision, 20 Nov 2026: "C4 should look
-   like C3"). The card itself is battle.css's own .sf-result / .sf-rwho / .sf-rline / .sf-card, so the two
-   screens stay one family. This file adds only what the jail needs on top: the full-screen layer and the
-   cell behind it, the warden's clip, the accent per card (oxblood locked up, jade free, brass for the plea),
-   the month ticks, the waiting line and the plea's three choices. */
+/* The jail (jail.js), told as the Sea Battle tells a fight (owner's decision, 20 Nov 2026): full-screen pictures
+   with one big caption and a speaker, one screen at a time, and the costs and data only at the end as the
+   Reckoning's own card. The story screens borrow battle.css's classes (.sf-bg, .sf-pic, .sf-mid, .sf-who,
+   .sf-cap, and for the costs overlay .sf-result, .sf-rwho, .sf-rline, .sf-card), so the two stay one family.
+   This file adds the full-screen layer, the top strip and ticks, the speaker's quote, the footer button, the
+   accent per screen (oxblood caught and locked up, jade free, brass for the plea) and the plea's choices. */
 body.in-jail { overflow: hidden; }
 body.in-jail #app { visibility: hidden; }
 
 .jl-screen, .jl-dialog { position: fixed; inset: 0; box-sizing: border-box; padding: 0; overflow: hidden;
   color: var(--deck-ivory); background: var(--deck-night); font-family: var(--sans); }
-.jl-screen { z-index: 900; }
+.jl-screen { z-index: 900; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: clamp(.3rem, 1.2vh, .8rem);
+  padding: max(.7rem, env(safe-area-inset-top)) max(.9rem, env(safe-area-inset-right)) max(.8rem, env(safe-area-inset-bottom)) max(.9rem, env(safe-area-inset-left));
+  animation: sfIn .6s ease-out both; }
+.jl-screen > :not(.sf-bg):not(.sf-result) { position: relative; z-index: 1; }
+.jl-screen > .jl-top:not(.sf-bg):not(.sf-result), .jl-screen > .jl-foot:not(.sf-bg):not(.sf-result) { z-index: 3; }
 .jl-dialog { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border: 0; border-radius: 0; }
 .jl-dialog::backdrop { background: var(--deck-night); }
 
-/* the port's own cell, behind everything */
+/* the picture behind: the shade changes with the moment of the story */
+.jl-screen .sf-shade { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-night) 78%, transparent) 0, transparent 24%,
+  transparent 40%, color-mix(in srgb, var(--deck-night) 88%, transparent) 78%, var(--deck-night) 100%); transition: box-shadow 1s; }
+.jl-screen[data-kind="caught"] .sf-shade, .jl-screen[data-kind="irons"] .sf-shade { box-shadow: inset 0 0 9rem color-mix(in srgb, var(--deck-oxblood) 80%, transparent); }
+.jl-screen[data-kind="hold"] .sf-shade { box-shadow: inset 0 0 9rem color-mix(in srgb, var(--deck-oxblood) 55%, transparent); }
+.jl-screen[data-kind="month"] .sf-shade { box-shadow: inset 0 0 7rem color-mix(in srgb, var(--deck-night) 90%, transparent); }
+.jl-screen[data-kind="door"] .sf-shade, .jl-screen.costs .sf-shade { box-shadow: inset 0 0 9rem color-mix(in srgb, var(--deck-jade) 45%, transparent); }
+
+/* the top strip: where we are, the months as ticks */
+.jl-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem; min-height: 2.6rem; }
+.jl-where small { display: block; color: var(--brass-hi); font: 1.05rem var(--special); letter-spacing: .06em; text-shadow: 0 1px 3px #000; }
+.jl-where b { display: block; font: 400 clamp(1.5rem, 3.4vw, 2.6rem)/1.1 var(--serif); color: #fff6e3; text-shadow: 0 2px 3px #000; }
+.jl-where b:empty { display: none; }
+.jl-ticks { display: flex; gap: .4rem; width: min(20rem, 40vw); justify-self: center; }
+.jl-ticks:empty { visibility: hidden; }
+.jl-tick { flex: 1 1 0; height: .5rem; border: 1px solid var(--edge-hi); border-radius: 2px; background: color-mix(in srgb, var(--deck-night) 60%, transparent); }
+.jl-tick.done { background: var(--deck-brass); }
+.jl-tick.now { background: var(--brass-hi); box-shadow: 0 0 .8rem color-mix(in srgb, var(--deck-brass) 60%, transparent); animation: jl-pulse 2.4s ease-in-out infinite; }
+@keyframes jl-pulse { 50% { opacity: .55; } }
+
+/* the story: a big caption beside a big speaker (battle.css's .sf-mid and .sf-who, larger here) */
+.jl-screen .jl-mid, .jl-screen .jl-mid:has(.sf-who:not([hidden]):not(.nopic)) { --pw: clamp(14rem, 40vw, 44rem); cursor: pointer;
+  padding-inline: calc(var(--pw) + 3vw) 4vw; }
+.jl-screen .jl-mid:not(:has(.sf-who:not([hidden]):not(.nopic))) { padding-inline: 4vw; }
+.jl-mid .sf-plate { margin-bottom: clamp(3.5rem, 12vh, 7rem); }
+.jl-mid .sf-cap { max-width: 27ch; font-size: clamp(1.5rem, 3.7vw, 3.1rem); line-height: 1.14; }
+.jl-screen[data-kind="hold"] .sf-cap { max-width: 18ch; font-size: clamp(2.2rem, 6vw, 4.8rem); }
+.jl-screen[data-kind="month"] .sf-cap { max-width: 24ch; }
+.jl-say { margin: .7rem 0 0; max-width: 40ch; font: italic clamp(1.05rem, 1.7vw, 1.4rem)/1.35 var(--serif); color: var(--deck-ivory);
+  text-shadow: 0 1px 3px #000, 0 0 1.4rem rgba(0, 0, 0, .8); }
+.jl-say b { font: 400 .9em var(--special); font-style: normal; letter-spacing: .06em; color: var(--brass-hi); margin-right: .3rem; }
+.jl-sub { margin: .9rem 0 0; max-width: 44ch; font: .95rem/1.3 var(--special); letter-spacing: .08em; text-transform: uppercase; color: var(--blood-hi); text-shadow: 0 1px 3px #000; }
+.jl-say[hidden], .jl-sub[hidden] { display: none; }
+.jl-who { animation: sfWho .7s cubic-bezier(.2, .8, .2, 1) both; }
+.jl-who .jl-clip { object-fit: cover; object-position: 50% 12%; }
+
+/* the footer: a hint while the story moves on by itself, the button when it waits for the Captain */
+.jl-foot { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; min-height: 3.6rem; }
+.jl-hint { margin: 0 auto 0 0; font: italic 1rem var(--sans); color: var(--muted); text-shadow: 0 1px 3px #000; animation: jl-pulse 2.8s ease-in-out infinite; }
+.jl-hint[hidden] { display: none; }
+.jl-act { display: flex; align-items: center; margin-left: auto; }
+.jl-foot button.jl-go { min-height: 3.4rem; padding: 0 1.8rem; font: 700 1.25rem/1 var(--sans); color: var(--deck-ivory); cursor: pointer;
+  background: linear-gradient(180deg, #8f2c30, #6a1e22); border: 2px solid var(--deck-brass); border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--deck-night), 0 0 0 4px color-mix(in srgb, var(--deck-brass) 45%, transparent), 0 .5rem 1.4rem rgba(0, 0, 0, .5);
+  transition: transform .2s, box-shadow .2s; }
+.jl-foot button.jl-go:hover:not(:disabled) { background: linear-gradient(180deg, #a3363b, #7b2428); transform: translateY(-2px); }
+.jl-foot button.jl-go:disabled { opacity: .45; cursor: default; }
+.jl-waiting { margin: 0; max-width: 30rem; text-align: right; font: italic 1.1rem/1.4 var(--sans); color: var(--brass-hi); text-shadow: 0 1px 3px #000; animation: jl-pulse 2.4s ease-in-out infinite; }
+
+/* the costs overlay: the Reckoning's card over the last picture */
+.jl-screen .jl-result { z-index: 3; }
+.jl-result .sf-rwho > video { position: absolute; left: -1%; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 8%;
+  -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent 97%); mask-image: linear-gradient(90deg, #000 60%, transparent 97%);
+  filter: drop-shadow(0 0 2.5rem rgba(0, 0, 0, .6)); animation: sfWhoIn .9s ease-out both; }
+.jl-line .sf-rsay svg { width: 1.15rem; height: 1.15rem; }
+.sf-card.jl-card.o-freed { --result-accent: var(--jade-hi); }
+.sf-card.jl-card.o-plea { --result-accent: var(--brass-hi); }
+.jl-card .sf-remblem { color: var(--result-accent); }
+.jl-card .sf-rheading h2 { text-shadow: 0 0 1.8rem color-mix(in srgb, var(--result-accent) 35%, transparent), 0 2px 0 var(--deck-night); }
+.jl-card .sf-rcargo li { grid-template-columns: minmax(0, 1fr); }
+.jl-card footer button.jl-go.free { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 75%, #8fd6bd 0%), color-mix(in srgb, var(--deck-jade) 70%, #000)); }
+.jl-card footer button.jl-go.free:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 90%, #fff), var(--deck-jade)); }
+.jl-card footer button:disabled { opacity: .45; cursor: default; transform: none; }
+
+/* the plea popup: her offer under the title, and three choices laid out like the Reckoning's figure tiles */
 .jl-bg, .jl-shade { position: absolute; inset: 0; pointer-events: none; }
 .jl-bg { background: var(--deck-night) center / cover no-repeat; animation: jl-drift 14s ease-out both; }
 @keyframes jl-drift { from { transform: scale(1.08); } to { transform: scale(1); } }
 .jl-shade { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-night) 70%, transparent), transparent 24%,
   transparent 62%, color-mix(in srgb, var(--deck-night) 85%, transparent)); }
-
-/* the warden: a photo or her looping clip, exactly where the Reckoning puts the reader of the fight */
-.jl-result .sf-rwho > video { position: absolute; left: -1%; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 8%;
-  -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent 97%); mask-image: linear-gradient(90deg, #000 60%, transparent 97%);
-  filter: drop-shadow(0 0 2.5rem rgba(0, 0, 0, .6)); animation: sfWhoIn .9s ease-out both; }
-.jl-line .sf-rsay svg { width: 1.15rem; height: 1.15rem; }
-
-/* the accent of each card */
-.sf-card.jl-card.o-jailed { --result-accent: var(--blood-hi); }
-.sf-card.jl-card.o-freed { --result-accent: var(--jade-hi); }
-.sf-card.jl-card.o-plea { --result-accent: var(--brass-hi); }
-.jl-card .sf-remblem { color: var(--result-accent); }
-.jl-card .sf-rheading h2 { text-shadow: 0 0 1.8rem color-mix(in srgb, var(--result-accent) 35%, transparent), 0 2px 0 var(--deck-night); }
-
-/* the months, as ticks under the lead */
-.jl-ticks { display: flex; gap: .4rem; width: min(22rem, 100%); margin: .7rem 0 0; }
-.jl-tick { flex: 1 1 0; height: .45rem; border: 1px solid var(--edge-hi); border-radius: 2px; background: color-mix(in srgb, var(--deck-night) 60%, transparent); }
-.jl-tick.done { background: var(--deck-brass); }
-.jl-tick.now { background: var(--brass-hi); box-shadow: 0 0 .8rem color-mix(in srgb, var(--deck-brass) 60%, transparent); animation: jl-pulse 2.4s ease-in-out infinite; }
-@keyframes jl-pulse { 50% { opacity: .55; } }
-
-/* charges and the log read as plain lines in the ledger columns */
-.jl-card .sf-rcargo li { grid-template-columns: minmax(0, 1fr); }
-.jl-card .jl-charges li { color: var(--blood-hi); font-weight: 600; }
-.jl-card .jl-log li { font-size: .88rem; color: var(--muted); }
-
-/* the footer: the month on the left, the button (battle.css's oxblood-and-brass) or the wait on the right */
-.jl-card footer .sf-net span { max-width: 26rem; }
-.jl-card footer button.jl-go.free { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 75%, #8fd6bd 0%), color-mix(in srgb, var(--deck-jade) 70%, #000)); }
-.jl-card footer button.jl-go.free:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 90%, #fff), var(--deck-jade)); }
-.jl-card footer button:disabled { opacity: .45; cursor: default; transform: none; }
-.jl-waiting { margin: 0 0 0 auto; max-width: 30rem; text-align: right; font: italic 1.1rem/1.4 var(--sans); color: var(--brass-hi); animation: jl-pulse 2.4s ease-in-out infinite; }
-
-/* the plea: her offer under the title, and three choices laid out like the Reckoning's figure tiles */
 .jl-lead { margin: .55rem 0 0; font: italic clamp(1.05rem, 1.7vw, 1.3rem)/1.35 var(--serif); color: var(--deck-ivory); }
 .jl-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
 .jl-opt { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .3rem; min-height: 0; padding: .8rem 1rem 1rem;
@@ -69,19 +104,25 @@ body.in-jail #app { visibility: hidden; }
 .jl-opt:disabled { opacity: .45; cursor: default; }
 .jl-auto { margin: 0 0 0 auto; max-width: 24rem; text-align: right; font-size: .85rem; font-style: italic; color: var(--muted); }
 
-/* upright and small screens: battle.css stacks the Reckoning; the clip follows the photo */
+/* upright and small screens */
 @media (orientation: portrait) {
+  .jl-screen .jl-mid, .jl-screen .jl-mid:has(.sf-who:not([hidden]):not(.nopic)) { --pw: 30vw; padding-inline: calc(var(--pw) + 3vw) 3vw; }
   .jl-result .sf-rwho > video { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: .45;
     -webkit-mask-image: linear-gradient(0deg, transparent 25%, #000 75%); mask-image: linear-gradient(0deg, transparent 25%, #000 75%); }
 }
 @media (max-width: 700px) {
   .jl-opts { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
   .jl-auto, .jl-waiting { margin-left: 0; text-align: left; }
+  .jl-top { grid-template-columns: 1fr auto; }
+  .jl-top > span { display: none; }
 }
 @media (max-height: 560px) {
-  .jl-ticks { margin-top: .35rem; }
+  .jl-mid .sf-cap { font-size: clamp(1.3rem, 6vh, 2.2rem); }
+  .jl-screen[data-kind="hold"] .sf-cap { font-size: clamp(1.7rem, 8vh, 3rem); }
+  .jl-say { font-size: .95rem; }
+  .jl-mid .sf-plate { margin-bottom: 2rem; }
   .jl-lead { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .jl-bg, .jl-tick.now, .jl-waiting, .jl-opt, .jl-result .sf-rwho > video { animation: none; }
+  .jl-screen, .jl-bg, .jl-tick.now, .jl-waiting, .jl-hint, .jl-opt, .jl-who, .jl-result .sf-rwho > video { animation: none; }
 }

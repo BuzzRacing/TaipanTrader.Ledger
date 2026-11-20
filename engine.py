@@ -5389,6 +5389,7 @@ class Game:
         self._spite_roll(p, b)
         if b.get("spite"):
             log.append(tx("l.spite", goods=GOODS[b["spite"]["aim"]]["name"]))
+        self._limit_roll(p, b)
         p["battle"] = b
         self._say_from, self._said = (b["seed"] or 0) % 9973, 0
         self._foe_start(b)
@@ -5633,11 +5634,15 @@ class Game:
         if not p["ships"]:
             frames.append(self._frame("defeat", "defeat", "defeat", foe="victory"))
             return self._battle_close(p, b, "wrecked", frames)
-        if rnd >= pi["rounds"]:
+        limit = self._round_limit(b)
+        if rnd == limit - 1 and bt.get("limit_hint", True):
+            # The round before the last: Powder says the enemy is tiring, with no number (20 Nov 2026).
+            frames.append(self._frame("sighting", "limit_near", "limit_near", left=len(pirates)))
+        if rnd >= limit:
             if b["runs"] == 0:
                 log.append(tx("l.long_fight", n=n - len(pirates)))
                 self._ev("battle", "broke_off", "{}: enemy broke off after {} rounds; {} of {} sunk".format(
-                    who, pi["rounds"], n - len(pirates), n), p, sunk=n - len(pirates))
+                    who, limit, n - len(pirates), n), p, sunk=n - len(pirates))
                 frames.append(self._frame("got_away", "broke_off", "broke_off", foe="broke_off", sunk=n - len(pirates), n=n))
                 return self._battle_close(p, b, "broke_off", frames)
             # Every round spent running and failing lets them close: the cargo they carry off is in
@@ -5657,7 +5662,7 @@ class Game:
             if hid:
                 log.append(tx("l.hid_pirates", goods=self._goods_text(hid)))
             self._ev("battle", "plundered", "{} could not get away in {} rounds and was plundered of {} units: {}".format(
-                who, pi["rounds"], sum(lost.values()),
+                who, limit, sum(lost.values()),
                 ", ".join("{} {}".format(q, GOODS[g]["name"]) for g, q in lost.items() if q) or "nothing"),
                 p, lost={g: q for g, q in lost.items() if q})
             frames.append(self._frame("boarding", "plundered", "plundered", foe="plunder", qty=sum(lost.values())))
@@ -5854,6 +5859,22 @@ class Game:
         b["spite"] = {"seed": seed, "aim": aim, "n": 0}
         self._ev("battle", "spite", "{}: a spiteful crew ({:.0%} chance): their gunners will aim for the {}".format(
             p["name"], chance, GOODS[aim]["name"]), p, chance=round(chance, 4), aim=aim)
+
+    def _limit_roll(self, p, b):
+        """This fight's round limit (rules.battle.limit_min to limit_max), rolled once at the sighting on dice
+        of its own, so no other roll changes. The captain never sees it unless the difficulty shows it."""
+        bt = R["battle"]
+        lo, hi = sorted((int(bt.get("limit_min", 6)), int(bt.get("limit_max", 6))))
+        seed = "{}:{}:{}:{}:{}:limit".format(self.s.get("game_id", ""), self.s.get("turn", 0), p.get("id", ""),
+                                             b["kind"], b.get("seed") or 0)
+        b["limit"] = random.Random(seed).randint(max(2, lo), max(2, hi))
+        self._ev("battle", "limit", "{}: this fight will last at most {} rounds".format(p["name"], b["limit"]),
+                 p, limit=b["limit"])
+
+    @staticmethod
+    def _round_limit(b):
+        """The fight's round limit; a fight saved before the limit was rolled keeps the old fixed one."""
+        return int(b.get("limit") or R["pirates"]["rounds"])
 
     @staticmethod
     def _hold_chance(b):
@@ -6271,7 +6292,7 @@ class Game:
         eg = (b.get("eg") or [1] * left)[:left]
         per_round = sum(eg) * b["hit"] * avg                    # hull the enemy takes off the fleet each round
         to_sink = (sum(b["hp"]) / (guns * pi["gun_hit"])) if guns and pi["gun_hit"] > 0 else 99.0
-        rounds_left = max(1, pi["rounds"] - b["round"])
+        rounds_left = max(1, self._round_limit(b) - b["round"])
         danger = per_round * min(to_sink, rounds_left) / max(1.0, hull)
 
         def mood(x, calm, worried):
@@ -6285,7 +6306,8 @@ class Game:
             tells += 1
         gone = self._retreat_dump(p, b)
         dest = b.get("dest")
-        out = {"kind": b["kind"], "enemy": b["label"], "n": b["n"], "left": left, "round": rnd, "rounds": pi["rounds"],
+        out = {"kind": b["kind"], "enemy": b["label"], "n": b["n"], "left": left, "round": rnd if view != "tell" else 0,
+               "rounds": self._round_limit(b) if view == "exact" else 0,       # this fight's limit shows on Calm waters only (20 Nov 2026)
                "stage": b["stage"], "orders": b["orders"], "guns": guns, "can_fight": guns > 0, "step": b["step"],
                "gun_count": self.guns(p), "cannons": self.cannons(p),
                "where": PORTS[dest]["name"] if dest in PORTS else "", "view": view, "moods": moods, "mood": overall,
@@ -6322,14 +6344,16 @@ class Game:
     def sea_view(self):
         """Who is in a fight right now, for the harbor board and the houses that are waiting."""
         out = []
+        view = MULT.get("battle_view") or MULT.get("customs_view", "bar")     # the round count follows the odds shown
         for p in (self.s["players"][i] for i in self.s["order"]):
             b = p.get("battle")
             if b is None:
                 continue
             dest = b.get("dest")
             out.append({"id": p["id"], "name": p["name"], "firm": p["firm"], "color": p["color"], "kind": b["kind"],
-                        "enemy": b["label"], "n": b["n"], "left": len(b["hp"]), "round": b["round"] + 1,
-                        "rounds": R["pirates"]["rounds"], "stage": b["stage"],
+                        "enemy": b["label"], "n": b["n"], "left": len(b["hp"]),
+                        "round": b["round"] + 1 if view != "tell" else 0,
+                        "rounds": self._round_limit(b) if view == "exact" else 0, "stage": b["stage"],
                         "where": PORTS[dest]["name"] if dest in PORTS else ""})
         return out
 

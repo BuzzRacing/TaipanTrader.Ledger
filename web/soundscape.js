@@ -14,6 +14,7 @@ const Soundscape = (() => {
   const ORDERS = new Set(["sail", "unsail", "stay", "slip", "recall"]);
   let lastTurn = null;
   const shown = new Set();
+  let fightScene = "";             // which overlay the sea battle has on: "suspense" or "battle"
 
   function sceneFor(S) {
     const p = S && S.phase;
@@ -25,9 +26,16 @@ const Soundscape = (() => {
     if (!a || !S) return;
     opts = opts || {};
     a.scene(sceneFor(S));
-    for (const [name, on] of [["storm", opts.storm], ["jail", opts.jail], ["battle", opts.battle]]) {
+    for (const [name, on] of [["storm", opts.storm], ["jail", opts.jail]]) {
       if (on && !shown.has(name)) { shown.add(name); a.push(name); }
       else if (!on && shown.has(name)) { shown.delete(name); a.pop(name); }
+    }
+    // The sea battle: the suspense bed while the price is weighed, the battle music while guns fire.
+    const want = opts.battle ? ((typeof Battle !== "undefined" && Battle.mood && Battle.mood()) || "battle") : "";
+    if (want !== fightScene) {
+      if (fightScene) a.pop(fightScene);
+      if (want) a.push(want);
+      fightScene = want;
     }
     // The ship's bell for a new month: not on the first state this screen sees (a reload or a reconnect).
     if (opts.bell && S.turn !== undefined && S.phase === "port") {
@@ -57,7 +65,7 @@ const Soundscape = (() => {
     const a = mixer();
     const t = e.target && e.target.closest && e.target.closest("button, [role=tab], [role=button]");
     if (!a || !t || t.disabled || t.id === "audio-enable" || t.dataset.op === "snd_test") return;
-    a.play(t.getAttribute("role") === "tab" ? "ui.tab" : "ui.click");
+    a.play(t.closest("#seafight") ? "battle.select" : t.getAttribute("role") === "tab" ? "ui.tab" : "ui.click");
   }, true);
 
   return { sync, acted, ran };

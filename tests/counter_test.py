@@ -20,6 +20,7 @@ def setup():
     base = config.defaults()
     base["rules"]["customs"]["spot_home"] = 0.0
     base["rules"]["start"]["where"] = "home"
+    base["rules"]["counter"]["enabled"] = True       # the tab is hidden by default until the next phase
     engine.configure(base)
     return base
 
@@ -49,6 +50,18 @@ def rig_run(game, p, good="silk", where=None):
     game.s["prices"][where][good] = base_there * engine.R["market"]["ceiling"]
     game.s["crackdown"] = {}
     return where
+
+
+def test_hidden_until_switched_on():
+    """Out of the box the tab is off: no counter in the view (so no rail tab) and no sale."""
+    engine.configure(config.defaults())
+    game, pid, p = started(cash=20000)
+    assert game.view(pid)["me"].get("counter") is None
+    try:
+        game.act(pid, {"type": "counter", "tip": "run"})
+        assert False, "should refuse"
+    except GameError:
+        pass
 
 
 def test_offer_shows_worth_and_price_not_the_tip():

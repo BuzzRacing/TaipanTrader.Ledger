@@ -25,7 +25,7 @@ Numbers come from rules.counter (Admin > Rules > Under the Counter) with DEFAULT
 import math
 
 DEFAULTS = {
-    "enabled": True,
+    "enabled": False,         # hidden until the next phase (20 Nov 2026); Admin > Rules switches it on
     "fee_min": 0.10,          # her share of the tip's worth for the lowest rank...
     "fee_max": 0.30,          # ...rising evenly to this at the top rank
     "fee_floor": 25,          # she never gets out of bed for less than this
@@ -48,7 +48,7 @@ def rules():
 
 
 def enabled():
-    return bool(rules().get("enabled", True))
+    return bool(rules().get("enabled", False))
 
 
 # ------------------------------------------------------------------------------------------- the sums --

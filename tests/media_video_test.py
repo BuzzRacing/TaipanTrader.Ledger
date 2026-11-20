@@ -98,8 +98,9 @@ try:
     assert wf["30"]["inputs"]["start_image"] == ["14", 0] and wf["15"]["inputs"]["start_image"] == ["35", 0], "three passes chain"
     assert wf["30"]["inputs"]["length"] == 81 and wf["34"]["inputs"]["length"] == 79
     assert wf["21"]["inputs"]["fps"] == 20 and wf["21"]["inputs"]["images"] == ["24", 0], "plays at 20 fps, after sharpen"
-    assert wf["23"]["inputs"]["scale_by"] == 1.5 and wf["24"]["inputs"]["alpha"] == 0.4
-    assert (info["width"], info["height"]) == (720, 960), info
+    assert wf["23"]["inputs"]["scale_by"] == 1.25 and wf["24"]["inputs"]["alpha"] == 0.4
+    assert imagegen.VIDEO_DEFAULTS["short_side"] == 640, "clips render at 640 unless the config says otherwise"
+    assert (info["width"], info["height"]) == (600, 800), info
     assert wf["10"]["inputs"]["width"] == 480 and wf["10"]["inputs"]["height"] == 640 and wf["10"]["inputs"]["length"] == 81
     assert wf["5"]["inputs"]["image"] == "seatrader-x.png" and wf["11"]["inputs"]["noise_seed"] == 1234
     assert wf["15"]["inputs"]["end_image"] == ["5", 0], "the second pass ends on the picture, so the clip loops"

@@ -1,6 +1,6 @@
 {
  "version": 1,
- "note": "Clip paths are relative to /media/audio/. Events name either files or a built-in placeholder sound (synth). Atmosphere stays silent until an effects/ambience pack is added. battle-steel-enemy is a reserve track, not in any scene yet.",
+ "note": "Clip paths are relative to /media/audio/. Events name either files or a built-in placeholder sound (synth). Sound effects and ambience are converted from the Pirate Game pack (originals stay out of the repo). Reserve, in no scene yet: battle-steel-enemy music, ambience calm-night, storm-rain and battle-fort-cannons.",
  "tracks": {
   "music/lobby-my-kingdom.mp3": {
    "role": "lobby",
@@ -111,151 +111,988 @@
    "lufs": -20,
    "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
    "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "ambience/harbor-dock.mp3": {
+   "role": "ambience",
+   "title": "Harbor dock, water and creaks",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Dock Water Boat Wood Creak Sea Wind Waves Blowing 01_ESM_PG.wav",
+   "seconds": 70.1,
+   "lufs": -22,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/harbor-dock-birds.mp3": {
+   "role": "ambience",
+   "title": "Harbor dock with gulls",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Dock Water Boat Wood Creak Sea Wind Waves Blowing Birds 01_ESM_PG.wav",
+   "seconds": 68.5,
+   "lufs": -22,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/calm-afternoon.mp3": {
+   "role": "ambience",
+   "title": "Calm sea, afternoon",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Island Sea Calm Winds Afternoon Water Stream Flow Wave Swell 01_ESM_PG.wav",
+   "seconds": 42.8,
+   "lufs": -24,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/calm-night.mp3": {
+   "role": "ambience",
+   "title": "Calm sea, night",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Island Sea Calm Winds Night Insects Bird Chirp Air Noise 01_ESM_PG.wav",
+   "seconds": 50.5,
+   "lufs": -26,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/voyage-flow.mp3": {
+   "role": "ambience",
+   "title": "Ship under sail, steady water",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ship_Loops/WATRFlow_Ship Loop Steady Waterflow Medium Sailing Splash Stream Travel 01_ESM_PG.wav",
+   "seconds": 71.5,
+   "lufs": -22,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/voyage-ripple.mp3": {
+   "role": "ambience",
+   "title": "Ship under sail, creaks",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ship_Loops/WATRFlow_Ship Loop Water Sailing Ripple Waves Ocean Boat Wood Creak Thuds 01_ESM_PG.wav",
+   "seconds": 33.7,
+   "lufs": -22,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/suspense-hull.mp3": {
+   "role": "ambience",
+   "title": "Hull groaning, low",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ship_Loops/WOODFric_Ship Loop Friction Wood Hull Creak Groan Long Low Bass Movement Slow 01_ESM_PG.wav",
+   "seconds": 76.6,
+   "lufs": -24,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/storm-heavy.mp3": {
+   "role": "ambience",
+   "title": "Storm, heavy waves and thunder",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Island Sea Storm Heavywaves Strongwinds Daytime Thunder Rumble 01_ESM_PG.wav",
+   "seconds": 38.2,
+   "lufs": -20,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/storm-ship.mp3": {
+   "role": "ambience",
+   "title": "Storm aboard ship",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Ship Sailing Storm Eerie Steady Water Wood Creak Distant Thunder 01_ESM_PG.wav",
+   "seconds": 33.1,
+   "lufs": -20,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/storm-rain.mp3": {
+   "role": "ambience",
+   "title": "Rain and waves",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Island Sea Rain Waves Water Wash Crash Winds Daytime 01_ESM_PG.wav",
+   "seconds": 70.0,
+   "lufs": -20,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/battle-wake.mp3": {
+   "role": "ambience",
+   "title": "Fast ship wake",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ship_Loops/WATRFlow_Ship Loop Waterflow Movement Fast Loops Large Vessel Aggressive Stream 01_ESM_PG.wav",
+   "seconds": 47.3,
+   "lufs": -22,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/battle-fort-cannons.mp3": {
+   "role": "ambience",
+   "title": "Distant cannon fire and flames",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/FIREBurn_Ambience Loop Fort Cannon Fire Distance Flames Crackle Metal Movement Shots 01_ESM_PG.wav",
+   "seconds": 46.7,
+   "lufs": -24,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/jail-drips.mp3": {
+   "role": "ambience",
+   "title": "Stone cell, dripping water",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBUndr_Ambience Loop Cave Natural Water Drips Low Air Rumble Dark Wind 01_ESM_PG.wav",
+   "seconds": 82.2,
+   "lufs": -24,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
+  },
+  "ambience/desk-muffled.mp3": {
+   "role": "ambience",
+   "title": "Harbor heard through walls (low-passed)",
+   "pack": "Epic Stock Media - Pirate Game (16-bit)",
+   "original": "Designed/Ambience_Loops/AMBSea_Ambience Loop Dock Water Boat Wood Creak Sea Wind Waves Blowing 01_ESM_PG.wav",
+   "seconds": 70.1,
+   "lufs": -28,
+   "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+   "license_ref": "https://epicstockmedia.com"
   }
  },
  "events": {
   "ui.click": {
    "category": "system",
-   "synth": "click",
-   "gain_db": -4,
+   "files": [
+    "sfx/ui-click-01.mp3",
+    "sfx/ui-click-02.mp3",
+    "sfx/ui-click-03.mp3",
+    "sfx/ui-click-04.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 60,
    "max": 2,
    "priority": 1,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Inventory Button Click Tab Menu Proceed Latch Switch Flip Mid Press NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "ui.tab": {
    "category": "system",
-   "synth": "click",
-   "gain_db": -8,
+   "files": [
+    "sfx/ui-tab-01.mp3",
+    "sfx/ui-tab-02.mp3",
+    "sfx/ui-tab-03.mp3",
+    "sfx/ui-tab-04.mp3",
+    "sfx/ui-tab-05.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 80,
    "max": 2,
    "priority": 1,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIMvmt_UI Paper Friction Flip Turn Swipe Scratch Friction Sweep Short NN_ESM_PG.wav; Designed/UI/UIMvmt_UI Paper Short Tapped Low Swipe Thick Paper Leather Mid Scratch NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "ui.confirm": {
    "category": "system",
-   "synth": "chime",
-   "gain_db": -6,
+   "files": [
+    "sfx/ui-confirm-01.mp3",
+    "sfx/ui-confirm-02.mp3",
+    "sfx/ui-confirm-03.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 120,
    "max": 2,
    "priority": 1,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIAlert_UI Bell Ding Two Hit Solo Chime Clean High Pitch Ring Short NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "ui.cancel": {
    "category": "system",
-   "synth": "click",
-   "gain_db": -6,
+   "files": [
+    "sfx/ui-cancel-01.mp3",
+    "sfx/ui-cancel-02.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 120,
    "max": 2,
    "priority": 1,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Inventory Button Click Close Heavy Door Slide Wood Bass Stomp NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "action.refused": {
    "category": "system",
-   "synth": "knock",
-   "gain_db": -2,
+   "files": [
+    "sfx/action-refused-01.mp3",
+    "sfx/action-refused-02.mp3",
+    "sfx/action-refused-03.mp3",
+    "sfx/action-refused-04.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 250,
    "max": 1,
    "priority": 2,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Thump Alert Mellow Negative Organic Light Thud Clatter Reverse Debris NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "trade.buy.success": {
    "category": "system",
-   "synth": "chime",
-   "gain_db": -4,
+   "files": [
+    "sfx/trade-buy-success-01.mp3",
+    "sfx/trade-buy-success-02.mp3",
+    "sfx/trade-buy-success-03.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 150,
    "max": 2,
    "priority": 1,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Notification Button Click Market Interact Item Buy Bag Drop Coins Jangle NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "trade.sell.success": {
    "category": "system",
-   "synth": "chime",
-   "gain_db": -4,
+   "files": [
+    "sfx/trade-sell-success-01.mp3",
+    "sfx/trade-sell-success-02.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 150,
    "max": 2,
    "priority": 1,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Notification Button Click Market Interact Item Sell Hit Drop Coins Jangle NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "trade.run.summary": {
    "category": "system",
-   "synth": "chime",
-   "gain_db": -3,
+   "files": [
+    "sfx/trade-run-summary-01.mp3",
+    "sfx/trade-run-summary-02.mp3",
+    "sfx/trade-run-summary-03.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 400,
    "max": 1,
    "priority": 2,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Chests/OBJFurn_Chest Wood Treasure Coins Jewelry Heavy Large Thud Slide Open NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "orders.submitted": {
    "category": "system",
-   "synth": "chime",
-   "gain_db": -3,
+   "files": [
+    "sfx/orders-submitted-01.mp3",
+    "sfx/orders-submitted-02.mp3",
+    "sfx/orders-submitted-03.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 400,
    "max": 1,
    "priority": 2,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/MECHRtch_Ship Foley Captain Wood Wheel Turn Left Right Creak Spin Ratchet NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "orders.slip": {
+   "category": "system",
+   "files": [
+    "sfx/orders-slip-01.mp3",
+    "sfx/orders-slip-02.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 600,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/MECHRtch_Ship Foley Hull Wood Anchor Set Metal Chain Ratchet Deep Impact Fall NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "turn.new": {
    "category": "system",
-   "synth": "bell",
-   "gain_db": -6,
+   "files": [
+    "sfx/turn-new-01.mp3",
+    "sfx/turn-new-02.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 1500,
    "max": 1,
    "priority": 2,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Shipfoley Resonant Mast Sine Bell Warning Double Hit Metal Ring NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
   },
   "crier.headline": {
    "category": "system",
-   "synth": "bell",
-   "gain_db": -8,
+   "files": [
+    "sfx/crier-headline-01.mp3",
+    "sfx/crier-headline-02.mp3",
+    "sfx/crier-headline-03.mp3"
+   ],
+   "gain_db": 0,
    "cooldown_ms": 1500,
    "max": 1,
    "priority": 1,
    "source": {
-    "pack": "built-in placeholder",
-    "license": "original synthesized sound, no source file",
-    "license_ref": ""
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIAlert_UI Metal Notification Soft Drum Bell Like Ding Mid Chime Single Hit Tonal NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
    }
+  },
+  "debt.collectors": {
+   "category": "system",
+   "files": [
+    "sfx/debt-collectors-01.mp3",
+    "sfx/debt-collectors-02.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 2000,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIAlert_UI Metal Notification Soft Drum Bell Ding Tonal Ring Low Gong Pitching Delay NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ship.repair": {
+   "category": "system",
+   "files": [
+    "sfx/ship-repair-01.mp3",
+    "sfx/ship-repair-02.mp3",
+    "sfx/ship-repair-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 600,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/DESTRCrsh_Ship Foley Add Build Boat Upgrade Dismantle Metal Hit Wood Knock Slide Debris NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ship.purchased": {
+   "category": "system",
+   "files": [
+    "sfx/ship-purchased-01.mp3",
+    "sfx/ship-purchased-02.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 800,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Metal Bell Crunch Hit Build Set Mid Chime Ring Debris Bass NN_ESM_PG.wav; Designed/UI/UIClick_UI Metal Bell Crunch Hit Build Set Mid Chime Ring Debris Bass Double NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "deal.heavy": {
+   "category": "system",
+   "files": [
+    "sfx/deal-heavy-01.mp3",
+    "sfx/deal-heavy-02.mp3",
+    "sfx/deal-heavy-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 600,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Chests/OBJFurn_Chest Wood Treasure Coins Jewelry Jingle Bass Thud Heavy Close NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ledger.open": {
+   "category": "system",
+   "files": [
+    "sfx/ledger-open-01.mp3",
+    "sfx/ledger-open-02.mp3",
+    "sfx/ledger-open-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 300,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Inventory Pirate Quest Book Open Layered Pages Friction Swipe NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ledger.close": {
+   "category": "system",
+   "files": [
+    "sfx/ledger-close-01.mp3",
+    "sfx/ledger-close-02.mp3",
+    "sfx/ledger-close-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 300,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Inventory Pirate Quest Book Close Wood Cover Mid Hit Short Wet NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ledger.page": {
+   "category": "system",
+   "files": [
+    "sfx/ledger-page-01.mp3",
+    "sfx/ledger-page-02.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 200,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Inventory Pirate Quest Book Next Page Flip Turn Swipe NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "desk.coin": {
+   "category": "system",
+   "files": [
+    "sfx/desk-coin-01.mp3",
+    "sfx/desk-coin-02.mp3",
+    "sfx/desk-coin-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 300,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Chests/OBJFurn_Chest Wood Treasure Coins Jewelry Jangle Container Foley Movement Shake NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "jail.door": {
+   "category": "system",
+   "files": [
+    "sfx/jail-door-01.mp3",
+    "sfx/jail-door-02.mp3",
+    "sfx/jail-door-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 800,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Doors/DOORPrisn_Door Metal Holding Cell Cage Prison Unlocked Squeak Layered Clank Close NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "jail.unlock": {
+   "category": "system",
+   "files": [
+    "sfx/jail-unlock-01.mp3",
+    "sfx/jail-unlock-02.mp3",
+    "sfx/jail-unlock-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 800,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Doors/DOORPrisn_Door Metal Holding Cell Cage Prison Locked Key Unlock Chain Drag NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "jail.irons": {
+   "category": "system",
+   "files": [
+    "sfx/jail-irons-01.mp3",
+    "sfx/jail-irons-02.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 800,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/CHAINMvmt_Ship Foley Moving Hull Chains Rattle Jingle Dragging Across Wood NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ship.lost": {
+   "category": "system",
+   "files": [
+    "sfx/ship-lost-01.mp3",
+    "sfx/ship-lost-02.mp3",
+    "sfx/ship-lost-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 1500,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/DESTRCrsh_Ship Foley Shipwrecking Cannon Explosion Heavy Metal Wood Debris Scatter NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ship.groan": {
+   "category": "system",
+   "files": [
+    "sfx/ship-groan-01.mp3",
+    "sfx/ship-groan-02.mp3",
+    "sfx/ship-groan-03.mp3",
+    "sfx/ship-groan-04.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 3000,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/WOODFric_Ship Foley Wood Creak Hull Depth Deep Groan Crackle Stressed Lean Friction NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "ship.creak": {
+   "category": "system",
+   "files": [
+    "sfx/ship-creak-01.mp3",
+    "sfx/ship-creak-02.mp3",
+    "sfx/ship-creak-03.mp3",
+    "sfx/ship-creak-04.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 4000,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/WOODFric_Ship Foley Hull Movement Sailing Navigation Ship Moving Wood Low Squeaks NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "battle.alert": {
+   "category": "system",
+   "files": [
+    "sfx/battle-alert-01.mp3",
+    "sfx/battle-alert-02.mp3",
+    "sfx/battle-alert-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 1000,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Shipfoley Resonant Mast Sine Bell Warning Double Hit Metal Ring NN_ESM_PG.wav; Designed/Notifications/UIAlert_Notification Shipfoley Shiphull Mast Sine Bell Warning Double Hit Metal Ring Quick NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.select": {
+   "category": "system",
+   "files": [
+    "sfx/battle-select-01.mp3",
+    "sfx/battle-select-02.mp3",
+    "sfx/battle-select-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 150,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/UI/UIClick_UI Button Bass Stomp Hit Smack Affirm Layered Impact Metallic Twang NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.broadside": {
+   "category": "system",
+   "files": [
+    "sfx/battle-broadside-01.mp3",
+    "sfx/battle-broadside-02.mp3",
+    "sfx/battle-broadside-03.mp3",
+    "sfx/battle-broadside-04.mp3",
+    "sfx/battle-broadside-05.mp3",
+    "sfx/battle-broadside-06.mp3",
+    "sfx/battle-broadside-07.mp3",
+    "sfx/battle-broadside-08.mp3",
+    "sfx/battle-broadside-09.mp3",
+    "sfx/battle-broadside-10.mp3"
+   ],
+   "gain_db": -3,
+   "cooldown_ms": 300,
+   "max": 3,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Weapons/Cannon/GUNCano_Weapons Cannon Boom Shot From Ship Layered Metal Complex Firing Mechanism NN_ESM_PG.wav; Designed/Weapons/Cannon/GUNCano_Weapons Cannon Boom Shot From Ship Nearby Clanking Movement Metal NN_ESM_PG.wav; Designed/Weapons/Cannon/GUNCano_Weapons Cannon Shot Boom Near Bright Blast Explosion Short Tail NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.broadside.enemy": {
+   "category": "system",
+   "files": [
+    "sfx/battle-broadside-enemy-01.mp3",
+    "sfx/battle-broadside-enemy-02.mp3",
+    "sfx/battle-broadside-enemy-03.mp3",
+    "sfx/battle-broadside-enemy-04.mp3",
+    "sfx/battle-broadside-enemy-05.mp3"
+   ],
+   "gain_db": -3,
+   "cooldown_ms": 300,
+   "max": 3,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Weapons/Cannon/GUNCano_Weapons Cannon Boom Shot From Ship Far Explosion Swell No Attack NN_ESM_PG.wav; Designed/Weapons/Cannon/GUNCano_Weapons Cannon Firework Blast Shot Explosion Boom Bomb Distant NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.flyby": {
+   "category": "system",
+   "files": [
+    "sfx/battle-flyby-01.mp3",
+    "sfx/battle-flyby-02.mp3",
+    "sfx/battle-flyby-03.mp3",
+    "sfx/battle-flyby-04.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 300,
+   "max": 2,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Weapons/Cannon/WHSH_Weapons Cannon Ball Passby Flyby Whoosh Airy Soft Metal Movement NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.splash": {
+   "category": "system",
+   "files": [
+    "sfx/battle-splash-01.mp3",
+    "sfx/battle-splash-02.mp3",
+    "sfx/battle-splash-03.mp3",
+    "sfx/battle-splash-04.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 300,
+   "max": 2,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/WOODImpt_Ship Foley Wood Barrel Drop Water Impact Thud Slosh Splash NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.enemy_hit": {
+   "category": "system",
+   "files": [
+    "sfx/battle-enemy_hit-01.mp3",
+    "sfx/battle-enemy_hit-02.mp3",
+    "sfx/battle-enemy_hit-03.mp3",
+    "sfx/battle-enemy_hit-04.mp3"
+   ],
+   "gain_db": -2,
+   "cooldown_ms": 300,
+   "max": 2,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Weapons/Cannon/WOODCrsh_Weapons Cannon Ship Impact Explosion Wood Break Hull Damage Scatter NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.we_are_hit": {
+   "category": "system",
+   "files": [
+    "sfx/battle-we_are_hit-01.mp3",
+    "sfx/battle-we_are_hit-02.mp3",
+    "sfx/battle-we_are_hit-03.mp3",
+    "sfx/battle-we_are_hit-04.mp3",
+    "sfx/battle-we_are_hit-05.mp3",
+    "sfx/battle-we_are_hit-06.mp3"
+   ],
+   "gain_db": -2,
+   "cooldown_ms": 300,
+   "max": 2,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/WOODImpt_Ship Foley Impact Deep Ship Hull Clank Hit Wood Metal Bassy Thunk NN_ESM_PG.wav; Designed/Weapons/Cannon/DESTRCrsh_Weapons Cannon Explosion Blast Wood Metal Plank Scatter Debris NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.ship_lost": {
+   "category": "system",
+   "files": [
+    "sfx/battle-ship_lost-01.mp3",
+    "sfx/battle-ship_lost-02.mp3",
+    "sfx/battle-ship_lost-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 1500,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/DESTRCrsh_Ship Foley Shipwrecking Cannon Explosion Heavy Metal Wood Debris Scatter NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.boarding.draw": {
+   "category": "system",
+   "files": [
+    "sfx/battle-boarding-draw-01.mp3",
+    "sfx/battle-boarding-draw-02.mp3",
+    "sfx/battle-boarding-draw-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 400,
+   "max": 2,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Weapons/Melee/WEAPSwrd_Weapons Melee Sword Blade Sword Brandish Metal Slide Ring Pull Out NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.boarding.clash": {
+   "category": "system",
+   "files": [
+    "sfx/battle-boarding-clash-01.mp3",
+    "sfx/battle-boarding-clash-02.mp3",
+    "sfx/battle-boarding-clash-03.mp3",
+    "sfx/battle-boarding-clash-04.mp3",
+    "sfx/battle-boarding-clash-05.mp3",
+    "sfx/battle-boarding-clash-06.mp3"
+   ],
+   "gain_db": -2,
+   "cooldown_ms": 200,
+   "max": 3,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Weapons/Melee/WEAPSwrd_Weapons Melee Sword Blade Parry Strike Metal Ring Impact Heavy Layered Clang Hit NN_ESM_PG.wav; Designed/Weapons/Melee/WEAPSwrd_Weapons Melee Sword Iron Swords Clash Hit Big Metal Swipe Swing Clang NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.plunder": {
+   "category": "system",
+   "files": [
+    "sfx/battle-plunder-01.mp3",
+    "sfx/battle-plunder-02.mp3",
+    "sfx/battle-plunder-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 600,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Chests/OBJFurn_Chest Wood Treasure Coins Jewelry Heavy Large Thud Slide Open NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.got_away": {
+   "category": "system",
+   "files": [
+    "sfx/battle-got_away-01.mp3",
+    "sfx/battle-got_away-02.mp3",
+    "sfx/battle-got_away-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 600,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/CLOTHFlp_Ship Foley Cloth Sail Thick Unfurl Buckles Ropes Bright Flap Material NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "battle.retreat": {
+   "category": "system",
+   "files": [
+    "sfx/battle-retreat-01.mp3",
+    "sfx/battle-retreat-02.mp3",
+    "sfx/battle-retreat-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 600,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Ship_Foley/WOODMvmt_Ship Foley Water Wood Barrel Fill From Sea Pulley Drag Creak Splash NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "stinger.battle.start": {
+   "category": "music",
+   "files": [
+    "sfx/stinger-battle-start-01.mp3",
+    "sfx/stinger-battle-start-02.mp3",
+    "sfx/stinger-battle-start-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 2000,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Musical Stinger Ship Combat Duel Start Fast Tension Full Strings Drums NN_ESM_PG.wav; Designed/Notifications/UIAlert_Notification Musical Stinger Ship Combat Duel Start Fast Tension Strings Brass NN_ESM_PG.wav; Designed/Notifications/UIAlert_Notification Musical Stinger Ship Combat Duel Start Fast Tension Woodwinds Drums NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
+  },
+  "stinger.victory": {
+   "category": "music",
+   "files": [
+    "sfx/stinger-victory-01.mp3",
+    "sfx/stinger-victory-02.mp3",
+    "sfx/stinger-victory-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 2000,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Musical Stinger Fanfare Achievement Victory Celebratory Orchestral NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "stinger.promotion": {
+   "category": "music",
+   "files": [
+    "sfx/stinger-promotion-01.mp3",
+    "sfx/stinger-promotion-02.mp3",
+    "sfx/stinger-promotion-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 2000,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Musical Stinger Fanfare Achievement Victory Celebratory Orchestral NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "stinger.defeat": {
+   "category": "music",
+   "files": [
+    "sfx/stinger-defeat-01.mp3",
+    "sfx/stinger-defeat-02.mp3",
+    "sfx/stinger-defeat-03.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 2000,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Musical Stinger Fanfare Fail Defeat Unsuccessful Orchestral Tension NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   }
+  },
+  "stinger.ship_lost": {
+   "category": "music",
+   "files": [
+    "sfx/stinger-ship_lost-01.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 2000,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Epic Stock Media - Pirate Game (16-bit)",
+    "original": "Designed/Notifications/UIAlert_Notification Cinematic Large Impact Dark Metal Strike Ring Bassy Hit Long NN_ESM_PG.wav",
+    "license": "Epic Stock Media licence for the Pirate Game pack, owned copy in the Sheepdog_Trials Unity project. Synchronised use in a game is allowed; only converted MP3s are served, never the original WAVs. Wording for a private browser game on a Pi still to be confirmed with Epic Stock Media",
+    "license_ref": "https://epicstockmedia.com"
+   },
+   "group": "battle"
   },
   "music.finale.triumph": {
    "category": "music",
@@ -279,6 +1116,9 @@
    "label": "Join and lobby",
    "music": [
     "music/lobby-my-kingdom.mp3"
+   ],
+   "atmosphere": [
+    "ambience/calm-afternoon.mp3"
    ]
   },
   "port": {
@@ -287,30 +1127,48 @@
     "music/calm-positive-1.mp3",
     "music/calm-positive-5.mp3"
    ],
-   "gap_s": 6
+   "gap_s": 6,
+   "atmosphere": [
+    "ambience/harbor-dock.mp3",
+    "ambience/harbor-dock-birds.mp3"
+   ]
   },
   "voyage": {
    "label": "Voyage presentation",
    "music": [
     "music/voyage-long-journey.mp3"
+   ],
+   "atmosphere": [
+    "ambience/voyage-flow.mp3",
+    "ambience/voyage-ripple.mp3"
    ]
   },
   "suspense": {
    "label": "Enemy sighted and parley",
    "music": [
     "music/suspense-dramatic-1.mp3"
+   ],
+   "atmosphere": [
+    "ambience/suspense-hull.mp3"
    ]
   },
   "storm": {
    "label": "Storm presentation",
    "music": [
     "music/storm-dark-medieval-3.mp3"
+   ],
+   "atmosphere": [
+    "ambience/storm-heavy.mp3",
+    "ambience/storm-ship.mp3"
    ]
   },
   "jail": {
    "label": "Jail",
    "music": [
     "music/storm-dark-medieval-3.mp3"
+   ],
+   "atmosphere": [
+    "ambience/jail-drips.mp3"
    ]
   },
   "battle": {
@@ -318,15 +1176,28 @@
    "music": [
     "music/battle-combat-1.mp3",
     "music/battle-theme-1.mp3"
+   ],
+   "atmosphere": [
+    "ambience/battle-wake.mp3"
    ]
   },
   "ceremony": {
-   "label": "Promotion ceremony (keeps the music underneath)"
+   "label": "Promotion ceremony (keeps the music underneath)",
+   "atmosphere": "inherit"
   },
   "finale": {
    "label": "Game completed",
    "music": [
     "music/finale-peace-in-my-world.mp3"
+   ],
+   "atmosphere": [
+    "ambience/calm-afternoon.mp3"
+   ]
+  },
+  "desk": {
+   "label": "Port Authority desk (harbour heard through the walls)",
+   "atmosphere": [
+    "ambience/desk-muffled.mp3"
    ]
   }
  }

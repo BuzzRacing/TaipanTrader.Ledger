@@ -224,3 +224,65 @@ def test_tap_to_serve_paces_the_months():
     assert g.maybe_advance(set()) is False      # nobody present: nothing to wait for, nothing to turn
     g.resolve("all_ready", set())
     assert not jail.jailed(p)
+
+
+# ---- the story pass (owner's decision, 20 Nov 2026: "like the Sea Battle, the costs and data at the end") ----
+def test_the_view_names_who_caught_the_captain():
+    setup()
+    g, p = new_game(cash=1000)
+    for charge, by in (("slip", "mayor"), ("standing", "mayor"), ("contraband", "customs"),
+                       ("desk", "customs"), ("debt", "lender"), ("bankrupt", "lender")):
+        p["jail"] = None
+        jail.lock_up(g, p, 1, charge, fresh=True)
+        assert g.view("p1")["me"]["jail"]["jail"]["by"] == by, charge
+    assert set(jail.ACCUSERS) == set(jail.CHARGES), "every charge has someone who catches the Captain"
+
+
+def test_the_plea_cost_reaches_the_release_card():
+    setup()
+    g, p = new_game(cash=100000)
+    assert jail.offer_plea(g, p, 40000, "desk", p["port"], "pa_fine")
+    pay = p["plea"]["opts"][1]["pay"]
+    g.act("p1", {"type": "plea", "months": 1}, present=["p1"])
+    jv = g.view("p1")["me"]["jail"]["jail"]
+    assert jv["fine"] == 40000 and jv["paid"] == pay and jv["by"] == "customs"
+    g.act("p1", {"type": "jail_serve"}, present=["p1"])
+    assert g.maybe_advance({"p1"})
+    freed = g.view("p1")["me"]["jail"]["freed"]
+    assert freed["fine"] == 40000 and freed["paid"] == pay and freed["floor"] == 10
+    # a sentence with no fine behind it carries none
+    jail.lock_up(g, p, 1, "debt", fresh=False)
+    assert g.view("p1")["me"]["jail"]["jail"]["fine"] == 0
+
+
+def test_the_story_voice_finds_its_lines_on_the_log():
+    """server.py finds the accuser's line, the warden's line and the release line by their wording, so the
+    Captain's Log reading limit (two lines a month) cannot drop the one the story is waiting for."""
+    import server
+    import voice
+    setup()
+    voice.PLAN.configure(config.defaults(), engine.TEXT)
+    g, p = new_game(cash=1000)
+    port = engine.PORTS[p["port"]]["name"]
+    jail.lock_up(g, p, 1, "slip", fresh=True)
+    p["log"] = [engine.tx("l.slip_caught", port=port), engine.tx("l.jail_slip", port=port, months=1, s="")]
+    me = g.view("p1")["me"]
+    story = server.Hub._jail_story(None, me)
+    assert story["caught"]["text"] == p["log"][0] and story["warden"]["text"] == p["log"][1]
+    assert story["free"] is None
+    # an arrest with no spoken accuser still gets the warden
+    p["jail"] = None
+    jail.lock_up(g, p, 1, "standing", fresh=True)
+    p["log"] = [engine.tx("l.jail_standing", port=port, months=1, s="")]
+    story = server.Hub._jail_story(None, g.view("p1")["me"])
+    assert story["caught"] is None and story["warden"]["text"] == p["log"][0]
+    # the release card finds the warden's goodbye
+    p["jail"] = None
+    p["jail_freed"] = {"port": p["port"], "months": 1, "charge": "standing", "drunk": 0, "spoiled": {}, "turn": 1,
+                       "fine": 0, "paid": 0, "floor": 10}
+    p["log"] = [engine.tx("l.jail_release", port=port)]
+    story = server.Hub._jail_story(None, g.view("p1")["me"])
+    assert story["free"]["text"] == p["log"][0] and story["warden"] is None
+    # nothing locked up: nothing to say
+    p["jail_freed"] = None
+    assert server.Hub._jail_story(None, g.view("p1")["me"]) is None

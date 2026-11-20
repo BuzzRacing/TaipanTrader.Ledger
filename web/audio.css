@@ -8,3 +8,31 @@
 }
 #audio-enable[hidden] { display: none; }
 #audio-enable:hover, #audio-enable:focus-visible { background: #2a1d12; outline: 2px solid #d9b34a; outline-offset: 2px; }
+
+/* The Sound tab of the Captain's Options: one compact mixer, so every channel fits in the window. */
+body.player .snd-row { display: grid; grid-template-columns: auto minmax(0, 1.25fr) minmax(0, 1fr) 4.5rem; align-items: center; gap: .3rem 1rem; padding: .5rem 0; border-bottom: 1px solid var(--edge); }
+body.player .snd-row--master { padding-top: 0; border-bottom-color: var(--edge-hi); }
+body.player .snd-row--opt { grid-template-columns: auto minmax(0, 1fr); }
+body.player .snd-row--pick { grid-template-columns: minmax(0, 1fr) auto; }
+body.player .snd-row.off .snd-name, body.player .snd-row.off .snd-vol { opacity: .45; }
+body.player .snd-name b { display: block; font: 400 1.1rem/1.2 var(--serif); color: var(--deck-ivory); }
+body.player .snd-name small { display: block; margin-top: .1rem; color: var(--muted); font: .85rem/1.3 var(--sans); }
+body.player .snd-vol { display: flex; align-items: center; gap: .6rem; margin: 0; }
+body.player .snd-vol input { flex: 1; width: 100%; min-width: 0; min-height: 32px; accent-color: var(--deck-brass); }
+body.player .snd-vol output { flex: none; min-width: 2.7rem; text-align: right; color: var(--brass-hi); font: 400 1.05rem var(--sans); font-variant-numeric: tabular-nums; }
+body.player .snd-row .snd-test { padding: .4rem .6rem; }
+body.player .snd-sw { display: block; margin: 0; }
+body.player .snd-sw input { appearance: none; display: block; width: 3rem; height: 1.6rem; margin: 0; border: 1px solid var(--edge-hi); border-radius: 2rem; background: #42372b; position: relative; cursor: pointer; }
+body.player .snd-sw input::before { content: ''; position: absolute; top: 3px; left: 3px; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--deck-ivory); transition: transform .2s; }
+body.player .snd-sw input:checked { background: var(--deck-jade); }
+body.player .snd-sw input:checked::before { transform: translateX(1.3rem); }
+body.player .snd-opts { margin-top: 1rem; }
+body.player .snd-row .op-seg { margin: 0; }
+body.player .snd-row .op-seg button { padding: .5rem 1.1rem; }
+body.player .snd-foot { margin: .8rem 0 0; font-size: .85rem; }
+@media (max-width: 760px) {
+  body.player .snd-row { grid-template-columns: auto minmax(0, 1fr) 4.5rem; }
+  body.player .snd-row .snd-vol { grid-column: 2 / -1; grid-row: 2; }
+  body.player .snd-row--opt, body.player .snd-row--pick { grid-template-columns: auto minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { body.player .snd-sw input::before { transition: none; } }

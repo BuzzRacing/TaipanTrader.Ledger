@@ -20,12 +20,19 @@ Jail) with DEFAULTS as the fallback, and every chance and the crew's drinking ar
 difficulty level's "jail" setting (easy 0.5, normal 1, hard 1.5).
 
 State on the house:
-  p["jail"] = {"port", "months", "left", "charge", "since", "fresh", "served"}   (None when free)
+  p["jail"] = {"port", "months", "left", "charge", "since", "fresh", "served", "fine", "paid"}   (None when free)
   p["plea"] = {"id", "port", "charge", "amount", "book", "arrival", "opts": [{months, share, pay}], "turn"}
-  p["jail_freed"] = {"port", "months", "charge", "drunk", "spoiled", "turn"}   (the release card, until "Walk free")
+  p["jail_freed"] = {"port", "months", "charge", "drunk", "spoiled", "turn", "fine", "paid", "floor"}   (the release
+                    card, until "Walk free")
 
 Pacing (owner's decision, 19 Nov 2026, "Tap to serve each month"): the arrest card ("Into the cell"),
 each month ("Serve the month") and the release card ("Walk free") wait for a tap.
+
+The story (owner's decision, 20 Nov 2026: "like the Sea Battle: large-screen story telling, the costs and data
+only at the end"): web/jail.js plays the arrest as screens, the one who caught the Captain (ACCUSERS) first,
+then the warden and the irons, then the held sentence; each month is a quiet story screen; the release is the
+door opening and then the costs overlay (months served, silver drunk, cargo spoiled, the fine and what was
+paid, standing eased). Nothing here changes the rules; "fine" and "paid" are only remembered for that overlay.
 """
 import math
 
@@ -57,6 +64,12 @@ DEFAULTS = {
 }
 DIFFICULTY = {"easy": 0.5, "normal": 1.0, "hard": 1.5}
 CHARGES = ("standing", "hostile", "contraband", "slip", "debt", "bankrupt", "desk", "plea_contraband", "plea_slip")
+# Who catches the Captain (the jail story's first screen, 20 Nov 2026): the cast key whose picture fills it.
+# The Port Authority officer of the port stands in for "customs" at a desk audit; server.py puts the one who
+# really spoke (the cast key on the voiced log line) in its place.
+ACCUSERS = {"standing": "mayor", "hostile": "mayor", "slip": "mayor", "plea_slip": "mayor",
+            "contraband": "customs", "plea_contraband": "customs", "desk": "customs",
+            "debt": "lender", "bankrupt": "lender"}
 
 
 def E():
@@ -283,8 +296,10 @@ def act_plea(g, p, a):
                                                         "{} month(s) in jail and {}".format(months, e.money(opt["pay"])))}
     if not months:
         return e.tx("m.plea_paid", fine=e.money(opt["pay"]))
-    lock_up(g, p, months, "plea_" + pl["charge"] if "plea_" + pl["charge"] in CHARGES else "desk",
-            None, pl["port"], fresh=False)
+    j = lock_up(g, p, months, "plea_" + pl["charge"] if "plea_" + pl["charge"] in CHARGES else "desk",
+                None, pl["port"], fresh=False)
+    j["fine"] = int(j.get("fine", 0)) + int(pl["amount"])       # for the release card's costs
+    j["paid"] = int(j.get("paid", 0)) + int(opt["pay"])
     return e.tx("m.plea_jail", months=months, s="" if months == 1 else "s", fine=e.money(opt["pay"]))
 
 
@@ -373,7 +388,8 @@ def release(g, p):
     p["jail"] = None
     p["ready"] = False
     p["jail_freed"] = {"port": port, "months": int(j.get("months", 0)), "charge": j.get("charge"),
-                       "drunk": int(j.get("drunk", 0)), "spoiled": dict(j.get("spoiled") or {}), "turn": g.s["turn"]}
+                       "drunk": int(j.get("drunk", 0)), "spoiled": dict(j.get("spoiled") or {}), "turn": g.s["turn"],
+                       "fine": int(j.get("fine", 0)), "paid": int(j.get("paid", 0)), "floor": int(floor)}
     p["log"].append(e.tx("l.jail_release", port=_port_name(port)))
     g._ev("jail", "jail_release", "{} was released from jail in {} after {} month(s); standing there at least {}".format(
         p["name"], _port_name(port), j.get("served", 0), int(floor)), p, port=port,
@@ -433,7 +449,8 @@ def view(g, p):
                        "charge": j["charge"], "charges": j.get("charges") or [j["charge"]], "since": j.get("since"),
                        "drunk": int(j.get("drunk", 0)), "spoiled": j.get("spoiled") or {},
                        "last": j.get("last") or {}, "warden": warden_of(j["port"]), "fresh": bool(j.get("fresh")),
-                       "ready": bool(p.get("ready"))}
+                       "ready": bool(p.get("ready")), "by": ACCUSERS.get(j["charge"], "mayor"),
+                       "fine": int(j.get("fine", 0)), "paid": int(j.get("paid", 0))}
     if out["freed"]:
         out["freed"] = dict(out["freed"], warden=warden_of(out["freed"]["port"]))
     return out

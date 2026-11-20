@@ -56,6 +56,7 @@ const Battle = (() => {
   const pics = Array.from(root.querySelectorAll(".sf-pic"));
 
   let seen = new Set();           // beats already played on this screen
+  const opened = new Set();       // fights whose opening alert has sounded (sound only)
   let acked = new Set();          // fights whose reckoning the captain has closed
   let playing = null;             // {key, frames, clips, foes, i, timer, tag, started, t0}
   let sending = false, clockEnd = 0, clockTotal = 1, clockKey = "", curPic = 0, picKey = "", drawnKey = "";
@@ -186,6 +187,50 @@ const Battle = (() => {
     foe.classList.toggle("quiet", side === "us" && !us.hidden);
   }
 
+  /* ------------------------------------------------------------------ sounds -- */
+  /* One set of cues for each picture, named by the moment it shows (web/audio.js plays them; the catalog
+     says which clips). A cue is keyed by beat and picture, so a redraw never plays one twice, and a cue that
+     comes late is dropped if the captain has already moved on. The opening of a fight gets the alarm and the
+     battle sting; the stings for winning and losing sit under Music. */
+  function sfx(p, f) {
+    const A = typeof SeaAudio !== "undefined" ? SeaAudio : null;
+    if (!A || !f) return;
+    const i = p.i, key = "sf:" + p.key + ":" + i;
+    const now = id => A.playOnce(key + ":" + id, id);
+    const later = (ms, id) => setTimeout(() => { if (playing === p && p.i === i) A.playOnce(key + ":" + id + ms, id); }, ms);
+    switch (f.moment) {
+      case "sighting":
+        if (p.opening && i === 0) { now("battle.alert"); later(250, "stinger.battle.start"); }
+        else now("battle.flyby");
+        break;
+      case "broadside":
+        now("battle.broadside"); later(520, "battle.splash");
+        break;
+      case "enemy_hit":
+        now("battle.broadside"); later(450, "battle.enemy_hit"); later(1000, "battle.splash");
+        break;
+      case "we_are_hit":
+        now("battle.broadside.enemy"); later(420, "battle.we_are_hit");
+        break;
+      case "ship_lost":
+        now("battle.ship_lost"); later(500, "stinger.ship_lost");
+        break;
+      case "boarding":
+        now("battle.boarding.draw"); later(550, "battle.boarding.clash"); later(1100, "battle.boarding.clash"); later(1800, "battle.plunder");
+        break;
+      case "retreat": now("battle.retreat"); break;
+      case "got_away": now("battle.got_away"); break;
+      case "victory":
+        A.playOnce("sf:" + p.key + ":win", "stinger.victory");      // once per beat; the prize pictures after it are loot
+        if (p.frames[i - 1] && p.frames[i - 1].moment === "victory") now("battle.plunder");
+        break;
+      case "defeat": A.playOnce("sf:" + p.key + ":lose", "stinger.defeat"); break;
+    }
+  }
+  function hush() {
+    if (typeof SeaAudio !== "undefined") SeaAudio.stopGroup("battle", 120);
+  }
+
   function frameStep() {
     const p = playing;
     if (!p) return;
@@ -216,6 +261,7 @@ const Battle = (() => {
       Voice.say([].concat(ours ? [Object.assign({ tag: p.tag, text: f.say }, clip)] : [],
         theirs ? [Object.assign({ tag: foeTag, text: f.foe }, foeClip)] : []), { group: "battle" });
     }
+    sfx(p, f);
     // The cap allows for the wait before the first line starts, so a slow new line is not cut off mid-sentence.
     const maxMs = (tags.length ? VOICE_START_MS : 0) + MAX_FRAME_MS + (ours && theirs ? MAX_FRAME_MS * .8 : 0);
     clearInterval(p.timer);
@@ -242,13 +288,14 @@ const Battle = (() => {
     if (!playing) return;
     clearInterval(playing.timer);
     if (typeof Voice !== "undefined") Voice.drop("battle");
+    hush();
     playing.i += 1;
     frameStep();
   }
-  function play(key, kind, frames, clips, foes) {
+  function play(key, kind, frames, clips, foes, opening) {
     seen.add(key);
     if (playing) clearInterval(playing.timer);
-    playing = { key, kind, frames: frames || [], clips: clips || [], foes: foes || [], i: 0, timer: null };
+    playing = { key, kind, frames: frames || [], clips: clips || [], foes: foes || [], i: 0, timer: null, opening: !!opening };
     // Ask for every line of this round at once, so Inworld makes the later ones while the first is read
     // (each line used to be asked for only when its picture came up, so each new one started late).
     if (typeof Voice !== "undefined" && Voice.enabled() && !Voice.muted()) {
@@ -292,26 +339,31 @@ const Battle = (() => {
   const ROLE_ORDER = ["escort", "trader", "flagship", "cargo"],
     ROLE_LABEL = { escort: "battle.van", trader: "battle.line", flagship: "battle.flag", cargo: "battle.rear" };
   const roleOf = s => s.role || ((D.ships[s.type] || {}).role) || "trader";
+  /* Compact fleet (20 Nov 2026): one slim bar per ship with the name written on the bar, the hull left on the
+     right and the gun pips between; the rank is a coloured edge (key in the heading) instead of a row of its own;
+     the cargo at stake sits in a band fixed to the foot of the panel. */
   function fleetHtml() {
     const me = S.me;
-    const row = s => {
+    const row = (s, formed) => {
       const spec = D.ships[s.type] || { hull: s.hull, slots: s.guns, name: s.type };
       const pct = Math.max(0, Math.min(100, Math.round(100 * s.hull / spec.hull)));
       const c = s.cannons || 0, empty = Math.max(0, (spec.slots || 0) - s.guns - (D.cannon_slots || 2) * c);
       const pips = `<i class="on cn"></i>`.repeat(c) + `<i class="on"></i>`.repeat(s.guns) + `<i></i>`.repeat(empty);
-      return `<li class="${pct <= 25 ? "low" : ""}"><b>${a(s.name)}</b><span class="sf-hull"><i style="width:${pct}%"></i></span>
-        <small>${s.hull}/${spec.hull}</small><span class="sf-pips">${pips}</span></li>`;
+      const role = roleOf(s);
+      const tip = a(s.name + (formed && ROLE_LABEL[role] ? " \u00b7 " + t(ROLE_LABEL[role]) : "") + " \u00b7 " + s.hull + "/" + spec.hull);
+      return `<li class="sf-ship r-${role}${pct <= 25 ? " low" : ""}" title="${tip}"><span class="sf-hull"><i style="width:${pct}%"></i>`
+        + `<b>${a(s.name)}</b><span class="sf-pips">${pips}</span><small>${s.hull}/${spec.hull}</small></span></li>`;
     };
     const roles = ROLE_ORDER.filter(r => me.ships.some(s => roleOf(s) === r));
     const formed = roles.length > 1 || roles[0] !== "trader";
-    const ships = formed
-      ? roles.map(r => `<li class="sf-rank r-${r}"><small>${te(ROLE_LABEL[r])}</small></li>` + me.ships.filter(s => roleOf(s) === r).map(row).join("")).join("")
-      : me.ships.map(row).join("");
+    const ships = roles.map(r => me.ships.filter(s => roleOf(s) === r).map(s => row(s, formed)).join("")).join("");
+    const key = formed ? `<span class="sf-key">${roles.map(r => `<span class="r-${r}"><i></i>${te(ROLE_LABEL[r])}</span>`).join("")}</span>` : "";
     const goods = Object.keys(me.cargo).sort((x, y) => me.cargo[y] - me.cargo[x]);
     const cargo = goods.length
-      ? goods.slice(0, 4).map(g => `${me.cargo[g]} ${a(D.goods[g] ? D.goods[g].name : g)}`).join(" · ") + (goods.length > 4 ? " · +" + (goods.length - 4) : "")
-      : te("battle.stake_none");
-    return `<h3>${te("battle.fleet")}</h3><ul class="${formed ? "formed" : ""}${me.ships.length > 6 ? " many" : ""}">${ships}</ul>
+      ? goods.slice(0, 4).map(g => `<span><b>${me.cargo[g]}</b> ${a(D.goods[g] ? D.goods[g].name : g)}</span>`).join("") + (goods.length > 4 ? `<span class="more">+${goods.length - 4}</span>` : "")
+      : `<span class="none">${te("battle.stake_none")}</span>`;
+    return `<header class="sf-fhead"><h3>${te("battle.fleet")}</h3>${key}</header>
+      <ul class="${formed ? "formed" : ""}${me.ships.length > 6 ? " many" : ""}">${ships}</ul>
       <p class="sf-stake"><small>${te("battle.stake")}</small>${cargo}</p>`;
   }
 
@@ -378,6 +430,19 @@ const Battle = (() => {
         <button type="button" class="sf-link" data-sf="skip" ${off ? "disabled" : ""} title="${te("battle.btn.skip_sub")}">${te("battle.btn.skip")} &raquo;</button></p>`;
   }
 
+  /* How much of the round count shows follows the difficulty's "Sea battle odds shown" (20 Nov 2026): the server
+     sends rounds = 0 unless it is exact (Calm waters: "Round 4 of 6"), and round = 0 on "tell" (Typhoon season: no
+     number at all), so a captain cannot count the fight's last round. */
+  function roundText(round, rounds) {
+    return rounds > 0 ? t("battle.round", { n: Math.min(round, rounds), rounds })
+      : round > 0 ? t("battle.round_only", { n: round }) : "";
+  }
+
+  function waitDetail(x) {
+    const p = { left: x.left, n: x.n, enemy: x.enemy, round: x.rounds > 0 ? Math.min(x.round, x.rounds) : x.round, rounds: x.rounds };
+    return te(x.rounds > 0 ? "battle.wait.detail" : x.round > 0 ? "battle.wait.detail_round" : "battle.wait.detail_bare", p);
+  }
+
   function header(where, round) {
     $(".sf-where small").textContent = t("battle.title");
     $(".sf-where b").textContent = where ? t("battle.off", { port: where }) : "";
@@ -393,8 +458,13 @@ const Battle = (() => {
     $(".sf-wait").hidden = true;
     $(".sf-result").hidden = true;
     const key = S.turn + ":" + index + ":" + b.beat.id;
-    if (!seen.has(key)) play(key, b.kind, b.beat.frames, ((S.voice || {}).battle || {}).now, ((S.voice || {}).battle_foe || {}).now);
-    header(b.where, b.stage === "parley" ? "" : t("battle.round", { n: Math.min(b.round, b.rounds), rounds: b.rounds }));
+    if (!seen.has(key)) {
+      const fightKey = S.turn + ":" + index;
+      const opening = !opened.has(fightKey);
+      opened.add(fightKey);
+      play(key, b.kind, b.beat.frames, ((S.voice || {}).battle || {}).now, ((S.voice || {}).battle_foe || {}).now, opening);
+    }
+    header(b.where, b.stage === "parley" ? "" : roundText(b.round, b.rounds));
     $(".sf-enemy").hidden = false;
     junks(b.n, b.left, b.enemy_ships);
     // Which of the three kinds of enemy this is (Game 4 review, 20 Nov 2026): raiders, a small band, the war fleet.
@@ -611,7 +681,7 @@ const Battle = (() => {
     const list = (S.sea || []).map(x => `<li style="--who:${COLORS[x.color % 8]}">${Faces.of(x).crest ? houseMark(x, "sf-crest") : ""}
       <b>${te("battle.wait.line", { name: x.name, firm: x.firm, port: x.where })}</b>
       <span>${x.stage === "parley" ? te("battle.wait.parley", { n: x.n, enemy: x.enemy })
-        : te("battle.wait.detail", { left: x.left, n: x.n, enemy: x.enemy, round: Math.min(x.round, x.rounds), rounds: x.rounds })}</span>
+        : waitDetail(x)}</span>
       <i class="sf-wbar"><i style="width:${Math.round(100 * x.left / Math.max(1, x.n))}%"></i></i></li>`).join("");
     setHtml($(".sf-wait"), `<h2>${te("battle.wait.title")}</h2><p class="sf-lead">${te("battle.wait.lead")}</p>
       <ul>${list || `<li class="none">${te("battle.wait.none")}</li>`}</ul>`);
@@ -622,7 +692,7 @@ const Battle = (() => {
     if (root.hidden) return;
     root.hidden = true;
     root.dataset.mode = "";
-    if (playing) { clearInterval(playing.timer); playing = null; }
+    if (playing) { clearInterval(playing.timer); playing = null; hush(); }
     picKey = "";
     pics.forEach(p => { p.classList.remove("on"); p.innerHTML = ""; p.dataset.mid = ""; });
   }
@@ -663,6 +733,7 @@ const Battle = (() => {
       clearInterval(playing.timer);
       playing = null;
       if (typeof Voice !== "undefined") Voice.drop("battle");
+      hush();
       hideWho();
     }
     sync();
@@ -692,6 +763,7 @@ const Battle = (() => {
       acked.add(el.dataset.id);
       try { sessionStorage.setItem("seatrader_fights", JSON.stringify(Array.from(acked).slice(-40))); } catch (err) { /* private browsing */ }
       if (typeof Voice !== "undefined") Voice.drop("battle");
+      hush();
       sync();
       if (typeof render === "function") render();     // the captain's log and the port come back
       if (typeof speak === "function") speak();
@@ -707,5 +779,13 @@ const Battle = (() => {
     if (el && !el.disabled) { e.preventDefault(); send(key); }
   });
 
-  return { sync, busy };
+  /* What the mixer should play under the fight: the hushed suspense while the captain weighs the pirates' price
+     (or waits for other houses), the battle music while guns are firing and during the reckoning. */
+  function mood() {
+    if (typeof S === "undefined" || !S || !S.me || pending().length) return "battle";
+    if (S.phase === "sea" && !S.me.battle) return "suspense";
+    return S.me.battle && S.me.battle.stage === "parley" ? "suspense" : "battle";
+  }
+
+  return { sync, busy, mood };
 })();

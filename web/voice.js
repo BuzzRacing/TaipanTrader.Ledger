@@ -16,8 +16,14 @@ const Voice = (() => {
   const GAP_MS = 260;           // pause between lines
   const RENEW_MS = 2000;        // "still talking" to the server while a line plays
   const STALL_MS = 15000;       // no progress for this long: give the line up
+  // Brief dialogue (Options > This screen, 20 Nov 2026): of each batch of aloud lines, only the first few are read; the
+  // rest stay on screen as text. Receipts and confirmations (group "msg") stay silent. Battles, the jail, promotions and
+  // greetings that open a desk are read in full.
+  const KEY_BRIEF = "seatrader_brief";
+  const BRIEF_KEEP = { log: 3, news: 1 };
   const SID = "s" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
+  const brief = () => store(KEY_BRIEF) === "1";
   let cast = {}, enabled = false, muted = store("seatrader_mute") === "1";
   let queue = [], cur = null, asking = false, blocked = false, onChange = () => {};
   let seq = 0, floorOk = true, floorRetryAt = 0, retryTimer = null, holding = false;
@@ -241,6 +247,11 @@ const Voice = (() => {
       if (!items.length) return;
       // A Family-friendly ("Clean") screen plays the clean twin of a line (clean cargo and ship names).
       if (typeof screenFamily === "function" && screenFamily()) items = items.map(x => (x.f ? Object.assign({}, x, { u: x.f }) : x));
+      if (brief() && !(opts && opts.front)) {
+        const g = opts && opts.group;
+        if (g === "msg") return;
+        if (BRIEF_KEEP[g]) items = items.slice(0, BRIEF_KEEP[g]);
+      }
       if (opts && opts.replace) queue = queue.filter(q => q.group !== opts.replace);
       if (opts && opts.group) items.forEach(x => { x.group = opts.group; });
       if (opts && opts.front) queue.unshift(...items);   // read next, ahead of anything already waiting
@@ -256,6 +267,16 @@ const Voice = (() => {
     current: () => (cur ? cur.item : null),
     /* Let only one kind of line play (a ceremony's own), holding the rest back in order; null lets go. */
     only(group) { only = group || null; pump(); },
+    /* Brief dialogue for this screen (Options > This screen). Switching it on also drops the log, news and
+       receipts lines already waiting, so the quiet starts now. */
+    brief,
+    setBrief(on) {
+      store(KEY_BRIEF, on ? "1" : null);
+      if (on) {
+        queue = queue.filter(q => !(q.group in BRIEF_KEEP) && q.group !== "msg");
+        if (cur && (cur.item.group in BRIEF_KEEP || cur.item.group === "msg")) { player.pause(); finish(cur.n); }
+      }
+    },
     /* The player screen's own Voices switch (in the captain's menu) uses these. */
     enabled: () => enabled,
     muted: () => isMuted(),
