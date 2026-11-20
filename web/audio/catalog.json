@@ -1,0 +1,333 @@
+{
+ "version": 1,
+ "note": "Clip paths are relative to /media/audio/. Events name either files or a built-in placeholder sound (synth). Atmosphere stays silent until an effects/ambience pack is added. battle-steel-enemy is a reserve track, not in any scene yet.",
+ "tracks": {
+  "music/lobby-my-kingdom.mp3": {
+   "role": "lobby",
+   "title": "My Kingdom (main theme)",
+   "pack": "Adventure Orchestral Themes",
+   "original": "My Kingdom (main theme).mp3",
+   "seconds": 96.1,
+   "lufs": -20,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/calm-positive-1.mp3": {
+   "role": "calm",
+   "title": "Positive Orchestral Theme #1",
+   "pack": "Positive and Calm Orchestral",
+   "original": "Positive Orchestral Theme #1.wav",
+   "seconds": 117.7,
+   "lufs": -22,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/calm-positive-5.mp3": {
+   "role": "calm",
+   "title": "Positive Orchestral Theme #5",
+   "pack": "Positive and Calm Orchestral",
+   "original": "Positive Orchestral Theme #5.wav",
+   "seconds": 112.7,
+   "lufs": -22,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/voyage-long-journey.mp3": {
+   "role": "voyage",
+   "title": "A Long Journey",
+   "pack": "Adventure Orchestral Themes",
+   "original": "A Long Journey.mp3",
+   "seconds": 68.4,
+   "lufs": -21,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/suspense-dramatic-1.mp3": {
+   "role": "suspense",
+   "title": "Dramatic Symphonic Theme #1",
+   "pack": "Dramatic Symphonic Game Music Pack",
+   "original": "Dramatic Symphonic Theme #1.wav",
+   "seconds": 65.6,
+   "lufs": -22,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/storm-dark-medieval-3.mp3": {
+   "role": "storm",
+   "title": "Dark Medieval Theme #3",
+   "pack": "Dark Medieval Music Pack",
+   "original": "Dark Medieval Theme #3.wav",
+   "seconds": 140.4,
+   "lufs": -22,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/battle-combat-1.mp3": {
+   "role": "battle",
+   "title": "Combat Theme #1",
+   "pack": "Combat Music Pack",
+   "original": "Combat Theme #1.wav",
+   "seconds": 100.0,
+   "lufs": -19,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/battle-theme-1.mp3": {
+   "role": "battle",
+   "title": "Battle Theme 1",
+   "pack": "Battle Music Pack",
+   "original": "Battle Theme 1.mp3",
+   "seconds": 121.8,
+   "lufs": -19,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/battle-steel-enemy.mp3": {
+   "role": "battle",
+   "title": "Steel Enemy",
+   "pack": "Adventure Orchestral Themes",
+   "original": "Steel Enemy.mp3",
+   "seconds": 109.0,
+   "lufs": -19,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/finale-triumph.mp3": {
+   "role": "finale",
+   "title": "Triumph (short cue)",
+   "pack": "Battle Music Pack",
+   "original": "Triumph.mp3",
+   "seconds": 48.0,
+   "lufs": -17,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  },
+  "music/finale-peace-in-my-world.mp3": {
+   "role": "finale",
+   "title": "Peace in My World (final theme)",
+   "pack": "Adventure Orchestral Themes",
+   "original": "Peace in My World (final theme).mp3",
+   "seconds": 121.6,
+   "lufs": -20,
+   "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+   "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+  }
+ },
+ "events": {
+  "ui.click": {
+   "category": "system",
+   "synth": "click",
+   "gain_db": -4,
+   "cooldown_ms": 60,
+   "max": 2,
+   "priority": 1,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "ui.tab": {
+   "category": "system",
+   "synth": "click",
+   "gain_db": -8,
+   "cooldown_ms": 80,
+   "max": 2,
+   "priority": 1,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "ui.confirm": {
+   "category": "system",
+   "synth": "chime",
+   "gain_db": -6,
+   "cooldown_ms": 120,
+   "max": 2,
+   "priority": 1,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "ui.cancel": {
+   "category": "system",
+   "synth": "click",
+   "gain_db": -6,
+   "cooldown_ms": 120,
+   "max": 2,
+   "priority": 1,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "action.refused": {
+   "category": "system",
+   "synth": "knock",
+   "gain_db": -2,
+   "cooldown_ms": 250,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "trade.buy.success": {
+   "category": "system",
+   "synth": "chime",
+   "gain_db": -4,
+   "cooldown_ms": 150,
+   "max": 2,
+   "priority": 1,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "trade.sell.success": {
+   "category": "system",
+   "synth": "chime",
+   "gain_db": -4,
+   "cooldown_ms": 150,
+   "max": 2,
+   "priority": 1,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "trade.run.summary": {
+   "category": "system",
+   "synth": "chime",
+   "gain_db": -3,
+   "cooldown_ms": 400,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "orders.submitted": {
+   "category": "system",
+   "synth": "chime",
+   "gain_db": -3,
+   "cooldown_ms": 400,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "turn.new": {
+   "category": "system",
+   "synth": "bell",
+   "gain_db": -6,
+   "cooldown_ms": 1500,
+   "max": 1,
+   "priority": 2,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "crier.headline": {
+   "category": "system",
+   "synth": "bell",
+   "gain_db": -8,
+   "cooldown_ms": 1500,
+   "max": 1,
+   "priority": 1,
+   "source": {
+    "pack": "built-in placeholder",
+    "license": "original synthesized sound, no source file",
+    "license_ref": ""
+   }
+  },
+  "music.finale.triumph": {
+   "category": "music",
+   "files": [
+    "music/finale-triumph.mp3"
+   ],
+   "gain_db": 0,
+   "cooldown_ms": 2000,
+   "max": 1,
+   "priority": 3,
+   "source": {
+    "pack": "Battle Music Pack",
+    "original": "Triumph.mp3",
+    "license": "Unity Asset Store Standard EULA, Total Music Collection (Andrew Sitkov Music), in-game use only; masters stay out of the repo",
+    "license_ref": "https://assetstore.unity.com/packages/audio/music/total-music-collection-89126"
+   }
+  }
+ },
+ "scenes": {
+  "lobby": {
+   "label": "Join and lobby",
+   "music": [
+    "music/lobby-my-kingdom.mp3"
+   ]
+  },
+  "port": {
+   "label": "Trading in port",
+   "music": [
+    "music/calm-positive-1.mp3",
+    "music/calm-positive-5.mp3"
+   ],
+   "gap_s": 6
+  },
+  "voyage": {
+   "label": "Voyage presentation",
+   "music": [
+    "music/voyage-long-journey.mp3"
+   ]
+  },
+  "suspense": {
+   "label": "Enemy sighted and parley",
+   "music": [
+    "music/suspense-dramatic-1.mp3"
+   ]
+  },
+  "storm": {
+   "label": "Storm presentation",
+   "music": [
+    "music/storm-dark-medieval-3.mp3"
+   ]
+  },
+  "jail": {
+   "label": "Jail",
+   "music": [
+    "music/storm-dark-medieval-3.mp3"
+   ]
+  },
+  "battle": {
+   "label": "Battle",
+   "music": [
+    "music/battle-combat-1.mp3",
+    "music/battle-theme-1.mp3"
+   ]
+  },
+  "ceremony": {
+   "label": "Promotion ceremony (keeps the music underneath)"
+  },
+  "finale": {
+   "label": "Game completed",
+   "music": [
+    "music/finale-peace-in-my-world.mp3"
+   ]
+  }
+ }
+}

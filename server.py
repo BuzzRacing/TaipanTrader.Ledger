@@ -109,7 +109,8 @@ TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
          ".png": "image/png", ".ico": "image/x-icon", ".json": "application/json",
          ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif",
          ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
-         ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime"}
+         ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
+         ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".ogg": "audio/ogg", ".opus": "audio/ogg", ".wav": "audio/wav"}
 STARTED = time.time()
 SESSIONS = set()      # admin sign-ins from other devices (cookie values)
 
@@ -120,7 +121,8 @@ TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
          ".png": "image/png", ".ico": "image/x-icon", ".json": "application/json",
          ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif",
          ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
-         ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime"}
+         ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
+         ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".ogg": "audio/ogg", ".opus": "audio/ogg", ".wav": "audio/wav"}
 STARTED = time.time()
 SESSIONS = set()      # admin sign-ins from other devices (cookie values)
 
@@ -456,7 +458,33 @@ class Hub:
         if ct and ct.get("hello"):
             # Under the Counter: her greeting when the tab opens, read by the officer of that port.
             v["voice"]["counter"] = voice.PLAN.lines([ct["hello"]], "log", port=me.get("port"))
+        if me.get("id"):
+            # The Accounting Ledger: the bookkeeper's greeting when it opens, read by her (acct_text.py).
+            acct = self._acct_hello(me, v.get("turn", 0))
+            if acct:
+                me["acct"] = acct
+                v["voice"]["acct"] = voice.PLAN.lines([acct["hello"]], "log", port=me.get("port"))
         return v
+
+    def _acct_hello(self, me, turn):
+        """The bookkeeper's line for the Accounting Ledger (acct_text.py, 20 Nov 2026): one a month, chosen
+        by how the last voyage went. Her mood picks her picture on the Ledger: happy, angry or sly."""
+        last = (me.get("books") or {}).get("last") or {}
+        net = sum((last.get("lines") or {}).values())
+        due = (me.get("collectors") or {}).get("calls_in") if me.get("debt", 0) > 0 else None
+        if due:
+            prefix, mood = "l.acct_debt", "sly"
+        elif net > 0.5:
+            prefix, mood = "l.acct_up", "happy"
+        elif net < -0.5:
+            prefix, mood = "l.acct_down", "angry"
+        else:
+            prefix, mood = "l.acct_even", "sly"
+        bank = self.game._bank(prefix)
+        if not bank:
+            return None
+        n = bank[(int(turn) + sum(map(ord, str(me.get("id", ""))))) % len(bank)]
+        return {"hello": engine.tx("{}.{}".format(prefix, n)), "mood": mood, "net": int(round(net))}
 
     def reload_settings(self, langs_saved=()):
         """Call with the lock held after settings were saved."""

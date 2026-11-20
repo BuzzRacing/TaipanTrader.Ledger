@@ -32,6 +32,11 @@ const Voice = (() => {
   // tablets that need a tap before sound only need it once for this element.
   const player = new Audio();
   player.preload = "auto";
+  // With the mixer present the voices run through its Dialogue level and the master (iPads ignore audio.volume),
+  // and the mixer's Dialogue switch and Mute All decide whether lines play at all.
+  const mixed = typeof SeaAudio !== "undefined" && SeaAudio.attachVoice(player);
+  const isMuted = () => (typeof SeaAudio !== "undefined" ? !SeaAudio.dialogueOn() : muted);
+  let lastHeard = null;
 
   const box = document.createElement("div");
   box.id = "voicebox";
@@ -44,9 +49,10 @@ const Voice = (() => {
   }
   function drawMute() {
     muteBtn.hidden = !enabled;
-    muteBtn.textContent = muted ? "🔇" : "🔊";
-    muteBtn.classList.toggle("off", muted);
-    muteBtn.setAttribute("aria-label", muted ? "Voices off" : "Voices on");
+    const off = isMuted();
+    muteBtn.textContent = off ? "🔇" : "🔊";
+    muteBtn.classList.toggle("off", off);
+    muteBtn.setAttribute("aria-label", off ? (mixed ? "Sound off" : "Voices off") : (mixed ? "Sound on" : "Voices on"));
   }
   function show(item) {
     const c = cast[item.c];
@@ -82,7 +88,7 @@ const Voice = (() => {
       return { granted: true };          // server unreachable: never hold the lines back
     }
   }
-  function freeFloor() { holding = false; floor("free"); }
+  function freeFloor() { holding = false; floor("free"); if (mixed) SeaAudio.duck("voice", false); }
   function clipId(u) { const m = /\/voice\/([^/?#]+)\.mp3/.exec(String(u || "")); return m ? m[1] : String(u || ""); }
   window.addEventListener("pagehide", () => {
     if (!navigator.sendBeacon) return;
@@ -107,14 +113,14 @@ const Voice = (() => {
 
   function pump() {
     clearTimeout(retryTimer);
-    if (!cur && !asking && holding && (!next() || muted || !enabled)) freeFloor();
-    if (cur || asking || muted || !enabled || !next()) return;
+    if (!cur && !asking && holding && (!next() || isMuted() || !enabled)) freeFloor();
+    if (cur || asking || isMuted() || !enabled || !next()) return;
     const item = next();
     asking = true;
     floor("take", item).then(r => {
       asking = false;
       if (r.granted) holding = true;
-      if (next() !== item || muted || !enabled) return pump();   // dropped or muted while we waited
+      if (next() !== item || isMuted() || !enabled) return pump();   // dropped or muted while we waited
       if (r.skip) { take(item); return pump(); }  // another screen here just read this headline
       if (!r.granted) { retryTimer = setTimeout(pump, Math.max(150, (r.wait || 0.35) * 1000)); return; }
       start(take(item));
@@ -137,6 +143,13 @@ const Voice = (() => {
       if (t !== cur.pos) { cur.pos = t; cur.moved = Date.now(); return; }
       if (!player.paused && Date.now() - cur.moved > STALL_MS) { player.pause(); finish(n); }
     }, 1000);
+    if (mixed && !SeaAudio.running()) {
+      // The mixer is still waiting for a tap, so this line would play silently: keep it, give the turn back, retry when sound starts.
+      release(n); queue.unshift(item); freeFloor(); hide(); onChange(null); blocked = true;
+      return;
+    }
+    lastHeard = item;
+    if (mixed) SeaAudio.duck("voice", true);
     const p = player.play();
     if (p && p.then) {
       p.then(() => { blocked = false; }).catch(() => {
@@ -177,19 +190,38 @@ const Voice = (() => {
   document.addEventListener("keydown", unlock, true);
 
   function setMuted(on) {
+    if (typeof SeaAudio !== "undefined") {
+      // The speaker button is Mute All: muting keeps every other setting, and unmuting also turns Dialogue back on.
+      SeaAudio.set("master", { on: !on });
+      if (!on) SeaAudio.set("dialogue", { on: true });
+      return;                                  // the mixer's change listener below stops or resumes the lines
+    }
     muted = !!on;
     store("seatrader_mute", muted ? "1" : null);
     if (muted) stop(); else pump();
     drawMute();
   }
-  muteBtn.addEventListener("click", () => setMuted(!muted));
+  muteBtn.addEventListener("click", () => setMuted(!isMuted()));
 
   function stop() {
     queue = [];
     clearTimeout(retryTimer);
+    if (mixed && !cur) SeaAudio.duck("voice", false);
     if (cur) { player.pause(); finish(cur.n); return; }
     hide();
     onChange(null);
+  }
+
+  if (mixed) {
+    SeaAudio.onChange(() => { if (isMuted()) stop(); else pump(); drawMute(); });
+    SeaAudio.onRunning(() => { if (blocked) { blocked = false; pump(); } });
+  }
+  // The Sound tab's Test: the last line this screen heard, again. It is already cached, so no new paid line.
+  function test() {
+    if (!lastHeard || !enabled || isMuted()) return false;
+    queue.unshift(Object.assign({}, lastHeard));
+    pump();
+    return true;
   }
 
   return {
@@ -204,7 +236,7 @@ const Voice = (() => {
     },
     /* items: [{c: character, u: audio link, f: clean audio link (optional), tag}] in reading order. */
     say(items, opts) {
-      if (!enabled || muted) return;
+      if (!enabled || isMuted()) return;
       items = (items || []).filter(x => x && x.u);
       if (!items.length) return;
       // A Family-friendly ("Clean") screen plays the clean twin of a line (clean cargo and ship names).
@@ -226,8 +258,11 @@ const Voice = (() => {
     only(group) { only = group || null; pump(); },
     /* The player screen's own Voices switch (in the captain's menu) uses these. */
     enabled: () => enabled,
-    muted: () => muted,
+    muted: () => isMuted(),
+    /* True while this screen is reading, or holds the turn for the rest of a batch (the mixer keeps music ducked). */
+    busy: () => !!cur || holding,
     setMuted,
+    test,
     onChange(fn) { onChange = fn; },
   };
 })();

@@ -201,6 +201,23 @@ DEFAULTS = {
                     "storm_dmg_min": 5, "storm_dmg_max": 20, "typhoon_dmg_min": 20,
                     "typhoon_dmg_max": 60, "fast_dmg_mult": 0.8, "offcourse": 0.15,
                     "risk_div": 350, "risk_min": 0.6, "risk_max": 1.8},
+        # Storms and damage (storm.py, 20 Nov 2026; project doc "SeaTrader Storms and Damage"). A storm that
+        # catches the fleet gets a severity score (sea, dice, distance, hold load, hull condition, guns,
+        # difficulty) that falls in a band: Rough (scuffed), Heavy or Savage. Heavy and Savage take a share of
+        # every ship's hull, of the hold and of the guns, and send the fleet to another port: Heavy to the
+        # middle-ranked of the nearest ports that have a shipyard, Savage to the worst-ranked one (no yard).
+        # While it is on it replaces the flat damage and the 15% typhoon detour above.
+        "storm": {"enabled": True, "base": [0, 20, 32, 62], "dice_min": 0.6, "dice_max": 1.4,
+                  "risk_w": 0.5, "load_w": 0.25, "hull_w": 0.5, "arms_w": 0.15,
+                  "big_hull": 300, "big_mult": 0.85, "heavy_at": 45, "savage_at": 75, "cap": 130,
+                  "rough_hull_min": 0.05, "rough_hull_max": 0.15,
+                  "heavy_hull_min": 0.20, "heavy_hull_max": 0.40, "heavy_cargo_min": 0.10,
+                  "heavy_cargo_max": 0.25, "heavy_guns": 0.33,
+                  "savage_hull_min": 0.45, "savage_hull_max": 0.75, "savage_cargo_min": 0.25,
+                  "savage_cargo_max": 0.55, "savage_guns": 0.67,
+                  "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4,
+                  "w_price": 0.5, "w_yard": 0.35, "w_standing": 0.15, "ban_penalty": 0.25,
+                  "patch_max": 0.5},
         "pirates": {"chance": 0.18, "fleet_min": 2, "fleet_base": 4, "fleet_per_hold": 40,
                     "fleet_max": 40, "hit": 0.30, "dmg_min": 4, "dmg_max": 14, "hp": 2,
                     "gun_hit": 0.4, "rounds": 6, "run_base": 0.35, "run_fast": 0.2,
@@ -544,7 +561,7 @@ CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
 WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "escort_names", "cargo_names",
          "nsfw_ship_names", "nsfw_escort_names", "nsfw_cargo_names", "difficulty.presets",
          "theme.player_colors", "rules.game.lengths", "rules.events.shock_mults",
-         "rules.weather.storm_chance", "graphics.goods", "graphics.ports", "graphics.ships",
+         "rules.weather.storm_chance", "rules.storm.base", "graphics.goods", "graphics.ports", "graphics.ships",
          "characters", "voice.lines", "voice.say")
 
 
@@ -1344,6 +1361,54 @@ SECTIONS = [
              F("rules.weather.risk_div", "Chart distance that counts as normal risk", "int", "Shorter runs are safer, longer ones riskier.", min=10, max=5000),
              F("rules.weather.risk_min", "Least risk multiplier", "num", min=0, max=10, step=0.05),
              F("rules.weather.risk_max", "Greatest risk multiplier", "num", min=0, max=10, step=0.05)]},
+         {"title": "Storms: how bad (the cut screen)", "fields": [
+             F("rules.storm.enabled", "Storms hurt by severity", "bool", "On: a storm gets a severity score and a band "
+               "(Rough, Heavy, Savage) and takes hull, cargo and guns, and Heavy and Savage storms send the fleet to "
+               "another port and show the storm screen. Off: the flat damage and the typhoon detour above."),
+             F("rules.storm.base", "Severity by sea: calm, fair, squalls, typhoon", "numlist",
+               "Four numbers. The starting score of a storm in each kind of sea.", min=0, max=500, count=4),
+             F("rules.storm.dice_min", "Storm dice: least", "num", "The score is multiplied by a roll between the two.",
+               min=0, max=5, step=0.05),
+             F("rules.storm.dice_max", "Storm dice: most", "num", min=0, max=5, step=0.05),
+             F("rules.storm.risk_w", "Distance counts for", "num", "0 ignores the length of the run; 1 is the full "
+               "risk multiplier above.", min=0, max=3, step=0.05),
+             F("rules.storm.load_w", "A full hold adds", "num", "Score x (1 + this x how full the hold is).",
+               min=0, max=3, step=0.05),
+             F("rules.storm.hull_w", "A battered fleet adds", "num", "Score x (1 + this x how much hull is already lost).",
+               min=0, max=3, step=0.05),
+             F("rules.storm.arms_w", "Heavy guns add", "num", "Score x (1 + this x how many of the gun slots are armed).",
+               min=0, max=3, step=0.05),
+             F("rules.storm.big_hull", "Ships with at least this much hull ride it better", "int", min=0, max=100000),
+             F("rules.storm.big_mult", "...and take this share of the damage", "num", min=0, max=5, step=0.05),
+             F("rules.storm.heavy_at", "Heavy from this score", "num", min=0, max=1000, step=1),
+             F("rules.storm.savage_at", "Savage from this score", "num", min=0, max=1000, step=1),
+             F("rules.storm.cap", "Score where a storm is at its worst", "num", "Scores above this count as this.",
+               min=1, max=1000, step=1)]},
+         {"title": "Storms: what each band takes", "fields": [
+             _pct("rules.storm.rough_hull_min", "Rough: hull lost, least", "A share of each ship's full hull."),
+             _pct("rules.storm.rough_hull_max", "Rough: hull lost, most"),
+             _pct("rules.storm.heavy_hull_min", "Heavy: hull lost, least"),
+             _pct("rules.storm.heavy_hull_max", "Heavy: hull lost, most"),
+             _pct("rules.storm.heavy_cargo_min", "Heavy: cargo overboard, least", "A share of each cargo in the hold."),
+             _pct("rules.storm.heavy_cargo_max", "Heavy: cargo overboard, most"),
+             _pct("rules.storm.heavy_guns", "Heavy: share of guns and cannons washed away", "Each gun is lost this often."),
+             _pct("rules.storm.savage_hull_min", "Savage: hull lost, least"),
+             _pct("rules.storm.savage_hull_max", "Savage: hull lost, most"),
+             _pct("rules.storm.savage_cargo_min", "Savage: cargo overboard, least"),
+             _pct("rules.storm.savage_cargo_max", "Savage: cargo overboard, most"),
+             _pct("rules.storm.savage_guns", "Savage: share of guns and cannons washed away")]},
+         {"title": "Storms: where the fleet lands", "fields": [
+             _pct("rules.storm.divert_heavy", "Heavy: chance of being sent to another port"),
+             _pct("rules.storm.divert_savage", "Savage: chance of being sent to another port"),
+             F("rules.storm.candidates", "Ports a storm can throw you onto", "int", "The nearest to your track, "
+               "leaving out where you sailed from and where you were going.", min=1, max=20),
+             F("rules.storm.w_price", "Port score: what the hold fetches there", "num", "Compared with the best port for "
+               "the cargo left. The worst score is the worst port for your hold.", min=0, max=10, step=0.05),
+             F("rules.storm.w_yard", "Port score: has a shipyard", "num", min=0, max=10, step=0.05),
+             F("rules.storm.w_standing", "Port score: standing there", "num", min=0, max=10, step=0.05),
+             F("rules.storm.ban_penalty", "Port score: each banned cargo aboard costs", "num", min=0, max=10, step=0.05),
+             _pct("rules.storm.patch_max", "A port with no shipyard can mend a ship up to", "A share of her full hull. "
+                  "100% turns the rule off; full repair then works in every port as before.")]},
      ]},
     {"id": "danger", "title": "Pirates & Customs", "intro": "Everything that can go wrong at sea and at the dock.",
      "groups": [
@@ -1912,6 +1977,16 @@ def validate(raw):
                           ("typhoon_dmg_min", "typhoon_dmg_max", "Typhoon damage")):
         if cfg["rules"]["weather"][lo] > cfg["rules"]["weather"][hi]:
             errors.append("Weather: {} 'least' is above 'most'".format(label))
+    st = cfg["rules"].get("storm") or {}
+    for lo, hi, label in (("dice_min", "dice_max", "Storm dice"), ("rough_hull_min", "rough_hull_max", "Rough storm hull"),
+                          ("heavy_hull_min", "heavy_hull_max", "Heavy storm hull"),
+                          ("heavy_cargo_min", "heavy_cargo_max", "Heavy storm cargo"),
+                          ("savage_hull_min", "savage_hull_max", "Savage storm hull"),
+                          ("savage_cargo_min", "savage_cargo_max", "Savage storm cargo")):
+        if lo in st and hi in st and st[lo] > st[hi]:
+            errors.append("Weather: {} 'least' is above 'most'".format(label))
+    if "heavy_at" in st and "savage_at" in st and st["heavy_at"] > st["savage_at"]:
+        errors.append("Weather: a storm is Heavy from a lower score than Savage")
     for grp, lo, hi, label in (("pirates", "dmg_min", "dmg_max", "Pirate damage"),
                                ("pirates", "booty_min", "booty_max", "Booty"),
                                ("pirates", "plunder_min", "plunder_max", "Plunder"),

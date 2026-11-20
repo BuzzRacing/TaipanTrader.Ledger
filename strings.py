@@ -9,6 +9,7 @@ these work in every line: {lender} {pirate} {bank} {winner} {home} {title}
 """
 
 import jail_text as _jail_text
+import storm_text as _storm_text
 import trade_text as _trade_text
 
 EN = {
@@ -736,6 +737,20 @@ EN = {
     "port.news.wx_advice.1": "A fair passage. Little chance of a storm.",
     "port.news.wx_advice.2": "Reef your sails. Storm damage is likely.",
     "port.news.wx_advice.3": "Stay in port. Heavy damage, ships may be blown off course.",
+    # Newspaper (Log and News together, 20 Nov 2026)
+    "port.view.paper": "Newspaper",
+    "port.paper.all": "All news",
+    "port.paper.me": "For me",
+    "port.paper.tag.hold": "In your hold",
+    "port.paper.tag.here": "Here",
+    "port.paper.tag.home": "Home port",
+    "port.paper.tag.dest": "Your course",
+    "port.paper.tag.you": "Your house",
+    "port.paper.older": "Older news ({n})",
+    "port.paper.older_hide": "Hide older news",
+    "port.paper.none_me": "Nothing in the news touches your hold or your ports this month.",
+    "port.paper.voyages": "Earlier voyages",
+    "port.paper.aboard": "You carry this",
     "bank.title": "{bank}",
     "bank.info": "Balance {balance} · pays {rate}% a month · safe from thieves.",
     "loan.title": "{lender}, moneylender",
@@ -1224,7 +1239,7 @@ EN = {
     "l.registrar_tip.7": "A gift from the register, Captain, and it's worth more than brandy: {goods} at {price} in {where}, this very month.",
     "l.registrar_tip.8": "Everyone's talking about {where}, Captain, but only I know the figure: {goods}, {price}. Written down this month.",
     "l.registrar_tip.9": "I keep a second column for my favourite captains, Captain. In it: {goods}, {price}, {where}, this month.",
-    "l.registrar_logged": "The Registrar's book, home in {port}: {goods} fetched {price} in {where} this month. Written into your Price Book.",
+    "l.registrar_logged": "The Registrar's book, home in {port}: {goods} fetched {price} in {where} this month. Noted for Best known on Market and Best on Set sail.",
     # Her hot tip (engine _registrar_hot): a boom she knows is coming, in a cargo that is cheap in the
     # house's home port just now. No figures, so the same words are shown and spoken.
     "l.registrar_hot.0": "Spectacles up, Captain. {goods} is about to go through the roof in {where}, {when}. It's cheap here. Buy all you can carry and sail.",
@@ -1275,7 +1290,7 @@ EN = {
     "hot.pin_missed": "Missed the boom, Captain. Sorry.",
     "hot.pin_held": "In your hold: {n} {goods}",
     "customs.tip_head": "From her register",
-    "customs.tip_note": "{goods} in {where}: {price}. Written into your Price Book as seen this month.",
+    "customs.tip_note": "{goods} in {where}: {price}. Noted for Best known on Market and Best on Set sail, as seen this month.",
     "ledger.tip": "Registrar's tip",
     "ledger.tip_seen": "Registrar's tip, {age}",
     "l.customs_free": "{line} {port} is a free port, Captain. Nothing to declare, nothing to pay. Come in.",
@@ -2248,6 +2263,9 @@ FAMILY.update({
 # The jail's wording (jail_text.py).
 EN.update(_jail_text.EN)
 FAMILY.update(_jail_text.FAMILY)
+# The storm screen's wording (storm_text.py).
+EN.update(_storm_text.EN)
+FAMILY.update(_storm_text.FAMILY)
 
 # The comprador's banks of buy and sell lines (trade_text.py, 20 Nov 2026): a new line each trade.
 EN.update(_trade_text.EN)
@@ -2259,6 +2277,16 @@ import review4_text as _review4_text  # noqa: E402
 EN.update(_review4_text.EN)
 FAMILY.update(_review4_text.FAMILY)
 EN.setdefault("log.battle_verdict.spared", "we beat a little band and let them go")
+
+# The Fleet tab's monthly cost ledger (fleet_ledger_text.py, 20 Nov 2026): plain screen labels, never read aloud.
+import fleet_ledger_text as _fleet_ledger_text  # noqa: E402
+EN.update(_fleet_ledger_text.EN)
+FAMILY.update(_fleet_ledger_text.FAMILY)
+
+# The Accounting Ledger's wording (acct_text.py, 20 Nov 2026): the bookkeeper's pages and greetings.
+import acct_text as _acct_text  # noqa: E402
+EN.update(_acct_text.EN)
+FAMILY.update(_acct_text.FAMILY)
 
 # The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
 # wording it replaces becomes the family-friendly wording. Keep this after every other EN/FAMILY update.
@@ -2275,7 +2303,7 @@ GROUPS = [
     ["l", "Captain's log"], ["n", "News"], ["m", "Confirmations"], ["e", "Rule messages"],
     ["w", "Small words"], ["wx", "Weather"], ["mon", "Months"], ["ui", "Loading and connection"],
     ["st", "Tally Book (statistics)"], ["opt", "Options popup"],
-    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["counter", "Under the Counter"], ["band", "Standing bands"], ["lot", "Private lots"],
+    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["storm", "Storms and damage"], ["counter", "Under the Counter"], ["acct", "Accounting Ledger"], ["band", "Standing bands"], ["lot", "Private lots"],
 ]
 
 

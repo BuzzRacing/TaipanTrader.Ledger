@@ -46,6 +46,15 @@ MOODS = {
               "lips parted in a wolfish smile, as if she has just spotted a big lie in the manifest and can already "
               "taste the cargo",
 }
+# The bookkeeper's own looks (Queue_Bookkeeper_Pairs.bat).
+MOODS.update({
+    "portrait": "a slow, sultry come-hither look over her spectacles, quill resting against her lower lip",
+    "ledger_happy": "a delighted, wicked smile, leaning back with the crimson ledger hugged to her chest, "
+                    "as if your profits have thoroughly excited her",
+    "ledger_angry": "a cool, smouldering glare over her spectacles, red quill poised to strike out a loss, lips pursed",
+    "ledger_sly": "a slow sly smile and one raised eyebrow, a finger tracing down a column of figures, "
+                  "as if she has found a secret in your books she means to keep",
+})
 PERSONA_ROLES = ("portrait", "speaking", "idle", "happy", "angry", "sly")
 
 NUDE = ("completely nude, her clothes fallen away, bare breasts and body shown openly, only her jewellery and the "
@@ -64,6 +73,11 @@ DECENT = [
     (r"with a laced leather corset over it", ""), (r"plunging ", "high-necked "), (r"with a deep neckline", ""),
     (r"\bundone\b", "fastened"), (r"across her skin", "across the room"), (r"bedroom gaze", "gaze"),
     (r"sensual private-release erotic glamour,? ?", ""),
+    # The bookkeeper (Accounting Ledger, 20 Nov 2026).
+    (r"black silk blouse unbuttoned to the waist and slipping off one shoulder over an oxblood lace corset",
+     "black silk blouse buttoned to the collar under an oxblood waistcoat"),
+    (r"sheer black stockings and one knee drawn up, ", ""), (r"reclining in", "seated in"),
+    (r"a smouldering heavy-lidded gaze", "a knowing gaze"), (r" deliciously", ""),
 ]
 
 
@@ -74,7 +88,15 @@ def cast_prompts(server):
         with urllib.request.urlopen(req, timeout=20) as r:
             chars = json.loads(r.read().decode("utf-8"))["config"]["characters"]
         print("Prompts from the live game at", server)
-        return {k: v.get("portrait_prompt") or "" for k, v in chars.items()}, {k: v.get("name", k) for k, v in chars.items()}
+        prompts = {k: v.get("portrait_prompt") or "" for k, v in chars.items()}
+        names = {k: v.get("name", k) for k, v in chars.items()}
+        # Someone new in this folder's cast.py (the bookkeeper, say) that the live game has not seeded yet.
+        sys.path.insert(0, ROOT)
+        import cast
+        for k, v in cast.CHARACTERS.items():
+            if k not in prompts:
+                prompts[k], names[k] = v["portrait_prompt"], v["name"]
+        return prompts, names
     except Exception as e:
         print("Could not read the live game's cast ({}); using this folder's cast.py".format(e))
         sys.path.insert(0, ROOT)

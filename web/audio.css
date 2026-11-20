@@ -1,0 +1,10 @@
+/* SeaTrader sound: the "tap to enable" pill. The Sound tab's own styles are added with the tab. */
+#audio-enable {
+  position: fixed; left: 12px; bottom: 12px; z-index: 9000;
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid #b08a2e; background: rgba(20, 14, 10, .92); color: #f1deb0;
+  font: 600 14px/1.1 system-ui, sans-serif; letter-spacing: .02em;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .5); cursor: pointer;
+}
+#audio-enable[hidden] { display: none; }
+#audio-enable:hover, #audio-enable:focus-visible { background: #2a1d12; outline: 2px solid #d9b34a; outline-offset: 2px; }

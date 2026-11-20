@@ -10,6 +10,7 @@ const Options = (() => {
     house: '<path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7zM8 10h8M12 7v10"/>',
     table: '<path d="M4 9h16v5H4zM6 14v7M18 14v7M8 9V4h8v5"/>',
     screen: '<rect x="3" y="4" width="18" height="13" rx="1"/><path d="M12 17v4M8 21h8M7 8h5M12 12h5"/>',
+    sound: '<path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
     exit: '<path d="M10 4H4v16h6M9 12h12M16 7l5 5-5 5"/>',
   };
   let dlg = null, info = null, timer = null, poll = null, exiting = false, busy = false, page = "clock", opener = null;
@@ -130,6 +131,12 @@ const Options = (() => {
       <div class="op-row"><button type="button" data-op="bg_reset" ${own ? "" : "disabled"}>${tx("opt.bg_reset", "Use the table's settings")}</button></div>`;
   }
 
+  function soundHtml() {
+    return typeof SeaAudio !== "undefined" && typeof SeaAudioPanel !== "undefined"
+      ? SeaAudioPanel.html((k, f) => tx(k, f))
+      : `<p class="op-note">${tx("snd.none", "Sound is not available on this screen.")}</p>`;
+  }
+
   function exitHtml() {
     return `<p class="op-note">${tx("opt.exit_note", "Closes the game on this screen only. Your House stays in the game, and the table waits for you to set sail.")}</p>
       <div class="op-row">${exiting
@@ -185,7 +192,7 @@ const Options = (() => {
 
   function draw(only) {
     if (!dlg) return;
-    const parts = { clock: clockHtml, captain: captainHtml, house: houseHtml, table: tableHtml, screen: screenHtml, exit: exitHtml };
+    const parts = { clock: clockHtml, captain: captainHtml, house: houseHtml, table: tableHtml, screen: screenHtml, sound: soundHtml, exit: exitHtml };
     for (const k of only || Object.keys(parts)) {
       const el = dlg.querySelector(`[data-sec="${k}"]`);
       if (!el) continue;
@@ -243,6 +250,7 @@ const Options = (() => {
     if (!b || b.tagName === "FORM" || b.tagName === "INPUT") return;
     const op = b.dataset.op;
     if (op === "close") return close();
+    if (op === "snd_test") { if (typeof SeaAudioPanel !== "undefined") SeaAudioPanel.click(e); return; }
     if (op === "pick") {
       send({ op: "pick", what: b.dataset.what, id: b.dataset.id }).then(res => { if (res && res.ok) load(); });
     } else if (op === "generate") {
@@ -258,6 +266,7 @@ const Options = (() => {
 
   function onInput(e) {
     const el = e.target, op = el.dataset && el.dataset.op;
+    if (el.dataset && el.dataset.snd) { if (typeof SeaAudioPanel !== "undefined") SeaAudioPanel.input(e); return; }
     if (op === "bg_secs" || op === "bg_dim") {
       put(op === "bg_secs" ? KEY_SECS : KEY_DIM, el.value);
       applyBg();
@@ -297,13 +306,14 @@ const Options = (() => {
       <aside class="op-companion">${personaHtml()}</aside>
       <div class="op-workspace"><aside class="op-identity">${identityHtml()}</aside>
       <div class="op-settings"><nav class="op-nav" role="tablist" aria-label="${tx("opt.eyebrow", "The Captain's Options")}">
-      ${[["clock", "opt.clock", "The Voyage Clock"], ["captain", "opt.captain", "My Captain"], ["house", "opt.house", "My House"], ["table", "opt.table", "Table settings"], ["screen", "opt.screen", "This screen"], ["exit", "opt.exit", "Exit Game"]].map(([id, key, label]) => `<button type="button" role="tab" id="op-tab-${id}" aria-controls="op-panel-${id}" aria-selected="${id === page}" aria-label="${tx(key, label)}" title="${tx(key, label)}" tabindex="${id === page ? 0 : -1}" data-page="${id}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id]}</svg></button>`).join("")}</nav>
+      ${[["clock", "opt.clock", "The Voyage Clock"], ["captain", "opt.captain", "My Captain"], ["house", "opt.house", "My House"], ["table", "opt.table", "Table settings"], ["screen", "opt.screen", "This screen"], ["sound", "opt.sound", "Sound"], ["exit", "opt.exit", "Exit Game"]].map(([id, key, label]) => `<button type="button" role="tab" id="op-tab-${id}" aria-controls="op-panel-${id}" aria-selected="${id === page}" aria-label="${tx(key, label)}" title="${tx(key, label)}" tabindex="${id === page ? 0 : -1}" data-page="${id}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id]}</svg></button>`).join("")}</nav>
       <div class="op-body">
         ${section("clock", tx("opt.clock", "The Voyage Clock"), "")}
         ${section("captain", tx("opt.captain", "My Captain"), "")}
         ${section("house", tx("opt.house", "My House"), "")}
         ${section("table", tx("opt.table", "Table settings"), "")}
         ${section("screen", tx("opt.screen", "This screen"), "")}
+        ${section("sound", tx("opt.sound", "Sound"), "")}
         ${section("exit", tx("opt.exit", "Exit Game"), "")}
       </div></div></div>
       <footer class="op-foot"><button type="button" class="primary" data-op="close">${tx("opt.close", "Close")} <span aria-hidden="true">&rarr;</span></button></footer>

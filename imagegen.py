@@ -133,7 +133,7 @@ def generate_image(prompt, prefix, width, height, negative=None, seed=None):
 # API-format graph whose inputs may hold placeholders, each a whole string value: "{{IMAGE}}", "{{PROMPT}}",
 # "{{NEGATIVE}}", "{{SEED}}", "{{WIDTH}}", "{{HEIGHT}}", "{{FRAMES}}", "{{LAST_FRAME}}", "{{FRAMES_B}}",
 # "{{FPS}}", "{{STEPS}}", "{{SPLIT}}", "{{CFG}}", "{{SHIFT}}", "{{PREFIX}}", "{{HIGH_MODEL}}", "{{LOW_MODEL}}",
-# "{{TEXT_ENCODER}}", "{{VAE}}". So any Wan workflow (GrumpyRobot's, say) can be dropped in by putting the
+# "{{TEXT_ENCODER}}", "{{VAE}}", "{{UPSCALE}}", "{{SHARPEN}}". So any Wan workflow (GrumpyRobot's, say) can be dropped in by putting the
 # placeholders where those values go. Everything happens on the farm; the Pi only uploads a picture and
 # downloads an MP4 (no ffmpeg needed there).
 VIDEO_DEFAULTS = {
@@ -144,7 +144,17 @@ VIDEO_DEFAULTS = {
     "text_encoder": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
     "vae": "wan_2.1_vae.safetensors",
     "short_side": 480,
+    # Wan renders at 16 fps; played back at 16 it looks slightly slow-motion. "fps" is what Wan is asked to
+    # render at (keeps each pass at 81 frames), "playback_fps" is how fast the finished clip plays (20 = 25% quicker).
     "fps": 16,
+    "playback_fps": 20,
+    # 20 Nov 2026 (longer): three Wan passes (picture -> motion -> more motion -> back to the picture), each
+    # "pass_frames" long (81 is what Wan 2.2 is trained on). 81 + 79 + 79 = 239 frames = 12 s at 20 fps.
+    "pass_frames": 81,
+    # 20 Nov 2026 (sharper): the clip is rendered small for speed, then enlarged with Lanczos and lightly
+    # sharpened on the farm (core ComfyUI nodes). 1.5 turns 480 x 640 into 720 x 960; sharpen 0 switches it off.
+    "upscale": 1.5,
+    "sharpen": 0.4,
     "steps": 20,
     "split": 10,
     "cfg": 3.5,
@@ -187,6 +197,11 @@ def segment_frames(seconds, fps):
     """Frames per Wan pass for a two-pass clip: 4n+1 (Wan's rule), about seconds/2 each."""
     n = max(17, int(round(float(seconds) * fps / 2.0)))
     return (n // 4) * 4 + 1
+
+
+def pass_frame_count(n):
+    """Frames per Wan pass: 4n+1 (Wan's rule), at least 17."""
+    return (max(17, int(n)) // 4) * 4 + 1
 
 
 def fill_placeholders(node, values):
@@ -249,15 +264,18 @@ def generate_video(image_path, motion, width, height, seconds, seed, prefix, pro
     with open(wf_path, encoding="utf-8") as f:
         workflow = json.load(f)
     fps = max(8, min(30, int(v["fps"])))
+    play_fps = max(8, min(30, int(v["playback_fps"])))
+    upscale = max(1.0, min(2.0, float(v["upscale"])))
+    sharpen = max(0.0, min(1.5, float(v["sharpen"])))
     w, h = video_size(width, height, int(v["short_side"]))
-    frames = segment_frames(seconds, fps)
+    frames = pass_frame_count(v["pass_frames"])
     seed = int(seed) if isinstance(seed, int) and 0 <= seed < 2 ** 63 else secrets.randbits(48)
     say = progress or (lambda text: None)
     say("sending the picture")
     name = _upload_image(base, image_path)
     values = {"IMAGE": name, "PROMPT": motion, "NEGATIVE": str(v["negative_prompt"]), "SEED": seed,
               "WIDTH": w, "HEIGHT": h, "FRAMES": frames, "LAST_FRAME": frames - 1, "FRAMES_B": frames - 2,
-              "FPS": fps, "STEPS": int(v["steps"]), "SPLIT": int(v["split"]), "CFG": float(v["cfg"]),
+              "FPS": play_fps, "UPSCALE": upscale, "SHARPEN": sharpen, "STEPS": int(v["steps"]), "SPLIT": int(v["split"]), "CFG": float(v["cfg"]),
               "SHIFT": float(v["shift"]), "PREFIX": prefix, "HIGH_MODEL": v["high_noise"],
               "LOW_MODEL": v["low_noise"], "TEXT_ENCODER": v["text_encoder"], "VAE": v["vae"]}
     workflow = fill_placeholders(workflow, values)
@@ -296,6 +314,7 @@ def generate_video(image_path, motion, width, height, seconds, seed, prefix, pro
     if not data or len(data) > MAX_VIDEO_BYTES:
         raise ImageGenError("The clip file is empty or too large.")
     ext = os.path.splitext(found["filename"])[1].lower()
-    total = frames + frames - 2
+    total = 3 * frames - 4  # pass 1 whole, then passes 2 and 3 without their first and last frame
     return data, {"ext": ext if ext in VIDEO_OUT_EXT else ".mp4", "model": str(v["model"])[:40],
-                  "seconds": int(round(total / float(fps))), "width": w, "height": h}
+                  "seconds": int(round(total / float(play_fps))),
+                  "width": int(round(w * upscale)), "height": int(round(h * upscale))}

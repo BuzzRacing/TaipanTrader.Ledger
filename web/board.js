@@ -100,6 +100,7 @@ function render() {
   app.hidden = false;
   loading.hidden = true;
   if (chart) Chart.fit(chart);
+  if (typeof Soundscape !== "undefined") Soundscape.sync(S, { battle: encounters.length > 0 });
 }
 
 function showConnection(online) {

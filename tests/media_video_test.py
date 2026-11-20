@@ -89,12 +89,17 @@ try:
                             ["jail warden", "clean"], False, "generated")
     assert (nude["width"], nude["height"]) == (768, 1024), nude
 
-    # 1. The farm call itself: placeholders filled, shape kept, 10 s from two 81-frame passes.
+    # 1. The farm call itself: placeholders filled, shape kept, 12 s from three 81-frame passes.
     data, info = imagegen.generate_video(media.path_for(nude["url"]), "She walks toward the camera spinning keys",
                                          768, 1024, 10, 1234, "seatrader/test")
     wf = SEEN["prompts"][-1]
-    assert data == FAKE_MP4 and info["ext"] == ".mp4" and info["seconds"] == 10, info
+    assert data == FAKE_MP4 and info["ext"] == ".mp4" and info["seconds"] == 12, info  # 239 frames played at 20 fps
     assert "{{" not in json.dumps(wf), "every placeholder is filled"
+    assert wf["30"]["inputs"]["start_image"] == ["14", 0] and wf["15"]["inputs"]["start_image"] == ["35", 0], "three passes chain"
+    assert wf["30"]["inputs"]["length"] == 81 and wf["34"]["inputs"]["length"] == 79
+    assert wf["21"]["inputs"]["fps"] == 20 and wf["21"]["inputs"]["images"] == ["24", 0], "plays at 20 fps, after sharpen"
+    assert wf["23"]["inputs"]["scale_by"] == 1.5 and wf["24"]["inputs"]["alpha"] == 0.4
+    assert (info["width"], info["height"]) == (720, 960), info
     assert wf["10"]["inputs"]["width"] == 480 and wf["10"]["inputs"]["height"] == 640 and wf["10"]["inputs"]["length"] == 81
     assert wf["5"]["inputs"]["image"] == "seatrader-x.png" and wf["11"]["inputs"]["noise_seed"] == 1234
     assert wf["15"]["inputs"]["end_image"] == ["5", 0], "the second pass ends on the picture, so the clip loops"
@@ -118,7 +123,7 @@ try:
     for sd in seeds:
         a, b = by[(nude["id"], sd)], by[(clean["id"], sd)]
         assert a["nsfw"] and not b["nsfw"], "NSFW clip from the NSFW picture, clean clip from the clean one"
-        assert a["pair"] == b["pair"] == "pabcdef12" and a["seconds"] == 10 and a["loop"]
+        assert a["pair"] == b["pair"] == "pabcdef12" and a["seconds"] == 12 and a["loop"]
         assert not a["reviewed"] and not b["reviewed"], "new clips wait for review"
         assert a["roles"] == ["portrait", "speaking"] and "clean" in b["tags"]
         assert a["model"].startswith("Wan 2.2") and a["motion"].startswith("She walks")
@@ -142,7 +147,7 @@ try:
     assert single["nsfw"] and single["pair"] == "" and single["from_item"] == nude["id"]
     media._cache["mtime"] = None
     again = [i for i in media.load(cfg)["items"] if i["id"] == single["id"]][0]
-    assert again["from_item"] == nude["id"] and again["seconds"] == 10
+    assert again["from_item"] == nude["id"] and again["seconds"] == 12
 
     # 5. A missing picture fails cleanly, and the farm being down never stops the queue.
     gone = dict(nude, url="/media/persona/warden_hongkong/nope.png")

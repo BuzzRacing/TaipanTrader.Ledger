@@ -29,6 +29,7 @@ import strings as _strings
 
 import counter
 import jail
+import storm
 import trade_text
 
 # Filled in by configure(). Kept as module tables so tests and tools can read them.
@@ -1173,6 +1174,54 @@ class Game:
         carriers = sum(self.ship_wage(sh) for sh in p["ships"] if ship_hold(sh) > 0)
         return int(round(carriers * empty * self.upkeep_rank_mult(p))), round(empty, 4)
 
+    def fleet_ledger(self, p):
+        """The Fleet tab's cost ledger (20 Nov 2026): what each class of ship costs a month, worked out the way
+        upkeep() charges it, so the classes add up to the month's bill. Each class has crew and hull upkeep, guns and
+        cannons, and the rank rise; `idle` is the part of it that carried empty hold (the ships with a hold, times the
+        share of the fleet's hold that is empty, as idle_wages() works it out); `repair` is what her hulls owe the
+        yard. `laid` is the ships resting at home: what they cost now and what they would cost at full wage."""
+        f = R["fleet"]
+        on = bool(f.get("upkeep_enabled", True))
+        mult = self.upkeep_rank_mult(p)
+        laid_rate = float(f.get("laid_up_wage", 0.25))
+        gun_rate = float(f.get("upkeep_gun", 15))
+        cap = self.capacity(p)
+        empty = max(0.0, 1.0 - self.used(p) / float(cap)) if cap > 0 else 0.0
+        raw = {}
+        for sh in p["ships"]:
+            if sh.get("type") not in SHIPS:
+                continue
+            c = raw.setdefault(role_of(sh["type"]), {"n": 0, "crew": 0.0, "guns": 0.0, "idle": 0.0, "hold": 0, "repair": 0})
+            guns = gun_rate * (sh.get("guns", 0) + sh.get("cannons", 0))
+            wage = self.ship_wage(sh)
+            c["n"] += 1
+            c["guns"] += guns
+            c["crew"] += wage - guns
+            c["hold"] += ship_hold(sh)
+            c["repair"] += int(math.ceil((SHIPS[sh["type"]]["hull"] - sh["hull"]) * self.repair_rate(p, sh)))
+            if ship_hold(sh) > 0:
+                c["idle"] += wage
+        classes = {}
+        for role, c in raw.items():
+            total = int(round((c["crew"] + c["guns"]) * mult)) if on else 0
+            crew = int(round(c["crew"])) if on else 0
+            guns = int(round(c["guns"])) if on else 0
+            classes[role] = {"n": c["n"], "crew": crew, "guns": guns, "rank": total - crew - guns, "total": total,
+                             "idle": int(round(c["idle"] * empty * mult)) if on else 0,
+                             "hold": c["hold"], "repair": c["repair"]}
+        # The classes' rounding can differ from the month's single rounded bill by a few silver: the largest class takes it.
+        laid_ships = list(p.get("laid_up") or ())
+        laid_full = int(round(sum(self.ship_wage(sh) for sh in laid_ships) * mult)) if on else 0
+        laid_now = int(round(laid_full * laid_rate)) if on else 0
+        bill = self.upkeep(p)
+        gap = bill - laid_now - sum(c["total"] for c in classes.values())
+        if gap and classes:
+            big = max(classes.values(), key=lambda c: c["total"])
+            big["total"] += gap
+            big["rank"] += gap
+        return {"on": on, "rank_mult": round(mult, 4), "empty": round(empty, 4), "bill": bill, "classes": classes,
+                "laid": {"n": len(laid_ships), "now": laid_now, "full": laid_full}}
+
     def upkeep_rank_mult(self, p):
         f = R["fleet"]
         ids = [r["id"] for r in CFG["ranks"]]
@@ -1485,6 +1534,20 @@ class Game:
             full = max(1, int(SHIPS[sh["type"]]["hull"]) - 1)
             rate = max(rate, float(SHIPS[sh["type"]]["price"]) * float(f.get("cripple_repair", 0.333)) / full)
         return rate
+
+    def repair_ceiling(self, p, sh):
+        """Hull a ship can be mended to here: full at a shipyard; in a port without one only up to
+        rules.storm.patch_max of her full hull (a patch, not a mend). Never below what she has."""
+        full = int(SHIPS[sh["type"]]["hull"])
+        if not storm.on() or port_has(p, p["port"], "shipyard"):
+            return full
+        share = float(storm.rules()["patch_max"])
+        if share >= 1.0:
+            return full
+        return max(int(sh["hull"]), min(full, int(full * share)))
+
+    def repair_need(self, p, sh):
+        return max(0, self.repair_ceiling(p, sh) - int(sh["hull"]))
 
     def protection_cost(self, p):
         return int(max(R["liyuen"]["cost_min"], R["liyuen"]["cost_share"] * self.worth(p)))
@@ -3072,6 +3135,8 @@ class Game:
             if type(ack) is int and queue and queue[0]["id"] == ack:
                 queue.pop(0)
             return tx("m.promotion_ack")
+        if kind == "storm_ack":
+            return storm.act_ack(self, p, a)            # the storm screen's "Make port" (any phase; a fight may follow)
         if kind == "free_play":
             return self._free_play(p)
         if kind == "settings":
@@ -4336,7 +4401,7 @@ class Game:
         ships = p["ships"] if a.get("index") in (None, "all") else [self._ship(p, a)]
         spent = fixed = 0
         for sh in ships:
-            need = SHIPS[sh["type"]]["hull"] - sh["hull"]
+            need = self.repair_need(p, sh)
             rate = self.repair_rate(p, sh)
             points = int(min(need, (p["cash"] - spent) // rate))
             if points > 0:
@@ -4346,6 +4411,8 @@ class Game:
             if sh.get("crippled") and sh["hull"] >= SHIPS[sh["type"]]["hull"]:
                 sh.pop("crippled", None)
         if not fixed:
+            if any(sh["hull"] < SHIPS[sh["type"]]["hull"] for sh in ships) and not any(self.repair_need(p, sh) for sh in ships):
+                raise GameError(tx("e.repair_yard", pct=int(round(100 * float(storm.rules()["patch_max"])))))             # only a patch is possible here; she needs a shipyard
             raise GameError(tx("e.nothing_to_repair"))
         p["cash"] = max(0.0, p["cash"] - spent)
         self._tally(p, "repair", spent)
@@ -4952,8 +5019,12 @@ class Game:
                          cargo=dict(p["cargo"]), cash=int(p["cash"]),
                          ships=[{"type": sh["type"], "name": sh["name"], "hull": sh["hull"], "guns": sh["guns"]} for sh in p["ships"]])
 
-                storm = w["storm_chance"][level] * min(risk, 1.4) * MULT["storms"]
-                if self._chance(storm, "storm", "{}: caught in a {}".format(who, "typhoon" if level == 3 else "storm"), p):
+                storm_p = w["storm_chance"][level] * min(risk, 1.4) * MULT["storms"]
+                if self._chance(storm_p, "storm", "{}: caught in a {}".format(who, "typhoon" if level == 3 else "storm"), p):
+                  if storm.on():
+                    storm.hit(self, p, v, level, risk, news)
+                    dest = v["dest"]
+                  else:
                     lo, hi = (w["typhoon_dmg_min"], w["typhoon_dmg_max"]) if level == 3 else (w["storm_dmg_min"], w["storm_dmg_max"])
                     hits = []
                     for sh in p["ships"]:
@@ -6384,8 +6455,9 @@ class Game:
                            "cannons": sh.get("cannons", 0), "free": self.mounts_free(sh), "role": role_of(sh["type"]),
                            "hold": ship_hold(sh),
                            "value": int(self.ship_value(sh)),
-                           "repair": int(math.ceil((SHIPS[sh["type"]]["hull"] - sh["hull"])
-                                                   * self.repair_rate(p, sh))),
+                           "repair": int(math.ceil(self.repair_need(p, sh) * self.repair_rate(p, sh))),
+                           "needs_yard": self.repair_ceiling(p, sh) < SHIPS[sh["type"]]["hull"]
+                           and sh["hull"] >= self.repair_ceiling(p, sh),
                            "wage": int(round(self.ship_wage(sh) * self.upkeep_rank_mult(p))),
                            "crippled": bool(sh.get("crippled"))}
                           for sh in p["ships"]],
@@ -6396,6 +6468,7 @@ class Game:
                              "full_wage": int(round(self.ship_wage(sh) * self.upkeep_rank_mult(p)))}
                             for sh in p.get("laid_up") or ()],
                 "idle": p.get("idle") or None,
+                "fleet_ledger": self.fleet_ledger(p),
                 "classes": self.fleet_classes(p), "fame": round(float(p.get("fame", 0) or 0), 2),
                 "trade_down": self.trade_down_offer(p),
                 "rep": {k: int(round(v)) for k, v in p["rep"].items()},
@@ -6427,6 +6500,7 @@ class Game:
                 "bands": [dict(e) for e in (p.get("bands") or [])] if self.standing_on() else [],
                 "lot": self.lot_view(p),
                 "jail": jail.view(self, p),
+                "storm": storm.view(self, p),
                 "counter": counter.view(self, p),    # Under the Counter: the tax lady's paid tips
             }
         return out

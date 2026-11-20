@@ -97,7 +97,7 @@ gone = config.defaults()
 del gone["characters"]["bosun"]
 gone, e3 = config.validate(gone)
 check(not e3, "removing a character validates")
-check(cast.speaker_for(gone, "l.typhoon") == "narrator", "a removed speaker's lines go to the narrator")
+check(cast.speaker_for(gone, "l.attack") == "narrator", "a removed speaker's lines go to the narrator")
 check(cast.speaker_for(gone, "n.glut") == "crier", "news goes to the crier")
 
 # --- brand names follow the Brand page ---------------------------------------------------
@@ -109,7 +109,7 @@ engine.configure(cfg, strings.resolve(cfg))
 voice.PLAN.configure(cfg, engine.TEXT)
 tx = engine.tx
 samples = {
-    tx("l.typhoon"): "bosun",
+    tx("l.attack_noguns", n=3, enemy="pirates"): "bosun",
     tx("l.sailed", origin="Hong Kong", dest="Manila", weather=tx("l.sea.2")): "narrator",
     tx("l.lord_found"): "pirate",
     tx("l.seized", qty=12, fine="$3,600"): "customs",
@@ -127,16 +127,17 @@ st = voice.key_status()
 check(st == {"has_key": True, "source": "admin", "tail": "MTIz"}, "key saved from Admin, Basic prefix stripped: {}".format(st))
 check(voice.PLAN.ready(), "planner ready with a key")
 
-log = [tx("l.typhoon"), tx("l.offcourse", port="Manila")]
+log = [tx("l.driven_off", n=3, pirate="Li Yue"), tx("l.offcourse", port="Manila"), tx("l.typhoon")]
 plan = voice.PLAN.lines(log, "log")
-check([p["c"] for p in plan] == ["bosun", "narrator"], "log plan speakers: {}".format(plan))
+check(plan[0] is not None and plan[0]["c"] == "bosun", "log plan speakers: {}".format(plan))
+check(plan[1] is None and plan[2] is None, "the storm lines are shown but never read (the storm screen replaces them): {}".format(plan))
 routine = voice.PLAN.lines([tx("l.sailed", origin="Hong Kong", dest="Manila", weather=tx("l.sea.1")),
                             tx("l.anchored", port="Manila"), tx("l.anchor", port="Manila")], "log")
 check(routine == [None, None, None], "routine log lines are shown but not read: {}".format(routine))
 cfg["voice"]["read_routine_log"] = True
 check(voice.PLAN.lines([tx("l.anchored", port="Manila")], "log")[0] is not None, "routine lines can be switched back on")
 cfg["voice"]["read_routine_log"] = False
-check(all(p["u"].startswith("/voice/") for p in plan), "log plan has audio links")
+check(all(p is None or p["u"].startswith("/voice/") for p in plan), "log plan has audio links")
 check(not CALLS, "planning alone never calls Inworld")
 
 news = ["Mar 1861: " + tx("n.glut", good_lower="tea", port="Manila"), "Apr 1861: " + tx("n.ban", port="Batavia"),
@@ -186,7 +187,7 @@ check(voice.get_clip("0" * 24) is None, "unplanned clips are refused")
 check(voice.get_clip("../../etc/passwd") is None, "odd clip names are refused")
 
 # Many screens asking at once pay once.
-p3 = voice.PLAN.lines([tx("l.storm")], "log")[0]
+p3 = voice.PLAN.lines([tx("l.protect_lapsed")], "log")[0]
 cid3 = p3["u"].split("/")[-1][:-4]
 n = len(CALLS)
 threads = [threading.Thread(target=voice.get_clip, args=(cid3,)) for _ in range(6)]

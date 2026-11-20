@@ -283,6 +283,31 @@ CHARACTERS = {
                            "black coat over an oxblood corset, open ledger and a jade-topped pencil, conspiratorial "
                            "half-smile as if about to share a secret, {style}",
     },
+    # The Accounting Ledger (20 Nov 2026): the House's own bookkeeper, on its rail button and its pages.
+    "bookkeeper": {
+        "name": "Mademoiselle Céleste Vautrin", "title": "Bookkeeper of the House & Mistress of the Crimson Ledger",
+        "brand_link": "",
+        "age": 38, "origin": "Pondicherry", "home_port": "hongkong", "color": "#8e1f2c", "portrait": "",
+        "voice_id": "Olivia", "speaking_rate": 0.9,
+        "delivery": "slow, husky and teasing, a French bookkeeper purring figures as if each one were a confession",
+        "catchphrase": "Every column balances in the end, Captain. I simply take my time getting there.",
+        "bio": "Céleste learned her double entry in a Pondicherry counting house and her bad habits in the cabins of "
+               "the captains who hired her. She has kept the private books of four trading houses, ruined one, and "
+               "married none. Now she keeps yours, in a crimson-bound ledger nobody else is allowed to touch, "
+               "in a lamplit room above the wharf where every captain eventually comes to settle up.",
+        "quirk": "Licks the tip of her quill before she writes a loss, and smiles while she does it.",
+        "vice": "Red ink, French brandy, silk stockings and captains who read their own accounts aloud to her.",
+        "secret": "She keeps a second ledger of what every captain in the harbour is really worth, and charges dearly for a peek.",
+        "stats": {"cunning": 8, "nerve": 6, "charm": 9, "greed": 5},
+        "portrait_prompt": "An {adult} French-Indian woman (age 38), the trading house's private bookkeeper in a "
+                           "lamplit counting room above the Hong Kong wharf, reclining in a leather chair behind a teak "
+                           "desk stacked with ledgers, a great crimson-bound ledger open across her lap, quill in her "
+                           "ink-stained fingers, gold wire spectacles low on her nose, black silk blouse unbuttoned to "
+                           "the waist and slipping off one shoulder over an oxblood lace corset, sheer black stockings "
+                           "and one knee drawn up, dark hair falling loose from its pins, candle glow on brass scales "
+                           "and silver dollars, a smouldering heavy-lidded gaze over her spectacles as if she has found "
+                           "something deliciously wrong in your accounts, {style}",
+    },
 }
 # The Port Authority officers, one for each taxed port (Admin > Ports > Port Authority officer).
 # Each captain's home port is kept by the Registrar, Mrs. Evelyn Marlowe (key "taxlady", above);
@@ -455,24 +480,26 @@ for _cid, _o in _OFFICERS.items():
     _o["portrait_prompt"] = _o.pop("prompt")
     CHARACTERS[_cid] = _o
 # Added after games were already saved: config.validate adds these to a saved cast once.
-SEEDED = list(_OFFICERS)
+SEEDED = list(_OFFICERS) + ["bookkeeper"]
 for _c in CHARACTERS.values():
     _c["portrait_prompt"] = _c["portrait_prompt"].format(adult=_ADULT, style=_STYLE)
 
 LINE_DEFAULTS = {}
 for _who, _keys in {
-    "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.robbed", "l.sailed", "l.offcourse", "l.anchored",
+    "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.robbed", "l.sailed", "l.anchored",
                  "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.unsail", "m.forced", "m.years"],
     # Silent (owner's decision, 17 Nov 2026): giving orders can turn the month at once, so "Orders given:
     # sail for ..." was heard after the voyage had already begun, over the sea battle or the captain's log.
     # The words still show on screen. Admin > Cast & Voices can hand them back to a reader.
-    "": ["m.sail", "m.stay", "m.slip",
+    # Storms (20 Nov 2026): the storm screen replaces the voiced storm report, so these stay on screen only.
+    "": ["m.sail", "m.stay", "m.slip", "l.typhoon", "l.storm", "l.offcourse", "l.storm_cargo", "l.storm_guns",
+         "l.storm_land", "l.storm_land_bad", "l.storm_land_far", "m.storm_ack",
          # The Registrar's log line is the receipt; she says the tip itself at the desk.
          "l.registrar_logged", "l.registrar_hot_logged", "l.officer_hot_logged"] + [
          # The Mayor's Parlour (decision 3): small thanks are text only; the log line is the receipt.
          "m.gift.cool", "m.gift.gracious", "l.gift"]
         + ["m.gift.{}.{}".format(t, i) for t in ("cool", "gracious") for i in range(10)],
-    "bosun": ["l.typhoon", "l.storm", "l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
+    "bosun": ["l.driven_off", "l.attack", "l.attack_noguns", "l.sank_all", "l.outran",
               "l.long_fight", "l.plundered", "l.damage", "l.attack_met", "l.retreated", "l.parley_paid",
               # The crew hides a share (19 Nov 2026): the bosun tells you what they saved.
               "l.hid_pirates", "l.hid_customs", "l.hid_desk", "l.hid_bankrupt"],
@@ -516,6 +543,10 @@ for _who, _keys in {
 for _k in jail_text.WARDEN_KEYS:
     LINE_DEFAULTS[_k] = "warden_hongkong"
 LINE_DEFAULTS["n.jail"] = "crier"
+# The Accounting Ledger (acct_text.py): the bookkeeper reads her own greetings.
+for _k in strings.EN:
+    if _k.startswith("l.acct_"):
+        LINE_DEFAULTS[_k] = "bookkeeper"
 # The comprador's buy and sell banks (trade_text.py): all hers.
 for _k in trade_text.KEYS:
     LINE_DEFAULTS[_k] = "comprador"

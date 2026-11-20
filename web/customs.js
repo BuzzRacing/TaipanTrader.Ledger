@@ -16,7 +16,7 @@
 "use strict";
 
 /* A hot tip: a boom foretold by the Registrar at home or by a port's own officer elsewhere
-   (engine _hot_tip; tp.by is "registrar" or "officer"). Shown at the desk when it is given (atDesk) and afterwards under Port > Arrival and in the Price Book until the boom is over. */
+   (engine _hot_tip; tp.by is "registrar" or "officer"). Shown at the desk when it is given (atDesk) and afterwards pinned at the top of the Port screen until the boom is over (the Price Book is gone). */
 function hotWhen(n) { return n <= 1 ? t("l.when.next") : t("l.when.months", { n }); }
 function hotTipHtml(tp, atDesk) {
   if (!tp || !D.goods[tp.good] || !D.ports[tp.port]) return "";
@@ -176,7 +176,7 @@ const Customs = (() => {
   }
 
   /* The Registrar's price tip (Hong Kong): one fresh price from her register, under her greeting.
-     Text only; it is already written into the Price Book. */
+     Text only; the price is already noted for Best known (Market) and Best (Set sail). */
   function tipHtml(c) {
     const tp = c.tip;
     if (!tp || !D.goods[tp.good] || !D.ports[tp.port]) return "";
