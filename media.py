@@ -82,6 +82,7 @@ KINDS = {
                        ["mayor_congrats", "Mayor congratulations: arms open in gratitude, on every promotion certificate in this port (a new one each time; a rank's own Mayor picture still comes first)"],
                        *[["mayor_" + rank["id"], "Mayor {}: portrait for this rank's promotion certificate".format(rank["title"])]
                          for rank in config.defaults()["ranks"] if rank["id"] != "debtor"],
+                       ["jail_cell", "Jail cell: this port's gaol, behind the warden on the jail screen (one is enough)"],
                        ["taxlady", "Tax lady: the town's tax collector who keeps the books, on the stage and the tab while the Ledger is open"],
                        # The admin shows the words before the colon on each tick box, so each one must differ.
                        ["taxlady_bored", "Tax lady bored: her tell for an honest or small lie. Several = a new one each time"],
@@ -98,8 +99,10 @@ KINDS = {
               "roles": [["icon", "Beside the cargo in the market"],
                         # Family pictures (19 Nov 2026): shown only while the game (or one screen) is family-
                         # friendly, in place of the cargo's own pictures; hidden the rest of the time.
-                        ["family", "Family-friendly picture: shown instead of the cargo's own pictures while "
-                                   "family-friendly is on (Opium shows as Fireworks, Arms as Ironware); hidden otherwise"]],
+                        ["family", "Family-friendly picture: while family-friendly is on, shown instead of the "
+                                   "cargo's other clean pictures (e.g. Fireworks for Opium); hidden while NSFW is on. "
+                                   "Not needed when the NSFW pictures are tagged NSFW: then NSFW on shows only "
+                                   "those and family-friendly shows only the clean ones"]],
               "default_role": "icon"},
     "scene": {"label": "Scenes", "one": "Scene", "subjects": "scenes",
               "roles": [["background", "Full-screen or panel background"], ["event", "Shown with the event"],
@@ -935,43 +938,32 @@ def family(cfg):
     return ((cfg or {}).get("content") or {}).get("rating") == "family"
 
 
-def renamed_goods(cfg):
-    """Cargo keys that go by another name while family-friendly (Admin > Cargo > Family-friendly name)."""
-    out = set()
-    for key, g in ((cfg or {}).get("goods") or {}).items():
-        fam = str((g or {}).get("family_name") or "").strip()
-        if fam and fam != str((g or {}).get("name") or "").strip():
-            out.add(key)
-    return frozenset(out)
-
-
 def is_family_pic(it):
-    """A cargo picture made for the family-friendly name (role "family")."""
+    """A cargo picture filed with the "family" role: a family-friendly stand-in for that cargo."""
     return it.get("kind") == "cargo" and "family" in (it.get("roles") or [])
 
 
-def _family_rules(lib, cfg):
-    """(renamed cargo keys, cargo keys that have a family picture to show)."""
-    renamed = renamed_goods(cfg)
-    have = frozenset(i["subject"] for i in lib["items"] if is_family_pic(i) and i["enabled"] and not i["nsfw"]
-                     and _exists(i["url"]))
-    return renamed, have
+def _family_rules(lib, cfg=None):
+    """(cargo keys with family pictures, cargo keys with NSFW pictures), counting only pictures that can show."""
+    live = [i for i in lib["items"] if i.get("kind") == "cargo" and i["enabled"] and _exists(i["url"])]
+    fam = frozenset(i["subject"] for i in live if is_family_pic(i) and not i["nsfw"])
+    rude = frozenset(i["subject"] for i in live if i["nsfw"])
+    return fam, rude
 
 
-def hidden_now(it, fam, renamed, have_family):
+def hidden_now(it, fam, have_family, have_nsfw):
     """True when this item must not be shown on a screen that is (fam) or is not family-friendly.
-    NSFW items hide while family-friendly. Cargo follows its name: while family-friendly, a cargo with
-    a family name (or any family pictures) shows only its family pictures, so "Fireworks" never shows a
-    chest of opium; otherwise the family pictures stay hidden and the cargo's own pictures show."""
-    if fam and it["nsfw"]:
-        return True
+
+    Everything: NSFW items hide while family-friendly.
+    Cargo follows its name (19 Nov 2026). A cargo's NSFW pictures go with its NSFW name and its clean
+    pictures with its family name, so the two sets never mix:
+      NSFW on         a cargo with NSFW pictures shows only those; "family" pictures always hide.
+      family-friendly a cargo with "family" pictures shows only those; otherwise its clean pictures."""
     if it["kind"] != "cargo":
-        return False
-    if not fam:
-        return is_family_pic(it)
-    if is_family_pic(it):
-        return False
-    return it["subject"] in renamed or it["subject"] in have_family
+        return fam and it["nsfw"]
+    if fam:
+        return it["nsfw"] or (it["subject"] in have_family and not is_family_pic(it))
+    return is_family_pic(it) or (it["subject"] in have_nsfw and not it["nsfw"])
 
 
 def blocked_urls(cfg):
@@ -980,9 +972,9 @@ def blocked_urls(cfg):
     if not family(cfg):
         return frozenset()
     lib = load(cfg)
-    renamed, have = _family_rules(lib, cfg)
-    shown = {i["url"] for i in lib["items"] if not hidden_now(i, True, renamed, have)}
-    return frozenset(i["url"] for i in lib["items"] if hidden_now(i, True, renamed, have) and i["url"] not in shown)
+    have_family, have_nsfw = _family_rules(lib, cfg)
+    shown = {i["url"] for i in lib["items"] if not hidden_now(i, True, have_family, have_nsfw)}
+    return frozenset(i["url"] for i in lib["items"] if hidden_now(i, True, have_family, have_nsfw) and i["url"] not in shown)
 
 
 def is_blocked(url, cfg):
@@ -993,15 +985,15 @@ def public(cfg):
     """The library as the player screens and harbor board need it, with NSFW removed when family-friendly."""
     lib = load(cfg)
     fam = family(cfg)
-    renamed, have = _family_rules(lib, cfg)
-    key = (_cache["mtime"], fam, renamed)
+    have_family, have_nsfw = _family_rules(lib, cfg)
+    key = (_cache["mtime"], fam)
     if key in _public_cache:
         return _public_cache[key]
     items = {}
     for it in lib["items"]:
         if not it["enabled"] or it["kind"] in ("reference", "other") or not it["subject"]:
             continue
-        if hidden_now(it, fam, renamed, have) or not _exists(it["url"]):
+        if hidden_now(it, fam, have_family, have_nsfw) or not _exists(it["url"]):
             continue
         # A family picture stands in for the cargo's own pictures in every role (the market icon,
         # the hot tip pin, the desk, the Tally Book), so it is sent with no roles.
@@ -1025,11 +1017,11 @@ def safe_url(url, kind, subject, cfg, role=None):
         return url or ""
     best = None
     lib = load(cfg)
-    renamed, have = _family_rules(lib, cfg)
+    have_family, have_nsfw = _family_rules(lib, cfg)
     for it in lib["items"]:
         if it["kind"] != kind or it["subject"] != subject or not it["enabled"] or it["type"] != "image":
             continue
-        if hidden_now(it, True, renamed, have) or not _exists(it["url"]):
+        if hidden_now(it, True, have_family, have_nsfw) or not _exists(it["url"]):
             continue
         score = (is_family_pic(it) or role in it["roles"] or not it["roles"], it["primary"], it["weight"])
         if best is None or score > best[0]:

@@ -511,6 +511,11 @@ class Planner:
     def _who(self, key, port):
         """Who reads a line: the Port Authority's lines go to the officer of the player's port."""
         cid = cast.speaker_for(self.cfg, key)
+        # The jail: read by the warden of the port the house is in (falls back to the stand-in).
+        if port and key in getattr(cast, "WARDEN_KEYS", ()) and cid == cast.LINE_DEFAULTS.get(key):
+            ch = self.cfg["characters"].get("warden_" + port)
+            if ch and ch.get("voice_id"):
+                return "warden_" + port
         if port and key in cast.OFFICER_KEYS and cid == cast.LINE_DEFAULTS.get(key):
             officer = ((self.cfg.get("ports") or {}).get(port) or {}).get("officer")
             ch = self.cfg["characters"].get(officer) if officer else None

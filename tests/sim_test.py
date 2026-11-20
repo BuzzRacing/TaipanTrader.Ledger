@@ -8,6 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from engine import Game, GameError, GOODS, PORTS, SHIPS  # noqa: E402
+import jail  # noqa: E402
 
 
 def check(game):
@@ -140,6 +141,12 @@ def play(seed, years=5):
     while game.s["phase"] == "port":
         turn = game.s["turn"]
         for pid, bot in bots.items():
+            p = game.s["players"][pid]
+            if jail.pending(p):                 # the plea: answer it at random
+                assert try_act(game, pid, {"type": "plea", "months": rng.choice([0, 1, 3])})
+            if jail.jailed(p):                  # nothing to do from a cell; the House is marked as sailed
+                assert p["ready"]
+                continue
             bot(game, pid, rng)
         assert game.maybe_advance(set(game.s["order"])), "turn did not advance"
         game.fight_out(set(game.s["order"]))   # captains at their screens fight their battles

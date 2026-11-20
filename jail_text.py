@@ -1,0 +1,112 @@
+"""Wording for the jail (jail.py). Merged into strings.EN / strings.FAMILY at import, so every line can be
+edited in Admin > Language & Text like any other. Group "jail" there; log, news, confirmations and rule
+messages keep their usual l. / n. / m. / e. groups."""
+
+EN = {
+    # ---- arrests (Captain's log, read by that port's warden) ---------------------------------------
+    "l.jail_standing": "Your name in {port} is mud. The warden's women were waiting on the wharf: {months} month{s} in the {port} gaol, Captain.",
+    "l.jail_hostile": "{port} has no love for your house. You were marched off the wharf in irons: {months} month{s} in the {port} gaol.",
+    "l.jail_contraband": "The contraband was enough for the warden. You go below with it: {months} month{s} in the {port} gaol.",
+    "l.jail_slip": "The Mayor of {port} wanted more than her double dues. Your fleet stays at anchor and you sit {months} month{s} in her gaol.",
+    "l.jail_debt": "The collectors want their silver and took the captain instead: {months} month{s} in debtors' prison in {port}.",
+    "l.jail_bankrupt": "The moneylender's books are closed and so is your cell door: {months} month{s} in debtors' prison in {port} before you start again.",
+    "l.jail_desk": "You chose the cell over the fine: {months} month{s} in the {port} gaol.",
+    "l.jail_plea_contraband": "You chose the cell over the contraband fine: {months} month{s} in the {port} gaol.",
+    "l.jail_plea_slip": "You chose the cell over the Mayor's bill: {months} month{s} in the {port} gaol.",
+    "l.plea_offer": "The warden of {port} makes you an offer on your fine of {fine}: pay it all, or pay less and sit in her gaol a while.",
+    "l.jail_month": "Another month in the {port} gaol ({served} of {months}). {left} month{s} to go.",
+    "l.jail_drink": "With the captain locked up, the crew drank {lost} of the silver aboard.",
+    "l.jail_spoil": "Nobody watched the hold: {goods} spoiled in the damp.",
+    "l.jail_release": "The cell door swings open. You walk out of the {port} gaol a free captain, and the town has had its satisfaction.",
+    # ---- news (every House) ---------------------------------------------------------------------------
+    "n.jail": "{name} of {firm} was locked up in {port} for {months} month{s}: {why}.",
+    "jail.why.standing": "the town would not have them",
+    "jail.why.hostile": "arrested on the wharf",
+    "jail.why.contraband": "caught with contraband",
+    "jail.why.slip": "caught slipping out at night",
+    "jail.why.debt": "debtors' prison",
+    "jail.why.bankrupt": "bankrupt",
+    "jail.why.desk": "chose the cell over a Port Authority fine",
+    "jail.why.plea_contraband": "chose the cell over a contraband fine",
+    "jail.why.plea_slip": "chose the cell over the Mayor's bill",
+    # ---- confirmations and rule messages --------------------------------------------------------------
+    "m.plea_paid": "Paid in full: {fine}. The warden shrugs and lets you go.",
+    "m.plea_jail": "{months} month{s} in the gaol, and {fine} paid. The door shuts behind you.",
+    "e.plea_none": "There is no fine to answer.",
+    "e.plea_choice": "Choose to pay in full, 1 month or 3 months.",
+    "e.plea_first": "Answer the warden about your fine first.",
+    "e.jailed": "You are in the {port} gaol, Captain. Nothing can be done until you are released.",
+    # ---- the jail screen ------------------------------------------------------------------------------
+    "jail.eyebrow": "The {port} gaol",
+    "jail.title": "Locked up",
+    "jail.month_of": "Month {n} of {months}",
+    "jail.left": "{left} month{s} to go",
+    "jail.left_now": "Released when the month turns",
+    "jail.starts": "Your sentence starts when the month turns",
+    "jail.charge": "Charge",
+    "jail.charge.standing": "Your name in this port fell to nothing",
+    "jail.charge.hostile": "Arrested on sight in a Hostile port",
+    "jail.charge.contraband": "Caught with contraband",
+    "jail.charge.slip": "Caught slipping out at night",
+    "jail.charge.debt": "Debtors' prison: the collectors called",
+    "jail.charge.bankrupt": "Debtors' prison: bankrupt",
+    "jail.charge.desk": "Chose the cell over a Port Authority fine",
+    "jail.charge.plea_contraband": "Chose the cell over a contraband fine",
+    "jail.charge.plea_slip": "Chose the cell over the Mayor's bill",
+    "jail.crew": "News from the crew",
+    "jail.drunk": "Drunk by the crew so far: {lost}",
+    "jail.spoiled": "Spoiled in the hold so far: {goods}",
+    "jail.quiet": "No word from the ship yet.",
+    "jail.keeper": "{name}, {title}",
+    "jail.wait": "Your House is marked as sailed every month, so nobody waits for you.",
+    "jail.fleet": "Your fleet waits at anchor in {port}. The bank is safe; silver aboard is not.",
+    # ---- the plea deal popup --------------------------------------------------------------------------
+    "plea.eyebrow": "The warden of {port}",
+    "plea.title": "A fine of {fine}",
+    "plea.lead": "Pay it all, Captain, or pay less and spend a little time with me.",
+    "plea.why.desk": "The Port Authority caught your declaration short.",
+    "plea.why.contraband": "Contraband was found in your hold.",
+    "plea.why.slip": "You were caught slipping out without paying the Mayor.",
+    "plea.pay_all": "Pay it all",
+    "plea.months": "{months} month{s} in jail",
+    "plea.pay": "and pay {pay}",
+    "plea.share": "{pct}% of the fine",
+    "plea.note": "While you are inside, your fleet stays at anchor, the crew drinks the silver aboard and perishable cargo spoils.",
+    "plea.auto": "No answer by the end of the month means the fine is paid in full.",
+    # ---- the books and the Tally Book -----------------------------------------------------------------
+    "port.pl.jail_drink": "Drunk by the crew (in jail)",
+    "port.pl.jail_spoil": "Spoiled in the hold (in jail)",
+    "st.line.jail_drink": "Drunk by the crew while jailed",
+    "st.line.jail_spoil": "Spoiled while jailed",
+}
+
+FAMILY = {
+    "l.jail_drink": "With the captain locked up, the crew spent {lost} of the silver aboard on shore leave.",
+    "port.pl.jail_drink": "Spent by the crew (in jail)",
+    "st.line.jail_drink": "Spent by the crew while jailed",
+    "jail.drunk": "Spent by the crew so far: {lost}",
+    "plea.note": "While you are inside, your fleet stays at anchor, the crew spends the silver aboard and perishable cargo spoils.",
+}
+
+# Spoken versions (cast.SAY): the warden says these without the numbers.
+SAY = {
+    "l.jail_standing": "Your name in {port} is mud, Captain. My women were waiting for you on the wharf. You'll be my guest a while.",
+    "l.jail_hostile": "{port} has no love for your house, Captain. Into the irons with you.",
+    "l.jail_contraband": "The contraband goes in my storeroom, Captain. And you go in my cell.",
+    "l.jail_slip": "Slipping away in the dark, Captain? The Mayor asked me to keep you. Your ships stay where they are.",
+    "l.jail_debt": "The collectors brought you to me, Captain. Debtors' prison. I hope you like the damp.",
+    "l.jail_bankrupt": "Bankrupt, Captain. The moneylender closed your books, and I'm closing this door.",
+    "l.jail_desk": "A sensible choice, Captain. My cell is cheaper than her fine.",
+    "l.jail_plea_contraband": "A sensible choice, Captain. My cell is cheaper than that fine.",
+    "l.jail_plea_slip": "A sensible choice, Captain. My cell is cheaper than the Mayor's bill.",
+    "l.plea_offer": "That's a heavy fine, Captain. Pay it all, or pay me less and stay a while. Your choice.",
+    "l.jail_month": "Another month in my gaol, Captain. Not long now.",
+    "l.jail_drink": "Your crew has been drinking your silver while you sit here, Captain.",
+    "l.jail_spoil": "Something in your hold has gone off in the damp, Captain.",
+    "l.jail_release": "Off you go, Captain. Try not to come back.",
+    "m.plea_paid": "Paid in full. You're free to go, Captain.",
+    "m.plea_jail": "In you go, Captain. Mind your head.",
+}
+
+LOG_KEYS = [k for k in EN if k.startswith(("l.jail_", "l.plea_"))]
+WARDEN_KEYS = LOG_KEYS + ["m.plea_paid", "m.plea_jail", "e.plea_first", "e.jailed"]

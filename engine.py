@@ -704,7 +704,10 @@ class Game:
                            for port, d in depots_of(p).items() if port in PORTS and isinstance(d, dict)}
             p["known"] = {k: v for k, v in p.get("known", {}).items() if k in PORTS}
             tab = p.get("tab") if isinstance(p.get("tab"), dict) else {}
-            p["tab"] = {k: float(tab.get(k, 0) or 0) for k in self._new_tab()}
+            tg = tab.get("goods") if isinstance(tab.get("goods"), dict) else {}
+            p["tab"] = {k: float(tab.get(k, 0) or 0) for k in self._new_tab() if k != "goods"}
+            p["tab"]["goods"] = {g: [float(v[0]), float(v[1])] for g, v in tg.items()
+                                 if g in GOODS and isinstance(v, (list, tuple)) and len(v) == 2}
             net = p.get("net") if isinstance(p.get("net"), dict) else {}
             p["net"] = {g: [int(v[0]), max(0, int(v[1]))] for g, v in net.items()
                         if g in GOODS and isinstance(v, (list, tuple)) and len(v) == 2}
@@ -1394,7 +1397,20 @@ class Game:
     @staticmethod
     def _new_tab():
         return {"repair": 0.0, "yard": 0.0, "bank": 0.0, "loan": 0.0, "wh": 0.0, "profit": 0.0, "sales": 0.0,
-                "gift": 0.0}     # gift: the purse given to the Mayor this visit (0 = she can still be called on)
+                "gift": 0.0,     # gift: the purse given to the Mayor this visit (0 = she can still be called on)
+                "goods": {}}     # goods: {cargo: [sales, cost]} sold this visit, for the Mayor's share of profit
+
+    def _tally_sale(self, p, g, gain, cost):
+        """A sale in port: its takings, its profit (a loss offsets profit this visit) and the cargo's own
+        sales and cost, which the Mayor's share of profit reads (Harbour dues > Share of profit)."""
+        self._tally(p, "sales", gain)
+        tab = p["tab"]
+        tab["profit"] = tab.get("profit", 0.0) + (gain - cost)
+        if not isinstance(tab.get("goods"), dict):
+            tab["goods"] = {}
+        row = tab["goods"].setdefault(g, [0.0, 0.0])
+        row[0] += float(gain)
+        row[1] += max(0.0, float(cost))
 
     def _tally(self, p, key, amount):
         tab = p.setdefault("tab", self._new_tab())
@@ -1593,7 +1609,74 @@ class Game:
             relief = -int(round(after * frac))
             if relief:
                 lines.append({"key": "debt", "basis": int(round(debt)), "rate": round(frac, 4), "amount": relief})
-        return {"lines": lines, "total": max(0, after + relief), "level": level, "rep": int(round(rep))}
+        # The Mayor's share of profit: its own standing and shares rule, outside the courtesy and the relief above.
+        cut = self.profit_share(p, level, rep)
+        if cut["amount"] > 0:
+            lines.append(cut)
+        return {"lines": lines, "total": max(0, after + relief) + cut["amount"], "level": level, "rep": int(round(rep)),
+                "profit_rate": cut["month"]}
+
+    # The Mayor's share of profit (Harbour dues > Share of profit). Only profit made selling cargo in her port
+    # this visit is counted. The first `profit_free` is never charged, so small loads (a few rice or tea sales)
+    # pay nothing; a loss on one cargo offsets a gain on another. Each cargo is charged by its margin
+    # (profit / cost): nothing at or below profit_margin_floor, rising to the month's rate at
+    # profit_margin_full and up to profit_top_mult x the rate at profit_margin_top. The rate is drawn for each
+    # port each month between profit_rate_min and profit_rate_max from its own seed (never the game's dice), and
+    # multiplied by the port's dues level. Standing 100 takes profit_rep_cut off (0 adds as much), and each share
+    # held in the port takes the same cut as it does from the Port Authority tax (all 10 = nothing to pay).
+    def profit_rate(self, port):
+        """This month's share-of-profit rate in a port, before its dues level, standing and shares."""
+        d = R["dues"]
+        lo = max(0.0, float(d.get("profit_rate_min", 0.0) or 0.0))
+        hi = max(lo, float(d.get("profit_rate_max", lo) or 0.0))
+        if hi <= 0:
+            return 0.0
+        roll = random.Random("profit_share:{}:{}:{}".format(self.s.get("game_id", ""), self.s["turn"], port)).random()
+        return round(lo + (hi - lo) * roll, 6)
+
+    @staticmethod
+    def profit_margin_factor(margin):
+        """How much of the month's rate a cargo sold at this margin pays (0 up to the floor, 1 at full)."""
+        d = R["dues"]
+        floor = float(d.get("profit_margin_floor", 0.25))
+        full = max(floor + 1e-6, float(d.get("profit_margin_full", 1.0)))
+        top = max(full + 1e-6, float(d.get("profit_margin_top", 2.0)))
+        top_mult = max(1.0, float(d.get("profit_top_mult", 1.5)))
+        if margin <= floor:
+            return 0.0
+        if margin <= full:
+            return (margin - floor) / (full - floor)
+        return 1.0 + (top_mult - 1.0) * min(1.0, (margin - full) / (top - full))
+
+    def profit_share(self, p, level=None, rep=None):
+        """The share-of-profit line on the Mayor's bill (amount 0 when nothing is due)."""
+        d, port = R["dues"], p["port"]
+        month = self.profit_rate(port)
+        out = {"key": "profit", "basis": 0, "rate": 0.0, "amount": 0, "month": month, "free": 0}
+        if not d.get("profit_enabled", True) or month <= 0:
+            return out
+        level = float(PORTS.get(port, {}).get("dues", 1.0)) if level is None else level
+        rep = float(p["rep"].get(port, 50.0)) if rep is None else rep
+        free = max(0.0, float(d.get("profit_free", 0.0) or 0.0))
+        out["free"] = int(free)
+        goods = (p.get("tab") or {}).get("goods") or {}
+        rows = [(float(v[0]) - float(v[1]), float(v[1])) for v in goods.values()
+                if isinstance(v, (list, tuple)) and len(v) == 2]
+        net = sum(pr for pr, _ in rows)
+        gains = sum(pr for pr, _ in rows if pr > 0)
+        if net <= free or gains <= 0:
+            return out
+        keep = min(1.0, (net - free) / gains)     # losses and the free allowance come off every gain alike
+        weighted = sum(pr * keep * self.profit_margin_factor(pr / cost if cost > 0 else float("inf"))
+                       for pr, cost in rows if pr > 0)
+        rep_f = max(0.0, 1.0 - float(d.get("profit_rep_cut", 0.5)) * (rep - 50.0) / 50.0)
+        share_f = max(0.0, 1.0 - self.share_cut(p, port))
+        amount = int(round(weighted * month * level * rep_f * share_f))
+        basis = net - free
+        out.update(basis=int(round(basis)), amount=max(0, amount),
+                   rate=round(amount / basis, 4) if basis > 0 else 0.0,
+                   rep_f=round(rep_f, 4), share_cut=round(1.0 - share_f, 4))
+        return out
 
     def _collect(self, p, amount):
         """Take money from silver; whatever is missing goes on the debt. Returns what went on the debt."""
@@ -3015,8 +3098,7 @@ class Game:
         p["cash"] += gain
         self._purse_spend(p["port"], g, gain)
         unit = p.setdefault("basis", {}).get(g, gain / float(q))      # unknown cost counts as no profit
-        self._tally(p, "sales", gain)
-        p["tab"]["profit"] = p["tab"].get("profit", 0.0) + (gain - unit * q)   # a loss offsets profit this visit
+        self._tally_sale(p, g, gain, unit * q)
         self._book(p, "sales", gain)
         self._book(p, "cost", -unit * q)
         self._note_best_sale(p, g, q, gain, unit)
@@ -3053,8 +3135,7 @@ class Game:
         p["cash"] += gain
         self._purse_spend(p["port"], g, gain)
         unit = p.setdefault("basis", {}).get(g, gain / float(q))
-        self._tally(p, "sales", gain)
-        p["tab"]["profit"] = p["tab"].get("profit", 0.0) + (gain - unit * q)
+        self._tally_sale(p, g, gain, unit * q)
         self._book(p, "sales", gain)
         self._book(p, "cost", -unit * q)
         self._note_best_sale(p, g, q, gain, unit)

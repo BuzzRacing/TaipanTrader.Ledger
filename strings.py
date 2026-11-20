@@ -1453,6 +1453,8 @@ EN = {
     "dues.wh": "Wharfage", "dues.wh_sub": "{n} units × {rate} per 100",
     "dues.standing_off": "Mayor's courtesy", "dues.standing_off_sub": "standing {n}: {rate} off",
     "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra",
+    "dues.debt": "Debtor's relief", "dues.debt_sub": "{rate} off for a house in debt",
+    "dues.profit": "Share of profit", "dues.profit_sub": "{month} this month on {n} profit past the first {free}; {rate} after margin, standing and shares",
     "ledger.now": "this month", "ledger.ago": "{n} mo ago", "ledger.never": "not visited",
     "ledger.here": "you are here", "ledger.blank": "No prices yet. Visit to fill this page.",
     "ledger.key_lo": "cheapest seen", "ledger.key_hi": "dearest seen",

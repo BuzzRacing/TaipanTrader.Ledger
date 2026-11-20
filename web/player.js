@@ -493,6 +493,8 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "dues.wh": "Wharfage", "dues.wh_sub": "{n} units × {rate} per 100",
     "dues.standing_off": "Mayor's courtesy", "dues.standing_off_sub": "standing {n}: {rate} off",
     "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra",
+    "dues.debt": "Debtor's relief", "dues.debt_sub": "{rate} off for a house in debt",
+    "dues.profit": "Share of profit", "dues.profit_sub": "{month} this month on {n} profit past the first {free}; {rate} after margin, standing and shares",
     "stat.bankrupt_in": "bankrupt in {n} months", "stat.bankrupt_in_1": "bankrupt this month",
     "port.todo.bankrupt": "Your house is worth less than nothing. {lender} declares you bankrupt in {n} months unless your worth climbs {amount}",
     "port.todo.bankrupt_1": "{lender} declares you bankrupt at the end of this month unless your worth climbs {amount}",
@@ -1726,10 +1728,12 @@ function clearanceLedger() {
     loan: ln => te("dues.loan_sub", { n: money(ln.basis), rate: share(ln.rate) }),
     wh: ln => te("dues.wh_sub", { n: ln.basis.toLocaleString(), rate: per(ln.rate) }),
     standing: ln => te(ln.amount < 0 ? "dues.standing_off_sub" : "dues.standing_on_sub", { n: ln.basis, rate: share(ln.rate) }),
+    debt: ln => te("dues.debt_sub", { n: money(ln.basis), rate: share(ln.rate) }),
+    profit: ln => te("dues.profit_sub", { n: money(ln.basis), rate: share(ln.rate), month: share(ln.month || 0), free: money(ln.free || 0) }),
   };
   const label = ln => ln.key === "standing" ? te(ln.amount < 0 ? "dues.standing_off" : "dues.standing_on") : te("dues." + ln.key);
   const amt = ln => ln.amount < 0 ? "−" + money(-ln.amount) : money(ln.amount);
-  const cls = ln => ln.key === "standing" ? (ln.amount < 0 ? " credit" : " surcharge") : "";
+  const cls = ln => ln.key === "standing" ? (ln.amount < 0 ? " credit" : " surcharge") : ln.key === "debt" ? " credit" : "";
   const rows = bill.lines.map(ln => `<div class="cl-row${cls(ln)}"><span><b>${label(ln)}</b><small>${subs[ln.key] ? subs[ln.key](ln) : ""}</small></span><strong>${amt(ln)}</strong></div>`).join("");
   const level = bill.level == null ? 1 : bill.level;
   const levelKey = level < 0.95 ? "dues.level_lo" : level > 1.05 ? "dues.level_hi" : "dues.level";

@@ -259,7 +259,11 @@ DEFAULTS = {
         # The mayor's harbour dues, paid on leaving port (engine.Game.dues).
         "dues": {"anchorage": 10, "tonnage": 5, "repair_share": 0.05, "yard_share": 0.03,
                  "bank_share": 0.01, "loan_share": 0.01, "warehouse": 2, "rep_discount": 0.2, "debt_relief": 0.25,
-                 "slip_caught": 0.35, "slip_mult": 2.0, "slip_rep": 10},
+                 "slip_caught": 0.35, "slip_mult": 2.0, "slip_rep": 10,
+                 # The Mayor's share of profit made selling cargo in her port this visit (engine.Game.profit_share).
+                 "profit_enabled": True, "profit_rate_min": 0.015, "profit_rate_max": 0.035, "profit_free": 10000,
+                 "profit_margin_floor": 0.25, "profit_margin_full": 1.0, "profit_margin_top": 2.0,
+                 "profit_top_mult": 1.5, "profit_rep_cut": 0.5},
         # The Mayor's Parlour: a purse of silver for standing in that port (engine.Game.gift_quote).
         # Standing gained = cap x (1 - e^(-gift / appetite)) x headroom, once per visit. Appetite is
         # appetite x the port's harbour dues level; headroom is 1 up to soft_from, falling to 0 at 100.
@@ -801,6 +805,24 @@ SECTIONS = [
              _pct("rules.dues.slip_caught", "Slipping out at night: chance the harbour watch catches you"),
              F("rules.dues.slip_mult", "Caught slipping out: pay the bill this many times", "num", min=1, max=20, step=0.5),
              F("rules.dues.slip_rep", "Caught slipping out: standing lost in that port", "num", min=0, max=100, step=1)]},
+         {"title": "Harbour dues: the Mayor's share of profit", "fields": [
+             F("rules.dues.profit_enabled", "The Mayor takes a share of profit made in her port", "bool",
+               "Only profit from cargo sold in that port this visit. A loss on one cargo offsets a gain on another."),
+             _pct("rules.dues.profit_rate_min", "Share of profit: lowest monthly rate",
+                  "Each port draws a new rate every month between these two, then multiplies it by its harbour dues level."),
+             _pct("rules.dues.profit_rate_max", "Share of profit: highest monthly rate"),
+             F("rules.dues.profit_free", "Profit never charged each visit", "num",
+               "Small loads (a few rice or tea sales) stay under this and pay nothing.", min=0, max=10**9, step=500),
+             _pct("rules.dues.profit_margin_floor", "Margins at or below this pay nothing",
+                  "Margin is a cargo's profit divided by what it cost. Low-margin trade is left alone.", 0, 10),
+             _pct("rules.dues.profit_margin_full", "Margin that pays the full monthly rate",
+                  "Between the floor and this the rate rises in a straight line.", 0, 10),
+             _pct("rules.dues.profit_margin_top", "Margin that pays the most", "", 0, 50),
+             F("rules.dues.profit_top_mult", "At that margin, pay this many times the monthly rate", "num",
+               "Captured cargo cost nothing, so it counts at this margin.", min=1, max=10, step=0.05),
+             _pct("rules.dues.profit_rep_cut", "Standing 100 cuts the share by (the same extra at standing 0)",
+                  "Standing 50 pays the share as it stands. Each share held in the port also cuts it, as it cuts the "
+                  "Port Authority tax (Port shares > cut per share); all 10 shares there and nothing is due.")]},
          {"title": "Port shares (late game)", "fields": [
              F("rules.estates.shares_enabled", "Houses can hold shares in a port", "bool",
                "Placed on the Port tab's Services in any port. Each share lowers that house's Port Authority tax there."),
