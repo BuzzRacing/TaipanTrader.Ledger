@@ -49,6 +49,10 @@ def clear_customs(game, pid, rng, wild=False):
             vals = {ln["good"]: int(ln["value"] * rng.choice([0.9, 1.0, 1.0])) for ln in cu["lines"]}
             assert try_act(game, pid, {"type": "customs_declare", "values": vals})
         check(game)
+    if jail.pending(p):                         # a big desk fine: the plea, answered at random
+        assert try_act(game, pid, {"type": "plea", "months": rng.choice([0, 1, 3])})
+    if jail.jailed(p):                          # chose the cell: nothing more to do this month
+        return
     cu = p.get("customs")
     if cu and cu["status"] == "verdict":
         for r in cu["result"]["lines"]:
@@ -68,6 +72,8 @@ def trader_bot(game, pid, rng):
     """Sells what is dear here, buys what is cheap here, sails to the best market."""
     p = game.s["players"][pid]
     clear_customs(game, pid, rng)
+    if jail.jailed(p):
+        return
     here = p["port"]
     for g, q in list(p["cargo"].items()):
         if game.s["prices"][here][g] > GOODS[g]["base"] * 1.05:
@@ -104,6 +110,8 @@ def random_bot(game, pid, rng):
     """Presses every button with nonsense to make sure nothing breaks."""
     p = game.s["players"][pid]
     clear_customs(game, pid, rng, wild=True)
+    if jail.jailed(p):
+        return
     for _ in range(12):
         action = rng.choice([
             {"type": "buy", "good": rng.choice(list(GOODS)), "qty": rng.randint(1, 400)},

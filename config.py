@@ -108,11 +108,11 @@ DEFAULTS = {
         "level": "normal",
         "presets": {
             "easy":   {"name": "Calm waters", "pirates": 0.6, "storms": 0.6, "interest": 0.75,
-                       "start_cash": 1.5, "seizure": 0.6, "customs_view": "exact", "battle_view": "exact"},
+                       "start_cash": 1.5, "seizure": 0.6, "jail": 0.5, "customs_view": "exact", "battle_view": "exact"},
             "normal": {"name": "Trade winds", "pirates": 1.0, "storms": 1.0, "interest": 1.0,
-                       "start_cash": 1.0, "seizure": 1.0, "customs_view": "bar", "battle_view": "bar"},
+                       "start_cash": 1.0, "seizure": 1.0, "jail": 1.0, "customs_view": "bar", "battle_view": "bar"},
             "hard":   {"name": "Typhoon season", "pirates": 1.4, "storms": 1.3, "interest": 1.25,
-                       "start_cash": 0.7, "seizure": 1.5, "customs_view": "tell", "battle_view": "tell"},
+                       "start_cash": 0.7, "seizure": 1.5, "jail": 1.5, "customs_view": "tell", "battle_view": "tell"},
         },
     },
     "ranks": [
@@ -200,6 +200,13 @@ DEFAULTS = {
         # seize contraband, the Port Authority buys cargo out, pirates plunder the hold, or the
         # moneylender closes the books, the crew always gets a random min..max share of it out of
         # sight first. Small, dear goods (dear_goods) hide dear_mult times as well.
+        # The jail (jail.py, 19 Nov 2026). Chances and the crew's drinking are multiplied by the difficulty's "jail".
+        "jail": {"enabled": True, "arrest_months": 1, "max_months": 6, "arrest_standing": 1,
+                 "hostile_below": 20, "hostile_chance": 0.05, "contraband_chance": 0.25, "contraband_low_rep": 20,
+                 "contraband_low_mult": 1.5, "slip_chance": 0.30, "collectors_chance": 0.20, "bankrupt_months": 3,
+                 "plea": True, "big_share": 0.05, "big_min": 1000, "plea1_min": 0.40, "plea1_max": 0.60,
+                 "plea3_min": 0.10, "plea3_max": 0.25, "drink_min": 0.03, "drink_max": 0.10,
+                 "spoil_min": 0.05, "spoil_max": 0.15, "perishables": ["rice", "tea", "spices"], "release_floor": 10},
         "hide": {"enabled": True, "min": 0.10, "max": 0.30, "dear_mult": 1.5, "dear_goods": ["gold", "opium"],
                  "customs": True, "desk": True, "pirates": True, "bankrupt": True},
         # The sea battle played on screen (engine.Game, "sea battles"). A captain at a screen chooses
@@ -595,6 +602,8 @@ SECTIONS = [
                       C("start_cash", "Starting silver", "num", min=0, max=20, step=0.05),
                       C("seizure", "Customs seizures", "num", "Also multiplies the Port Authority's chance of catching a lie.",
                         min=0, max=5, step=0.05),
+                      C("jail", "Jail", "num", "Multiplies every chance of being locked up and how much the crew "
+                        "drinks while the captain is inside.", min=0, max=5, step=0.05, default=1.0),
                       C("customs_view", "Port Authority odds shown", "select",
                         "What a captain sees while declaring cargo: the exact chances, a coloured bar without numbers, "
                         "or only the officer's face and manner.", default="bar",
@@ -646,6 +655,36 @@ SECTIONS = [
              F("rules.wreck.ship", "Replacement ship", "select", options_from="ships"),
              F("rules.wreck.hull", "Its hull points", "int", "Never more than a sound ship of that kind.", min=1, max=10000),
              F("rules.wreck.guns", "Its guns", "int", "Never more than that ship has room for.", min=0, max=1000)]},
+         {"title": "Jail", "fields": [
+             F("rules.jail.enabled", "Captains can be jailed", "bool", "Locked up for 1 or 3 months: the fleet waits at "
+               "anchor, the House is marked as sailed every month, the crew drinks the silver aboard and perishable "
+               "cargo spoils. No early way out. Every chance is multiplied by the difficulty level's Jail setting."),
+             F("rules.jail.arrest_months", "Months for an arrest", "int", min=1, max=12),
+             F("rules.jail.max_months", "Sentences add up to at most (months)", "int", min=1, max=36),
+             F("rules.jail.arrest_standing", "Arrested on arrival at or below this standing", "num", min=0, max=100, step=1),
+             F("rules.jail.hostile_below", "A Hostile port is below this standing", "num", min=0, max=100, step=1),
+             _pct("rules.jail.hostile_chance", "Chance of arrest on arriving in a Hostile port"),
+             _pct("rules.jail.contraband_chance", "Chance of jail when contraband is seized"),
+             F("rules.jail.contraband_low_rep", "Below this standing...", "num", min=0, max=100, step=1),
+             F("rules.jail.contraband_low_mult", "...that chance is multiplied by", "num", min=0, max=10, step=0.1),
+             _pct("rules.jail.slip_chance", "Chance the Mayor locks up a captain caught slipping out"),
+             _pct("rules.jail.collectors_chance", "Chance of debtors' prison when the collectors call past the debt cap"),
+             F("rules.jail.bankrupt_months", "Months of debtors' prison on bankruptcy", "int", min=0, max=36),
+             F("rules.jail.plea", "Big fines may be swapped for time (the plea)", "bool"),
+             _pct("rules.jail.big_share", "A fine is big above this share of net worth", "Or when it is more than "
+                  "silver plus bank."),
+             F("rules.jail.big_min", "...and at least", "int", min=0, max=10**9),
+             _pct("rules.jail.plea1_min", "1 month: still pay, least"),
+             _pct("rules.jail.plea1_max", "1 month: still pay, most"),
+             _pct("rules.jail.plea3_min", "3 months: still pay, least"),
+             _pct("rules.jail.plea3_max", "3 months: still pay, most"),
+             _pct("rules.jail.drink_min", "Each month inside the crew drinks, least", "A share of the silver aboard. "
+                  "Banked silver is safe."),
+             _pct("rules.jail.drink_max", "Each month inside the crew drinks, most"),
+             _pct("rules.jail.spoil_min", "Perishable cargo spoils each month, least"),
+             _pct("rules.jail.spoil_max", "Perishable cargo spoils each month, most"),
+             F("rules.jail.perishables", "Perishable cargo", "lines", "Cargo keys, one per line.", max=20),
+             F("rules.jail.release_floor", "Standing in the jail port on release, at least", "num", min=0, max=100, step=1)]},
          {"title": "Crew hides a share (before it is taken)", "fields": [
              F("rules.hide.enabled", "The crew hides a share", "bool", "Whenever cargo or silver is about to be "
                "taken, the crew always gets a random share of it out of sight first. It stays aboard."),

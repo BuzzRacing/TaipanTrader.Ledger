@@ -27,6 +27,8 @@ import time
 import config as _config
 import strings as _strings
 
+import jail
+
 # Filled in by configure(). Kept as module tables so tests and tools can read them.
 GOODS, PORTS, SHIPS, REGIONS = {}, {}, {}, {}
 R = {}        # rules, grouped: R["market"]["impact"] and so on
@@ -389,7 +391,7 @@ BATTLE_DEFAULTS.update({
     "lowball_min": 0.1, "lowball_max": 0.3, "lowball_goods": ["gold", "opium"]})
 
 # Which heading of the captain's report each player action belongs under.
-ACTION_CAT = {"buy": "trade", "sell": "trade", "buy_lot": "trade", "warehouse": "trade", "depot": "trade",
+ACTION_CAT = {"plea": "finance", "buy": "trade", "sell": "trade", "buy_lot": "trade", "warehouse": "trade", "depot": "trade",
               "shares": "finance", "estate": "finance", "contract": "orders",
               "bank": "finance", "loan": "finance", "protection": "finance",
               "buy_ship": "fleet", "sell_ship": "fleet", "trade_down": "fleet", "buy_gun": "fleet", "repair": "fleet",
@@ -1369,6 +1371,7 @@ class Game:
                      p["name"], p["firm"], money(worth0), PORTS[home]["name"], kind["name"].lower(), money(stake)),
                  p, worth=worth0, seized=seized, stake=int(stake), hid_cash=hid_cash, hid=dict(hid))
         self._mayor_greeting(p)
+        jail.on_bankrupt(self, p, news)             # debtors' prison at home before the fresh start
 
     def repair_rate(self, p, sh):
         f = R["fleet"]
@@ -2196,9 +2199,11 @@ class Game:
                 generous = True
             if rep_change:
                 self._gain_rep(p, port, rep_change)
-        owed = self._collect(p, tax_total + fine_total)
+        # The jail: a big fine may be swapped for time; it is charged when the plea is answered.
+        plea = bool(fine_total) and jail.offer_plea(self, p, fine_total, "desk", port, "pa_fine", arrival=True)
+        owed = self._collect(p, tax_total + (0 if plea else fine_total))
         self._book(p, "pa_tax", -tax_total, arrival=True)
-        self._book(p, "pa_fine", -fine_total, arrival=True)
+        self._book(p, "pa_fine", -(0 if plea else fine_total), arrival=True)
         cu["box"] = box
         cu["status"] = "verdict"
         cu["result"] = {"lines": out, "declared": total_declared, "value": value_total, "tax": tax_total,
@@ -2435,6 +2440,13 @@ class Game:
             news.append(tx("n.slip_caught", name=p["name"], firm=p["firm"], port=PORTS[port]["name"]))
             self._ev("finance", "slip_caught", "{} was caught slipping out of {}: pays {} times the bill, standing -{}".format(
                 p["name"], PORTS[port]["name"], d["slip_mult"], d["slip_rep"]), p, port=port, bill=bill)
+            if jail.on_slip_caught(self, p, news, port):
+                # Locked up: the fleet stays in port. A big bill may be swapped for time (the plea).
+                total = int(math.ceil(self.dues(p)["total"] * d["slip_mult"]))
+                if not jail.offer_plea(self, p, total, "slip", port, "dues"):
+                    self._pay_dues(p, mult=d["slip_mult"])
+                p["tab"] = self._new_tab()          # this visit's bill is settled
+                return "held"
             return self._pay_dues(p, mult=d["slip_mult"])
         p["log"].append(tx("l.slip_away", port=PORTS[port]["name"], total=money(bill)))
         self._ev("finance", "slip_away", "{} slipped out of {} at night without paying {} in dues".format(
@@ -2880,6 +2892,9 @@ class Game:
             return self._act_sea(p, a)
         if s["phase"] != "port":
             raise GameError(tx("e.not_running"))
+        if kind == "plea":
+            return jail.act_plea(self, p, a)
+        jail.check_act(self, p, kind)            # nothing from a cell; answer a plea first
         if kind == "unsail":
             p["ready"], p["dest"], p["slip"] = False, None, False
             return tx("m.unsail")
@@ -4303,13 +4318,14 @@ class Game:
             p["log"] = []
             p.pop("fights", None)
             self._settle_customs(p)
+        jail.before_resolve(self, players)         # unanswered pleas are paid; a jailed House stays put
         self._drift_tax_rates()          # the new month's rates, quoted to every ship that arrives
         origins = {p["id"]: [p["port"], bool(p["ready"] and p["dest"])] for p in players}
         s["sea"] = {"cause": cause, "label": label, "actual": actual, "news": news, "origins": origins,
                     "order": [p["id"] for p in players], "present": None if present is None else sorted(present)}
         for p in players:
-            if p["ready"] and p["dest"]:
-                self._depart(p, news)
+            # The Mayor may hold a house caught slipping out (jail): it stays at anchor.
+            if p["ready"] and p["dest"] and self._depart(p, news) != "held":
                 p["voy"] = {"stage": 0, "origin": p["port"], "dest": p["dest"]}
                 self._voyage_step(p)
             else:
@@ -4357,6 +4373,7 @@ class Game:
             p.pop("voy", None)
             p.pop("battle", None)
         for p in players:
+            inside = jail.month(self, p, news)    # the crew drinks, the hold spoils; release when served
             bank0, debt0 = p["bank"], p["debt"]
             if p["bank"] > 0:
                 p["bank"] *= 1 + b["bank_rate"]
@@ -4379,6 +4396,7 @@ class Game:
                         else:
                             self._gain_rep(p, home_of(p), -b["debt_rep_penalty"])
                         p["log"].append(tx("l.collectors", home=PORTS[home_of(p)]["name"]))
+                        jail.on_collectors(self, p, news)     # past the debt cap: maybe debtors' prison
                         self._ev("finance", "collectors", "{}: debt {} is over the collectors' line {} (month {} over "
                                  "the line; grace {}, then every {}); standing in {} fell by {}".format(
                                      p["name"], money(p["debt"]), money(self.collectors_line(p)),
@@ -4420,7 +4438,7 @@ class Game:
             mug_odds = b["mug_chance"] * max(0.0, 1 + b.get("mug_rep", 0.0) * (50.0 - mug_st) / 50.0)
             if p["port"] == home_of(p):
                 mug_odds *= 1.0 - self.house_rob_cut(p)        # the great house keeps the streets quieter
-            if p["cash"] > b["mug_threshold"] and self._chance(mug_odds, "robbery", "{}: robbed ashore (carrying over {}, standing {:.0f})".format(
+            if not inside and p["cash"] > b["mug_threshold"] and self._chance(mug_odds, "robbery", "{}: robbed ashore (carrying over {}, standing {:.0f})".format(
                     p["name"], money(b["mug_threshold"]), mug_st), p):
                 lost = int(p["cash"] * rng.uniform(b["mug_min"], b["mug_max"]))
                 p["cash"] -= lost
@@ -4449,6 +4467,7 @@ class Game:
         self._stamp_news()
         if s["turn"] >= s["years"] * 12 and not s.get("free_play"):
             self._finish()
+        jail.after_finish(self, players)          # a House still inside is marked as sailed
         self._reseed()
         self.checkpoint("turn_begin")
 
@@ -4688,6 +4707,7 @@ class Game:
                     "/".join(str(sh["hull"]) for sh in p["ships"]), self.used(p), self.capacity(p), money(p["cash"])),
                     p, port=dest, cargo=dict(p["cargo"]), cash=int(p["cash"]))
                 risky = self.at_risk(dest)
+                jail_seized = False
                 held = sum(p["cargo"].get(g, 0) for g in risky)
                 if held:
                     banned = dest in self.s["crackdown"]
@@ -4708,11 +4728,15 @@ class Game:
                                 if p["cargo"][g] <= 0:
                                     del p["cargo"][g]
                             what = names_of(list(taken))
-                            p["cash"] -= fine
+                            if jail.offer_plea(self, p, fine, "contraband", dest, "fines"):
+                                self._book(p, "fines", fine)       # charged when the plea is answered
+                            else:
+                                p["cash"] -= fine
                             if self.standing_on():
                                 self._standing(p, dest, -float(R["standing"]["seized"]), "seized", travel=True)
                             else:
                                 self._gain_rep(p, dest, -cb["rep_penalty"])
+                            jail_seized = True
                             log.append(tx("l.seized", qty=found, fine=money(fine), contraband=what.lower(), Contraband=what))
                             news.append(tx("n.caught", name=p["name"], firm=p["firm"], port=PORTS[dest]["name"],
                                            contraband=what.lower(), Contraband=what))
@@ -4721,7 +4745,13 @@ class Game:
                                 port=dest, goods=taken, hid=hid)
                         if hid:
                             log.append(tx("l.hid_customs", goods=self._goods_text(hid)))
+                # The jail: contraband may cost the captain a month too; rock-bottom standing or a Hostile
+                # port may mean arrest on the wharf. A jailed captain's declaration is filed honestly.
+                if not (jail_seized and jail.on_seized(self, p, news, dest)):
+                    jail.on_arrival(self, p, news, dest)
                 self._open_customs(p)
+                if jail.jailed(p):
+                    self._settle_customs(p)
                 return
 
     # ------------------------------------------------------- sea battles --
@@ -5880,7 +5910,7 @@ class Game:
             standings.append({"id": q["id"], "name": q["name"], "firm": q["firm"], "color": q["color"],
                               "port": q["port"], "ready": q["ready"], "present": q["id"] in present,
                               "worth": worth, "rank": self.commissioned_rank(q)["title"], "ships": len(q["ships"]),
-                              "host": q["id"] == host})
+                              "host": q["id"] == host, "jailed": jail.jailed(q)})
         out = {
             "phase": s["phase"], "turn": s["turn"], "date": date_label(s["turn"]),
             "years": s["years"], "turns_left": max(0, s["years"] * 12 - s["turn"]),
@@ -5944,6 +5974,7 @@ class Game:
                              on=self.standing_on()),
                 "bands": [dict(e) for e in (p.get("bands") or [])] if self.standing_on() else [],
                 "lot": self.lot_view(p),
+                "jail": jail.view(self, p),
             }
         return out
 

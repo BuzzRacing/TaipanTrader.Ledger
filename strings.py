@@ -8,6 +8,8 @@ these work in every line: {lender} {pirate} {bank} {winner} {home} {title}
 {contraband} {Contraband}.
 """
 
+import jail_text as _jail_text
+
 EN = {
     # --- months, weather, small words -------------------------------------
     "mon.0": "Jan", "mon.1": "Feb", "mon.2": "Mar", "mon.3": "Apr", "mon.4": "May", "mon.5": "Jun",
@@ -2139,6 +2141,10 @@ FAMILY = {
     "l.registrar_tip.7": "A gift from the register, Captain, and it's worth more than tea: {goods} at {price} in {where}, this very month.",
 }
 
+# The jail's wording (jail_text.py).
+EN.update(_jail_text.EN)
+FAMILY.update(_jail_text.FAMILY)
+
 GROUPS = [
     ["join", "Join screen"], ["lobby", "Lobby"], ["end", "End of game"], ["host", "Host controls"], ["stat", "Header figures"],
     ["tab", "Tabs"], ["bar", "Header"], ["market", "Market"], ["port", "Port screen"],
@@ -2148,7 +2154,8 @@ GROUPS = [
     ["btn", "Buttons"], ["ph", "Input hints"], ["tag", "Tags"], ["col", "Table headings"],
     ["l", "Captain's log"], ["n", "News"], ["m", "Confirmations"], ["e", "Rule messages"],
     ["w", "Small words"], ["wx", "Weather"], ["mon", "Months"], ["ui", "Loading and connection"],
-    ["st", "Tally Book (statistics)"], ["opt", "Options popup"], ["band", "Standing bands"], ["lot", "Private lots"],
+    ["st", "Tally Book (statistics)"], ["opt", "Options popup"],
+    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["band", "Standing bands"], ["lot", "Private lots"],
 ]
 
 

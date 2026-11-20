@@ -13,6 +13,8 @@ An empty speaker ("") keeps a line silent.
 import copy
 import re
 
+import jail_cast
+import jail_text
 import strings
 
 STAT_KEYS = ["cunning", "nerve", "charm", "greed"]
@@ -444,6 +446,8 @@ _OFFICERS = {
                "hip, leaning over a customs desk with a manifest upside down before her, lorchas and junks behind her, "
                "a slow dangerous smile, {style}"),
 }
+# The wardens (jail.py, 19 Nov 2026): one per port, keyed warden_<port> (jail_cast.py).
+_OFFICERS.update(jail_cast.WARDENS)
 for _cid, _o in _OFFICERS.items():
     _o["brand_link"], _o["portrait"] = "", ""
     _o["portrait_prompt"] = _o.pop("prompt")
@@ -503,6 +507,12 @@ for _who, _keys in {
 }.items():
     for _k in _keys:
         LINE_DEFAULTS[_k] = _who
+# The jail (jail.py): every line is read by the warden of the port the house is in (voice.Planner,
+# WARDEN_KEYS); Hong Kong's warden is the stand-in when a line has no port.
+for _k in jail_text.WARDEN_KEYS:
+    LINE_DEFAULTS[_k] = "warden_hongkong"
+LINE_DEFAULTS["n.jail"] = "crier"
+WARDEN_KEYS = frozenset(jail_text.WARDEN_KEYS)
 OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_DEFAULTS.items() if _w == "taxlady")
 # The Registrar's own lines (Mrs. Marlowe, at each captain's home port). Set after OFFICER_KEYS so they
 # are always hers, never handed to the officer of the port she is standing in.
@@ -636,8 +646,11 @@ SAY = {
 # The Mayor's banked thanks (strings.py m.gift.<tier>.N) are said without the receipt: just her words.
 SAY.update({k: v.split("+{gain}. ", 1)[1] for k, v in strings.EN.items()
             if k.startswith(("m.gift.warm.", "m.gift.delighted.")) and "+{gain}. " in v})
+# The wardens say their lines without the numbers (jail_text.py).
+SAY.update(jail_text.SAY)
 # The same, for lines whose family-friendly wording differs.
 SAY_FAMILY = {
+    "l.jail_drink": "Your crew has been spending your silver ashore while you sit here, Captain.",
     "m.borrowed.easy.0": "Take it, Captain. Madam Wu does not lend to cowards, and you are not one.",
     "m.borrowed.easy.1": "Spend it boldly, Captain. Madam Wu so enjoys watching a good house grow.",
     "m.borrowed.easy.2": "Go and make us both rich, Captain. Madam Wu will be waiting when you come back.",

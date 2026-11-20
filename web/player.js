@@ -380,6 +380,7 @@ function render() {
   Pulse.sync(inGame && ui.tab === "market" && !ui.tally);
   markSpeaking();
   if (typeof Battle !== "undefined") Battle.sync();
+  if (typeof Jail !== "undefined") Jail.sync();
   TownCrier.sync(S, D, inGame && !portOverlay && !S.me.promotion && !Battle.busy()
     && !document.querySelector(".ceremony") && !document.querySelector("dialog[open]"));
 }
