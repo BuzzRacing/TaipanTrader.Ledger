@@ -9,10 +9,13 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import engine  # noqa: E402
 from engine import Game, PORTS  # noqa: E402
 
 
 def setup():
+    # Standing from any trade, as before reputation swings (good-business trading: standing_test.py).
+    engine.R["standing"]["enabled"] = False
     g = Game(seed=7)
     pid = g.pid_for_token(g.join("Ada", ""))
     g.act(pid, {"type": "start"}, present=[pid])

@@ -174,11 +174,23 @@ def family_screen(cfg, data):
     return fcfg, data
 
 
+def ship_swaps():
+    """(NSFW name, clean name) for every ship at sea that has both, longest first (Ships > NSFW ship names)."""
+    hub = globals().get("HUB")
+    game = getattr(hub, "game", None)
+    out = []
+    for p in ((getattr(game, "s", None) or {}).get("players") or {}).values():
+        for sh in p.get("ships") or []:
+            if sh.get("nsfw_name") and sh.get("clean_name") and sh["nsfw_name"] != sh["clean_name"]:
+                out.append((sh["nsfw_name"], sh["clean_name"]))
+    return sorted(out, key=lambda ab: -len(ab[0]))
+
+
 def family_view(view):
     """A game state for a Family-friendly screen: the cargo's family names in every line of text
     (log, news, the desk, the battle). Words only; ids and numbers are left alone."""
     swaps = [(g["name"], g["family_name"]) for g in engine.CFG["goods"].values()
-             if g.get("family_name") and g.get("name") and g["family_name"] != g["name"]]
+             if g.get("family_name") and g.get("name") and g["family_name"] != g["name"]] + ship_swaps()
     if not swaps:
         return view
     pats = [(re.compile(r"(?<!\w){}(?!\w)".format(re.escape(a))), b) for a, b in swaps] + \
@@ -1772,7 +1784,9 @@ class Handler(BaseHTTPRequestHandler):
                         known = HUB.game.pid_for_token(token) if token else None
                         view = HUB.view(known)
                         view["unknown_token"] = bool(token) and known is None
-                        if family and not media.family(engine.CFG):
+                        if family or media.family(engine.CFG):
+                            # this screen (or the whole table) is Family-friendly: clean ship names in
+                            # every line, older log lines included; cargo names too for a screen alone
                             view = family_view(view)
                         payload = json.dumps(view)
                 if payload is None:

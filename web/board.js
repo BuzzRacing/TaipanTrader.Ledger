@@ -60,12 +60,12 @@ function render() {
   update("board-houses", ranked.length ? `<ol>${ranked.map((p, index) => {
     const battle = fighting.has(p.id);
     const status = lobby ? te(p.host ? "w.host" : "board.joined")
-      : ended ? esc(p.rank) : te(battle ? "board.in_battle" : !p.present ? "w.away" : p.ready ? "board.ready" : "board.in_port");
+      : ended ? "" : te(battle ? "board.in_battle" : !p.present ? "w.away" : p.ready ? "board.ready" : "board.in_port");
     const tone = battle ? "br-danger" : !lobby && !ended && p.present && p.ready ? "br-ready" : "";
     return `<li>
       <span class="br-place" aria-hidden="true">${lobby ? "" : index + 1}</span>
       <div class="br-house${Faces.of(p).crest ? " has-crest" : ""}" style="--house:${COLORS[p.color % COLORS.length]}">
-        ${Faces.of(p).crest ? houseMark(p, "br-crest") : ""}<div><b>${esc(p.firm)}</b><span>${esc(p.name)} · ${esc(portName(p.port))}</span></div></div>
+        ${Faces.of(p).crest ? houseMark(p, "br-crest") : ""}<div><b>${esc(p.firm)}</b><span>${esc(p.name)} · ${esc(portName(p.port))}</span>${lobby ? "" : Ranks.label(p)}</div></div>
       <div class="br-result">${lobby ? "" : `<b>${esc(money(p.worth))}</b>`}<span class="${tone}">${status}</span></div>
     </li>`;
   }).join("")}</ol>` : `<p class="br-empty">${te("board.none")}</p>`);

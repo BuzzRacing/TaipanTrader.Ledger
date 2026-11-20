@@ -281,10 +281,17 @@ DEFAULTS = {
         "estates": {"shares_enabled": True, "shares_per_port": 10, "share_cut": 0.10,
                     "share_price_per_pct": 100000, "share_price_min": 150000, "share_price_max": 400000,
                     "share_sell_back": True,
+                    # Captain's share allowance (19 Nov 2026): shares are earned, not bought. One free share
+                    # for each rank climbed above Clerk (shares_per_rank) and later from special awards; at
+                    # most shares_per_house in all, placed in any port. shares_buy brings back the silver sale.
+                    "shares_per_house": 10, "shares_per_rank": 1, "shares_buy": False,
                     "house_enabled": True,
                     "house_cost_1": 500000, "house_cost_2": 2000000, "house_cost_3": 6000000,
                     "house_rep_1": 5, "house_rep_2": 8, "house_rep_3": 12,
                     "house_rob_1": 0.3, "house_rob_2": 0.6, "house_rob_3": 0.9,
+                    # Selling back (19 Nov 2026): the top stage of the great house can be sold at home for
+                    # house_sell_back of what was paid for it. Its standing and robbery cut go with it.
+                    "house_sell": True, "house_sell_back": 0.5,
                     # Prices that grow with the house (Game 3 review, 19 Nov 2026): shares, the great house and
                     # the Mayor's fees are multiplied by the square root of (net worth / wealth_ref), at least
                     # 1 and at most wealth_max. Each December the great house costs house_upkeep of what was
@@ -317,6 +324,49 @@ DEFAULTS = {
                     "bribe_refused_mult": 1.5, "bribe_rep": 8, "over_rep": 5, "max_declare": 1.5,
                     "tell_curious": 0.08, "tell_hungry": 0.25, "seeded": [],
                     "greet_aloud_min": 2, "greet_aloud_max": 4},
+        # Reputation swings (owner's decisions, 19 Nov 2026; project doc "SeaTrader Reputation Swings").
+        # Standing in each port falls in five bands of 20 (Hostile 0-19, Cool 20-39, Neutral 40-59,
+        # Warm 60-79, Favoured 80-100). Every penalty or reward below is multiplied by a fresh roll from
+        # the band the house is in there: <band>_pen_lo..hi for losses, <band>_rew_lo..hi for gains.
+        "standing": {"enabled": True,
+                     "hostile_pen_lo": 2.0, "hostile_pen_hi": 6.0, "hostile_rew_lo": 0.2, "hostile_rew_hi": 0.6,
+                     "cool_pen_lo": 1.3, "cool_pen_hi": 3.0, "cool_rew_lo": 0.5, "cool_rew_hi": 1.0,
+                     "neutral_pen_lo": 0.7, "neutral_pen_hi": 1.5, "neutral_rew_lo": 0.7, "neutral_rew_hi": 1.4,
+                     "warm_pen_lo": 0.5, "warm_pen_hi": 1.0, "warm_rew_lo": 1.0, "warm_rew_hi": 1.8,
+                     "favoured_pen_lo": 0.2, "favoured_pen_hi": 0.8, "favoured_rew_lo": 1.2, "favoured_rew_hi": 2.5,
+                     # Caught lying at the Port Authority desk (decision 1): base + lie x the share of the
+                     # hold's value hidden, varied by caught_vary either way (its own roll, not the band's).
+                     "caught_base": 12, "caught_lie": 25, "caught_vary": 0.3,
+                     # Word travels (decision 3): other ports in the same region lose this share of the hit.
+                     "region_share": 0.333,
+                     # The fine (decision 2), set by the band the house lands in after the fall: the larger
+                     # of fine_hidden x the hidden value x the band's penalty roll, or net worth x a roll
+                     # between the band's floor_lo and floor_hi.
+                     "fine_hidden": 0.5,
+                     "hostile_floor_lo": 0.04, "hostile_floor_hi": 0.10, "cool_floor_lo": 0.02, "cool_floor_hi": 0.05,
+                     "neutral_floor_lo": 0.01, "neutral_floor_hi": 0.025, "warm_floor_lo": 0.005, "warm_floor_hi": 0.015,
+                     "favoured_floor_lo": 0.0025, "favoured_floor_hi": 0.01,
+                     # Trading (decision 5): only good business earns standing (a sale at a profit, a cargo
+                     # sold where it is short, bought where it is in glut), at most trade_cap a visit.
+                     "trade_cap": 4, "short_at": 1.3, "glut_at": 0.75,
+                     # Drift (decision 6, changed to 0.5 after the 10-year simulations): points a month every
+                     # port moves back toward 50. At 2 standing sat in Neutral nine months in ten.
+                     "drift": 0.5,
+                     # Losses (decision 7), each times the band's penalty roll.
+                     "seized": 20, "dues_short": 3, "collect_home": 3, "collect_away": 1,
+                     "bankrupt_home": 30, "bankrupt_away": 10, "beaten": 3, "dump": 2, "dump_below": 0.6,
+                     "contract_missed": 2,
+                     # Gains (decision 8), each times the band's reward roll. Pay More is declaring
+                     # pay_more_at or more of the true worth; each honest desk in a row after the first adds
+                     # honest_run, up to honest_run_max.
+                     "pay_correct": 1, "pay_more": 3, "pay_more_at": 1.1, "honest_run": 0.5, "honest_run_max": 2,
+                     "pirates_beaten": 3, "debt_cleared": 3, "debt_cleared_min": 1000,
+                     # Hostile and Cool ports (decision 9).
+                     "hostile_audit": 2.0, "cool_audit": 1.4, "hostile_margin": 0.04, "cool_margin": 0.02,
+                     "hostile_yard": 0.25, "cool_yard": 0.10, "hostile_match": 0.15, "cool_match": 0.07,
+                     # Warm and Favoured ports (decision 10).
+                     "warm_tax_cut": 0.15, "favoured_tax_cut": 0.30, "favoured_match": 0.15, "favoured_avoid": 0.25,
+                     "lot_chance": 0.3, "lot_depth": 0.15, "lot_discount": 0.15, "lot_discount_max": 0.5},
     },
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
     "goods": {
@@ -398,6 +448,23 @@ DEFAULTS = {
                     "Cornucopia", "Bountiful", "Ample Grace", "Spice Queen", "Tea Duchess", "Bengal Matron",
                     "Bombay Belle", "Coromandel Countess", "Golden Fleece", "Deep Pockets", "Fat Purse",
                     "Heavy Heart", "Plenty", "Big Bertha"],
+    # NSFW name lists (19 Nov 2026): used instead of the three lists above while the content rating is
+    # not family-friendly. Each ship also keeps a clean name, shown whenever family-friendly is on
+    # (for the whole table, or one screen from Captain's Options).
+    "nsfw_ship_names": ["Saucy Wench", "Loose Lips", "Naughty Nell", "Bawdy Bess", "Wet Dream", "Busty Mermaid",
+                        "Hussy's Hold", "Lusty Lotus", "Strumpet", "Brazen Hussy", "Moist Maiden", "Bare Bodice",
+                        "Easy Virtue", "Wandering Hands", "Siren's Cleavage", "Jade's Bosom", "Spread Sails",
+                        "Tight Rigging", "Ample Bosom", "Rogering Rose", "Night Caller", "Madam's Garter",
+                        "Velvet Thighs", "Peekaboo Petticoat", "Booty Call"],
+    "nsfw_escort_names": ["Sea Slut", "Ball Buster", "Nut Cracker", "Spanking Sally", "Whip Mistress",
+                          "Leather Lass", "Dominatrix", "Bad Bitch", "Cock Blocker", "Stiff Broadside",
+                          "Long Gun Lil", "Grabby Gretchen", "Thrusting Thalia", "Hard Ram", "Mean Mistress",
+                          "Cat o' Nine Tails", "Hot Shot Hattie", "Pounding Polly", "Rough Rider",
+                          "Bitch of Batavia"],
+    "nsfw_cargo_names": ["Big Booty", "Wide Load", "Junk in the Trunk", "Ample Bottom", "Bottomless Betty",
+                         "Loose Hold", "Stuffed Stockings", "Full Bodice", "Heavy Bosom", "Bounteous Booty",
+                         "Overstuffed Corset", "Hot Bottom", "Ripe Melons", "Lady Cushions", "Back Door Betty",
+                         "Packed Petticoats", "Plump Rump", "Thick Thighs", "Generous Hold", "Bustle Bertha"],
     # How much history to keep (Admin > Captain's Report). See journal.py.
     "journal": {"keep_games": 50, "server_days": 30},
     # Who reads the game aloud, and how (Admin > Cast & Voices). See cast.py.
@@ -417,7 +484,8 @@ SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
 CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
 
 # Paths whose whole value is replaced on save (rows can be deleted), not merged.
-WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "escort_names", "cargo_names", "difficulty.presets",
+WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "escort_names", "cargo_names",
+         "nsfw_ship_names", "nsfw_escort_names", "nsfw_cargo_names", "difficulty.presets",
          "theme.player_colors", "rules.game.lengths", "rules.events.shock_mults",
          "rules.weather.storm_chance", "graphics.goods", "graphics.ports", "graphics.ships",
          "characters", "voice.lines", "voice.say")
@@ -636,7 +704,7 @@ SECTIONS = [
              F("rules.bank.debt_grace_months", "Grace period before the first call (months)", "int",
                "Months in a row over the line before the collectors first call.", min=0, max=120),
              F("rules.bank.debt_call_every", "Then they call every (months)", "int", min=1, max=120),
-             F("rules.bank.debt_rep_penalty", "Standing lost each time they call", "num", min=0, max=100, step=0.5),
+             F("rules.bank.debt_rep_penalty", "Standing lost each time they call (Standing swings off)", "num", min=0, max=100, step=0.5),
              F("rules.bank.debt_cap_mult", "Debt cap: interest stops at (x the collectors' line)", "num",
                "Once the debt reaches this many times the collectors' line, no more interest is added (the debt "
                "is never reduced). 0 = no cap.", min=0, max=1000, step=0.5),
@@ -649,7 +717,7 @@ SECTIONS = [
              F("rules.bank.bankrupt_warn", "Warn each month in the last (months)", "int",
                "Also warned in the first month under water.", min=0, max=600),
              F("rules.bank.bankrupt_stake", "Stake after bankruptcy (silver)", "int", min=0, max=10**9),
-             F("rules.bank.bankrupt_rep", "Home standing lost on bankruptcy", "num", min=0, max=100, step=0.5),
+             F("rules.bank.bankrupt_rep", "Home standing lost on bankruptcy (Standing swings off)", "num", min=0, max=100, step=0.5),
              F("rules.bank.wu_advice", "The moneylender gives advice when you borrow or repay", "bool",
                "On: after the receipt she adds a word that follows how close the debt is to the collectors' line. "
                "Off: the receipt only. Her lines are in Language & Text (Confirmations, m.borrowed.* and m.repaid.*)."),
@@ -734,8 +802,15 @@ SECTIONS = [
              F("rules.dues.slip_mult", "Caught slipping out: pay the bill this many times", "num", min=1, max=20, step=0.5),
              F("rules.dues.slip_rep", "Caught slipping out: standing lost in that port", "num", min=0, max=100, step=1)]},
          {"title": "Port shares (late game)", "fields": [
-             F("rules.estates.shares_enabled", "Houses can buy shares in a port", "bool",
-               "Bought on the Port tab's Services in any port. Each share lowers that house's Port Authority tax there."),
+             F("rules.estates.shares_enabled", "Houses can hold shares in a port", "bool",
+               "Placed on the Port tab's Services in any port. Each share lowers that house's Port Authority tax there."),
+             F("rules.estates.shares_per_house", "Most shares one captain can hold, all ports together", "int",
+               "Placed in one port or spread around. 10 lets a captain hold every share in one port.", min=0, max=100),
+             F("rules.estates.shares_per_rank", "Free shares earned for each promotion above Clerk", "int",
+               "Trader to Hong Master is 8 promotions. Two more are planned as special awards.", min=0, max=10),
+             F("rules.estates.shares_buy", "Shares can also be bought with silver", "bool",
+               "Off: shares only come from promotions and awards, which stops a rich house buying out a port. "
+               "On: a captain may buy more at the price below, still within the limit above."),
              F("rules.estates.shares_per_port", "Shares in each port", "int",
                "One pool per port, shared by every house. The biggest holder is named Patron of the port.", min=1, max=100),
              _pct("rules.estates.share_cut", "Tax cut for each share held",
@@ -744,7 +819,7 @@ SECTIONS = [
                "A port with a 2.5% base rate and 100,000 here prices a share at 250,000.", min=0, max=10**9),
              F("rules.estates.share_price_min", "Cheapest share", "int", min=0, max=10**9),
              F("rules.estates.share_price_max", "Dearest share", "int", min=0, max=10**9),
-             F("rules.estates.share_sell_back", "Shares can be sold back for what was paid", "bool")]},
+             F("rules.estates.share_sell_back", "Shares can be taken back (a bought one for what was paid; an earned one to place again)", "bool")]},
          {"title": "The great house at home (late game)", "fields": [
              F("rules.estates.house_enabled", "Houses can build a great house at home", "bool",
                "Three stages, bought in turn at the home port: Townhouse, Mansion, Palace. Counted in net worth at what was paid."),
@@ -756,7 +831,10 @@ SECTIONS = [
              F("rules.estates.house_rep_3", "Palace: home standing gained", "num", min=0, max=100, step=1),
              _pct("rules.estates.house_rob_1", "Townhouse: cut in the chance of being robbed ashore at home"),
              _pct("rules.estates.house_rob_2", "Mansion: cut in the chance of being robbed ashore at home"),
-             _pct("rules.estates.house_rob_3", "Palace: cut in the chance of being robbed ashore at home")]},
+             _pct("rules.estates.house_rob_3", "Palace: cut in the chance of being robbed ashore at home"),
+             F("rules.estates.house_sell", "Houses can sell the great house back, a stage at a time", "bool",
+               "At home. The top stage goes, with the standing it gave and its cut in robbery; December's upkeep falls with it."),
+             _pct("rules.estates.house_sell_back", "Selling a stage back pays this share of what was paid for it", "", 0, 1)]},
          {"title": "Prices and upkeep that grow with the house (late game)", "fields": [
              F("rules.estates.wealth_scale", "Shares, the great house and the Mayor's fees grow with net worth", "bool",
                "They are multiplied by the square root of (net worth / the figure below), at least 1."),
@@ -891,9 +969,9 @@ SECTIONS = [
              _pct("rules.customs.tell_curious", "Her tell: curious above this risk", "", 0, 1),
              _pct("rules.customs.tell_hungry", "Her tell: hungry above this risk", "", 0, 1)]},
          {"title": "Port Authority: outcomes and second chances", "fields": [
-             F("rules.customs.fine_mult", "Caught: fine as a multiple of the tax dodged", "num", min=0, max=50, step=0.5),
-             F("rules.customs.caught_rep", "Caught: standing lost in that port", "num", min=0, max=100, step=1),
-             F("rules.customs.over_rep", "Over-declaring to the limit: standing gained", "num", min=0, max=100, step=0.5),
+             F("rules.customs.fine_mult", "Caught: fine as a multiple of the tax dodged (Standing swings off)", "num", min=0, max=50, step=0.5),
+             F("rules.customs.caught_rep", "Caught: standing lost in that port (Standing swings off)", "num", min=0, max=100, step=1),
+             F("rules.customs.over_rep", "Over-declaring to the limit: standing gained (Standing swings off)", "num", min=0, max=100, step=0.5),
              F("rules.customs.strongbox", "Her strongbox: silver she can spend on buyouts", "int",
                "Once it is empty she cannot buy any more, so a big lie may only be partly bought.", min=0, max=10**9),
              _pct("rules.customs.strongbox_swing", "Strongbox varies by up to", "", 0, 1),
@@ -905,6 +983,85 @@ SECTIONS = [
                   "Less for greedy officers, more for upright ones."),
              F("rules.customs.bribe_refused_mult", "Sweetener refused: audit chance multiplied by", "num", min=1, max=10, step=0.05),
              F("rules.customs.bribe_rep", "Sweetener refused: standing lost", "num", min=0, max=100, step=1)]},
+         {"title": "Standing: the five bands and their luck", "fields": [
+             F("rules.standing.enabled", "Standing swings (bands, big falls, drift)", "bool",
+               "Standing falls in five bands of 20. Every standing loss or gain below is multiplied by a fresh roll from the band the house is in, and the fine for a caught lie is set by the band it falls into. Off: standing works as before."),
+             F("rules.standing.hostile_pen_lo", "Hostile (0-19): losses times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.hostile_pen_hi", "Hostile (0-19): losses times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.hostile_rew_lo", "Hostile (0-19): gains times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.hostile_rew_hi", "Hostile (0-19): gains times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.cool_pen_lo", "Cool (20-39): losses times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.cool_pen_hi", "Cool (20-39): losses times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.cool_rew_lo", "Cool (20-39): gains times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.cool_rew_hi", "Cool (20-39): gains times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.neutral_pen_lo", "Neutral (40-59): losses times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.neutral_pen_hi", "Neutral (40-59): losses times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.neutral_rew_lo", "Neutral (40-59): gains times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.neutral_rew_hi", "Neutral (40-59): gains times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.warm_pen_lo", "Warm (60-79): losses times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.warm_pen_hi", "Warm (60-79): losses times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.warm_rew_lo", "Warm (60-79): gains times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.warm_rew_hi", "Warm (60-79): gains times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.favoured_pen_lo", "Favoured (80-100): losses times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.favoured_pen_hi", "Favoured (80-100): losses times, most", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.favoured_rew_lo", "Favoured (80-100): gains times, least", "num",  min=0, max=20, step=0.05),
+             F("rules.standing.favoured_rew_hi", "Favoured (80-100): gains times, most", "num",  min=0, max=20, step=0.05)]},
+         {"title": "Standing: caught at the desk", "fields": [
+             F("rules.standing.caught_base", "Caught: standing lost, base", "num", "Plus the share below for how much of the hold's value was hidden. This hit is not band-rolled.", min=0, max=100, step=0.5),
+             F("rules.standing.caught_lie", "Caught: more standing lost for hiding all of it", "num",  min=0, max=100, step=0.5),
+             _pct("rules.standing.caught_vary", "Caught: the fall varies by up to", "Either way.", 0, 1),
+             _pct("rules.standing.region_share", "Word travels: share of a fall felt in the same region", "When caught at the desk or when contraband is seized. Ports in other regions never hear.", 0, 1),
+             F("rules.standing.fine_hidden", "Fine: share of the hidden value, times the band's loss roll", "num",  min=0, max=20, step=0.05),
+             _pct("rules.standing.hostile_floor_lo", "Hostile (0-19): fine at least this share of net worth, least", "", 0, 1),
+             _pct("rules.standing.hostile_floor_hi", "Hostile (0-19): fine at least this share of net worth, most", "", 0, 1),
+             _pct("rules.standing.cool_floor_lo", "Cool (20-39): fine at least this share of net worth, least", "", 0, 1),
+             _pct("rules.standing.cool_floor_hi", "Cool (20-39): fine at least this share of net worth, most", "", 0, 1),
+             _pct("rules.standing.neutral_floor_lo", "Neutral (40-59): fine at least this share of net worth, least", "", 0, 1),
+             _pct("rules.standing.neutral_floor_hi", "Neutral (40-59): fine at least this share of net worth, most", "", 0, 1),
+             _pct("rules.standing.warm_floor_lo", "Warm (60-79): fine at least this share of net worth, least", "", 0, 1),
+             _pct("rules.standing.warm_floor_hi", "Warm (60-79): fine at least this share of net worth, most", "", 0, 1),
+             _pct("rules.standing.favoured_floor_lo", "Favoured (80-100): fine at least this share of net worth, least", "", 0, 1),
+             _pct("rules.standing.favoured_floor_hi", "Favoured (80-100): fine at least this share of net worth, most", "", 0, 1)]},
+         {"title": "Standing: gains and losses", "fields": [
+             F("rules.standing.trade_cap", "Good business: most standing from trading in one visit", "num", "A sale at a profit, a cargo sold where it is short or bought where it is in glut. Before the band roll.", min=0, max=100, step=0.5),
+             F("rules.standing.short_at", "Short: price at least this times its usual price there", "num",  min=1, max=10, step=0.05),
+             F("rules.standing.glut_at", "Glut: price at most this times its usual price there", "num",  min=0, max=1, step=0.05),
+             F("rules.standing.drift", "Drift: points a month every port moves back toward 50", "num",  min=0, max=50, step=0.5),
+             F("rules.standing.pay_correct", "Honest declaration: standing gained", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.pay_more", "Pay More: standing gained", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.pay_more_at", "Pay More: declared at least this times the true worth", "num",  min=1, max=2, step=0.01),
+             F("rules.standing.honest_run", "Each honest desk in a row after the first adds", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.honest_run_max", "The honest run adds at most", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.pirates_beaten", "Pirates beaten on the way to a port: standing gained there", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.debt_cleared", "Debt cleared: home standing gained", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.debt_cleared_min", "Debt cleared: only for a debt of at least", "int", min=0, max=10**9),
+             F("rules.standing.seized", "Contraband seized: standing lost", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.dues_short", "Harbour dues paid short: standing lost", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.collect_home", "Collectors call: home standing lost", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.collect_away", "Collectors call: standing lost everywhere else", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.bankrupt_home", "Bankruptcy: home standing lost", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.bankrupt_away", "Bankruptcy: standing lost everywhere else", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.beaten", "Beaten or retreating on the way to a port: standing lost there", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.dump", "Dumping a lot far below market: standing lost", "num",  min=0, max=100, step=0.5),
+             F("rules.standing.dump_below", "Dumping: paid under this times the cargo's usual price there", "num",  min=0, max=1, step=0.05),
+             F("rules.standing.contract_missed", "Missing a Mayor's commission: home standing lost", "num",  min=0, max=100, step=0.5)]},
+         {"title": "Standing: what each band does", "fields": [
+             F("rules.standing.hostile_audit", "Hostile: Port Authority audits times", "num",  min=1, max=10, step=0.05),
+             F("rules.standing.cool_audit", "Cool: Port Authority audits times", "num",  min=1, max=10, step=0.05),
+             _pct("rules.standing.hostile_margin", "Hostile: dealer's margin widened by", "", 0, 0.5),
+             _pct("rules.standing.cool_margin", "Cool: dealer's margin widened by", "", 0, 0.5),
+             _pct("rules.standing.hostile_yard", "Hostile: ships and repairs cost more by", "", 0, 5),
+             _pct("rules.standing.cool_yard", "Cool: ships and repairs cost more by", "", 0, 5),
+             F("rules.standing.hostile_match", "Hostile: pirates leaving this port are tougher by", "num", "Added to the fight's match (1 = an even fight).", min=0, max=3, step=0.01),
+             F("rules.standing.cool_match", "Cool: pirates leaving this port are tougher by", "num",  min=0, max=3, step=0.01),
+             _pct("rules.standing.warm_tax_cut", "Warm: Port Authority tax cut by", "", 0, 1),
+             _pct("rules.standing.favoured_tax_cut", "Favoured: Port Authority tax cut by", "", 0, 1),
+             F("rules.standing.favoured_match", "Favoured: pirates leaving this port are weaker by", "num",  min=0, max=3, step=0.01),
+             _pct("rules.standing.favoured_avoid", "Favoured: chance friends' warning avoids a fight leaving this port", "", 0, 1),
+             _pct("rules.standing.lot_chance", "Favoured: chance a dealer offers a private lot on arrival", "", 0, 1),
+             _pct("rules.standing.lot_depth", "Private lot: size, as a share of the cargo's market depth, times the gain roll", "", 0, 5),
+             _pct("rules.standing.lot_discount", "Private lot: below market by, times the gain roll", "", 0, 1),
+             _pct("rules.standing.lot_discount_max", "Private lot: never more than this below market", "", 0, 1)]},
      ]},
     {"id": "goods", "title": "Cargo", "intro": "What can be traded. Removing a cargo during a game discards any that players hold.",
      "tables": [
@@ -974,6 +1131,14 @@ SECTIONS = [
              F("ship_names", "Merchantman names", "lines", "Names given to new Merchantmen. One per line.", max=40),
              F("escort_names", "Escort names", "lines", "Names given to new Escorts. One per line.", max=40),
              F("cargo_names", "Cargo ship names", "lines", "Names given to new Cargo ships. One per line.", max=40)]},
+         {"title": "NSFW ship names", "fields": [
+             F("nsfw_ship_names", "NSFW Merchantman names", "lines", "Used instead of the clean Merchantman names "
+               "while Family-friendly is off. Every ship also gets a clean name, shown whenever Family-friendly is on "
+               "(for the table, or one screen). One per line.", max=40),
+             F("nsfw_escort_names", "NSFW Escort names", "lines", "Used instead of the clean Escort names while "
+               "Family-friendly is off. One per line.", max=40),
+             F("nsfw_cargo_names", "NSFW Cargo ship names", "lines", "Used instead of the clean Cargo ship names "
+               "while Family-friendly is off. One per line.", max=40)]},
      ]},
     {"id": "weather", "title": "Weather & Seas", "intro": "Storm odds for each sea and what storms do.",
      "tables": [
@@ -1185,7 +1350,7 @@ SECTIONS = [
              _pct("rules.contraband.seize_banned", "Chance of seizure where it is banned"),
              _pct("rules.contraband.seize_rep_relief", "Reduction per point of standing", "", 0, 0.1),
              F("rules.contraband.fine_per_unit", "Fine per unit seized", "int", min=0, max=10**7),
-             F("rules.contraband.rep_penalty", "Standing lost when caught", "num", min=0, max=100, step=1)]},
+             F("rules.contraband.rep_penalty", "Standing lost when caught (Standing swings off)", "num", min=0, max=100, step=1)]},
          {"title": "Market news and bans", "fields": [
              _pct("rules.events.shock_chance", "Chance of a glut or shortage each month"),
              F("rules.events.shock_mults", "Possible price multipliers", "numlist", "One is picked at random.", min=0.05, max=20),

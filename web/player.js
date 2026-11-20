@@ -336,6 +336,7 @@ function deckFrame() {
 
 function render() {
   if (!D || !S) return;
+  noteRepMove();
   Ceremony.sync(S, D, app);
   const active = document.activeElement;
   const focusId = active && active.id && active.id.startsWith("in_") ? active.id : null;
@@ -368,6 +369,8 @@ function render() {
   }
   syncTally(inGame);
   syncPromotion(inGame, S.phase === "ended" || (inGame && S.phase === "port" && !portOverlay));
+  syncBands(inGame && S.phase === "port" && !portOverlay && !S.me.promotion
+    && !(typeof Battle !== "undefined" && Battle.busy()));
 
   if (focusId) {
     const el = document.getElementById(focusId);
@@ -683,7 +686,7 @@ function standings() {
       <span class="medal${medal ? " " + medal : ""}" title="${esc(ordinal(place))}" aria-label="${esc(ordinal(place))}"><b>${place}</b></span>
       <span class="race-crest">${houseMark(p)}</span>
       <span class="race-who"><b class="hname">${esc(p.firm)}</b>${me ? `<em class="race-you">${te("race.you")}</em>` : ""}
-        <span class="race-capt">${esc(p.name)} <span class="rankname">${esc(p.rank)}</span></span>
+        <span class="race-capt">${esc(p.name)} ${Ranks.label(p)}</span>
         <small class="race-where">${esc(portName(p.port))} · ${esc(ten("race.ships", p.ships))}</small></span>
       <span class="race-worth"><small>${te("col.worth")}</small><b class="${p.worth < 0 ? "down" : ""}">${money(p.worth)}</b><small>${sub}</small></span>
     </li>`;
@@ -726,7 +729,7 @@ function topHtml() {
     .map(s => `<div class="plq ${s[2] || ""}"${s[4] && s[4] !== s[1] ? ` title="${esc(s[4])}"` : ""}><span>${te(s[0])}</span><b>${s[1]}</b>${s[3] ? `<small>${s[3]}</small>` : ""}</div>`).join("") +
     standingPlaque((me.rep || {})[me.port]);
   return `<div class="dk-house${Faces.of(me).crest ? " has-crest" : ""}">${houseMark(me, "dk-crest")}
-      <div><b>${esc(me.firm)}</b><span class="rankname">${esc(me.rank)}</span></div></div>
+      <div><b>${esc(me.firm)}</b>${Ranks.label(me)}</div></div>
     ${portPlate()}
     <div class="dk-stats">${stats}</div>
     ${voyageRibbon()}`;
@@ -776,7 +779,10 @@ function standingPlaque(rep) {
   const tier = standingTier(rep);
   const word = te("stat.standing_" + ["hostile", "cool", "neutral", "warm", "favoured"][tier]);
   const tip = te("stat.standing_tip", { port: esc(portName(S.me.port)), tier: word });
-  return `<div class="plq standing tier-${tier}" title="${tip}" style="--heat:${standingHeat(tier)}"><span>${te("stat.standing")}</span><b>${standingHeatSvg(rep, tip)}</b></div>`;
+  const mv = ui.repMove && ui.repMove.port === S.me.port && Date.now() < ui.repMove.until ? ui.repMove : null;
+  const moved = mv ? (mv.d > 0 ? " rep-up" : " rep-down") : "";
+  const delta = mv ? `<i class="plq-delta" aria-hidden="true">${mv.d > 0 ? "+" : "\u2212"}${Math.abs(mv.d)}</i>` : "";
+  return `<div class="plq standing tier-${tier}${moved}" title="${tip}" style="--heat:${standingHeat(tier)}"><span>${te("stat.standing")}</span><b>${standingHeatSvg(rep, tip)}</b>${delta}</div>`;
 }
 
 /* The port the fleet lies in, between the house name and the plaques: "Welcome to" over the port's
@@ -839,19 +845,19 @@ function gameScreen() {
 }
 
 function rankSeal(rankId) {
-  const art = Media.choose("rank", rankId, "badge", { mode: "fixed", strict: true });
-  return art ? `<img class="fleet-rank-seal" src="${esc(art.u)}" alt="">` : "";
+  return Ranks.seal(rankId, "fleet-rank-seal");
 }
 
 function captainCommission(me) {
   const portrait = Faces.of(me).portrait;
+  const palette = Ranks.style(me);
   const { next_rank: next, qualified_rank: qualified } = me;
   const status = qualified ? te("fleet.rank_earned", { rank: qualified })
     : next ? te("fleet.rank_next", { rank: next.title }) : te("fleet.rank_max");
   const note = qualified ? me.port === me.home ? te("fleet.rank_customs")
     : te("fleet.rank_return", { port: portName(me.home) })
     : next ? te("fleet.rank_goal", { worth: money(me.worth), goal: money(next.worth) }) : "";
-  return `<section class="fleet-commission" aria-label="${te("fleet.commission")}">
+  return `<section class="fleet-commission" style="${esc(palette)}" aria-label="${te("fleet.commission")}">
     ${portrait ? `<img class="fleet-captain-portrait" src="${esc(portrait)}" alt="">` : ""}
     <div class="fleet-commission-label">${te("fleet.commission")}</div>
     <div class="fleet-rank-identity">${rankSeal(me.rank_id)}<div>
@@ -901,7 +907,7 @@ function syncPromotion(inGame, canShow) {
     return out;
   };
   const art = promotionArt(promotion.port, promotion.rank_id);
-  const badge = Media.choose("rank", promotion.rank_id, "badge", { mode: "fixed", strict: true });
+  const badge = Ranks.url(promotion.rank_id);
   const next = Object.hasOwn(record, "next") ? record.next : me.next_rank;
   const achievements = promotion.achievements;
   const mayorLabel = te("fleet.promotion_mayor", { port });
@@ -939,7 +945,7 @@ function syncPromotion(inGame, canShow) {
       <p class="pr-eyebrow">${tfb("fleet.promotion_order", "By order of the {mayor}", { mayor: t("fleet.promotion_mayor", { port }) })}</p>
       <p class="pr-hereby">${te("fleet.promotion_you_commissioned")}</p>
       <div class="pr-seal"><span class="pr-rays" aria-hidden="true"></span>
-        ${badge ? `<img src="${esc(badge.u)}" alt="">` : `<span class="pr-noseal" aria-hidden="true">${numeral(rankIndex + 1)}</span>`}</div>
+        ${badge ? `<img src="${esc(badge)}" alt="">` : `<span class="pr-noseal" aria-hidden="true">${numeral(rankIndex + 1)}</span>`}</div>
       <h2 class="pr-rank" id="fleet-promotion-title">${esc(promotion.title)}</h2>
       <p class="pr-elevation">${record.previous ? `${esc(record.previous.title)} <span aria-hidden="true">→</span> ` : ""}${esc(promotion.title)}</p>
       ${ranks.length ? `<ol class="pr-path" aria-label="${te("fleet.promotion_progress")}">${ranks.map((r, i) =>
@@ -1002,6 +1008,101 @@ function syncPromotion(inGame, canShow) {
   button.focus({ preventScroll: true });
   dialog.scrollTop = 0;
   setTimeout(() => { if (dialog.isConnected && dialog.open) sayIt(); }, 900);
+}
+
+/* Reputation swings (19 Nov 2026): when standing in a port crosses into another band, a big card with
+   that port's Mayor (her whole picture, large), the new band's heat bars and name, why it moved and what
+   the band now means. One card at a time; other moves since are listed under it. Seen moves are
+   remembered per screen (browser storage when it works, memory otherwise). The Mayor reads a fall into
+   Hostile or a rise into Favoured aloud from the Captain's Log (l.band_hostile / l.band_favoured). */
+const BAND_KEYS = ["hostile", "cool", "neutral", "warm", "favoured"];
+const bandSeen = (() => {
+  let mem = {};
+  const key = () => "ct.bands." + ((S && S.game_id) || "") + "." + ((S && S.me && S.me.id) || "");
+  const load = () => { try { return JSON.parse(localStorage.getItem(key()) || "{}") || {}; } catch (e) { return mem; } };
+  return {
+    has: id => !!load()[id],
+    add: ids => {
+      const all = load();
+      ids.forEach(id => { all[id] = 1; });
+      mem = all;
+      try { localStorage.setItem(key(), JSON.stringify(all)); } catch (e) { /* memory only */ }
+    }
+  };
+})();
+function bandArt(port, rose, to) {
+  const tagged = role => Media.items("port", port, role, false).filter(i => i.r.includes(role));
+  const anyOf = list => list.length ? list[Math.floor(Math.random() * list.length)] : null;
+  const mayor = (rose && to >= 3 ? anyOf(tagged("mayor_congrats")) : null)
+    || Media.choose("port", port, "mayor", { strict: true, slot: "band" });
+  return mayor && mayor.t === "image" ? mayor.u : "";
+}
+function syncBands(canShow) {
+  let dialog = app.querySelector(".band-move");
+  const moves = ((S.me && S.me.bands) || []).filter(e => !bandSeen.has(e.id));
+  if (!canShow || !moves.length) {
+    if (dialog && !moves.length) dialog.remove();
+    return;
+  }
+  // The headline: a move in the port the house is in, the biggest band jump first, then the newest.
+  const here = moves.filter(e => e.port === S.me.port);
+  const pool = here.length ? here : moves;
+  const top = pool.slice().sort((a, b) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from) || b.id - a.id)[0];
+  const key = moves.map(e => e.id).join(",");
+  if (dialog && dialog.dataset.key === key) return;
+  if (dialog) dialog.remove();
+  const rose = top.to > top.from, port = portName(top.port), band = BAND_KEYS[top.to];
+  const word = te("stat.standing_" + band);
+  const why = T["band.why." + top.why] != null ? te("band.why." + top.why)
+    : T["band.why." + String(top.why).replace(/_word$/, "")] != null ? te("band.why." + String(top.why).replace(/_word$/, "")) : te("band.why.other");
+  const art = bandArt(top.port, rose, top.to);
+  const others = moves.filter(e => e !== top);
+  const mayorLabel = te("fleet.promotion_mayor", { port });
+  dialog = document.createElement("dialog");
+  dialog.className = "band-move " + (rose ? "rose" : "fell") + " to-" + band;
+  dialog.dataset.key = key;
+  dialog.style.setProperty("--heat", standingHeat(top.to));
+  dialog.setAttribute("aria-labelledby", "band-move-title");
+  dialog.innerHTML = `
+    <div class="bm-card">
+      <figure class="bm-mayor${art ? "" : " nopic"}">${art ? `<img src="${esc(art)}" alt="${mayorLabel}">` : ""}
+        <figcaption>${mayorLabel}</figcaption></figure>
+      <section class="bm-body">
+        <p class="bm-eyebrow">${te("band.title", { port: esc(port) })}</p>
+        <h2 id="band-move-title">${te(rose ? "band.rose" : "band.fell")}</h2>
+        <p class="bm-now">${te("band.now", { port: esc(port) })}</p>
+        <div class="bm-band"><span class="bm-from">${te("stat.standing_" + BAND_KEYS[top.from])}</span>
+          <span class="bm-arrow" aria-hidden="true">${rose ? "&uarr;" : "&darr;"}</span>
+          ${standingHeatSvg(top.rep, word, "bm-heat")}<strong>${word}</strong><em>${top.rep}</em></div>
+        <p class="bm-why">${why}</p>
+        <p class="bm-effect">${te("band.effect." + top.to)}</p>
+        ${others.length ? `<ul class="bm-others">${others.map(e => `<li style="--heat:${standingHeat(e.to)}"><b>${esc(portName(e.port))}</b> ${te("stat.standing_" + BAND_KEYS[e.from])} <span aria-hidden="true">${e.to > e.from ? "&uarr;" : "&darr;"}</span> ${te("stat.standing_" + BAND_KEYS[e.to])}</li>`).join("")}</ul>` : ""}
+        <button type="button" class="primary" data-bm="ok">${te("band.ok")}</button>
+      </section>
+    </div>`;
+  dialog.addEventListener("cancel", e => { e.preventDefault(); close(); });
+  function close() {
+    bandSeen.add(moves.map(e => e.id));
+    if (dialog.open) dialog.close();
+    dialog.remove();
+    render();
+  }
+  dialog.querySelector("[data-bm=ok]").addEventListener("click", close);
+  app.appendChild(dialog);
+  dialog.showModal();
+}
+
+/* The heat bars on the masthead flash and show the change for a few seconds when standing in this
+   port moves (ui.repMove), up in green, down in red. */
+function noteRepMove() {
+  if (!S.me || !S.me.rep) return;
+  const port = S.me.port, rep = S.me.rep[port];
+  const was = ui.repWas;
+  if (was && was.port === port && was.game === S.game_id && was.rep !== rep) {
+    ui.repMove = { port, d: rep - was.rep, until: Date.now() + 3200 };
+    setTimeout(() => { if (ui.repMove && Date.now() >= ui.repMove.until) { ui.repMove = null; render(); } }, 3300);
+  }
+  ui.repWas = { port, rep, game: S.game_id };
 }
 
 /* The captain button at the foot of the rail: the Captain's portrait from the Media Library, square and
@@ -1367,6 +1468,21 @@ function marketRow(g) {
     <td class="mk-alltd">${tradeAllButton(g)}</td></tr>`;
 }
 
+/* A private lot (reputation swings, 19 Nov 2026): a dealer in a port where the house is Favoured offers a
+   lot below market for this visit only. Buying it never moves the market price. */
+function lotCard() {
+  const lot = S.me.lot;
+  if (!lot) return "";
+  const name = (D.goods[lot.good] || {}).name || lot.good;
+  const off = Math.round(lot.off * 100);
+  const room = Math.max(0, S.me.capacity - S.me.used);
+  const can = Math.min(lot.qty, room, Math.floor(S.me.cash / Math.max(0.01, lot.unit)));
+  return `<div class="mk-lot" style="--heat:${standingHeat(4)}"><span class="mk-lot-tag">${te("lot.title")}</span>
+    <p>${te("lot.offer", { qty: lot.qty, good: esc(name.toLowerCase()), price: money(lot.unit), off })}</p>
+    <button type="button" class="primary" data-act="buy_lot" data-qty="${can}"${can > 0 ? "" : " disabled"}>${
+      can >= lot.qty ? te("lot.buy") : te("lot.buy_some", { qty: can })}</button></div>`;
+}
+
 function marketTab() {
   const me = S.me;
   const banned = S.crackdown.includes(me.port);
@@ -1376,6 +1492,7 @@ function marketTab() {
       <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span>
       <span class="mk-allslot">${tradeAllCargoButton()}</span></header>
     ${banned ? `<p class="note bad">${te("market.banned")}</p>` : ""}
+    ${lotCard()}
     <table class="mk-table"><thead><tr><th colspan="2">${te("col.cargo")}</th><th class="n">${te("col.price")} · ${te("col.aboard")}</th><th class="mk-scale"><span>${te("btn.sell")}</span><span>${te("btn.buy")}</span></th><th></th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></section>`;
 }
@@ -2222,19 +2339,30 @@ function portServices() {
 /* Late game (19 Nov 2026): shares in the port the house is in, and the great house at home. */
 function sharesCard(me) {
   const sh = me.shares, locked = me.ready, port = portName(sh.port);
-  const info = (sh.home ? te("shares.info_home", { port }) : te("shares.info", { port, total: sh.total, cut: pct(sh.cut, 0) }));
+  // Captain's share allowance (19 Nov 2026): earned by promotion, at most sh.cap in all, placed in any port.
+  const rule = sh.buy ? "" : " " + te("shares.rule", { cap: sh.cap });
+  const info = (sh.home ? te("shares.info_home", { port }) : te("shares.info", { port, total: sh.total, cut: pct(sh.cut, 0) })) + rule;
+  const allowance = sh.earned >= sh.cap && !sh.free ? te("shares.allowance_full", { cap: sh.cap })
+    : sh.earned || sh.placed ? te("shares.allowance", { placed: sh.placed, free: sh.free, earned: sh.earned, cap: sh.cap })
+    : te("shares.allowance_none");
   const rows = [
     sh.home ? "" : te("shares.rate", { mine: pct(sh.my_rate, 2), base: pct(sh.base_rate, 2) }),
     te("shares.held", { n: sh.here, total: sh.total }),
-    sh.left > 0 ? te("shares.left", { left: sh.left, total: sh.total, price: money(sh.price) }) : te("shares.none_left", { port }),
+    sh.left <= 0 ? te("shares.none_left", { port })
+      : sh.buy ? te("shares.left", { left: sh.left, total: sh.total, price: money(sh.price) })
+      : te("shares.open", { left: sh.left, total: sh.total }),
     sh.patron_me ? te("shares.patron_me", { port }) : sh.patron ? te("shares.patron", { port, firm: sh.patron }) : te("shares.no_patron", { port }),
     sh.holders.length ? te("shares.holders", { list: sh.holders.map(h => `${h.firm} ${h.n}`).join(", ") }) : "",
+    allowance,
   ].filter(Boolean).map(t => `<li>${t}</li>`).join("");
   const mine = Object.entries(sh.mine || {});
-  const yours = mine.length ? `<p class="muted">${te("shares.yours", { list: mine.map(([k, n]) => `${portName(k)} ${n}`).join(", "), value: money(sh.value) })}</p>` : "";
+  const list = mine.map(([k, n]) => `${portName(k)} ${n}`).join(", ");
+  const yours = mine.length ? `<p class="muted">${sh.value ? te("shares.yours", { list, value: money(sh.value) }) : te("shares.yours_free", { list })}</p>` : "";
+  const room = sh.placed < sh.cap;
   const buttons = [
-    sh.left > 0 ? btn(te("shares.buy", { cost: money(sh.price) }), "shares", 'data-op="buy"', "primary", locked || sh.price > me.cash) : "",
-    sh.sell_back && sh.here > 0 ? btn(te("shares.sell", { gain: money(sh.back) }), "shares", 'data-op="sell"', "pt-go", locked) : "",
+    sh.left > 0 && sh.free > 0 ? btn(te("shares.place"), "shares", 'data-op="buy"', "primary", locked) : "",
+    sh.left > 0 && sh.buy && !sh.free && room ? btn(te("shares.buy", { cost: money(sh.price) }), "shares", 'data-op="buy"', "primary", locked || sh.price > me.cash) : "",
+    sh.sell_back && sh.here > 0 ? btn(sh.back ? te("shares.sell", { gain: money(sh.back) }) : te("shares.take_back"), "shares", 'data-op="sell"', "pt-go", locked) : "",
   ].join("");
   return serviceCard("shares", te("shares.title", { port }), info,
     `<ul class="pt-share-facts">${rows}</ul>${yours}${buttons ? `<div class="pt-actions">${buttons}</div>` : ""}`);
@@ -2276,7 +2404,11 @@ function estateCard(me) {
     ? `<p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}</p>
        <div class="pt-actions">${btn(te("estate.build", { stage: nxt.title, cost: money(nxt.cost) }), "estate", "", "primary", locked || nxt.cost > me.cash)}</div>`
     : `<p>${te("estate.done", { home })}</p>`;
-  return serviceCard("estate_" + es.stage, te("estate.title", { home }), info, plan + body);
+  const sell = es.sell
+    ? `<p>${te(es.upkeep ? "estate.sell_info" : "estate.sell_info_none", { stage: es.title, cash: money(es.sell_price), share: Math.round(es.sell_share * 100), rep: Math.round(es.sell_rep), home, upkeep: money(es.upkeep), after: money(es.upkeep_after) })}</p>
+       <div class="pt-actions">${btn(te("estate.sell", { stage: es.title, cash: money(es.sell_price) }), "estate", 'data-op="sell"', "", locked)}</div>`
+    : "";
+  return serviceCard("estate_" + es.stage, te("estate.title", { home }), info, plan + body + sell);
 }
 
 /* ---------------------------------------------------------------- fleet -- */
@@ -2378,7 +2510,9 @@ function shipCard(s, i, yard) {
 
 function yardRow(k) {
   const me = S.me, s = D.ships[k], c = classInfo(roleOf(k));
-  const cant = me.cash < s.price || c.n >= c.max || !c.open;
+  // A Hostile or Cool yard charges more (reputation swings): me.band.yard_mult, 1 elsewhere.
+  const ym = (me.band && me.band.yard_mult) || 1, price = Math.round(s.price * ym);
+  const cant = me.cash < price || c.n >= c.max || !c.open;
   // The flagship is named by her house as she is bought (blank: one from the name list).
   const flagName = roleOf(k) === "flagship" && !cant
     ? `<input type="text" class="yd-flagname" data-k="flagname" maxlength="28" value="${esc(ui.vals.flagname || "")}" placeholder="${te("yard.flag_name")}" aria-label="${te("yard.flag_name")}">` : "";
@@ -2386,7 +2520,7 @@ function yardRow(k) {
     <td class="yd-ico">${Media.html("ship", k, "card", "yd-img", D.graphics.ships[k], { slot: "yard" })}</td>
     <td class="yd-name"><b>${esc(s.name)}</b>${flagName}${s.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}${s.cannons ? `<span class="tag" title="${esc(t("fleet.cannon_tip", { price: money(D.cannon_price), power: D.cannon_power, slots: cannonSlots() }))}">${te("tag.cannons")}</span>` : ""}</td>
     <td class="n">${s.hold || "—"}</td><td class="n">${s.hull}</td><td class="n">${s.slots || "—"}</td>
-    <td class="n yd-price">${money(s.price)}</td>
+    <td class="n yd-price${ym > 1 ? " dear" : ""}">${money(price)}</td>
     <td class="yd-do">${btn(te("btn.buy"), "buyship", `data-ship="${k}"`, "fl-btn primary", cant)}</td></tr>`;
 }
 
@@ -2646,6 +2780,7 @@ app.addEventListener("click", async e => {
     }
     case "years": return act("settings", { years: +d.y });
     case "start": return act("start");
+    case "buy_lot": return act("buy_lot", { qty: +d.qty || 0 });
     case "trade": {
       const tr = tradeOf(d.good);
       if (!tr.side) return toast(t("e.qty_first"), true);
@@ -2678,7 +2813,7 @@ app.addEventListener("click", async e => {
     case "protection": return act("protection");
     case "depot": return act("depot", { op: d.op });
     case "shares": return act("shares", { op: d.op, n: 1 });
-    case "estate": return act("estate", {});
+    case "estate": return act("estate", d.op ? { op: d.op } : {});
     case "contract": return act("contract", { op: d.op, slot: d.slot });
     case "sell_all": return act("sell", { good: d.good, src: "all" });
     case "gun": return act("buy_gun", { index: +d.i });

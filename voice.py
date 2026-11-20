@@ -158,11 +158,42 @@ def steers(model_id):
     return model_id.startswith("inworld-tts-2") and "flash" not in model_id
 
 
+_COUNTED = re.compile(r"\b(\d[\d,]*|one|a|an)(\s+(?:[A-Za-z]+\s+)?)([A-Za-z]+)\(s\)", re.I)
+
+
+def _plurals(t):
+    """'ship(s)' reads as 'ship s' aloud. Say '1 ship' / '3 ships', or 'ships' with no count."""
+    def counted(m):
+        num = m.group(1).replace(",", "").lower()
+        one = num in ("1", "one", "a", "an")
+        return m.group(1) + m.group(2) + m.group(3) + ("" if one else "s")
+    t = _COUNTED.sub(counted, t)
+    return re.sub(r"([A-Za-z])\(s\)", r"\1s", t)
+
+
+# Words Inworld says wrongly. Each is swapped, for the voice only, for inline IPA wrapped in
+# slashes (one word per pair, standard English IPA), which Inworld reads exactly. The screen
+# still shows the written word. The patterns also catch common misspellings, so a typo in
+# Admin wording is read right too. Add a row here for any other word a voice trips on.
+PRONOUNCE = [
+    # marijuana, marihuana, mariguana, maijiuana ... (any "ma...uana"), plural too
+    (re.compile(r"\bma[a-z]{1,5}uanas?\b", re.I), "/ˌmærəˈwɑːnə/"),
+]
+
+
+def _pronounce(t):
+    for pattern, ipa in PRONOUNCE:
+        t = pattern.sub(lambda m, ipa=ipa: ipa if not m.group(0).lower().endswith("s") else ipa[:-1] + "z/", t)
+    return t
+
+
 def speech_text(text):
     """Game wording tidied for the ear."""
     t = str(text or "")
     t = t.replace(" · ", ", ").replace("…", "...")
     t = re.sub(r"\{\w+\}", "", t)
+    t = _plurals(t)
+    t = _pronounce(t)
     t = " ".join(t.split())
     return t[:MAX_CHARS]
 

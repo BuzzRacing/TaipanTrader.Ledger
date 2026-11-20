@@ -388,9 +388,12 @@ body.player button.or-pay { flex: none; white-space: nowrap; }
 .deck[data-tab="fleet"] .dk-stage { width: min(100cqw, 100cqh - 10.5rem - clamp(.45rem, .9vw, .85rem)); }
 .deck[data-tab="fleet"] .dk-dyn { display: block; flex: none; width: min(100cqw, 100cqh - 10.5rem); }
 .fleet-commission {
+  container-type: inline-size;
+  --rank-tone: var(--deck-leather); --rank-deep: var(--deck-night); --rank-metal: var(--brass-hi);
   position: relative; isolation: isolate; overflow: hidden; padding: .8rem;
-  background: linear-gradient(145deg, var(--deck-leather), var(--deck-night) 70%);
-  color: var(--deck-ivory); border: 1px solid var(--edge-hi); border-radius: var(--radius);
+  background: linear-gradient(145deg, var(--rank-tone), var(--rank-deep) 85%);
+  color: var(--deck-ivory); border: 1px solid var(--rank-metal); border-radius: var(--radius);
+  box-shadow: inset 0 3px var(--rank-metal);
 }
 .fleet-captain-portrait {
   position: absolute; z-index: -1; inset: 0 0 0 auto; width: 57%; height: 100%; object-fit: cover;
@@ -401,20 +404,32 @@ body.player button.or-pay { flex: none; white-space: nowrap; }
   text-shadow: 0 1px 4px var(--deck-night), 0 0 6px var(--deck-night);
 }
 .fleet-commission-label {
-  color: var(--brass-hi); font: .78rem/1.25 var(--special); letter-spacing: .09em; text-transform: uppercase;
+  color: var(--rank-metal); font: .78rem/1.25 var(--special); letter-spacing: .09em; text-transform: uppercase;
 }
 .fleet-rank-identity { display: flex; gap: .55rem; align-items: center; margin-block: .45rem; }
+.fleet-rank-identity > div { min-width: 0; }
 .fleet-rank-identity h2 { margin: 0; font-size: 1.16rem; line-height: 1.15; overflow-wrap: anywhere; }
-.fleet-rank-identity strong { color: var(--brass-hi); }
-.fleet-rank-seal { width: 3.85rem; height: 3.85rem; object-fit: contain; flex: none; }
+.fleet-rank-identity strong { color: var(--rank-metal); }
+.fleet-rank-seal {
+  width: 4.5rem; height: 4.5rem; object-fit: contain; flex: none;
+  filter: drop-shadow(0 3px 5px var(--rank-deep));
+}
 .fleet-commission dl {
   display: grid; grid-template-columns: 1fr .55fr 1.15fr; gap: .35rem; margin: 0;
-  padding-block: .45rem; border-block: 1px solid var(--edge);
+  padding-block: .45rem; border-block: 1px solid color-mix(in srgb, var(--rank-metal) 30%, transparent);
 }
 .fleet-commission dt, .fleet-rank-progress small { color: var(--deck-ivory); font-size: .84rem; }
 .fleet-commission dd { margin: 0; font-weight: bold; overflow-wrap: anywhere; }
-.fleet-rank-progress { margin-top: .45rem; color: var(--jade-hi); }
+.fleet-rank-progress { margin-top: .45rem; color: var(--rank-metal); }
 .fleet-rank-progress small { display: block; }
+@container (max-width: 250px) {
+  .fleet-rank-identity { flex-direction: column; align-items: flex-start; }
+  .fleet-commission dl { grid-template-columns: 1fr 1fr; }
+  .fleet-commission dl > div:last-child { grid-column: 1 / -1; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .deck[data-tab="fleet"] :is(.dk-stage, .dk-dyn) { width: 100%; }
+}
 .fleet-promotion {
   width: min(31rem, calc(100% - 1.2rem)); max-height: calc(100dvh - 1.2rem); padding: 0;
   color: var(--deck-ivory); background: var(--deck-lacquer); border: 1px solid var(--edge-hi);
@@ -1809,3 +1824,64 @@ body.player .bank-rest span { flex: 1; }
 .pt-commission-bar i { display: block; height: 100%; background: var(--brass-hi); }
 .pt-commission.offer { border: 1px dashed var(--edge-hi); border-radius: .4rem; padding: .55rem .65rem; margin: .4rem 0; }
 .pt-commission .pt-actions { margin-top: .45rem; }
+
+/* ------------------------------------------------- reputation swings (19 Nov 2026) -- */
+/* The masthead heat bars flash on a change of standing here, with the change beside them. */
+.plq.standing { position: relative; }
+.plq.standing.rep-up { animation: repUp 1s ease-out 3; }
+.plq.standing.rep-down { animation: repDown .9s ease-out 3; }
+.plq-delta { position: absolute; right: -.35rem; top: -.75rem; padding: .05rem .38rem; border-radius: 999px;
+  font: 700 .78rem/1.2 var(--sans); font-style: normal; color: #fff; pointer-events: none;
+  animation: repDelta 3.2s ease-out forwards; }
+.rep-up .plq-delta { background: var(--deck-jade); }
+.rep-down .plq-delta { background: var(--deck-oxblood); }
+@keyframes repUp { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--deck-jade) 80%, transparent); }
+  100% { box-shadow: 0 0 0 .7rem transparent; } }
+@keyframes repDown { 0%, 30% { transform: translateX(-2px); } 15%, 45% { transform: translateX(2px); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--deck-oxblood) 90%, transparent); }
+  60%, 100% { transform: none; box-shadow: 0 0 0 .8rem transparent; } }
+@keyframes repDelta { 0% { opacity: 0; transform: translateY(.4rem); } 12%, 75% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-.4rem); } }
+@media (prefers-reduced-motion: reduce) { .plq.standing.rep-up, .plq.standing.rep-down, .plq-delta { animation: none; } }
+
+/* The band card: the Mayor large on the left (whole picture, never cropped to a medallion), the band on the right. */
+.band-move { width: min(46rem, calc(100% - 1.2rem)); max-height: calc(100dvh - 1.2rem); padding: 0; overflow: auto;
+  color: var(--deck-ivory); background: var(--deck-lacquer); border: 1px solid color-mix(in srgb, var(--heat) 60%, var(--edge-hi));
+  border-radius: var(--radius, 10px); box-shadow: 0 0 40px -10px var(--heat), 0 18px 50px -12px #000; }
+.band-move::backdrop { background: #100b09d9; }
+.band-move.fell::backdrop { background: radial-gradient(circle, #3a0d0fcc, #0c0606ee); }
+.bm-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); min-height: min(28rem, 80dvh); }
+.bm-mayor { margin: 0; position: relative; background: var(--deck-night); display: flex; align-items: flex-end; justify-content: center; }
+.bm-mayor img { display: block; width: 100%; height: 100%; max-height: 80dvh; object-fit: contain; object-position: center bottom; }
+.bm-mayor.nopic { min-height: 10rem; }
+.bm-mayor figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: .5rem .8rem; font-size: .8rem;
+  color: var(--brass-hi); background: linear-gradient(transparent, #000c); }
+.bm-body { padding: 1.2rem 1.3rem 1.1rem; display: flex; flex-direction: column; gap: .45rem; }
+.bm-eyebrow { margin: 0; color: var(--brass-hi); letter-spacing: .08em; text-transform: uppercase; font-size: .75rem; }
+.bm-body h2 { margin: 0; font: 400 1.8rem/1.15 var(--title); color: var(--heat); }
+.bm-now { margin: .2rem 0 0; color: color-mix(in srgb, var(--deck-ivory) 75%, transparent); }
+.bm-band { display: flex; align-items: center; gap: .6rem; padding: .7rem .8rem; border-radius: 8px;
+  background: color-mix(in srgb, var(--heat) 14%, var(--deck-night)); border: 1px solid color-mix(in srgb, var(--heat) 45%, transparent); }
+.bm-from { font-size: .8rem; opacity: .7; text-decoration: line-through; }
+.bm-arrow { font-size: 1.3rem; color: var(--heat); }
+.bm-heat { width: 5.6rem; height: 2rem; overflow: visible; filter: drop-shadow(0 0 6px var(--heat)); }
+.bm-heat rect.off { fill: rgba(255, 236, 190, .07); stroke: rgba(255, 236, 190, .16); stroke-width: .6; }
+.bm-band strong { font-size: 1.45rem; color: var(--heat); }
+.bm-band em { margin-left: auto; font-style: normal; font-variant-numeric: tabular-nums; opacity: .8; }
+.band-move.fell.to-hostile .bm-band { animation: plqWarn 1.2s ease-in-out infinite; }
+.bm-why { margin: .3rem 0 0; font-weight: 600; }
+.bm-effect { margin: 0; color: color-mix(in srgb, var(--deck-ivory) 82%, transparent); line-height: 1.45; }
+.bm-others { margin: .2rem 0 0; padding: 0; list-style: none; font-size: .85rem; display: grid; gap: .2rem; }
+.bm-others li { padding-left: .6rem; border-left: 3px solid var(--heat); }
+.bm-body button { margin-top: auto; align-self: flex-end; min-width: 9rem; }
+@media (orientation: portrait), (max-width: 640px) {
+  .bm-card { grid-template-columns: 1fr; }
+  .bm-mayor img { max-height: 42dvh; }
+}
+
+/* A private lot on the Market tab. */
+.mk-lot { display: flex; align-items: center; gap: .7rem; margin: .3rem 0 .5rem; padding: .5rem .7rem; border-radius: 8px;
+  background: color-mix(in srgb, var(--heat) 12%, var(--deck-night)); border: 1px solid color-mix(in srgb, var(--heat) 50%, transparent); }
+.mk-lot p { margin: 0; flex: 1; font-size: .9rem; }
+.mk-lot-tag { color: var(--heat); font-weight: 700; white-space: nowrap; }
+.yd-price.dear { color: var(--blood-hi); }

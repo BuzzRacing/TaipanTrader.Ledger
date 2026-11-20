@@ -192,6 +192,17 @@ async function boot() {
   if (!res.ok) return;
   A = res;
   CFG = clone(A.config);
+  try {
+    const response = await fetch("/api/info");
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const info = await response.json();
+    Ranks.configure(info.data);
+    Media.setup(info.media);
+  } catch (error) {
+    console.error("Could not load captain rank colors", error);
+    Ranks.configure({ ranks: CFG.ranks });
+    toast("Could not load captain rank colors. Reload to try again.", true);
+  }
   SAVED = JSON.stringify(CFG);
   LANGS = clone(A.lang);
   LANGS_SAVED = JSON.stringify(LANGS);
@@ -478,7 +489,7 @@ function liveSection() {
     const wh = Object.keys(p.wh).map(g => p.wh[g] + " " + gname(g)).join(", ");
     const ships = p.ships.map(s => `${esc(s.name)} (${esc((CFG.ships[s.type] || {}).name || s.type)}, hull ${s.hull}, ${s.guns} guns)`).join("<br>");
     const state = !p.present ? '<span class="err">away</span>' : p.ready ? `<span class="ok">orders: ${p.dest ? esc(pname(p.dest)) : "stay"}, ${p.orders}</span>` : '<span class="warn">in port</span>';
-    return `<tr data-pid="${p.id}"><td><i class="chip" style="background:${CFG.theme.player_colors[p.color % 8]}"></i><b>${esc(p.firm)}</b><br><span class="muted">${esc(p.name)} · ${esc(p.rank)}</span><br>${state}</td>
+    return `<tr data-pid="${p.id}"><td><i class="chip" style="background:${CFG.theme.player_colors[p.color % 8]}"></i><b>${esc(p.firm)}</b><br><span class="muted">${esc(p.name)}</span><br>${Ranks.label(p)}<br>${state}</td>
       <td><select data-a="port">${Object.keys(ports).map(k => `<option value="${k}" ${k === p.port ? "selected" : ""}>${esc(ports[k].name)}</option>`).join("")}</select></td>
       <td><input type="number" data-a="cash" value="${p.cash}" min="0"></td><td><input type="number" data-a="bank" value="${p.bank}" min="0"></td>
       <td><input type="number" data-a="debt" value="${p.debt}" min="0"></td>

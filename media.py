@@ -95,7 +95,12 @@ KINDS = {
              "roles": [["card", "Fleet cards and the shipyard"], ["sailing", "Under sail"], ["battle", "In battle"]],
              "default_role": "card"},
     "cargo": {"label": "Cargo", "one": "Cargo", "subjects": "goods",
-              "roles": [["icon", "Beside the cargo in the market"]], "default_role": "icon"},
+              "roles": [["icon", "Beside the cargo in the market"],
+                        # Family pictures (19 Nov 2026): shown only while the game (or one screen) is family-
+                        # friendly, in place of the cargo's own pictures; hidden the rest of the time.
+                        ["family", "Family-friendly picture: shown instead of the cargo's own pictures while "
+                                   "family-friendly is on (Opium shows as Fireworks, Arms as Ironware); hidden otherwise"]],
+              "default_role": "icon"},
     "scene": {"label": "Scenes", "one": "Scene", "subjects": "scenes",
               "roles": [["background", "Full-screen or panel background"], ["event", "Shown with the event"],
                         # The ten moments of a sea battle (file them under "Sea battle: pirate junks" or
@@ -930,12 +935,54 @@ def family(cfg):
     return ((cfg or {}).get("content") or {}).get("rating") == "family"
 
 
+def renamed_goods(cfg):
+    """Cargo keys that go by another name while family-friendly (Admin > Cargo > Family-friendly name)."""
+    out = set()
+    for key, g in ((cfg or {}).get("goods") or {}).items():
+        fam = str((g or {}).get("family_name") or "").strip()
+        if fam and fam != str((g or {}).get("name") or "").strip():
+            out.add(key)
+    return frozenset(out)
+
+
+def is_family_pic(it):
+    """A cargo picture made for the family-friendly name (role "family")."""
+    return it.get("kind") == "cargo" and "family" in (it.get("roles") or [])
+
+
+def _family_rules(lib, cfg):
+    """(renamed cargo keys, cargo keys that have a family picture to show)."""
+    renamed = renamed_goods(cfg)
+    have = frozenset(i["subject"] for i in lib["items"] if is_family_pic(i) and i["enabled"] and not i["nsfw"]
+                     and _exists(i["url"]))
+    return renamed, have
+
+
+def hidden_now(it, fam, renamed, have_family):
+    """True when this item must not be shown on a screen that is (fam) or is not family-friendly.
+    NSFW items hide while family-friendly. Cargo follows its name: while family-friendly, a cargo with
+    a family name (or any family pictures) shows only its family pictures, so "Fireworks" never shows a
+    chest of opium; otherwise the family pictures stay hidden and the cargo's own pictures show."""
+    if fam and it["nsfw"]:
+        return True
+    if it["kind"] != "cargo":
+        return False
+    if not fam:
+        return is_family_pic(it)
+    if is_family_pic(it):
+        return False
+    return it["subject"] in renamed or it["subject"] in have_family
+
+
 def blocked_urls(cfg):
-    """Files that must not be shown right now (NSFW while family-friendly is on)."""
+    """Files that must not be shown right now (NSFW, and cargo pictures of a cargo's other name, while
+    family-friendly is on)."""
     if not family(cfg):
         return frozenset()
     lib = load(cfg)
-    return frozenset(i["url"] for i in lib["items"] if i["nsfw"])
+    renamed, have = _family_rules(lib, cfg)
+    shown = {i["url"] for i in lib["items"] if not hidden_now(i, True, renamed, have)}
+    return frozenset(i["url"] for i in lib["items"] if hidden_now(i, True, renamed, have) and i["url"] not in shown)
 
 
 def is_blocked(url, cfg):
@@ -945,18 +992,22 @@ def is_blocked(url, cfg):
 def public(cfg):
     """The library as the player screens and harbor board need it, with NSFW removed when family-friendly."""
     lib = load(cfg)
-    key = (_cache["mtime"], family(cfg))
+    fam = family(cfg)
+    renamed, have = _family_rules(lib, cfg)
+    key = (_cache["mtime"], fam, renamed)
     if key in _public_cache:
         return _public_cache[key]
-    fam = family(cfg)
     items = {}
     for it in lib["items"]:
-        if not it["enabled"] or (fam and it["nsfw"]) or it["kind"] in ("reference", "other") or not it["subject"]:
+        if not it["enabled"] or it["kind"] in ("reference", "other") or not it["subject"]:
             continue
-        if not _exists(it["url"]):
+        if hidden_now(it, fam, renamed, have) or not _exists(it["url"]):
             continue
+        # A family picture stands in for the cargo's own pictures in every role (the market icon,
+        # the hot tip pin, the desk, the Tally Book), so it is sent with no roles.
+        roles = [] if is_family_pic(it) else it["roles"]
         items.setdefault(it["kind"], {}).setdefault(it["subject"], []).append(
-            {"id": it["id"], "u": it["url"], "t": it["type"], "r": it["roles"], "w": it["weight"],
+            {"id": it["id"], "u": it["url"], "t": it["type"], "r": roles, "w": it["weight"],
              "p": it["primary"], "g": it["tags"]})
     out = {"items": items, "rules": lib["rules"], "options": lib["options"], "family": fam,
            "fallback": {k: v["default_role"] for k, v in KINDS.items()}}
@@ -973,12 +1024,14 @@ def safe_url(url, kind, subject, cfg, role=None):
     if not blocked:
         return url or ""
     best = None
-    for it in load(cfg)["items"]:
-        if it["kind"] != kind or it["subject"] != subject or it["nsfw"] or not it["enabled"] or it["type"] != "image":
+    lib = load(cfg)
+    renamed, have = _family_rules(lib, cfg)
+    for it in lib["items"]:
+        if it["kind"] != kind or it["subject"] != subject or not it["enabled"] or it["type"] != "image":
             continue
-        if not _exists(it["url"]):
+        if hidden_now(it, True, renamed, have) or not _exists(it["url"]):
             continue
-        score = (role in it["roles"] or not it["roles"], it["primary"], it["weight"])
+        score = (is_family_pic(it) or role in it["roles"] or not it["roles"], it["primary"], it["weight"])
         if best is None or score > best[0]:
             best = (score, it["url"])
     return best[1] if best else ""

@@ -163,9 +163,7 @@ function cargoPic(g, cls) {
   return lazy(Media.html("cargo", g, "icon", cls, ((D.graphics || {}).goods || {})[g], { mode: "fixed" }));
 }
 function rankBadgeUrl(id) {
-  if (!hasMedia() || !id) return "";
-  const it = Media.choose("rank", id, "badge", { mode: "fixed", strict: true });
-  return it && it.t === "image" ? it.u : "";
+  return Ranks.url(id);
 }
 
 /* ----------------------------------------------------------------- net -- */
@@ -304,7 +302,7 @@ function voyageKpis() {
   const v = V.voyage, k = v.me.kpis, n = v.game.players;
   const change = k.worth - k.start_worth;
   return [
-    kpi(te("st.k.worth"), k.worth, { cls: "hero", sub: esc(k.rank) }),
+    kpi(te("st.k.worth"), k.worth, { cls: "hero", sub: Ranks.label(k.rank) }),
     kpi(te("st.k.change"), change, { fmt: "signed", cls: change >= 0 ? "up" : "down", sub: te("st.k.since", { worth: money(k.start_worth) }) }),
     kpi(te("st.k.place"), v.place, { fmt: "place", sub: te("st.k.of", { n }) }),
     kpi(te("st.k.realised"), k.realised, { fmt: "signed", cls: k.realised >= 0 ? "up" : "down", sub: te("st.k.trades", { n: k.trades }) }),
@@ -775,7 +773,7 @@ function headToHead(v) {
   const head = [te("col.house"), te("st.k.worth"), te("st.peak")].concat(full ? [te("st.k.realised"), te("st.k.score"), te("st.k.trades_h"), te("st.k.battles"), te("st.t.wrecks"), te("st.best_cargo")] : []);
   const rows = all.map((h, i) => {
     const k = h.kpis;
-    const base = [`${i + 1}. ${houseIco(h, "", V && V.name)}<b>${esc(h.firm)}</b> <span class="muted">${esc(h.name)}</span> <span class="rankname">${esc(k.rank)}</span>`,
+    const base = [`${i + 1}. ${houseIco(h, "", V && V.name)}<b>${esc(h.firm)}</b> <span class="muted">${esc(h.name)}</span> ${Ranks.label(k.rank)}`,
       money(k.worth), money(k.peak)];
     return full ? base.concat([signed(k.realised), k.score == null ? "–" : k.score, k.trades, k.won + "/" + k.battles, k.wrecks,
       k.best_cargo ? esc(goodName(k.best_cargo)) : "–"]) : base;
@@ -1075,11 +1073,10 @@ function tipList(tips) {
 function promoCards(list, withGame) {
   if (!list || !list.length) return emptyNote("st.promos.none");
   return `<ul class="promos">${list.map((pr, i) => {
-    const badge = rankBadgeUrl(pr.rank_id);
     const mayor = mpic("port", pr.port, "mayor_" + pr.rank_id, "pm-img pz", { strict: true, slot: "promo-" + i })
       || mpic("port", pr.port, "mayor", "pm-img pz", { strict: true, slot: "promo-" + i }) || face("mayor", "happy", "pm-img", "promo-" + i);
-    return `<li><div class="pm-pic">${mayor}${badge ? `<img class="pm-badge" loading="lazy" src="${esc(badge)}" alt="">` : ""}</div>
-      <div><b>${esc(pr.rank)}</b><small>${te("st.promos.line", { port: portName(pr.port), date: pr.date })}</small>${withGame && pr.firm ? `<small>${esc(pr.firm)}</small>` : ""}</div></li>`;
+    return `<li><div class="pm-pic">${mayor}</div>
+      <div>${Ranks.label(pr)}<small>${te("st.promos.line", { port: portName(pr.port), date: pr.date })}</small>${withGame && pr.firm ? `<small>${esc(pr.firm)}</small>` : ""}</div></li>`;
   }).join("")}</ul>`;
 }
 
@@ -1187,7 +1184,7 @@ function gameCards(c) {
       <span class="gp p${Math.min(g.place, 4)}">${g.running ? "⋯" : ordinal(g.place)}</span><i class="gn">${te("st.game_n", { n: c.games.length - c.games.indexOf(g) })}</i>
       <div class="gt"><b>${esc(g.firm || "")}</b><small>${g.running ? th("st.game_now", { first: esc(g.first) }) : th("st.game_span", { first: esc(g.first), last: esc(g.last), n: g.players })}</small></div>
       <span class="gs">${spark(g.curve, g.worth >= 0 ? SINGLE : `rgb(${NEG})`, 110, 30)}</span>
-      <em class="${g.worth < 0 ? "down" : ""}">${short(g.worth)}<small>${esc(g.rank)}</small></em></button></li>`).join("")}</ul>`;
+      <em class="${g.worth < 0 ? "down" : ""}">${short(g.worth)}<small>${Ranks.label(g)}</small></em></button></li>`).join("")}</ul>`;
 }
 
 function recordsHtml(c) {
@@ -1211,7 +1208,7 @@ function recordsHtml(c) {
   add("biggest_prize", r.biggest_prize && money(r.biggest_prize.value), r.biggest_prize && te("st.r.prize_sub", { n: r.biggest_prize.units || 0, date: r.biggest_prize.date }));
   add("best_boom", r.best_boom && signed(r.best_boom.value), r.best_boom && te("st.r.boom_sub", { good: goodName(r.best_boom.good), port: portName(r.best_boom.port), date: r.best_boom.date }));
   Object.keys(r).filter(k => k.startsWith("rank_")).sort((a, b) => r[a].value - r[b].value).forEach(k =>
-    out.push(`<li><span>${th("st.r.rank", { rank: esc(r[k].rank) })}</span><b>${te("st.r.months", { n: r[k].value })}</b><small>${esc(r[k].firm + " · " + r[k].date)}</small></li>`));
+    out.push(`<li><span>${th("st.r.rank", { rank: Ranks.label(r[k]) })}</span><b>${te("st.r.months", { n: r[k].value })}</b><small>${esc(r[k].firm + " · " + r[k].date)}</small></li>`));
   return out.length ? `<ul class="records">${out.join("")}</ul>` : `${emptyNote("st.empty")}`;
 }
 

@@ -191,7 +191,7 @@
     const tot = k.totals || {};
     const rate = s.wins + s.losses ? Math.round(100 * s.wins / (s.wins + s.losses)) + "%" : "–";
     const games = (k.games || []).map(g => `<tr class="${e(g.outcome)}"><td>${e(g.first || "")}–${e(g.last || "")}</td><td>${e(g.house || "")}</td>
-        <td>${g.place ? g.place + " of " + g.players : "–"}</td><td class="num">${cash(g.worth)}</td><td>${e(g.rank || "")}</td>
+        <td>${g.place ? g.place + " of " + g.players : "–"}</td><td class="num">${cash(g.worth)}</td><td>${Ranks.label(g)}</td>
         <td class="num">${g.months}</td><td class="num">${g.battles}</td><td class="num">${hhmm(g.seconds)}</td>
         <td><em class="tag ${e(g.outcome)}">${{ win: "Won", loss: "Lost", playing: "Sailing", unfinished: "Unfinished" }[g.outcome]}</em></td>
         <td class="small muted mono">${e(g.id)}</td></tr>`).join("");

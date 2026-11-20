@@ -336,6 +336,11 @@
     if (kind === "port" && role === "taxlady") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, the tax collector who works the ${name} waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless, teasing smile and one raised eyebrow, direct eye contact, ${w.hair}, ${w.dress}, a jade customs seal on a cord resting against her bare skin, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
     if (kind === "port") return `The port of ${name} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, ${style}`;
     if (kind === "ship") return shipPrompt(subject, role, style);
+    // A family picture is of the cargo's family-friendly name (Opium -> Fireworks), not the cargo itself.
+    if (kind === "cargo" && role === "family") {
+      const fam = ((CFG.goods || {})[subject] || {}).family_name || name;
+      return `Still life of ${fam} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, family-friendly, ${style}`;
+    }
     if (kind === "cargo") return `Still life of ${name} as 1860s trade cargo, crates, chests and bales on a teak deck, square composition, no person, ${style}`;
     if (kind === "service") return `The interior of the ${name} at a Hong Kong trading harbor in the 1860s, wide environmental shot, period details, no text or people, ${style}`;
     if (kind === "scene") return `${name} on the China Seas in 1860, a trading fleet caught in the moment, ${style}`;

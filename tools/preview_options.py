@@ -30,10 +30,10 @@ def main():
                           "brand": cfg["brand"], "ports": cfg["ports"], "options": data}, ensure_ascii=True).replace("</", "<\\/")
     html = '''<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Captain Options · isolated preview</title><link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/deck.css"><link rel="stylesheet" href="/options.css">
+    <link rel="stylesheet" href="/deck.css"><link rel="stylesheet" href="/options.css"><link rel="stylesheet" href="/ranks.css">
     <link rel="stylesheet" href="/theme.css"><link rel="stylesheet" href="/fonts.css"></head>
     <body class="player"><button data-act="me" onclick="Options.open()" style="margin:2rem">Captain Options</button>
-    <div id="toast" role="status"></div><script src="/common.js"></script><script src="/media.js"></script>
+    <div id="toast" role="status"></div><script src="/ranks.js"></script><script src="/common.js"></script><script src="/media.js"></script>
     <script>
     const fixture = FIXTURE;
     Media.setup(fixture.media);

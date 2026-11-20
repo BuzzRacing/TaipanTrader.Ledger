@@ -75,6 +75,7 @@ const Options = (() => {
     const list = tiles(info.portraits || [], "portrait");
     const painting = (info.painting || {}).captain;
     return `<p class="op-who"><b>${esc(info.captain.name)}</b>${info.captain.title ? ` <span>${esc(info.captain.title)}</span>` : ""}</p>
+      ${Ranks.label(S.me)}
       ${list ? `<p class="op-hint">${tx("opt.photo_pick", "Tap a portrait to make it yours.")}</p>${list}` : `<p class="op-note">${tx("opt.photo_none", "No portraits yet.")}</p>`}
       <div class="op-row">${painting
         ? `<p class="op-note op-busy">${tx("opt.generating", "A new picture is being made. It appears here when it is done.")}</p>`

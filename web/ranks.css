@@ -1,0 +1,24 @@
+:root .captain-rank {
+  display: inline-flex; align-items: center; gap: .35em; width: fit-content; max-width: 100%;
+  box-sizing: border-box; vertical-align: middle; margin: .15em 0; padding: .15em .5em .15em .2em;
+  border: 1px solid var(--rank-metal, var(--brass)); border-radius: 3px;
+  background: linear-gradient(135deg, var(--rank-tone, var(--teak)), var(--rank-deep, var(--teak-2)));
+  color: var(--rank-metal, var(--brass)); font: .82rem/1.2 var(--special, Georgia, serif);
+  text-shadow: none; white-space: normal;
+}
+:root .captain-rank .captain-rank-stamp {
+  display: block; flex: none; width: 1.8em; height: 1.8em; margin: 0; object-fit: contain;
+}
+:root .captain-rank .captain-rank-title {
+  display: block; margin: 0; color: inherit; font: inherit; letter-spacing: normal;
+  white-space: normal; overflow: visible; overflow-wrap: anywhere; text-overflow: clip;
+}
+.dk-house .captain-rank { font-size: clamp(.65rem, .8vw, .8rem); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .dk-house .captain-rank { padding: .15em; }
+  :root .dk-house .captain-rank .captain-rank-title {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
+.ceremony .lg-win-card { border-color: var(--rank-metal); background-color: var(--rank-deep); }
+.ceremony .ch-rank .lg-ch-icon { background: var(--rank-deep); border: 1px solid var(--rank-metal); }

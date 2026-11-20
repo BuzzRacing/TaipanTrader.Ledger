@@ -37,6 +37,9 @@ CFG = {}
 HOME = "hongkong"
 
 
+MONEY_CAP = 10 ** 15                    # bank and lender amounts (cargo keeps its 10 million cap)
+
+
 class GameError(Exception):
     """A rule was broken; the message is shown to the player."""
 
@@ -386,7 +389,7 @@ BATTLE_DEFAULTS.update({
     "lowball_min": 0.1, "lowball_max": 0.3, "lowball_goods": ["gold", "opium"]})
 
 # Which heading of the captain's report each player action belongs under.
-ACTION_CAT = {"buy": "trade", "sell": "trade", "warehouse": "trade", "depot": "trade",
+ACTION_CAT = {"buy": "trade", "sell": "trade", "buy_lot": "trade", "warehouse": "trade", "depot": "trade",
               "shares": "finance", "estate": "finance", "contract": "orders",
               "bank": "finance", "loan": "finance", "protection": "finance",
               "buy_ship": "fleet", "sell_ship": "fleet", "trade_down": "fleet", "buy_gun": "fleet", "repair": "fleet",
@@ -678,6 +681,7 @@ class Game:
             was = float(rates.get(port, 0.0) or 0.0)
             s["tax_rates"][port] = (was if was > 0 else base) if base > 0 else 0.0
         fallback = R["wreck"]["ship"]
+        self._sync_ship_names()                   # clean or NSFW names, as the content rating calls for
         for p in s["players"].values():
             seen = set()                          # older saves could give two ships one name
             for sh in p.get("ships", []):
@@ -742,6 +746,8 @@ class Game:
             p["cargo"] = {g: q for g, q in p["cargo"].items() if q > 0}
             if "rank_id" not in p:
                 p["rank_id"] = CFG["ranks"][rank_index(int(self.worth(p)), self.s.get("years"))]["id"]
+        for p in s["players"].values():
+            self._fit_shares(p)
 
     def _opening_safe(self, port, good):
         return GOODS[good]["base"] * PORTS[port]["mods"].get(good, 1.0)
@@ -822,26 +828,75 @@ class Game:
 
     def _new_ship(self, kind, guns=0, hull=None, name=None):
         # Each class has its own name list (Ships > Ship names); merchantmen use ship_names.
-        role = SHIPS[kind].get("role", "trader")
         if name:                                       # a flagship named by her house
             return {"type": kind, "name": name, "guns": guns, "cannons": 0,
                     "hull": SHIPS[kind]["hull"] if hull is None else min(hull, SHIPS[kind]["hull"])}
-        own = CFG.get({"escort": "escort_names", "cargo": "cargo_names"}.get(role, "ship_names")) or []
-        used = {sh["name"] for p in self.s["players"].values() for sh in p["ships"]}
-        names = own or CFG["ship_names"]
+        role = SHIPS[kind].get("role", "trader")
+        used = self._ship_names_used()
+        clean = self._pick_ship_name(role, used, nsfw=False, rng=self.rng)
+        ship = {"type": kind, "name": clean,
+                "hull": SHIPS[kind]["hull"] if hull is None else min(hull, SHIPS[kind]["hull"]), "guns": guns,
+                "cannons": 0}
+        self._give_nsfw_name(ship, role, used | {clean})
+        return ship
+
+    def _ship_names_used(self):
+        """Every name at sea, clean and NSFW alike (names are how a fight tells the ships apart)."""
+        used = set()
+        for p in self.s["players"].values():
+            for sh in p["ships"]:
+                used.update(n for n in (sh.get("name"), sh.get("clean_name"), sh.get("nsfw_name")) if n)
+        return used
+
+    @staticmethod
+    def _pick_ship_name(role, used, nsfw, rng):
+        """A free name for a ship of this class from the clean (or NSFW) lists, or None for an NSFW
+        name when the NSFW lists are empty or all at sea (the ship then keeps her clean name)."""
+        pre = "nsfw_" if nsfw else ""
+        main = CFG.get(pre + "ship_names") or []
+        own = CFG.get(pre + {"escort": "escort_names", "cargo": "cargo_names"}.get(role, "ship_names")) or []
+        names = own or main
         free = [n for n in names if n not in used]
-        if not free and own and own is not CFG["ship_names"]:
+        if not free and own and own is not main:
             # The class's own list is all at sea: borrow a free Merchantman name before numbering.
-            free = [n for n in CFG["ship_names"] if n not in used]
+            free = [n for n in main if n not in used]
+        if not free and nsfw:
+            return None
         if not free:
             # Every name is at sea: a second ship of a name is "II", then "III" (names are how a fight
             # tells the ships apart, so no two may share one).
-            free = next(f for f in ([n + " " + r for n in names if n + " " + r not in used]
-                                    for r in ("II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")) if f) \
-                if names else ["Ship {}".format(len(used) + 1)]
-        return {"type": kind, "name": self.rng.choice(free),
-                "hull": SHIPS[kind]["hull"] if hull is None else min(hull, SHIPS[kind]["hull"]), "guns": guns,
-                "cannons": 0}
+            free = next((f for f in ([n + " " + r for n in names if n + " " + r not in used]
+                                     for r in ("II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")) if f), None) \
+                if names else None
+            free = free or ["Ship {}".format(len(used) + 1)]
+        return rng.choice(free)
+
+    def _give_nsfw_name(self, ship, role, used):
+        """Pair a ship with an NSFW name (her clean name is kept for Family-friendly), and show the
+        one the content rating calls for. Picked with its own dice so the game's luck is untouched."""
+        if role == "flagship" or ship.get("nsfw_name") or not (CFG.get("nsfw_ship_names") or CFG.get(
+                "nsfw_" + {"escort": "escort_names", "cargo": "cargo_names"}.get(role, "ship_names"))):
+            return
+        clean = ship.get("clean_name") or ship["name"]
+        dice = random.Random("{}|{}|{}".format(clean, self.s.get("turn", 0), len(used)))
+        rude = self._pick_ship_name(role, used, nsfw=True, rng=dice)
+        if rude:
+            ship["clean_name"], ship["nsfw_name"] = clean, rude
+            ship["name"] = clean if CFG["content"]["rating"] == "family" else rude
+
+    def _sync_ship_names(self):
+        """Show each ship's clean or NSFW name as the content rating calls for (Admin > Ratings, or
+        the Family-friendly switch in the Media Library). Ships from before NSFW names get one."""
+        family = CFG["content"]["rating"] == "family"
+        used = self._ship_names_used()
+        for p in self.s["players"].values():
+            for sh in p.get("ships", []):
+                role = SHIPS.get(sh.get("type"), {}).get("role", "trader")
+                if not sh.get("nsfw_name") and not family:
+                    self._give_nsfw_name(sh, role, used)
+                    used.update(n for n in (sh.get("name"), sh.get("nsfw_name")) if n)
+                if sh.get("nsfw_name") and sh.get("clean_name"):
+                    sh["name"] = sh["clean_name"] if family else sh["nsfw_name"]
 
     def pid_for_token(self, token):
         for pid, p in self.s["players"].items():
@@ -892,7 +947,8 @@ class Game:
     def spread(self, p, port):
         """Dealer's margin: wide for a stranger, narrow for a trusted house."""
         m = R["market"]
-        return max(0.0, m["spread_base"] - m["spread_swing"] * (p["rep"][port] - 50.0) / 50.0)
+        return max(0.0, m["spread_base"] - m["spread_swing"] * (p["rep"][port] - 50.0) / 50.0) \
+            + self.band_effects(p, port)["margin"]               # Hostile and Cool dealers gouge (decision 9)
 
     def quote(self, p, good, qty, side):
         """Total silver for buying or selling qty units where the player is."""
@@ -1117,6 +1173,10 @@ class Game:
                   "ranks": [{"id": r["id"], "title": r["title"]} for r in ranks]}
         serial = p.get("promotion_serial", 0) + 1
         p["rank_id"], p["promotion_serial"] = rank["id"], serial
+        # Each rank climbed above Clerk earns one free port share (rules.estates.shares_per_rank).
+        earned = self._rank_shares(qualified) - self._rank_shares(current)
+        if earned > 0:
+            self.award_shares(p, earned, "promotion", rank=rank["title"])
         # The Mayor's words (m.promote.N), one of a bank drawn from this house's own deck.
         # The ranks above Taipan have their own, grander bank (m.promote_top.N, 19 Nov 2026).
         say = self._draw(p, "m.promote_top" if rank.get("scales") and self._bank("m.promote_top") else "m.promote")
@@ -1248,6 +1308,8 @@ class Game:
             if isinstance(held, dict) and held.get(p["id"]):
                 seized["shares"][port] = int(held.pop(p["id"]))
                 self.patron_of(port)
+        # The moneylender keeps them: shares seized are lost for good, not handed back to place again.
+        p["share_earned"] = max(0, self.shares_earned(p) - sum(seized["shares"].values()))
         stake = float(int(b.get("bankrupt_stake", 2000)))
         # Before her clerks come aboard the crew squirrels away a share of the silver and cargo aboard
         # (rules.hide.bankrupt). It stays with the house; the cargo rides in the new ship, as much as fits.
@@ -1263,6 +1325,8 @@ class Game:
                 d["goods"] = {}
         p["share_paid"] = {}
         p["estate"], p["estate_paid"] = 0, 0.0
+        p.pop("estate_costs", None)
+        p.pop("estate_rep", None)
         p["basis"] = {}
         p.pop("debt_over", None)
         p.pop("debt_capped", None)
@@ -1283,7 +1347,12 @@ class Game:
         hid = {g: q for g, q in hid.items() if q > 0}
         p["cargo"] = dict(hid)
         p["basis"] = {g: v for g, v in hid_basis.items() if g in hid}
-        self._gain_rep(p, home, -float(b.get("bankrupt_rep", 10)))
+        if self.standing_on():
+            st = R["standing"]
+            for k in PORTS:
+                self._standing(p, k, -float(st["bankrupt_home" if k == home else "bankrupt_away"]), "bankrupt")
+        else:
+            self._gain_rep(p, home, -float(b.get("bankrupt_rep", 10)))
         p["bankruptcies"] = int(p.get("bankruptcies", 0)) + 1
         self._book(p, "bankrupt", stake + hid_cash + self._cost_of(p, hid) - worth0)
         p["log"].append(tx("l.bankrupt", home=PORTS[home]["name"], stake=money(stake),
@@ -1303,7 +1372,7 @@ class Game:
         rate = f["repair_base"] + SHIPS[sh["type"]]["price"] / float(f["repair_price_div"])
         if not port_has(p, p["port"], "shipyard"):
             rate *= f["repair_noyard"]
-        return max(0.01, rate * (1 - f["repair_rep_discount"] * (p["rep"][p["port"]] - 50.0) / 50.0))
+        return max(0.01, rate * (1 - f["repair_rep_discount"] * (p["rep"][p["port"]] - 50.0) / 50.0) * self.yard_mult(p))
 
     def protection_cost(self, p):
         return int(max(R["liyuen"]["cost_min"], R["liyuen"]["cost_share"] * self.worth(p)))
@@ -1559,7 +1628,8 @@ class Game:
         less share_cut for each share the house holds in that port."""
         if self.home_free(p, port):
             return 0.0
-        return round(self.tax_rate(port) * max(0.0, 1.0 - self.share_cut(p, port)), 6)
+        cut = self.band_effects(p, port)["tax_cut"]          # Warm and Favoured houses pay less (decision 10)
+        return round(self.tax_rate(port) * max(0.0, 1.0 - self.share_cut(p, port)) * max(0.0, 1.0 - cut), 6)
 
     def _spot_check(self, p, port):
         """A house that would pay no tax here (its home port, or a port where its shares cut the tax
@@ -1610,7 +1680,8 @@ class Game:
         swing = float(PORTS.get(port, {}).get("mood", c["mood_swing"]) or 0.0)
         return {"greed": round(max(0.2, 1 + (greed - 5) * c["greed_weight"]), 4),
                 "cunning": round(max(0.2, 1 + (cunning - 5) * c["cunning_weight"]), 4),
-                "rep": round(max(0.1, 1 + c["rep_audit"] * (50.0 - rep) / 50.0), 4),
+                # A Hostile or Cool house is searched more often still (rules.standing, decision 9).
+                "rep": round(max(0.1, 1 + c["rep_audit"] * (50.0 - rep) / 50.0) * self.band_effects(p, port)["audit"], 4),
                 # Standing also cools her appetite for a house's cargo: a trusted house is rarely bought out.
                 "rep_buy": round(max(0.1, 1 + c.get("rep_buy", 0.0) * (50.0 - rep) / 50.0), 4),
                 "diff": float(MULT.get("seizure", 1.0)),
@@ -1892,6 +1963,30 @@ class Game:
         cu = p.get("customs")
         return bool(cu) and cu.get("status") in ("declare", "verdict") and cu.get("port") == p["port"]
 
+    def _caught_fine(self, p, port, out):
+        """The fine for a caught lie (rules.standing, decision 2), set by the band the house is now in: the
+        larger of fine_hidden x the hidden value found x the band's loss roll, or the house's net worth x a
+        roll between the band's floor_lo and floor_hi. Shared over the caught lines by what each hid."""
+        st = R["standing"]
+        caught = [r for r in out if r["outcome"] == "caught"]
+        hidden = {id(r): max(0, r["value"] - r["declared"]) for r in caught}
+        found = sum(hidden.values())
+        band = self.BANDS[self.band_here(p, port)]
+        by_value = float(st.get("fine_hidden", 0.5)) * found * self.band_roll(p, port, "pen", "fine")
+        lo, hi = sorted((float(st.get(band + "_floor_lo", 0)), float(st.get(band + "_floor_hi", 0))))
+        by_worth = max(0.0, self.worth(p)) * self._band_rng(p, "fine_floor").uniform(lo, hi)
+        total = int(math.ceil(max(by_value, by_worth) - 1e-9))
+        left = total
+        for i, r in enumerate(caught):
+            part = left if i == len(caught) - 1 else int(round(total * (hidden[id(r)] / float(found) if found
+                                                                          else 1.0 / len(caught))))
+            r["fine"] = max(0, min(left, part))
+            left -= r["fine"]
+        self._ev("customs", "caught_fine", "{}: caught in {} ({}), hidden {}: fine {} (hidden x roll {}, net worth floor {})".format(
+            p["name"], PORTS[port]["name"], band, money(found), money(total), money(by_value), money(by_worth)),
+            p, port=port, band=band, hidden=found, fine=total)
+        return sum(r["fine"] for r in caught)
+
     def bribe_cost(self, p, declared_total):
         c, cu = R["customs"], p["customs"]
         return int(max(c["bribe_min"], math.ceil(c["bribe_share"] * cu["rate"] * declared_total)))
@@ -1984,18 +2079,43 @@ class Game:
         p["cargo"] = {k: v for k, v in p["cargo"].items() if v > 0}
         if desk_hid:
             p["log"].append(tx("l.hid_desk", goods=self._goods_text(desk_hid)))
+        rep_change, generous = 0.0, False
+        value_total = sum(ln["value"] for ln in open_lines)
+        if self.standing_on():
+            # Reputation swings (19 Nov 2026): a caught lie costs standing first, then the fine is set by
+            # the band the house has fallen into; an honest declaration earns standing, more for paying more.
+            st = R["standing"]
+            if caught:
+                hidden_all = sum(max(0, ln["value"] - declared[ln["good"]]) for ln in open_lines)
+                share = min(1.0, hidden_all / float(value_total)) if value_total else 1.0
+                vary = max(0.0, float(st.get("caught_vary", 0.0)))
+                hit = (float(st["caught_base"]) + float(st["caught_lie"]) * share) \
+                    * self._band_rng(p, "caught").uniform(1 - vary, 1 + vary)
+                rep_change = self._standing(p, port, -hit, "caught", travel=True, roll=False)
+                p["honest_run"] = 0
+                fine_total = self._caught_fine(p, port, out)
+            elif value_total:
+                ratio = total_declared / float(value_total)
+                if ratio >= 1 - 1e-9:
+                    generous = ratio >= float(st.get("pay_more_at", 1.1)) - 1e-9
+                    run = p["honest_run"] = int(p.get("honest_run", 0) or 0) + 1
+                    gain = float(st["pay_more" if generous else "pay_correct"]) \
+                        + min(float(st.get("honest_run_max", 0)), float(st.get("honest_run", 0)) * (run - 1))
+                    rep_change = self._standing(p, port, gain, "pay_more" if generous else "honest")
+                else:
+                    p["honest_run"] = 0
+        else:
+            if caught:
+                rep_change = -c["caught_rep"]
+            elif value_total and total_declared > value_total:
+                over = total_declared / float(value_total) - 1
+                rep_change = c["over_rep"] * min(1.0, over / max(0.01, top - 1))
+                generous = True
+            if rep_change:
+                self._gain_rep(p, port, rep_change)
         owed = self._collect(p, tax_total + fine_total)
         self._book(p, "pa_tax", -tax_total, arrival=True)
         self._book(p, "pa_fine", -fine_total, arrival=True)
-        rep_change = 0.0
-        value_total = sum(ln["value"] for ln in open_lines)
-        if caught:
-            rep_change = -c["caught_rep"]
-        elif value_total and total_declared > value_total:
-            over = total_declared / float(value_total) - 1
-            rep_change = c["over_rep"] * min(1.0, over / max(0.01, top - 1))
-        if rep_change:
-            self._gain_rep(p, port, rep_change)
         cu["box"] = box
         cu["status"] = "verdict"
         cu["result"] = {"lines": out, "declared": total_declared, "value": value_total, "tax": tax_total,
@@ -2031,7 +2151,7 @@ class Game:
             return tx("m.customs_bribe_refused")
         if bought:
             return tx("m.customs_bought", goods=names_of([r["good"] for r in bought]), paid=money(paid_in))
-        if rep_change > 0:
+        if generous and rep_change > 0:
             return tx("m.customs_over", tax=money(tax_total))
         return tx("m.customs_clean", tax=money(tax_total), declared=money(total_declared))
 
@@ -2218,6 +2338,7 @@ class Game:
 
     def _depart(self, p, news):
         """Leaving port: pay the Mayor, or try to slip out at night without paying."""
+        p.pop("lot", None)                      # a private lot is offered for the one visit only
         if not p.get("slip"):
             return self._pay_dues(p)
         d, port = R["dues"], p["port"]
@@ -2249,6 +2370,8 @@ class Game:
         if owed:
             p["debt"] += owed
             p["log"].append(tx("l.dues_short", port=PORTS[p["port"]]["name"], paid=money(paid), owed=money(owed)))
+            if self.standing_on():
+                self._standing(p, p["port"], -float(R["standing"].get("dues_short", 0)), "dues_short")
         else:
             p["log"].append(tx("l.dues", port=PORTS[p["port"]]["name"], total=money(total)))
         self._ev("finance", "dues", "{}: paid the mayor of {} {} in harbour dues ({}){}".format(
@@ -2257,13 +2380,131 @@ class Game:
             "; {} short, added to the debt".format(money(owed)) if owed else ""),
             p, port=p["port"], total=total, paid=paid, owed=owed, lines=bill["lines"])
 
-    def _gain_rep(self, p, port, amount):
+    def _gain_rep(self, p, port, amount, why=""):
+        before = float(p["rep"][port])
         p["rep"][port] = max(0.0, min(100.0, p["rep"][port] + amount))
+        if self.standing_on():
+            b0, b1 = self.band_of(before), self.band_of(p["rep"][port])
+            if b0 != b1:
+                self._band_crossed(p, port, b0, b1, why)
         # Standing bought from the Mayor never exceeds the standing itself. A loss lowers the standing and
         # leaves the bought share alone, so standing and earned standing drop by the same amount.
         gr = p.get("gift_rep")
         if isinstance(gr, dict) and gr.get(port, 0) > p["rep"][port]:
             gr[port] = p["rep"][port]
+
+    # ------------------------------------------------- standing swings --
+    # Reputation swings (owner's decisions, 19 Nov 2026; rules.standing). Standing falls in five bands of
+    # 20 points. Things the house does move it through _standing, which multiplies each loss or gain by a
+    # fresh roll from the band the house is in there. The rolls use their own dice (_band_rng), never the
+    # game's, so turning the rule on or off leaves every other roll where it was.
+    BANDS = ("hostile", "cool", "neutral", "warm", "favoured")
+
+    @staticmethod
+    def standing_on():
+        return bool((R.get("standing") or {}).get("enabled"))
+
+    @staticmethod
+    def band_of(rep):
+        """0 Hostile (0-19) .. 4 Favoured (80-100). web/player.js standingTier is the same sum."""
+        return min(4, max(0, int(round(float(rep or 0))) // 20))
+
+    def band_here(self, p, port):
+        return self.band_of(p["rep"].get(port, 50.0)) if port in PORTS else 2
+
+    def _band_rng(self, p, what):
+        s = self.s
+        n = s["band_rolls"] = int(s.get("band_rolls", 0)) + 1
+        return random.Random("band:{}:{}:{}:{}:{}".format(s.get("game_id", ""), p.get("id", p.get("name", "")),
+                                                           s.get("turn", 0), what, n))
+
+    def band_roll(self, p, port, side, what=""):
+        """A fresh multiplier from the band the house is in at port: side "pen" for losses, "rew" for gains."""
+        st = R["standing"]
+        b = self.BANDS[self.band_here(p, port)]
+        lo, hi = sorted((float(st.get("{}_{}_lo".format(b, side), 1.0)), float(st.get("{}_{}_hi".format(b, side), 1.0))))
+        return self._band_rng(p, what or side).uniform(lo, hi)
+
+    def _standing(self, p, port, amount, why, travel=False, roll=True):
+        """Standing moved by something the house did. roll: times the band's roll (loss or gain); travel:
+        a loss is also felt, at rules.standing.region_share, in every other port of the same region.
+        Returns the change made at port."""
+        if not amount or port not in PORTS:
+            return 0.0
+        if roll:
+            amount *= self.band_roll(p, port, "pen" if amount < 0 else "rew", why)
+        before = float(p["rep"][port])
+        self._gain_rep(p, port, amount, why)
+        done = float(p["rep"][port]) - before
+        self._ev("players", "standing", "{}: standing in {} {:+.1f} ({}), now {:.1f}".format(
+            p["name"], PORTS[port]["name"], done, why, p["rep"][port]), p, port=port, change=round(done, 2), why=why)
+        share = float(R["standing"].get("region_share", 0.0) or 0.0)
+        if travel and amount < 0 and share > 0:
+            region = PORTS[port]["region"]
+            for k in PORTS:
+                if k != port and PORTS[k]["region"] == region:
+                    self._gain_rep(p, k, amount * share, why + "_word")
+        return done
+
+    def _band_crossed(self, p, port, b0, b1, why):
+        """Standing in a port has crossed into another band: a line in the log (the Mayor herself says a
+        fall into Hostile or a rise into Favoured when the house is in her port), and a popup for the
+        player screen (p["bands"]; drift moves only get the log line)."""
+        name = PORTS[port]["name"]
+        here = port == p.get("port") and not p.get("voy")
+        word = tx("stat.standing_" + self.BANDS[b1])
+        if why == "drift":
+            p.setdefault("log", []).append(tx("l.band_drift", port=name, tier=word))
+        elif here and b1 == 0 and b0 > b1:
+            p.setdefault("log", []).append(tx("l.band_hostile", port=name))
+        elif here and b1 == 4 and b0 < b1:
+            p.setdefault("log", []).append(tx("l.band_favoured", port=name))
+        else:
+            p.setdefault("log", []).append(tx("l.band_down" if b1 < b0 else "l.band_up", port=name, tier=word))
+        if why != "drift":
+            s = self.s
+            s["band_seq"] = int(s.get("band_seq", 0)) + 1
+            bands = [e for e in (p.get("bands") or []) if int(e.get("turn", 0)) >= int(s.get("turn", 0)) - 1]
+            bands.append({"id": s["band_seq"], "port": port, "from": b0, "to": b1, "rep": int(round(p["rep"][port])),
+                          "why": why, "turn": int(s.get("turn", 0))})
+            p["bands"] = bands[-8:]
+        self._ev("players", "band", "{}: standing in {} moved from {} to {} ({})".format(
+            p["name"], name, self.BANDS[b0], self.BANDS[b1], why or "-"), p, port=port, band=[b0, b1], why=why)
+
+    def _drift_standing(self, p):
+        """Month end: every port's standing moves rules.standing.drift points back toward 50."""
+        step = float(R["standing"].get("drift", 0.0) or 0.0)
+        if step <= 0:
+            return
+        for port in PORTS:
+            r = float(p["rep"].get(port, 50.0))
+            if abs(r - 50.0) < 1e-9:
+                continue
+            self._gain_rep(p, port, max(-step, min(step, 50.0 - r)), "drift")
+
+    def band_effects(self, p, port):
+        """What the band the house is in at port does to it (rules.standing, decisions 9 and 10)."""
+        st = R.get("standing") or {}
+        out = {"band": self.band_here(p, port), "audit": 1.0, "margin": 0.0, "yard": 0.0, "match": 0.0,
+               "tax_cut": 0.0, "avoid": 0.0}
+        if not self.standing_on() or port not in PORTS:
+            return out
+        b = out["band"]
+        if b == 0:
+            out.update(audit=float(st.get("hostile_audit", 1)), margin=float(st.get("hostile_margin", 0)),
+                       yard=float(st.get("hostile_yard", 0)), match=float(st.get("hostile_match", 0)))
+        elif b == 1:
+            out.update(audit=float(st.get("cool_audit", 1)), margin=float(st.get("cool_margin", 0)),
+                       yard=float(st.get("cool_yard", 0)), match=float(st.get("cool_match", 0)))
+        elif b == 3:
+            out["tax_cut"] = float(st.get("warm_tax_cut", 0))
+        elif b == 4:
+            out.update(tax_cut=float(st.get("favoured_tax_cut", 0)), match=-float(st.get("favoured_match", 0)),
+                       avoid=float(st.get("favoured_avoid", 0)))
+        return out
+
+    def yard_mult(self, p, port=None):
+        return 1.0 + self.band_effects(p, port or p["port"])["yard"]
 
     def earned_rep(self, p, port):
         """Standing in a port without what was bought from its Mayor. The moneylender and her collectors
@@ -2385,7 +2626,7 @@ class Game:
         gain = self.gift_gain(port, before, amount)
         tier = self.gift_tier(gain)
         p["cash"] -= amount
-        self._gain_rep(p, port, gain)
+        self._gain_rep(p, port, gain, "gift")
         got = p["rep"][port] - before
         gr = p.setdefault("gift_rep", {})
         gr[port] = min(p["rep"][port], gr.get(port, 0.0) + got)
@@ -2586,12 +2827,14 @@ class Game:
         return tx("m.begin")
 
     @staticmethod
-    def _qty(a, key="qty"):
+    def _qty(a, key="qty", cap=10_000_000):
+        """A positive whole number from the action. Cargo stays under 10 million; money
+        (bank, lender) passes cap=MONEY_CAP so a rich house can move its whole fortune."""
         try:
             q = int(a.get(key, 0))
         except (TypeError, ValueError):
             raise GameError(tx("e.whole_number"))
-        if q <= 0 or q > 10_000_000:
+        if q <= 0 or q > cap:
             raise GameError(tx("e.quantity"))
         return q
 
@@ -2609,7 +2852,7 @@ class Game:
                         "note": "{:,.2f} each, dealer margin {}, market {:,.2f} -> {:,.2f}".format(
                             total / float(q), pct(margin), mid, end)}
 
-    def _trade_rep(self, p, value, g, moved):
+    def _trade_rep(self, p, value, g, moved, profit=None, mid=None):
         """Standing earned by a trade. Each cargo keeps [net units dealt this visit (+ bought, - sold),
         units already credited]; only units that take the net past what was credited earn standing.
         So selling a lot and buying it back, or the reverse, earns nothing however often it is done:
@@ -2622,7 +2865,97 @@ class Game:
             return
         acct[1] += fresh
         value *= min(1.0, fresh / float(abs(moved)))
+        if self.standing_on():
+            # Good business only (rules.standing, decision 5): a sale at a profit, a cargo sold where it is
+            # short or bought where it is in glut. At most trade_cap a visit, before the band's roll.
+            st, port = R["standing"], p["port"]
+            usual = GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)
+            mid = float(self.s["prices"][port][g] if mid is None else mid)
+            good = (moved < 0 and ((profit is not None and profit > 0) or mid >= float(st["short_at"]) * usual)) \
+                or (moved > 0 and mid <= float(st["glut_at"]) * usual)
+            if not good:
+                return
+            tab = p.setdefault("tab", {})
+            room = max(0.0, float(st["trade_cap"]) - float(tab.get("rep_trade", 0.0)))
+            pts = min(room, min(m["rep_trade_cap"], value / float(m["rep_per_value"])))
+            if pts <= 0:
+                return
+            tab["rep_trade"] = float(tab.get("rep_trade", 0.0)) + pts
+            self._standing(p, port, pts, "trade")
+            return
         self._gain_rep(p, p["port"], min(m["rep_trade_cap"], value / float(m["rep_per_value"])))
+
+    # A private lot (rules.standing, decision 10): a house Favoured in a port is now and then offered a lot
+    # below market by one of its dealers on arrival, sized and priced by the band's gain roll. It stands
+    # for that visit only and never moves the market.
+    def _offer_lot(self, p, port):
+        p.pop("lot", None)
+        st = R.get("standing") or {}
+        if not self.standing_on() or port not in PORTS or self.band_here(p, port) != 4:
+            return
+        if self._band_rng(p, "lot").random() >= float(st.get("lot_chance", 0.0)):
+            return
+        risky = set(self.banned(port)) | set(contraband())
+        pool = sorted(g for g in GOODS if g not in risky and g in self.s["prices"][port])
+        if not pool:
+            return
+        rng = self._band_rng(p, "lot_what")
+        g = rng.choice(pool)
+        roll = self.band_roll(p, port, "rew", "lot")
+        qty = max(5, int(GOODS[g]["depth"] * float(st.get("lot_depth", 0.15)) * roll))
+        off = min(float(st.get("lot_discount_max", 0.5)), float(st.get("lot_discount", 0.15)) * roll)
+        price = float(self.s["prices"][port][g])
+        unit = round(price * (1 - off), 2)
+        p["lot"] = {"port": port, "good": g, "qty": qty, "unit": unit, "price": round(price, 2),
+                    "off": round(off, 4), "turn": self.s["turn"]}
+        p["log"].append(tx("l.band_lot", port=PORTS[port]["name"], qty=qty, good=GOODS[g]["name"].lower(),
+                           off=int(round(off * 100))))
+        self._ev("market", "private_lot", "{}: Favoured in {}, offered {} {} at {} ({} below market)".format(
+            p["name"], PORTS[port]["name"], qty, GOODS[g]["name"], money(unit), pct(off)), p, lot=dict(p["lot"]))
+
+    def lot_view(self, p):
+        lot = p.get("lot")
+        return dict(lot) if lot and lot.get("port") == p["port"] and lot.get("qty", 0) > 0 else None
+
+    def _act_buy_lot(self, p, a):
+        lot = self.lot_view(p)
+        if not lot:
+            raise GameError(tx("e.no_lot"))
+        g, unit = lot["good"], float(lot["unit"])
+        try:
+            want = int(a.get("qty") or lot["qty"])
+        except (TypeError, ValueError):
+            raise GameError(tx("e.whole_number"))
+        room = self.capacity(p) - self.used(p)
+        q = max(0, min(want, lot["qty"], room, int(p["cash"] // max(0.01, unit))))
+        if q <= 0:
+            raise GameError(tx("e.no_room", free=room) if room <= 0
+                            else tx("e.cost", cost=money(int(math.ceil(unit))), cash=money(p["cash"])))
+        cost = int(math.ceil(q * unit))
+        p["cash"] -= cost
+        held = p["cargo"].get(g, 0) + stored(p, g)
+        basis = p.setdefault("basis", {})
+        basis[g] = (basis.get(g, 0.0) * held + cost) / float(held + q)
+        p["cargo"][g] = p["cargo"].get(g, 0) + q
+        p["lot"]["qty"] -= q
+        if p["lot"]["qty"] <= 0:
+            p.pop("lot", None)
+        self._detail = {"good": g, "qty": q, "total": cost, "unit": unit, "lot": True}
+        return tx("m.bought_lot", qty=q, good=GOODS[g]["name"], cost=money(cost))
+
+    def _dumped(self, p, g, q, gain, mid):
+        """Selling a lot far below the posted price (a lot so big it sinks the price, or dealers out of silver) spoils the market (rules.standing): standing lost,
+        once per cargo per visit."""
+        if not self.standing_on() or q <= 0:
+            return
+        st, port = R["standing"], p["port"]
+        mid = float(mid)
+        tab = p.setdefault("tab", {})
+        done = tab.setdefault("dumped", [])
+        if g in done or gain / float(q) >= float(st.get("dump_below", 0.6)) * mid:
+            return
+        done.append(g)
+        self._standing(p, port, -float(st.get("dump", 0)), "dump")
 
     def _push(self, port, g, price):
         """Set a port's price after a trade and remember how far the trade moved it (as a log ratio),
@@ -2665,7 +2998,7 @@ class Game:
         basis[g] = (basis.get(g, 0.0) * held + cost) / float(held + q)   # average price paid per unit
         p["cargo"][g] = p["cargo"].get(g, 0) + q
         self._push(p["port"], g, end)
-        self._trade_rep(p, cost, g, q)
+        self._trade_rep(p, cost, g, q, mid=self._detail["price"][0])
         return tx("m.bought", qty=q, good=GOODS[g]["name"], cost=money(cost))
 
     def _act_sell(self, p, a):
@@ -2692,7 +3025,9 @@ class Game:
             del p["cargo"][g]
         self._push(p["port"], g, end)
         self._eat_boom(p, g, q)
-        self._trade_rep(p, gain, g, -q)
+        mid0 = self._detail["price"][0]
+        self._trade_rep(p, gain, g, -q, profit=gain - unit * q, mid=mid0)
+        self._dumped(p, g, q, gain, mid0)
         self._delivered(p, g, q)
         return tx("m.sold", qty=q, good=GOODS[g]["name"], gain=money(gain))
 
@@ -2733,7 +3068,9 @@ class Game:
                 del p["cargo"][g]
         self._push(p["port"], g, end)
         self._eat_boom(p, g, q)
-        self._trade_rep(p, gain, g, -q)
+        mid0 = self._detail["price"][0]
+        self._trade_rep(p, gain, g, -q, profit=gain - unit * q, mid=mid0)
+        self._dumped(p, g, q, gain, mid0)
         if q - from_wh > 0:
             self._delivered(p, g, q - from_wh)        # only what came off the ships counts as delivered
         return tx("m.sold_store", qty=q, good=GOODS[g]["name"], gain=money(gain))
@@ -2815,6 +3152,81 @@ class Game:
         e = R["estates"]
         return int(round(float(e["house_cost_{}".format(stage)]) * self.wealth_mult(p) / 1000.0) * 1000)
 
+    # Captain's share allowance (19 Nov 2026, Anthony's playtest: buying out a port was too easy).
+    # A house no longer buys shares with silver. It earns them: one free share for each rank climbed
+    # above Clerk (shares_per_rank), and later from special awards (award_shares). It holds at most
+    # shares_per_house in all, and places each one in any port it is in: all in one port, or spread
+    # around. p["share_earned"] is the count earned (capped); the shares not yet placed are
+    # earned - held. Taking one back from a port frees it to place again. rules.estates.shares_buy
+    # turns the old silver sale back on (still within the per-house limit).
+    def share_cap(self):
+        return max(0, int(R["estates"].get("shares_per_house", 10)))
+
+    def _rank_shares(self, idx):
+        """Shares earned for reaching rank number idx: shares_per_rank for each rank above Clerk."""
+        ids = [r["id"] for r in CFG["ranks"]]
+        frm = ids.index("clerk") if "clerk" in ids else 0
+        return max(0, int(idx) - frm) * max(0, int(R["estates"].get("shares_per_rank", 1)))
+
+    def shares_earned(self, p):
+        return max(0, min(self.share_cap(), int(p.get("share_earned", 0) or 0)))
+
+    def shares_total(self, p):
+        return sum(self.shares_held(p, port) for port in PORTS)
+
+    def shares_free(self, p):
+        """Earned shares not yet placed in a port."""
+        return max(0, self.shares_earned(p) - self.shares_total(p))
+
+    def award_shares(self, p, n=1, why="award", **info):
+        """Give a house n free shares to place (a promotion now; special awards later). Kept within
+        shares_per_house. Returns how many were given."""
+        if not R["estates"].get("shares_enabled", True):
+            return 0
+        have = self.shares_earned(p)
+        n = max(0, min(int(n), self.share_cap() - have))
+        if n <= 0:
+            return 0
+        p["share_earned"] = have + n
+        p["log"].append(tx("l.share_earned", n=n, s="" if n == 1 else "s", free=self.shares_free(p),
+                           earned=p["share_earned"], cap=self.share_cap()))
+        self._ev("finance", "shares_earned", "{} earned {} port share(s) ({}): {} of {} earned".format(
+            p["name"], n, why, p["share_earned"], self.share_cap()), p, n=n, why=why,
+                 earned=p["share_earned"], **info)
+        return n
+
+    def _fit_shares(self, p):
+        """Older saves: set the earned count from the rank, and hand back (at what was paid) any
+        shares beyond it, from the port where the house holds the most first."""
+        if "share_earned" not in p:
+            ranks = CFG["ranks"]
+            p["share_earned"] = min(self.share_cap(), self._rank_shares(ranks.index(self.commissioned_rank(p))))
+        over = self.shares_total(p) - self.shares_earned(p)
+        if over <= 0 or R["estates"].get("shares_buy", False):
+            return
+        paid = p.setdefault("share_paid", {})
+        back_total, ports, count = 0, [], over
+        while over > 0:
+            port = max((k for k in PORTS if self.shares_held(p, k)), key=lambda k: self.shares_held(p, k))
+            held = self._share_book(port)
+            mine = int(held[p["id"]])
+            back = int(round(float(paid.get(port, 0)) / mine))
+            held[p["id"]] = mine - 1
+            paid[port] = float(paid.get(port, 0)) - back
+            if held[p["id"]] <= 0:
+                held.pop(p["id"], None)
+                paid.pop(port, None)
+            p["cash"] += back
+            back_total += back
+            if port not in ports:
+                ports.append(port)
+            over -= 1
+            self.patron_of(port)
+        p["log"].append(tx("l.shares_returned", n=count, s="" if count == 1 else "s", cash=money(back_total),
+                           ports=", ".join(PORTS[k]["name"] for k in ports), cap=self.shares_earned(p)))
+        self._ev("finance", "shares_returned", "{}: shares above the {} earned handed back for {}".format(
+            p["name"], self.shares_earned(p), money(back_total)), p, cash=back_total, ports=ports)
+
     def _share_book(self, port):
         book = self.s.setdefault("shares", {})
         held = book.get(port)
@@ -2875,23 +3287,38 @@ class Game:
                 held.pop(p["id"], None)
                 paid.pop(port, None)
             p["cash"] += back
-            msg = tx("m.shares_sold", n=n, s="" if n == 1 else "s", port=name, gain=money(back))
+            msg = (tx("m.shares_sold", n=n, s="" if n == 1 else "s", port=name, gain=money(back)) if back else
+                   tx("m.shares_taken_back", n=n, s="" if n == 1 else "s", port=name, free=self.shares_free(p)))
             ev = "sold"
         else:
             left = int(e["shares_per_port"]) - sum(held.values())
             if left <= 0:
                 raise GameError(tx("e.shares_gone", port=name))
-            n = min(n, left)
+            free = self.shares_free(p)
+            buying = bool(e.get("shares_buy", False))
+            room = self.share_cap() - self.shares_total(p)
+            if room <= 0:
+                raise GameError(tx("e.shares_cap", cap=self.share_cap()))
+            if free <= 0 and not buying:
+                raise GameError(tx("e.shares_unearned", earned=self.shares_earned(p), cap=self.share_cap()))
+            n = min(n, left, room if buying else free)
+            # Earned shares go first and cost nothing; the rest (shares_buy only) at the port's price.
+            gift = min(n, free)
             price = self.share_price(port, p)
-            cost = price * n
+            cost = price * (n - gift)
             if cost > p["cash"]:
                 raise GameError(tx("e.cost", cost=money(cost), cash=money(p["cash"])))
             p["cash"] -= cost
             held[p["id"]] = mine + n
-            paid[port] = float(paid.get(port, 0)) + cost
-            msg = tx("m.shares_bought", n=n, s="" if n == 1 else "s", port=name, cost=money(cost),
-                     held=held[p["id"]], cut=pct(self.share_cut(p, port)))
-            ev = "bought"
+            if cost:
+                paid[port] = float(paid.get(port, 0)) + cost
+            if cost:
+                msg = tx("m.shares_bought", n=n, s="" if n == 1 else "s", port=name, cost=money(cost),
+                         held=held[p["id"]], cut=pct(self.share_cut(p, port)))
+            else:
+                msg = tx("m.shares_placed", n=n, s="" if n == 1 else "s", port=name, held=held[p["id"]],
+                         cut=pct(self.share_cut(p, port)), free=self.shares_free(p))
+            ev = "placed" if not cost else "bought"
         self._ev("finance", "shares_" + ev, "{} {} {} share(s) in {} ({} held)".format(
             p["name"], ev, n, name, held.get(p["id"], 0)), p, port=port, n=n, held=held.get(p["id"], 0))
         now = self.patron_of(port)
@@ -2923,7 +3350,9 @@ class Game:
                 "holders": [{"firm": self.s["players"][k]["firm"], "n": v, "me": k == p["id"]}
                             for k, v in sorted(held.items(), key=lambda kv: -kv[1])],
                 "mine": mine, "patron_of": [k for k in PORTS if self.s.get("patrons", {}).get(k) == p["id"]],
-                "value": int(sum(float(v) for v in (p.get("share_paid") or {}).values()))}
+                "value": int(sum(float(v) for v in (p.get("share_paid") or {}).values())),
+                "cap": self.share_cap(), "earned": self.shares_earned(p), "free": self.shares_free(p),
+                "placed": self.shares_total(p), "buy": bool(e.get("shares_buy", False))}
 
     def _mine_shares(self, p):
         return {port: n for port in PORTS for n in [self.shares_held(p, port)] if n}
@@ -2935,12 +3364,83 @@ class Game:
         st = self.house_stage(p)
         return float(R["estates"].get("house_rob_{}".format(st), 0.0)) if st else 0.0
 
+    def _estate_costs(self, p):
+        """What was paid for each stage built, [stage 1, stage 2, ...]. Saves from before the sell-back
+        (19 Nov 2026) only kept the total: it is split across the stages by their listed prices."""
+        st = self.house_stage(p)
+        costs = p.get("estate_costs")
+        if isinstance(costs, list) and len(costs) == st:
+            return [float(c) for c in costs]
+        paid = float(p.get("estate_paid", 0) or 0)
+        base = [float(R["estates"].get("house_cost_{}".format(i), 0) or 0) for i in range(1, st + 1)]
+        tot = sum(base)
+        costs = [paid * b / tot if tot else paid / st for b in base] if st else []
+        p["estate_costs"] = costs
+        return costs
+
+    def _estate_reps(self, p):
+        """Home standing each stage actually added (it stops at 100). Older saves: the listed gains."""
+        st = self.house_stage(p)
+        reps = p.get("estate_rep")
+        if isinstance(reps, list) and len(reps) == st:
+            return [float(r) for r in reps]
+        reps = [float(R["estates"].get("house_rep_{}".format(i), 0) or 0) for i in range(1, st + 1)]
+        p["estate_rep"] = reps
+        return reps
+
+    def house_sale_price(self, p):
+        """What the top stage of the great house sells back for: rules.estates.house_sell_back of what
+        was paid for it (half, by default). 0 with no house."""
+        costs = self._estate_costs(p)
+        if not costs:
+            return 0
+        share = max(0.0, min(1.0, float(R["estates"].get("house_sell_back", 0.5))))
+        return int(round(costs[-1] * share))
+
+    def _sell_estate(self, p):
+        """Sell the top stage of the great house back (Anthony, 19 Nov 2026): the house steps down one
+        stage (Palace to Mansion, and so on), gets house_sell_back of what that stage cost, and loses the
+        home standing the stage gave and its cut in robbery ashore. December's upkeep falls with it."""
+        e = R["estates"]
+        if not e.get("house_sell", True):
+            raise GameError(tx("e.estate_no_sell"))
+        st = self.house_stage(p)
+        if st <= 0:
+            raise GameError(tx("e.estate_none"))
+        costs, reps = self._estate_costs(p), self._estate_reps(p)
+        back = self.house_sale_price(p)
+        title = tx("estate.stage.{}".format(st))
+        paid = costs.pop()
+        lost = reps.pop()
+        p["estate"] = st - 1
+        p["estate_costs"], p["estate_rep"] = costs, reps
+        p["estate_paid"] = float(sum(costs)) if costs else 0.0
+        p["cash"] += back
+        home = home_of(p)
+        before = float(p["rep"].get(home, 50.0))
+        p["rep"][home] = max(0.0, before - lost)
+        gone = before - p["rep"][home]
+        gr = p.setdefault("gift_rep", {})
+        gr[home] = max(0.0, float(gr.get(home, 0.0)) - gone)
+        if not gr[home]:
+            gr.pop(home, None)
+        now = tx("estate.stage.{}".format(st - 1)) if st > 1 else ""
+        self._ev("finance", "estate_sold", "{} sold the {} at {} back for {} (paid {})".format(
+            p["name"], title, PORTS[home]["name"], money(back), money(paid)),
+                 p, stage=st, left=st - 1, cash=back, paid=int(round(paid)), rep=-round(gone, 2))
+        p["log"].append(tx("l.estate_sold", stage=title, home=PORTS[home]["name"], cash=money(back)))
+        msg = tx("m.estate_sold", stage=title, home=PORTS[home]["name"], cash=money(back), rep=int(round(gone)))
+        return msg + " " + (tx("m.estate_left", stage=now) if now else tx("m.estate_left_none"))
+
     def _act_estate(self, p, a):
-        """Build the next stage of the great house. Home port only."""
+        """Build the next stage of the great house (or, with op "sell", sell the top one back).
+        Home port only."""
         e = R["estates"]
         if not e.get("house_enabled", True):
             raise GameError(tx("e.estate_off"))
         self._home_only(p, tx("estate.what"))
+        if a.get("op") == "sell":
+            return self._sell_estate(p)
         st = self.house_stage(p)
         if st >= self.HOUSE_STAGES:
             raise GameError(tx("e.estate_done"))
@@ -2948,6 +3448,7 @@ class Game:
         cost = self.house_cost(p, nxt)
         if cost > p["cash"]:
             raise GameError(tx("e.cost", cost=money(cost), cash=money(p["cash"])))
+        costs, reps = self._estate_costs(p), self._estate_reps(p)
         p["cash"] -= cost
         p["estate"], p["estate_paid"] = nxt, float(p.get("estate_paid", 0) or 0) + cost
         home = home_of(p)
@@ -2957,6 +3458,7 @@ class Game:
         got = p["rep"][home] - before
         gr = p.setdefault("gift_rep", {})       # bought standing: never more borrowing (as with gifts)
         gr[home] = float(gr.get(home, 0.0)) + got
+        p["estate_costs"], p["estate_rep"] = costs + [float(cost)], reps + [round(got, 4)]
         title = tx("estate.stage.{}".format(nxt))
         self._ev("finance", "estate", "{} built the {} at {} for {}".format(p["name"], title, PORTS[home]["name"], money(cost)),
                  p, stage=nxt, cost=cost, rep=round(got, 2))
@@ -2971,6 +3473,12 @@ class Game:
         nxt = st + 1 if st < self.HOUSE_STAGES else None
         return {"stage": st, "title": tx("estate.stage.{}".format(st)) if st else "",
                 "paid": int(p.get("estate_paid", 0) or 0), "rob_cut": self.house_rob_cut(p),
+                "sell": bool(e.get("house_sell", True)) and st > 0,
+                "sell_price": self.house_sale_price(p) if st else 0,
+                "sell_rep": round(self._estate_reps(p)[-1], 1) if st else 0,
+                "sell_share": max(0.0, min(1.0, float(e.get("house_sell_back", 0.5)))),
+                "upkeep": int(round(float(p.get("estate_paid", 0) or 0) * float(e.get("house_upkeep", 0) or 0))),
+                "upkeep_after": int(round(sum(self._estate_costs(p)[:-1]) * float(e.get("house_upkeep", 0) or 0))) if st else 0,
                 "wealth_mult": self.wealth_mult(p),
                 "stages": [{"stage": i, "title": tx("estate.stage.{}".format(i)), "cost": self.house_cost(p, i),
                             "rep": float(e["house_rep_{}".format(i)]), "rob": float(e["house_rob_{}".format(i)])}
@@ -3056,6 +3564,8 @@ class Game:
                     p["name"], k["slot"], self._contract_text(k)), p, contract=k)
                 p.setdefault("contract_tally", {}).setdefault("missed", 0)
                 p["contract_tally"]["missed"] += 1
+                if self.standing_on():
+                    self._standing(p, home_of(p), -float(R["standing"].get("contract_missed", 0)), "contract_missed")
             else:
                 keep.append(k)
         p["contracts"] = keep
@@ -3148,7 +3658,7 @@ class Game:
     def _act_bank(self, p, a):
         if not port_has(p, p["port"], "bank"):
             raise GameError(tx("e.no_bank_here", port=PORTS[p["port"]]["name"], home=PORTS[home_of(p)]["name"]))
-        q = self._qty(a, "amount")
+        q = self._qty(a, "amount", MONEY_CAP)
         if a.get("op") == "deposit":
             q = min(q, int(p["cash"]))
             if q <= 0:
@@ -3167,7 +3677,7 @@ class Game:
 
     def _act_loan(self, p, a):
         self._home_only(p, tx("w.the_lender"))
-        q = self._qty(a, "amount")
+        q = self._qty(a, "amount", MONEY_CAP)
         if a.get("op") == "borrow":
             room = int(self.loan_limit(p) - p["debt"])
             if room <= 0:
@@ -3175,6 +3685,7 @@ class Game:
             q = min(q, room)
             p["debt"] += q
             p["cash"] += q
+            p["borrowed_turn"] = self.s["turn"]
             self._tally(p, "loan", q)
             rate = "{:g}".format(round(loan_rate() * 100, 2))
             c = self.collectors(p)
@@ -3186,10 +3697,17 @@ class Game:
         if q <= 0:
             raise GameError(tx("e.nothing_to_repay"))
         before = self.collectors(p)
+        owed0 = float(p["debt"])
         p["debt"] = max(0.0, p["debt"] - q)
         p["cash"] -= q
         if p["debt"] < 1:
             p["debt"] = 0.0
+            # Debt cleared (rules.standing): the home port thinks better of a house that pays in full. Not for
+            # a loan taken out this same month (no borrowing and paying back for standing).
+            st = R.get("standing") or {}
+            if self.standing_on() and owed0 >= float(st.get("debt_cleared_min", 0)) \
+                    and int(p.get("borrowed_turn", -1)) < self.s["turn"]:
+                self._standing(p, home_of(p), float(st.get("debt_cleared", 0)), "debt_cleared")
         self._tally(p, "loan", q)
         after = self.collectors(p)
         if p["debt"] <= 0:
@@ -3264,7 +3782,7 @@ class Game:
             raise GameError(tx("e.class_locked." + role, n=need, have=self.class_count(p, "trader")))
         if role == FLAG and any(role_of(sh["type"]) == FLAG for sh in p["ships"]):
             raise GameError(tx("e.flagship_have"))
-        price = SHIPS[kind]["price"]
+        price = int(round(SHIPS[kind]["price"] * self.yard_mult(p)))   # a Hostile or Cool yard charges more
         if price > p["cash"]:
             raise GameError(tx("e.ship_cost", ship=SHIPS[kind]["name"], price=money(price)))
         name = None
@@ -3339,6 +3857,7 @@ class Game:
         old = p["ships"][0]
         new = {"type": offer["kind"], "name": old["name"], "hull": SHIPS[offer["kind"]]["hull"], "guns": offer["guns"],
                "cannons": 0}
+        new.update({k: old[k] for k in ("clean_name", "nsfw_name") if old.get(k)})   # she keeps both names
         p["ships"] = [new]
         p["cash"] += offer["value"]
         self._detail = {"ship": old["type"], "name": old["name"], "to": offer["kind"], "value": offer["value"],
@@ -3771,7 +4290,13 @@ class Game:
                     grace = max(0, int(b.get("debt_grace_months", 0)))
                     every = max(1, int(b.get("debt_call_every", 1)))
                     if p["debt_over"] > grace and (p["debt_over"] - grace - 1) % every == 0:
-                        self._gain_rep(p, home_of(p), -b["debt_rep_penalty"])
+                        if self.standing_on():
+                            st = R["standing"]
+                            for k in PORTS:
+                                self._standing(p, k, -float(st["collect_home" if k == home_of(p) else "collect_away"]),
+                                               "collectors")
+                        else:
+                            self._gain_rep(p, home_of(p), -b["debt_rep_penalty"])
                         p["log"].append(tx("l.collectors", home=PORTS[home_of(p)]["name"]))
                         self._ev("finance", "collectors", "{}: debt {} is over the collectors' line {} (month {} over "
                                  "the line; grace {}, then every {}); standing in {} fell by {}".format(
@@ -3796,6 +4321,8 @@ class Game:
                 p["fame"] = round(float(p["fame"]) * (1 - float(R["battle"].get("fame_decay", 0.1))), 3)
                 if p["fame"] < 0.05:
                     p["fame"] = 0.0
+            if self.standing_on():
+                self._drift_standing(p)
             if p["protect"] > 0:
                 p["protect"] -= 1
                 if p["protect"] == 0:
@@ -4045,6 +4572,8 @@ class Game:
                     if p["protect"] > 0 and self._chance(ly["protect_save"], "protection",
                                                          "{}: {}'s fleet drives off {} pirate junks".format(who, TOKENS["pirate"], n), p):
                         log.append(tx("l.driven_off", n=n))
+                    elif self._warned_off(p, origin):
+                        log.append(tx("l.band_warned", port=PORTS[origin]["name"]))
                     else:
                         self._battle_open(p, n, "pirates", muster)
             elif v["stage"] == 2:
@@ -4055,10 +4584,13 @@ class Game:
                                                                       "{}: found by {}'s fleet (no protection){}".format(
                                                                           who, TOKENS["pirate"], " (a rich house x{:.2f})".format(pull)
                                                                           if pull != 1.0 else ""), p):
-                    muster = self._muster(p, "lord", dest) if R["battle"].get("match") else None
-                    n = muster["n"] if muster else min(ly["fleet_max"], ly["fleet_base"] + self.capacity(p) // ly["fleet_per_hold"])
-                    log.append(tx("l.lord_found"))
-                    self._battle_open(p, n, "lord", muster)
+                    if self._warned_off(p, origin):
+                        log.append(tx("l.band_warned", port=PORTS[origin]["name"]))
+                    else:
+                        muster = self._muster(p, "lord", dest) if R["battle"].get("match") else None
+                        n = muster["n"] if muster else min(ly["fleet_max"], ly["fleet_base"] + self.capacity(p) // ly["fleet_per_hold"])
+                        log.append(tx("l.lord_found"))
+                        self._battle_open(p, n, "lord", muster)
             else:
                 p.pop("voy", None)
                 if not p["ships"]:
@@ -4069,6 +4601,7 @@ class Game:
                 p["net"] = {}
                 self._mayor_greeting(p)
                 log.append(tx("l.anchored", port=PORTS[dest]["name"]))
+                self._offer_lot(p, dest)
                 self._ev("voyage", "arrived", "{} anchored in {}: {} ship{}, hull {}, hold {}/{}, silver {}".format(
                     who, PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
                     "/".join(str(sh["hull"]) for sh in p["ships"]), self.used(p), self.capacity(p), money(p["cash"])),
@@ -4095,7 +4628,10 @@ class Game:
                                     del p["cargo"][g]
                             what = names_of(list(taken))
                             p["cash"] -= fine
-                            self._gain_rep(p, dest, -cb["rep_penalty"])
+                            if self.standing_on():
+                                self._standing(p, dest, -float(R["standing"]["seized"]), "seized", travel=True)
+                            else:
+                                self._gain_rep(p, dest, -cb["rep_penalty"])
                             log.append(tx("l.seized", qty=found, fine=money(fine), contraband=what.lower(), Contraband=what))
                             news.append(tx("n.caught", name=p["name"], firm=p["firm"], port=PORTS[dest]["name"],
                                            contraband=what.lower(), Contraband=what))
@@ -4209,7 +4745,10 @@ class Game:
         noise = rng.gauss(0, float(bt["match_spread"]))
         m = (bt["match_base"] + bt["match_cargo"] * tempt + bt["match_fame"] * fame
              + float(bt.get("match_worth", 0.0)) * rich
-             - bt["match_standing"] * standing + noise + (bt["match_lord"] if lord else 0.0))
+             - bt["match_standing"] * standing + noise + (bt["match_lord"] if lord else 0.0)
+             # The port sailed from (rules.standing): Hostile locals sell word of the sailing, Favoured
+             # friends ashore send warning of who lies in wait.
+             + self.band_effects(p, (p.get("voy") or {}).get("origin"))["match"])
         m = max(float(bt["match_min"]), min(float(bt["match_max"]), m)) * MULT.get("pirates", 1.0) ** 0.35
         their_hull = fire * rounds                                  # sum of the junks' hit points
         per_shot = src["hit"] * (src["dmg_min"] + src["dmg_max"]) / 2.0
@@ -4951,9 +5490,29 @@ class Game:
                                           else "ship_lost", "ship_lost", foe="sank_ours",
                                           ship=SHIPS[sh["type"]]["name"] if sh["type"] in SHIPS else sh["type"], name=sh["name"]))
 
+    def _warned_off(self, p, origin):
+        """Favoured in the port sailed from: friends ashore warn of the fleet lying in wait, and now and
+        then the house slips past it (rules.standing.favoured_avoid). Its own dice, not the game's."""
+        chance = self.band_effects(p, origin)["avoid"] if origin in PORTS else 0.0
+        if chance <= 0:
+            return False
+        hit = self._band_rng(p, "avoid").random() < chance
+        self._ev("dice", "band_avoid", "{}: Favoured in {}, friends' warning ({}): {}".format(
+            p["name"], PORTS[origin]["name"], pct(chance), "slipped past" if hit else "no luck"), p, odds=chance, hit=hit)
+        return hit
+
     def _battle_close(self, p, b, outcome, frames):
         """The fight is over: the damage line for the log, and the reckoning for the screen."""
         bt = R["battle"]
+        dest = (p.get("voy") or {}).get("dest")
+        if self.standing_on() and dest in PORTS:
+            # The port ahead hears how it went (rules.standing): pirates beaten off its waters, or a house
+            # beaten or running from them.
+            st = R["standing"]
+            if outcome == "won":
+                self._standing(p, dest, float(st.get("pirates_beaten", 0)), "pirates_beaten")
+            elif outcome in ("retreated", "plundered", "wrecked"):
+                self._standing(p, dest, -float(st.get("beaten", 0)), "beaten")
         gain = float(bt.get("fame_win", 1.0)) if outcome == "won" else float(bt.get("fame_broke_off", 0.5)) \
             if outcome == "broke_off" else 0.0
         if gain:
@@ -5298,6 +5857,12 @@ class Game:
                 "market": self.market_view(p),
                 "shares": self.shares_view(p), "estate": self.estate_view(p),
                 "commissions": self.contracts_view(p),
+                # Reputation swings (rules.standing): what the band here does, recent band moves for the
+                # popup, and a private lot if one is on offer.
+                "band": dict(self.band_effects(p, port), yard_mult=round(self.yard_mult(p), 4),
+                             on=self.standing_on()),
+                "bands": [dict(e) for e in (p.get("bands") or [])] if self.standing_on() else [],
+                "lot": self.lot_view(p),
             }
         return out
 

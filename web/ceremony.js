@@ -45,9 +45,7 @@ const Ceremony = (() => {
   const seat = id => (S && S.players || []).find(p => p.id === id) || {};
 
   function rankSeal(id, cls) {
-    if (!id) return "";
-    const art = typeof Media !== "undefined" && Media.choose("rank", id, "badge", { mode: "fixed", strict: true });
-    return `<img class="${cls}" src="${esc(art ? art.u : "/assets/rank-badges/" + id + ".png")}" alt="" onerror="this.remove()">`;
+    return Ranks.seal(id, cls);
   }
   function portPicture(port) {
     if (typeof Media === "undefined") return "";
@@ -100,7 +98,7 @@ const Ceremony = (() => {
         <p class="lg-hero-cap">${te("fin.finished", { port: portName(port), date: last })}</p></div></div>
       <header class="lg-who">
         <h2>${esc(h.name)} <em>${te("fin.epithet." + h.epithet)}</em></h2>
-        <p class="lg-firm">${houseMark(p, "lg-crest")}<b>${esc(h.firm)}</b>${rankSeal(h.rank_id, "lg-seal")}<span>${esc(h.rank)}</span></p>
+        <p class="lg-firm">${houseMark(p, "lg-crest")}<b>${esc(h.firm)}</b>${Ranks.label(h)}</p>
       </header>
       <p class="lg-tale">${tale.join(" ")}</p>
       <figure class="lg-chart">${curve(h.curve, 360, 80, true)}
@@ -113,7 +111,7 @@ const Ceremony = (() => {
       return `<li class="lg-row${h.id === current ? " on" : ""}${h.place <= 3 ? " p" + h.place : ""}" data-house="${esc(h.id)}" tabindex="0" role="button"
           aria-pressed="${h.id === current}">
         <span class="lg-place">${h.place}</span>${houseMark(p, "lg-crest")}
-        <span class="lg-row-who"><b>${esc(h.firm)}</b><small>${esc(h.name)} · ${esc(h.rank)}</small></span>
+        <span class="lg-row-who"><b>${esc(h.firm)}</b><small>${esc(h.name)}</small>${Ranks.label(h)}</span>
         ${curve(h.curve, 80, 22, false)}
         <span class="lg-row-worth">${esc(money(h.worth))}</span></li>`;
     }).join("");
@@ -169,7 +167,7 @@ const Ceremony = (() => {
       const key = c.kind === "prize" && c.lord ? "fin.c.prize_lord" : "fin.c." + c.kind;
       const text = te(key, { rank: c.rank || "", qty: num(c.qty), good: goodName(c.good), port: portName(c.port),
                              value: short(c.value), count: num(c.count) });
-      return `<li class="ch-${esc(c.kind.replace(/_.*/, ""))}"><span class="lg-ch-icon">${icon}</span>
+      return `<li class="ch-${esc(c.kind.replace(/_.*/, ""))}" style="${esc(c.kind === "rank" ? Ranks.style(c) : "")}"><span class="lg-ch-icon">${icon}</span>
         <time>${esc(c.date)}</time><p>${text}</p></li>`;
     }).join("");
     const top = h.cargo.length ? Math.max(...h.cargo.map(c => c.profit)) : 0;
@@ -302,7 +300,7 @@ const Ceremony = (() => {
     if (!box || box.querySelector(".lg-win-card") || !book.data) return;
     const h = book.data.houses[0];
     const p = Object.assign({ color: h.color }, seat(h.id), { name: h.name, firm: h.firm });
-    box.insertAdjacentHTML("afterbegin", `<div class="lg-win-card">${portrait(p)}${rankSeal(h.rank_id, "lg-win-seal")}</div>`);
+    box.insertAdjacentHTML("afterbegin", `<div class="lg-win-card" style="${esc(Ranks.style(h))}">${portrait(p)}${rankSeal(h.rank_id, "lg-win-seal")}</div>`);
     const sub = box.querySelector(".lg-win-epithet");
     if (!sub) box.insertAdjacentHTML("beforeend",
       `<p class="lg-win-epithet">${esc(h.name)} ${te("fin.epithet." + h.epithet)}</p>`);

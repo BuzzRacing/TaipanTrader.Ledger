@@ -14,7 +14,7 @@ import voice  # noqa: E402
 from engine import Game, GameError, PORTS  # noqa: E402
 
 
-def arrive(seed, dest, cargo=(("tea", 30), ("general", 25))):
+def arrive(seed, dest, cargo=(("tea", 25), ("general", 20))):
     """One house sails from Hong Kong with cargo and drops anchor (or is blown elsewhere)."""
     g = Game(seed=seed)
     g.join("Ann", "")
@@ -32,6 +32,8 @@ def arrive(seed, dest, cargo=(("tea", 30), ("general", 25))):
 def no_spot(cfg):
     """These checks are about the ordinary rules: no spot checks at free landings."""
     cfg["rules"]["customs"]["spot_home"] = cfg["rules"]["customs"]["spot_shares"] = 0.0
+    # The desk's own odds and payouts, before reputation swings (those are checked in standing_test.py).
+    cfg["rules"]["standing"]["enabled"] = False
     return cfg
 
 

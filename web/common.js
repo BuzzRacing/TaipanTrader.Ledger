@@ -48,6 +48,7 @@ async function loadInfo() {
   const r = await fetch("/api/info" + (screenFamily() ? "?family=1" : ""));
   const info = await r.json();
   const d = info.data;
+  Ranks.configure(d);
   // screens may carry their own fallback wording for keys an older server does not have yet
   T = Object.assign({}, typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {}, d.text || {});
   TOK = d.tokens || {};

@@ -486,7 +486,7 @@ for _who, _keys in {
     "customs": ["l.seized", "n.ban", "n.ban_lifted", "n.caught"],
     # The Mayor and the Tax collector speak only when they catch a captain (owner's decision).
     # The Mayor's Parlour: she thanks a Warm or Delighted gift aloud (decision 3).
-    "mayor": ["l.slip_caught", "m.gift.warm", "m.gift.delighted"]
+    "mayor": ["l.slip_caught", "m.gift.warm", "m.gift.delighted", "l.band_hostile", "l.band_favoured"]
              + ["m.gift.{}.{}".format(t, i) for t in ("warm", "delighted") for i in range(10)]
              # Her congratulations on a promotion (18 Nov 2026).
              + [k for k in strings.EN if k.startswith("m.promote.") or k.startswith("m.promote_top.")],
