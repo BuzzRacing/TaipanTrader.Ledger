@@ -276,7 +276,9 @@ def list_voices(force=False):
                 try:
                     _s, raw = _request("GET", VOICES_URL + "?" + urllib.parse.urlencode(q), timeout=20)
                 except VoiceError as e:
-                    if pages == 0 and "HTTP 404" in str(e):
+                    # Older accounts lack the Voices API (404), and a key made for speech only is
+                    # refused there (403); both can still read the older list.
+                    if pages == 0 and ("HTTP 404" in str(e) or "HTTP 403" in str(e)):
                         _s, raw = _request("GET", LEGACY_VOICES_URL, timeout=20)
                         rows = [_voice_row(v) for v in (json.loads(raw).get("voices") or [])]
                         break

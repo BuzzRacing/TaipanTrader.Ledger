@@ -29,6 +29,8 @@ import strings as _strings
 
 import counter
 import jail
+import rot
+import legend
 import storm
 import trade_text
 
@@ -2767,6 +2769,12 @@ class Game:
         return bool((R.get("standing") or {}).get("enabled"))
 
     @staticmethod
+    def standing_popup_on():
+        """The band-change card (web/player.js syncBands). Muted 20 Nov 2026 (rules.standing.popup,
+        off by default) until it is redone on the big persona screen; the bars and log lines still run."""
+        return bool((R.get("standing") or {}).get("popup"))
+
+    @staticmethod
     def band_of(rep):
         """0 Hostile (0-19) .. 4 Favoured (80-100). web/player.js standingTier is the same sum."""
         return min(4, max(0, int(round(float(rep or 0))) // 20))
@@ -3137,6 +3145,8 @@ class Game:
             return tx("m.promotion_ack")
         if kind == "storm_ack":
             return storm.act_ack(self, p, a)            # the storm screen's "Make port" (any phase; a fight may follow)
+        if kind == "legend":
+            return legend.act(self, p, a)               # a Legend's choice or its reckoning closed (no game time)
         if kind == "free_play":
             return self._free_play(p)
         if kind == "settings":
@@ -3318,6 +3328,7 @@ class Game:
         held = p["cargo"].get(g, 0) + stored(p, g)
         basis = p.setdefault("basis", {})
         basis[g] = (basis.get(g, 0.0) * held + cost) / float(held + q)
+        rot.add(p, g, q)
         p["cargo"][g] = p["cargo"].get(g, 0) + q
         p["lot"]["qty"] -= q
         if p["lot"]["qty"] <= 0:
@@ -3378,6 +3389,7 @@ class Game:
         held = p["cargo"].get(g, 0) + stored(p, g)
         basis = p.setdefault("basis", {})
         basis[g] = (basis.get(g, 0.0) * held + cost) / float(held + q)   # average price paid per unit
+        rot.add(p, g, q)                          # new units come aboard fresh (rot.py)
         p["cargo"][g] = p["cargo"].get(g, 0) + q
         self._push(p["port"], g, end)
         self._trade_rep(p, cost, g, q, mid=self._detail["price"][0])
@@ -4154,6 +4166,7 @@ class Game:
         wh[g] -= q
         if not wh[g]:
             del wh[g]
+        rot.add(p, g, q)                          # stored cargo comes out fresh: warehouses do not age it
         p["cargo"][g] = p["cargo"].get(g, 0) + q
         self._tally(p, "wh", q)
         return tx("m.loaded", qty=q, good=GOODS[g]["name"])
@@ -4710,7 +4723,9 @@ class Game:
             p.pop("voy", None)
             p.pop("battle", None)
         for p in players:
+            was_in = jail.jailed(p)               # inside at the start of the month: only the jail's own spoilage hits
             inside = jail.month(self, p, news)    # the crew drinks, the hold spoils; release when served
+            rot.month(self, p, news, skip=was_in or bool(inside))   # perishables age a month; old ones rot (rot.py)
             bank0, debt0 = p["bank"], p["debt"]
             if p["bank"] > 0:
                 p["bank"] *= 1 + b["bank_rate"]
@@ -5144,6 +5159,7 @@ class Game:
                 self._open_customs(p)
                 if jail.jailed(p):
                     self._settle_customs(p)
+                legend.on_arrival(self, p, news, dest)      # a Legend may break in here (legend.py); it costs no time
                 return
 
     # ------------------------------------------------------- sea battles --
@@ -5802,6 +5818,7 @@ class Game:
             held = p["cargo"].get(g, 0) + stored(p, g)
             # Plunder costs the house nothing: it lowers the average paid for what is already aboard.
             basis[g] = (float(basis.get(g, 0.0)) * held) / float(held + q)
+            rot.add(p, g, q)
             p["cargo"][g] = p["cargo"].get(g, 0) + q
         worth = int(sum(q * GOODS[g]["base"] for g, q in took.items()))
         what = self._goods_text(took)
@@ -6507,6 +6524,7 @@ class Game:
                 "hot_tips": [t for t in (p.get("hot_tips") or []) if int(t.get("ends", -1)) >= s["turn"]],
                 "prices": {g: round(v, 2) for g, v in s["prices"][port].items()},
                 "basis": {g: round(v, 2) for g, v in (p.get("basis") or {}).items()},   # average paid per unit
+                "rot": rot.view(p),   # perishables aboard: months aged and the grace period (rot.py)
                 "spread": round(sp, 4),
                 "purse": self.purse_view(port),             # the dealers' purse here: {good: [left, size]}
                 "dues": self.dues(p), "slip": bool(p.get("slip")), "slip_quote": self.slip_quote(p),
@@ -6521,10 +6539,11 @@ class Game:
                 # popup, and a private lot if one is on offer.
                 "band": dict(self.band_effects(p, port), yard_mult=round(self.yard_mult(p), 4),
                              on=self.standing_on()),
-                "bands": [dict(e) for e in (p.get("bands") or [])] if self.standing_on() else [],
+                "bands": [dict(e) for e in (p.get("bands") or [])] if (self.standing_on() and self.standing_popup_on()) else [],
                 "lot": self.lot_view(p),
                 "jail": jail.view(self, p),
                 "storm": storm.view(self, p),
+                "legend": legend.view(self, p), "legends": legend.book(self, p),   # the Legend on screen; those met
                 "counter": counter.view(self, p),    # Under the Counter: the tax lady's paid tips
             }
         return out

@@ -218,6 +218,13 @@ DEFAULTS = {
                   "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4,
                   "w_price": 0.5, "w_yard": 0.35, "w_standing": 0.15, "ban_penalty": 0.25,
                   "patch_max": 0.5},
+        # Legends (legend.py, 20 Nov 2026; project doc "SeaTrader Legends Library"). Big stories that break
+        # into the game on a landfall and take no game time: rare (per_game of them begin), told in chapters
+        # gap_min..gap_max months apart (for a 10-year game; scaled to the game's length), every effect sized
+        # from a stake of stake_share of the house's net worth. enabled off = a game with no Legends.
+        "legend": {"enabled": True, "per_game": 5, "first_month": 6, "max_running": 2, "gap_min": 6, "gap_max": 14,
+                   "stake_share": 0.06, "stake_min": 2000, "swing": 0.25, "teller": "tale", "eager": False,
+                   "tale_palace": True},
         "pirates": {"chance": 0.18, "fleet_min": 2, "fleet_base": 4, "fleet_per_hold": 40,
                     "fleet_max": 40, "hit": 0.30, "dmg_min": 4, "dmg_max": 14, "hp": 2,
                     "gun_hit": 0.4, "rounds": 6, "run_base": 0.35, "run_fast": 0.2,
@@ -242,6 +249,9 @@ DEFAULTS = {
                  "spoil_min": 0.05, "spoil_max": 0.15, "perishables": ["rice", "tea", "spices"], "release_floor": 10},
         "hide": {"enabled": True, "min": 0.10, "max": 0.30, "dear_mult": 1.5, "dear_goods": ["gold", "opium"],
                  "customs": True, "desk": True, "pirates": True, "bankrupt": True},
+        # Perishable cargo rots (rot.py, 20 Nov 2026): the goods on rules.jail.perishables, aged by the month
+        # while aboard (warehouses are safe). Past the grace period a random min..max share rots each month.
+        "rot": {"enabled": True, "grace_months": 3, "min": 0.05, "max": 0.15},
         # The sea battle played on screen (engine.Game, "sea battles"). A captain at a screen chooses
         # each round; the month waits at sea until every fight is over.
         "battle": {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
@@ -410,6 +420,10 @@ DEFAULTS = {
         # Warm 60-79, Favoured 80-100). Every penalty or reward below is multiplied by a fresh roll from
         # the band the house is in there: <band>_pen_lo..hi for losses, <band>_rew_lo..hi for gains.
         "standing": {"enabled": True,
+                     # The band-change popup card. Muted 20 Nov 2026: it fires too often and out of turn, and
+                     # its layout is to be redone as a big left-screen persona page (like Storm / Jail Story).
+                     # Off keeps the heat-bar flash and the log lines. See the work plan, "Next phase".
+                     "popup": False,
                      "hostile_pen_lo": 2.0, "hostile_pen_hi": 6.0, "hostile_rew_lo": 0.2, "hostile_rew_hi": 0.6,
                      "cool_pen_lo": 1.3, "cool_pen_hi": 3.0, "cool_rew_lo": 0.5, "cool_rew_hi": 1.0,
                      "neutral_pen_lo": 0.7, "neutral_pen_hi": 1.5, "neutral_rew_lo": 0.7, "neutral_rew_hi": 1.4,
@@ -755,10 +769,21 @@ SECTIONS = [
              _pct("rules.jail.drink_min", "Each month inside the crew drinks, least", "A share of the silver aboard. "
                   "Banked silver is safe."),
              _pct("rules.jail.drink_max", "Each month inside the crew drinks, most"),
-             _pct("rules.jail.spoil_min", "Perishable cargo spoils each month, least"),
-             _pct("rules.jail.spoil_max", "Perishable cargo spoils each month, most"),
-             F("rules.jail.perishables", "Perishable cargo", "lines", "Cargo keys, one per line.", max=20),
+             _pct("rules.jail.spoil_min", "Perishable cargo spoils each month in jail, least",
+                  "Which goods are perishable is set under Perishable cargo (rots when it stays aboard)."),
+             _pct("rules.jail.spoil_max", "Perishable cargo spoils each month in jail, most"),
              F("rules.jail.release_floor", "Standing in the jail port on release, at least", "num", min=0, max=100, step=1)]},
+         {"title": "Perishable cargo (rots when it stays aboard)", "fields": [
+             F("rules.rot.enabled", "Perishable cargo rots", "bool", "Each perishable good aboard has an average age in "
+               "months. New units come aboard at age 0 and bring the average down. Past the grace period a share of "
+               "that good rots every month and is lost at cost. Cargo in a warehouse or depot does not age, and "
+               "comes out fresh. In jail only the jail's own spoilage applies."),
+             F("rules.jail.perishables", "Perishable cargo", "lines", "Cargo keys, one per line (not display names: "
+               "Maijiuana is the key porcelain). Used by the rot rule and by jail spoilage.", max=20),
+             F("rules.rot.grace_months", "Safe aboard for (months)", "int", "It rots from the month-end after this "
+               "many.", min=0, max=120),
+             _pct("rules.rot.min", "Share that rots each month, least"),
+             _pct("rules.rot.max", "Share that rots each month, most")]},
          {"title": "Crew hides a share (before it is taken)", "fields": [
              F("rules.hide.enabled", "The crew hides a share", "bool", "Whenever cargo or silver is about to be "
                "taken, the crew always gets a random share of it out of sight first. It stays aboard."),
@@ -1187,6 +1212,8 @@ SECTIONS = [
          {"title": "Standing: the five bands and their luck", "fields": [
              F("rules.standing.enabled", "Standing swings (bands, big falls, drift)", "bool",
                "Standing falls in five bands of 20. Every standing loss or gain below is multiplied by a fresh roll from the band the house is in, and the fine for a caught lie is set by the band it falls into. Off: standing works as before."),
+             F("rules.standing.popup", "Band-change popup card (muted for now)", "bool",
+               "The card that appears when standing crosses into another band. Off (the default) keeps the heat-bar flash and the Captain's Log line. To be redone as a big left-screen persona page before it is switched back on."),
              F("rules.standing.hostile_pen_lo", "Hostile (0-19): losses times, least", "num",  min=0, max=20, step=0.05),
              F("rules.standing.hostile_pen_hi", "Hostile (0-19): losses times, most", "num",  min=0, max=20, step=0.05),
              F("rules.standing.hostile_rew_lo", "Hostile (0-19): gains times, least", "num",  min=0, max=20, step=0.05),
@@ -1416,6 +1443,40 @@ SECTIONS = [
              F("rules.storm.ban_penalty", "Port score: each banned cargo aboard costs", "num", min=0, max=10, step=0.05),
              _pct("rules.storm.patch_max", "A port with no shipyard can mend a ship up to", "A share of her full hull. "
                   "100% turns the rule off; full repair then works in every port as before.")]},
+     ]},
+    {"id": "legends", "title": "Legends", "intro": "The Legend and Folklore Library: big stories that take over the "
+     "Captain's screen on a landfall, told in chapters months apart. A Legend takes no game time.",
+     "groups": [
+         {"title": "Legends in this game", "fields": [
+             F("rules.legend.enabled", "Legends are told", "bool", "Off: a game with no Legends at all. A chapter "
+               "already on a Captain's screen can still be finished."),
+             F("rules.legend.per_game", "About how many begin in a game", "int", "Rare and big: four to six suits a "
+               "10-year game. Each one that begins runs for several chapters.", min=0, max=50),
+             F("rules.legend.first_month", "None before month", "int", min=0, max=600),
+             F("rules.legend.max_running", "Legends in progress at once, at most", "int", min=1, max=10),
+             F("rules.legend.gap_min", "Months between chapters: least", "int", "For a 10-year game; longer and "
+               "shorter games stretch and shrink it.", min=1, max=120),
+             F("rules.legend.gap_max", "Months between chapters: most", "int", min=1, max=120),
+             F("rules.legend.eager", "Testing: begin a Legend at the first landfall that fits", "bool", "Ignores the "
+               "count, the first month and the spacing, so a Legend can be seen straight away. Turn it off for a "
+               "real game.")]},
+         {"title": "The Library", "fields": [
+             F("rules.legend.tale_palace", "The Palace Beneath the Waves", "bool", "Begins on a landfall at Nagasaki. "
+               "Three chapters: the turtle in the net, the lady on the anchor chain, the box. Told by Morwenna Teague.")]},
+         {"title": "Stakes", "fields": [
+             _pct("rules.legend.stake_share", "A Legend's stake: share of the house's net worth", "Every reward and "
+                  "loss in a Legend is a multiple of this stake, so a Legend matters to a small house and a great "
+                  "one alike. About one good or bad trading month."),
+             F("rules.legend.stake_min", "...and never less than", "int", min=0, max=10**9),
+             _pct("rules.legend.swing", "Each reward or loss varies by", "Either way, rolled fresh each time.")]},
+         {"title": "The storyteller", "fields": [
+             F("rules.legend.teller", "Who tells the Legends", "select", "Each Legend has a storyteller of its own; "
+               "or let the dice choose one of the three for each Legend; or give every Legend to one of them. "
+               "Their cards are under Cast & Voices.",
+               options=[["tale", "Each Legend's own storyteller"], ["random", "One of the three, at random"],
+                        ["teller_temple", "Mother Chen Sui-lan (the temple)"],
+                        ["teller_tavern", "La Golondrina (the tavern)"],
+                        ["teller_drowned", "Morwenna Teague (the drowned bride)"]])]},
      ]},
     {"id": "danger", "title": "Pirates & Customs", "intro": "Everything that can go wrong at sea and at the dock.",
      "groups": [

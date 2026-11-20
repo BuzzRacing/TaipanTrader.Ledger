@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  const st = { open: null, voices: null, voicesErr: "", loading: false, q: "", audio: null, playing: "", generating: "" };
+  const st = { open: null, voices: null, voicesErr: "", loading: false, audio: null, playing: "", generating: "" };
   const $m = () => document.getElementById("main");
   const e = s => esc(s);
   const PLACE = {
@@ -179,20 +179,12 @@
       keyCard() + grid() + whoReads();
   }
 
+  /* The profile shows her voice; choosing one is done on the Voice Library page, where every voice can be heard. */
   function voicePicker(c) {
-    const q = st.q.trim().toLowerCase();
-    const list = (st.voices || []).filter(v => !q || (v.name + " " + v.id + " " + v.description + " " + v.lang + " " + v.gender + " " + v.age + " " + v.tags.join(" ")).toLowerCase().includes(q));
-    const opt = v => `<option value="${e(v.id)}" ${v.id === c.voice_id ? "selected" : ""}>${e(v.name)}${v.gender || v.age ? " · " + e([v.gender, v.age].filter(Boolean).join(", ")) : ""}${v.lang ? " · " + e(v.lang) : ""}${v.description ? " — " + e(v.description.slice(0, 70)) : ""}</option>`;
-    const own = list.filter(v => v.source !== "SYSTEM"), sys = list.filter(v => v.source === "SYSTEM");
-    const cur = c.voice_id && !list.some(v => v.id === c.voice_id) ? `<option value="${e(c.voice_id)}" selected>${e(c.voice_id)} (current)</option>` : "";
-    const sel = st.voices ? `<select data-cf="voice_id" size="8" class="cv-vsel">${cur}${own.length ? `<optgroup label="Your voices">${own.map(opt).join("")}</optgroup>` : ""}
-        <optgroup label="Inworld voices">${sys.map(opt).join("")}</optgroup></select>`
-      : `<p class="small muted">${st.loading ? "Fetching voices…" : st.voicesErr ? e(st.voicesErr) : "Add an Inworld key to choose from the voice list."}</p>`;
     const row = voiceRow(c.voice_id);
     return `<div class="f wide"><label><span>Inworld voice</span>${voiceWarn(c.voice_id)}</label>
-        ${st.voices ? `<input type="search" data-cvq="1" placeholder="Search voices: name, accent, gender, age…" value="${e(st.q)}">` : ""}
-        <div id="cvvsel">${sel}</div>
-        <div class="row"><input type="text" data-cf="voice_id" value="${e(c.voice_id)}" placeholder="or type a voice ID"><small class="help">${row ? e(row.description) : "Any voice ID from Inworld works, including your own cloned or designed voices."}</small></div></div>`;
+        <p class="cv-hervoice"><b>🎙 ${e(voiceLabel(c.voice_id))}</b>${row && row.description ? ` <span class="muted">${e(row.description)}</span>` : ""}</p>
+        <div class="row"><button type="button" data-cvlib="1">Change her voice in the Voice Library</button></div></div>`;
   }
 
   function detail(cid) {
@@ -315,27 +307,12 @@
   function onInput(ev) {
     if (section !== "cast") return;
     const el = ev.target, d = el.dataset;
-    if (d.cvq) {
-      st.q = el.value;
-      const box = document.getElementById("cvvsel");
-      if (box && st.open) {
-        const tmp = document.createElement("div");
-        tmp.innerHTML = voicePicker(C()[st.open]);
-        box.innerHTML = tmp.querySelector("#cvvsel").innerHTML;
-      }
-      return;
-    }
     if (d.cf && st.open) {
       const c = C()[st.open];
       let v = el.value;
       if (d.cf === "age") { v = parseInt(v, 10); el.classList.toggle("bad", !(v >= 18 && v <= 150)); if (!(v >= 18 && v <= 150)) return; }
       if (d.cf === "speaking_rate") { v = Number(v); const b = el.parentNode.querySelector("label b"); if (b) b.textContent = v.toFixed(2) + "×"; }
-      if (d.cf === "voice_id") {
-        v = v.trim();
-        document.querySelectorAll('[data-cf="voice_id"]').forEach(o => { if (o !== el && o.tagName === "INPUT") o.value = v; });
-      }
       c[d.cf] = v;
-      if (d.cf === "voice_id" && el.tagName === "SELECT") redraw();
       if (["name", "brand_link", "color"].includes(d.cf) && ev.type === "change") redraw();
       return changed();
     }
@@ -370,7 +347,8 @@
       ev.stopPropagation();
       return play(d.cvplay, d.cvtext || C()[d.cvplay].catchphrase, d.cvplay + "|" + (d.cvtext || ""));
     }
-    if (d.cvopen && !ev.target.closest("button, input")) { st.open = d.cvopen; stop(); st.q = ""; redraw(); return window.scrollTo(0, 0); }
+    if (d.cvopen && !ev.target.closest("button, input")) { st.open = d.cvopen; stop(); redraw(); return window.scrollTo(0, 0); }
+    if (d.cvlib) { stop(); return go("voices"); }
     if (d.cvback) { st.open = null; stop(); redraw(); return window.scrollTo(0, 0); }
     if (d.cvtry) return play(d.cvtry, document.getElementById("cvtry").value, d.cvtry + "|try");
     if (d.cvtryline) return play(d.cvtryline, document.getElementById("cvline").value, d.cvtryline + "|line");

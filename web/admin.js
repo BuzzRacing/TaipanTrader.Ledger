@@ -20,7 +20,7 @@ const lv = { code: "en", q: "", group: "", changed: false, family: false };
 
 const NAV = [
   ["Game", [["live", "Live Game"], ["captains", "Captains"], ["report", "Captain's Report"]]],
-  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["artbible", "Art Bible"], ["media", "Media Library"], ["cast", "Cast & Voices"], ["language", "Language & Text"]]],
+  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["artbible", "Art Bible"], ["media", "Media Library"], ["cast", "Cast & Voices"], ["voices", "Voice Library"], ["language", "Language & Text"]]],
   ["Rules", [["ratings", "Ratings & Difficulty"], ["game", "Game Setup"], ["economy", "Economy"], ["goods", "Cargo"],
              ["ports", "Ports"], ["ships", "Ships"], ["weather", "Weather & Seas"], ["danger", "Pirates & Customs"]]],
   ["System", [["backup", "Backup & Access"]]],
@@ -168,6 +168,7 @@ $("#nav").addEventListener("click", e => {
 });
 function go(id) {
   if (section === "cast" && id !== "cast") SeaTraderCast.leave();
+  if (section === "voices" && id !== "voices") SeaTraderVoices.leave();
   if (section === "captains" && id !== "captains") SeaTraderCaptains.leave();
   if (section === "report" && id !== "report") SeaTraderReport.leave();
   if (section === "media" && id !== "media") SeaTraderMedia.leave();
@@ -365,6 +366,7 @@ function draw() {
     SeaTraderArtBible.hydrate();
   }
   else if (section === "cast") main.innerHTML = SeaTraderCast.render();
+  else if (section === "voices") { main.innerHTML = SeaTraderVoices.render(); SeaTraderVoices.enter(); }
   else if (section === "captains") { main.innerHTML = SeaTraderCaptains.render(); SeaTraderCaptains.enter(); }
   else if (section === "media") { main.innerHTML = SeaTraderMedia.render(); SeaTraderMedia.enter(); }
   else if (section === "report") { main.innerHTML = SeaTraderReport.render(); SeaTraderReport.enter(); }

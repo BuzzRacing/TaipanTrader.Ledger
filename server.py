@@ -48,6 +48,7 @@ import stats
 import strings
 import voice
 import voicefloor
+import voicelib
 from engine import Game, GameError, static_data
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -464,6 +465,10 @@ class Hub:
         jstory = self._jail_story(me)
         if jstory:
             v["voice"]["jail"] = jstory
+        # A Legend (legend.py): one clip for each line on the story screen, said by whoever speaks it
+        # (the storyteller or the Legend's own character). web/legend.js plays them in order.
+        if me.get("legend") and voice.PLAN.ready():
+            v["voice"]["legend"] = [voice.PLAN._clip(b["text"], b["who"]) for b in me["legend"].get("beats") or []]
         promo = me.get("promotion") or {}
         if promo:
             me["promotion"] = dict(promo, achievements=stats.promotion_record(v["game_id"], pid, promo))
@@ -1307,6 +1312,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "voices": voice.list_voices(force=bool(query.get("force")))})
             except voice.VoiceError as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if what == "voice/library":
+            return self._send(200, dict(voicelib.public(), ok=True))
         if what == "artbible/examples":
             return self._send(200, {"ok": True, "examples": artbible_examples(), "aspects": imagegen.ASPECTS})
         if what == "media/library":
@@ -1902,6 +1909,23 @@ class Handler(BaseHTTPRequestHandler):
             except voice.VoiceError as e:
                 return self._send(200, {"ok": False, "error": str(e)})
             return self._send(200, audio, "audio/mpeg")
+        if what == "library/refresh":
+            # The saved voice list (voicelib.py) is only ever changed here, when the Admin asks.
+            try:
+                diff = voicelib.refresh(voice.list_voices(force=True))
+            except (voice.VoiceError, ValueError) as e:
+                return self._send(200, {"ok": False, "error": str(e)})
+            journal.log("INFO", "voice", "Voice library checked against Inworld: {} new, {} gone, {} back".format(
+                len(diff["added"]), len(diff["removed"]), len(diff["back"])), **self._via())
+            return self._send(200, dict(voicelib.public(), ok=True, diff=diff))
+        if what in ("library/mark", "library/sample"):
+            try:
+                if what == "library/mark":
+                    saved = voicelib.mark(body.get("id"), body.get("rating"), body.get("note"))
+                    return self._send(200, {"ok": True, "id": body.get("id"), "mark": saved})
+                return self._send(200, {"ok": True, "sample_text": voicelib.set_sample(body.get("text"))})
+            except (ValueError, OSError) as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         return self._send(404, {"ok": False, "error": "Not found"})
 
     def _events(self, token, family=False):

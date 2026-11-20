@@ -1,0 +1,67 @@
+/* Crimson Ledger Admin: Voice Library (web/voice-library.js). Uses the Command Center's own colours. */
+#vlib { --cv: var(--brass); }
+.vl-status-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.vl-status-top p { margin: .2rem 0 0; }
+.vl-sample { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.vl-sample textarea { font-family: var(--serif); }
+
+.vl-flag { display: inline-block; border: 1px solid var(--brass); color: var(--brass); border-radius: 99px; padding: .02rem .5rem; font: 600 .7rem var(--sans); letter-spacing: .03em; vertical-align: 2px; }
+.vl-flag.alert { border-color: #ff9d92; color: #ff9d92; }
+.vl-flag.new { border-color: var(--green); color: var(--green); }
+.vl-radio { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
+.vl-radio input { width: 1.05rem; height: 1.05rem; flex: none; accent-color: var(--brass); }
+
+/* Persona cards: under the voice she speaks with. The picture is big enough to know her by. */
+.vl-personas { display: flex; flex-wrap: wrap; gap: .7rem; align-items: flex-start; }
+.vl-persona { display: flex; flex-direction: column; gap: .2rem; width: 132px; padding-bottom: .5rem; background: var(--panel-2);
+  border: 1px solid var(--line); border-top: 4px solid var(--cv); border-radius: 8px; overflow: hidden; }
+.vl-pic { display: grid; place-items: center; aspect-ratio: 3 / 4; background: linear-gradient(160deg, var(--cv), #120c08); overflow: hidden; }
+.vl-pic img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.vl-pic i { font: 700 3rem var(--serif); font-style: normal; color: rgba(241,230,204,.8); }
+.vl-persona b { padding: .25rem .5rem 0; font: 700 .86rem/1.15 var(--serif); color: #fff3da; }
+.vl-persona small { padding: 0 .5rem; font-size: .72rem; line-height: 1.25; color: var(--muted); }
+.vl-persona small.vl-need { color: #ff9d92; }
+.vl-persona button.vl-hear { margin: .3rem .5rem 0; padding: .28rem .4rem; font-size: .76rem; }
+.vl-needs { border-color: #8f211a; }
+.vl-needs .vl-personas { margin-top: .7rem; }
+
+.vl-filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem .9rem; }
+.vl-filter-row label span { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: .2rem; }
+.vl-search { grid-column: span 2; }
+
+button.vl-play { border-color: var(--brass); }
+button.vl-play.on { background: var(--brass); color: #1a120b; }
+button.vl-all { min-width: 11rem; }
+
+/* One voice: the voice itself on top, her personas and the assign box below. */
+.vl-list { display: grid; gap: .7rem; }
+.vl-row { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; padding: .7rem .9rem; }
+.vl-voice { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr) minmax(230px, 310px); gap: .9rem; align-items: start; }
+.vl-row.is-star { border-left-color: var(--brass); }
+.vl-row.is-maybe { border-left-color: var(--green); }
+.vl-row.is-no:not(.taken), .vl-row.gone:not(.taken) { opacity: .55; }
+.vl-row.playing { border-color: var(--brass); background: var(--panel-2); box-shadow: 0 0 0 1px var(--brass); }
+.vl-cast { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: .8rem 1.2rem;
+  margin-top: .7rem; padding-top: .7rem; border-top: 1px solid var(--line); }
+.vl-nobody { margin: 0; color: var(--muted); font-style: italic; }
+.vl-assign { flex: 0 1 310px; }
+.vl-assign span { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: .2rem; }
+button.vl-big { width: 3.4rem; height: 3.4rem; padding: 0; border-radius: 8px; font-size: 1.3rem; }
+.vl-info h3 { margin: 0; font: 700 1.1rem var(--serif); color: #fff3da; }
+.vl-info h3 code { font: 400 .72rem var(--mono); color: var(--muted); margin-left: .3rem; }
+.vl-info p { margin: .2rem 0 0; }
+.vl-meta { font-size: .8rem; color: var(--muted); }
+.vl-desc { font-size: .92rem; }
+.vl-tags span { display: inline-block; border: 1px solid var(--line); border-radius: 99px; padding: 0 .5rem; margin: 0 .25rem .2rem 0; font-size: .72rem; color: var(--muted); }
+.vl-side { display: grid; gap: .4rem; }
+.vl-marks { display: flex; gap: .3rem; }
+button.vl-mark { flex: 1; padding: .3rem .4rem; font-size: .78rem; }
+button.vl-mark.on { background: var(--brass); border-color: var(--brass); color: #1a120b; }
+button.vl-mark[data-vlmark="no"].on { background: var(--red); border-color: var(--red); color: #fff; }
+.vl-note { font-size: .82rem; }
+
+@media (max-width: 820px) {
+  .vl-voice { grid-template-columns: 3.4rem minmax(0, 1fr); }
+  .vl-side { grid-column: 1 / -1; }
+  .vl-assign { flex-basis: 100%; }
+}

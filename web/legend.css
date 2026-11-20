@@ -1,0 +1,119 @@
+/* Legends (legend.js; legend.py, 20 Nov 2026): a story told on the Sea Battle's stage. The screen borrows
+   battle.css's classes (.sf-bg, .sf-pic, .sf-shade, .sf-frame, .sf-face, .sf-plate, and for the reckoning
+   .sf-result, .sf-rwho, .sf-rline, .sf-card), so a Legend, a fight and the jail stay one family. This file adds
+   the full-screen layer, the two speakers (the storyteller on the left, the Legend's own on the right), the
+   line in large type, the roads to choose from, and the Legend's accent: lantern gold on deep sea blue. */
+body.in-legend { overflow: hidden; }
+body.in-legend #app { visibility: hidden; }
+
+.lg-screen { --pw: clamp(12rem, 30vw, 34rem); --lg-accent: #e9c46a;
+  position: fixed; inset: 0; z-index: 905; box-sizing: border-box; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: clamp(.3rem, 1.2vh, .8rem);
+  padding: max(.7rem, env(safe-area-inset-top)) max(.9rem, env(safe-area-inset-right)) max(.8rem, env(safe-area-inset-bottom)) max(.9rem, env(safe-area-inset-left));
+  color: var(--deck-ivory); background: var(--deck-night); font-family: var(--sans); animation: sfIn .9s ease-out both; }
+.lg-screen > :not(.sf-bg):not(.sf-result):not(.lg-who) { position: relative; z-index: 2; }
+.lg-screen .sf-shade { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-night) 80%, transparent) 0, transparent 22%,
+    transparent 36%, color-mix(in srgb, var(--deck-night) 86%, transparent) 74%, var(--deck-night) 100%);
+  box-shadow: inset 0 0 10rem color-mix(in srgb, var(--deck-storm) 70%, transparent); }
+
+/* the two speakers: whoever is talking stands bright, the other steps back */
+.lg-who { position: fixed; top: 0; bottom: 0; width: var(--pw); z-index: 1; display: flex; flex-direction: column; justify-content: flex-end;
+  transition: opacity .6s, filter .6s, transform .6s; }
+.lg-who[hidden] { display: none; }
+.lg-who.left { left: 0; text-align: left; }
+.lg-who.right { right: 0; text-align: right; }
+.lg-who.in.left { animation: sfWho .7s cubic-bezier(.2, .8, .2, 1) both; }
+.lg-who.in.right { animation: sfFoe .7s cubic-bezier(.2, .8, .2, 1) both; }
+.lg-who.right .sf-frame { -webkit-mask-image: linear-gradient(270deg, #000 65%, transparent 100%); mask-image: linear-gradient(270deg, #000 65%, transparent 100%); }
+.lg-who .sf-face { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 14%; opacity: 1; }
+.lg-who .sf-plate { margin: 0 1rem clamp(5rem, 16vh, 9rem); }
+.lg-who.right .sf-plate { border-left: 0; border-right: 3px solid var(--who, var(--deck-brass)); }
+.lg-who b { display: block; font: clamp(1.1rem, 1.9vw, 1.6rem)/1.1 var(--serif); color: #fff6e3; text-shadow: 0 1px 3px #000; }
+.lg-who span { display: block; margin-top: .2rem; font-size: clamp(.62rem, .95vw, .78rem); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--brass-hi); text-shadow: 0 1px 2px #000; }
+.lg-who.nopic { display: none; }
+.lg-screen[data-speaker="left"] .lg-who.right, .lg-screen[data-speaker="right"] .lg-who.left { opacity: .42; filter: saturate(.6) brightness(.7); transform: scale(.97); }
+
+/* the top strip: the Legend, its chapter, the chapters as ticks */
+.lg-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 1rem; min-height: 2.6rem;
+  padding-inline: calc(var(--pw) * .1); text-align: center; }
+.lg-where { grid-column: 2; }
+.lg-where small { display: block; font: 1rem var(--special); letter-spacing: .22em; text-transform: uppercase; color: var(--lg-accent); text-shadow: 0 1px 3px #000; }
+.lg-where b { display: block; font: 400 clamp(1.5rem, 3.2vw, 2.6rem)/1.1 var(--title, var(--serif)); color: var(--lg-accent);
+  text-shadow: 0 0 1.6rem color-mix(in srgb, var(--lg-accent) 40%, transparent), 0 2px 3px #000; }
+.lg-where em { display: block; margin-top: .15rem; font: italic clamp(.95rem, 1.5vw, 1.2rem) var(--serif); color: var(--deck-ivory); text-shadow: 0 1px 3px #000; }
+.lg-ticks { grid-column: 2; display: flex; gap: .4rem; width: min(12rem, 30vw); margin: .35rem auto 0; }
+.lg-tick { flex: 1 1 0; height: .35rem; border: 1px solid var(--edge-hi); border-radius: 2px; background: color-mix(in srgb, var(--deck-night) 60%, transparent); }
+.lg-tick.done { background: var(--deck-brass); }
+.lg-tick.now { background: var(--lg-accent); box-shadow: 0 0 .8rem color-mix(in srgb, var(--lg-accent) 60%, transparent); }
+
+/* the line: who says it, then the words, large */
+.lg-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; min-height: 0; text-align: center; cursor: pointer;
+  padding-inline: calc(var(--pw) + 2vw) 4vw; }
+.lg-screen:has(.lg-who.right:not([hidden]):not(.nopic)) .lg-mid { padding-inline: calc(var(--pw) + 2vw); }
+.lg-screen:not(:has(.lg-who.left:not([hidden]):not(.nopic))) .lg-mid { padding-inline: 4vw; }
+.lg-name { margin: 0; font: 1rem var(--special); letter-spacing: .14em; text-transform: uppercase; color: var(--brass-hi); text-shadow: 0 1px 3px #000;
+  padding-bottom: .3rem; border-bottom: 2px solid var(--who, var(--deck-brass)); }
+.lg-name:empty { display: none; }
+.lg-line { margin: 0; max-width: 30ch; font: 400 clamp(1.35rem, 3vw, 2.6rem)/1.2 var(--serif); color: #fff6e3;
+  text-shadow: 0 2px 4px #000, 0 0 2rem rgba(0, 0, 0, .85); text-wrap: balance; }
+.lg-line.long { max-width: 36ch; font-size: clamp(1.2rem, 2.5vw, 2.15rem); }
+.lg-line.in { animation: sfCap .5s cubic-bezier(.2, .8, .2, 1) both; }
+.lg-line.asked { max-width: 44ch; font-size: clamp(1rem, 1.6vw, 1.3rem); font-style: italic; color: var(--deck-ivory); animation: none; }
+
+/* the roads: the story waits for the Captain */
+.lg-roads { display: grid; gap: .7rem; width: min(34rem, 100%); margin-top: .6rem; cursor: default; }
+.lg-roads[hidden] { display: none; }
+.lg-ask { margin: 0 0 .1rem; font: 400 clamp(1.5rem, 3vw, 2.4rem)/1.1 var(--title, var(--serif)); color: var(--lg-accent);
+  text-shadow: 0 0 1.6rem color-mix(in srgb, var(--lg-accent) 40%, transparent), 0 2px 3px #000; }
+.lg-road { min-height: 3.6rem; padding: .7rem 1.4rem; font: 600 clamp(1.05rem, 1.7vw, 1.3rem)/1.2 var(--sans); color: var(--deck-ivory); cursor: pointer; text-align: center;
+  border: 2px solid var(--deck-brass); border-radius: 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--deck-storm) 85%, #000), color-mix(in srgb, var(--deck-night) 88%, transparent));
+  box-shadow: 0 0 0 3px var(--deck-night), 0 0 0 4px color-mix(in srgb, var(--deck-brass) 45%, transparent), 0 .5rem 1.4rem rgba(0, 0, 0, .5);
+  transition: transform .2s, border-color .2s, opacity .3s; animation: sfEntryArrive .6s calc(.15s + var(--entry, 0) * .12s) both; }
+.lg-road:hover:not(:disabled), .lg-road:focus-visible { transform: translateY(-2px); border-color: var(--lg-accent); outline: none; }
+.lg-road:disabled { opacity: .5; cursor: default; }
+
+/* the footer: a hint and where we are in the telling */
+.lg-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 2rem; padding-inline: calc(var(--pw) * .1); }
+.lg-hint { margin: 0 auto; font: italic 1rem var(--sans); color: var(--muted); text-shadow: 0 1px 3px #000; animation: lg-pulse 2.8s ease-in-out infinite; }
+.lg-hint[hidden] { display: none; }
+@keyframes lg-pulse { 50% { opacity: .5; } }
+.lg-dots { position: absolute; left: 50%; bottom: 2.2rem; transform: translateX(-50%); display: flex; gap: .35rem; }
+.lg-dots i { width: .45rem; height: .45rem; border-radius: 50%; background: color-mix(in srgb, var(--deck-ivory) 25%, transparent); }
+.lg-dots i.done { background: var(--deck-brass); }
+.lg-dots i.now { background: var(--lg-accent); }
+
+/* the reckoning: the Reckoning's own card over the last picture */
+.lg-screen .lg-result { z-index: 4 !important; }
+.lg-screen[data-mode="reckon"] .lg-who, .lg-screen[data-mode="reckon"] .lg-mid, .lg-screen[data-mode="reckon"] .lg-top { visibility: hidden; }
+.sf-card.lg-card { --result-accent: var(--lg-accent); }
+.sf-card.lg-card.o-good { --result-accent: var(--jade-hi); }
+.sf-card.lg-card.o-bad { --result-accent: var(--blood-hi); }
+.lg-card .sf-remblem { color: var(--result-accent); }
+.lg-card .sf-remblem svg { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.lg-card .sf-rheading h2 { font-size: clamp(1.9rem, 4.4vw, 3.4rem); }
+.lg-card .sf-rcargo li { grid-template-columns: minmax(0, 1fr); }
+.lg-card footer button:disabled { opacity: .45; cursor: default; transform: none; }
+.lg-rwho.nopic > img { display: none; }
+
+/* upright and small screens */
+@media (orientation: portrait) {
+  .lg-screen { --pw: 32vw; }
+  .lg-screen:has(.lg-who.right:not([hidden]):not(.nopic)) .lg-mid { padding-inline: calc(var(--pw) * .7); }
+  .lg-who .sf-plate { margin-bottom: 3rem; }
+}
+@media (max-width: 700px) {
+  .lg-screen { --pw: 34vw; }
+  .lg-who span { display: none; }
+  .lg-line { font-size: clamp(1.05rem, 4.4vw, 1.5rem); }
+}
+@media (max-height: 560px) {
+  .lg-line { font-size: clamp(1.05rem, 5.4vh, 1.8rem); }
+  .lg-line.long { font-size: clamp(.95rem, 4.6vh, 1.5rem); }
+  .lg-who .sf-plate { margin-bottom: 2rem; }
+  .lg-road { min-height: 2.8rem; padding: .4rem 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-screen, .lg-who, .lg-line, .lg-road, .lg-hint { animation: none !important; transition: none; }
+}

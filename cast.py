@@ -16,6 +16,8 @@ import re
 import house_voice
 import jail_cast
 import jail_text
+import legend_cast
+import legend_text
 import strings
 import trade_text
 
@@ -475,6 +477,8 @@ _OFFICERS = {
 }
 # The wardens (jail.py, 19 Nov 2026): one per port, keyed warden_<port> (jail_cast.py).
 _OFFICERS.update(jail_cast.WARDENS)
+# The Legends (legend.py, 20 Nov 2026): the three storytellers and each Legend's own characters (legend_cast.py).
+_OFFICERS.update(legend_cast.TELLERS)
 for _cid, _o in _OFFICERS.items():
     _o["brand_link"], _o["portrait"] = "", ""
     _o["portrait_prompt"] = _o.pop("prompt")
@@ -543,6 +547,11 @@ for _who, _keys in {
 for _k in jail_text.WARDEN_KEYS:
     LINE_DEFAULTS[_k] = "warden_hongkong"
 LINE_DEFAULTS["n.jail"] = "crier"
+# The Legends (legend.py): the story screen tells a Legend itself, so its log lines and receipts stay on
+# screen only; its headlines are the crier's.
+for _k in legend_text.SILENT:
+    LINE_DEFAULTS[_k] = ""
+LINE_DEFAULTS["n.legend_palace_sold"] = "crier"
 # The Accounting Ledger (acct_text.py): the bookkeeper reads her own greetings.
 for _k in strings.EN:
     if _k.startswith("l.acct_"):

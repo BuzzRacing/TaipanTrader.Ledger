@@ -78,7 +78,8 @@ function speak() {
   if (S.voice.log && document.querySelector(".captains-log") && ui.spokenTurn !== S.turn) {
     ui.spokenTurn = S.turn;
     // A jail story (jail.js) reads its own lines in order, so the log stays quiet over it (20 Nov 2026).
-    if (!(typeof Jail !== "undefined" && Jail.telling())) {
+    // A Legend (legend.js) tells its own lines too.
+    if (!(typeof Jail !== "undefined" && Jail.telling()) && !(typeof Legend !== "undefined" && Legend.telling())) {
       Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + S.turn + ":" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
     }
   }
@@ -368,7 +369,8 @@ function render() {
       region(k, parts[k]);
     });
     if (ui.paneTab !== ui.tab) { ui.paneTab = ui.tab; app.querySelector(".dk-pane").scrollTop = 0; }
-    const busy = (typeof Battle !== "undefined" && Battle.busy()) || (typeof Jail !== "undefined" && Jail.busy()) || (typeof Storm !== "undefined" && Storm.busy());
+    const busy = (typeof Battle !== "undefined" && Battle.busy()) || (typeof Jail !== "undefined" && Jail.busy()) || (typeof Storm !== "undefined" && Storm.busy())
+      || (typeof Legend !== "undefined" && Legend.busy());
     if (!(ui.drag && drawn.ledger)) region("ledger", ui.ledger && !portOverlay && !busy ? Ledger.html() : "");
     Ledger.after(app);
   } else {
@@ -380,9 +382,9 @@ function render() {
   syncTally();
   syncPromotion(inGame, S.phase === "ended" || (inGame && S.phase === "port" && !portOverlay
     && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Jail !== "undefined" && Jail.busy())
-    && !(typeof Storm !== "undefined" && Storm.busy())));
+    && !(typeof Storm !== "undefined" && Storm.busy()) && !(typeof Legend !== "undefined" && Legend.telling())));
   syncBands(inGame && S.phase === "port" && !portOverlay && !S.me.promotion
-    && !(typeof Battle !== "undefined" && Battle.busy()));
+    && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Legend !== "undefined" && Legend.telling()));
 
   if (focusId) {
     const el = document.getElementById(focusId);
@@ -395,6 +397,7 @@ function render() {
   if (typeof Battle !== "undefined") Battle.sync();
   if (typeof Jail !== "undefined") Jail.sync();
   if (typeof Storm !== "undefined") Storm.sync();
+  if (typeof Legend !== "undefined") Legend.sync();      // a Legend waits for the battle, the storm and the jail
   if (typeof Soundscape !== "undefined") Soundscape.sync(S, { bell: true, battle: typeof Battle !== "undefined" && !!Battle.busy(),
     jail: typeof Jail !== "undefined" && !!Jail.busy(), storm: typeof Storm !== "undefined" && !!Storm.busy() });
   TownCrier.sync(S, D, inGame && !portOverlay && !S.me.promotion && !Battle.busy()
@@ -1509,6 +1512,20 @@ function paidHtml(g) {
   return `<span class="mk-paid ${one >= paid ? "up" : "down"}" title="${te("market.paid_tip", { paid: money(paid), good: esc(D.goods[g].name), price: money(one) })}">${te("market.paid", { paid: money(paid) })}</span>`;
 }
 
+/* Perishable cargo (rot.py, 20 Nov 2026): "2.0 mo aboard" under the price, oxblood once the next month-end
+   will rot a share of it. The server sends me.rot = {on, grace, age: {good: months}} for perishables aboard. */
+var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {}, {
+  "rot.age": "{n} mo aboard", "rot.warn": "{n} mo aboard: rots at month end",
+  "rot.tip": "{good} is perishable. This lot has been aboard {n} months on average. It is safe for {grace} months; after that a share of it rots every month. Selling it, or leaving it ashore in a warehouse, stops the clock.",
+  "rot.tip_warn": "{good} is perishable and has been aboard {n} months on average. The month-end will rot a share of it (it is safe for {grace} months). Sell it, or land it in a warehouse."
+});
+function rotHtml(g) {
+  const r = S.me.rot, age = r && r.on && r.age ? r.age[g] : undefined;
+  if (age === undefined || !(S.me.cargo[g] > 0)) return "";
+  const warn = age + 1 > r.grace, n = age.toFixed(1);
+  return `<span class="mk-paid ${warn ? "down" : ""}" title="${te(warn ? "rot.tip_warn" : "rot.tip", { good: esc(D.goods[g].name), n, grace: r.grace })}">${te(warn ? "rot.warn" : "rot.age", { n })}</span>`;
+}
+
 /* "12 aboard", or "12 → 40 aboard" while a trade is lined up. */
 function haveHtml(tr) {
   return (tr.side ? `<s>${tr.have.toLocaleString()}</s> → ` : "") + th("market.aboard", { n: `<b class="mk-at">${tr.at.toLocaleString()}</b>` });
@@ -1565,7 +1582,7 @@ function marketRow(g) {
   return `<tr data-good="${g}" class="${tr.side}${held}"${hot ? ' data-hot="1"' : ""}>
     <td class="mk-ico" data-act="pulse_pin" data-good="${g}" title="${tip}">${Media.html("cargo", g, "icon", "gicon", D.graphics.goods[g])}</td>
     <td class="mk-name" data-act="pulse_pin" data-good="${g}" title="${tip}"><b>${esc(good.name)}</b>${tag}${hotTag}${hot ? "" : bestHtml(g)}</td>
-    <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${tr.sealed ? `<small class="mk-sealed">${te("market.sealed", { n: tr.sealed.toLocaleString() })}</small>` : ""}${paidHtml(g)}</td>
+    <td class="n mk-num"><b class="mk-price">${money(me.prices[g])}</b><span class="mk-have">${haveHtml(tr)}</span>${tr.sealed ? `<small class="mk-sealed">${te("market.sealed", { n: tr.sealed.toLocaleString() })}</small>` : ""}${paidHtml(g)}${rotHtml(g)}</td>
     <td class="mk-bar"><input type="range" class="mk-range" id="in_t_${g}" data-k="t_${g}" data-good="${g}" min="0" max="${tr.max}" step="1"
       value="${tr.at}" style="${barStyle(tr)}" ${tr.max && !me.ready ? "" : "disabled"} aria-label="${esc(good.name)}"${tr.sealed ? ` title="${te("market.sealed_block", { n: tr.sealed.toLocaleString(), good: good.name, port: portName(me.port) })}"` : ""}></td>
     <td class="mk-do">${tradeButton(g, tr)}</td>

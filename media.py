@@ -139,7 +139,13 @@ SCENES = [["title", "Title & lobby"], ["loading", "Loading / holding screen"], [
           ["seafight_pirates", "Sea battle: pirate junks"], ["seafight_lord", "Sea battle: war junks"],
           ["seafight_flagship", "Sea battle: the flagship"],
           ["wreck", "Shipwreck"], ["seizure", "Customs seizure"], ["robbery", "Robbery"],
-          ["victory", "Game over / winner"], ["voyage", "At sea"], ["market", "Trading"]]
+          ["victory", "Game over / winner"], ["voyage", "At sea"], ["market", "Trading"],
+          # Legends (legend.py, 20 Nov 2026): the picture behind a chapter. "legend" is the fallback for any
+          # chapter with none of its own; a chapter with no picture at all shows the port by night or the sea.
+          ["legend", "Legend: any chapter (fallback)"],
+          ["legend_palace_turtle", "Legend: The Palace Beneath the Waves, 1 The Turtle in the Net"],
+          ["legend_palace_palace", "Legend: The Palace Beneath the Waves, 2 The Lady on the Anchor Chain"],
+          ["legend_palace_box", "Legend: The Palace Beneath the Waves, 3 The Box"]]
 SERVICES = [["bank", "Merchants Bank"], ["lender", "Moneylender"], ["warehouse", "Warehouse"], ["agent", "Agent"],
             # Late game (19 Nov 2026): the harbour board's share office and each stage of the great house.
             ["shares", "Port Shares"], ["estate_0", "Great House: empty plot"], ["estate_1", "Great House: Townhouse"],

@@ -9,6 +9,8 @@ these work in every line: {lender} {pirate} {bank} {winner} {home} {title}
 """
 
 import jail_text as _jail_text
+import rot_text as _rot_text
+import legend_text as _legend_text
 import storm_text as _storm_text
 import trade_text as _trade_text
 
@@ -2277,9 +2279,15 @@ FAMILY.update({
 # The jail's wording (jail_text.py).
 EN.update(_jail_text.EN)
 FAMILY.update(_jail_text.FAMILY)
+# Perishable cargo that rots (rot_text.py).
+EN.update(_rot_text.EN)
+FAMILY.update(_rot_text.FAMILY)
 # The storm screen's wording (storm_text.py).
 EN.update(_storm_text.EN)
 FAMILY.update(_storm_text.FAMILY)
+# The Legends' wording and every line of every Legend (legend_text.py, legend_tales.py).
+EN.update(_legend_text.EN)
+FAMILY.update(_legend_text.FAMILY)
 
 # The comprador's banks of buy and sell lines (trade_text.py, 20 Nov 2026): a new line each trade.
 EN.update(_trade_text.EN)
@@ -2317,7 +2325,7 @@ GROUPS = [
     ["l", "Captain's log"], ["n", "News"], ["m", "Confirmations"], ["e", "Rule messages"],
     ["w", "Small words"], ["wx", "Weather"], ["mon", "Months"], ["ui", "Loading and connection"],
     ["st", "Tally Book (statistics)"], ["opt", "Options popup"],
-    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["storm", "Storms and damage"], ["counter", "Under the Counter"], ["acct", "Accounting Ledger"], ["band", "Standing bands"], ["lot", "Private lots"],
+    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["storm", "Storms and damage"], ["legend", "Legends"], ["counter", "Under the Counter"], ["acct", "Accounting Ledger"], ["band", "Standing bands"], ["lot", "Private lots"],
 ]
 
 
