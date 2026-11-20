@@ -354,7 +354,7 @@ function render() {
     const deck = deckFrame(), parts = gameScreen();
     portOverlay = !!parts.over;
     deck.classList.toggle("locked", !!S.me.ready);
-    deck.dataset.tab = ui.tally ? "tally" : ui.tab;
+    deck.dataset.tab = ui.tab;
     ["top", "nav", "pane", "side", "over"].forEach(k => {
       if (ui.drag && k === "pane") return;
       // The Port Authority's declaration desk is updated in place while it stays open.
@@ -367,7 +367,7 @@ function render() {
     if (!app.querySelector(".solo")) { forget(); app.innerHTML = '<div class="solo" data-r="solo"></div>'; }
     region("solo", html);
   }
-  syncTally(inGame);
+  syncTally();
   syncPromotion(inGame, S.phase === "ended" || (inGame && S.phase === "port" && !portOverlay
     && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Jail !== "undefined" && Jail.busy())));
   syncBands(inGame && S.phase === "port" && !portOverlay && !S.me.promotion
@@ -428,6 +428,7 @@ const STAGE_WOMEN = {
   market: { role: "keeper", title: "market.title" },
   fleet: { role: "shipmaster", title: "fleet.master" },
   chart: { role: "mayor", title: "chart.mayor" },
+  counter: { role: "taxlady", title: "counter.stage" },     // Under the Counter: the port's tax lady
 };
 /* Stage titles until the server is restarted with the current strings.py. */
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {},
@@ -534,6 +535,7 @@ const TAB_FACES = {
   advice: { cast: "narrator" },
   tally: { cast: "bookmaker" },
   chart: { woman: "mayor", port: true },
+  counter: { woman: "taxlady", cast: "taxlady" },          // Under the Counter: the port's tax lady
 };
 function tabFaceUrl(k) {
   const f = TAB_FACES[k], me = S.me;
@@ -840,13 +842,15 @@ function gameScreen() {
   if (!fighting && ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
   const top = topHtml();
-  const nav = ["port", "market", "fleet", "chart"].map(k =>
-    `<button type="button" class="${!ui.tally && ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}">` +
+  // Under the Counter shows only once the server has it (engine counter.py, rules.counter.enabled).
+  const nav = ["port", "market", "fleet", "chart"].concat(me.counter ? ["counter"] : []).map(k =>
+    `<button type="button" class="${!ui.tally && ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""} dk-t-${k}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}" title="${te("tab." + k)}">` +
     `${tabFace(k)}<span>${te("tab." + k)}</span></button>`).join("") +
     `<button type="button" class="dk-tally${ui.tally ? " on" : ""}${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-pressed="${ui.tally}" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
     `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
     `<i class="dk-gap"></i>` + meButton();
-  const pane = ({ market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab }[ui.tab] || portTab)();
+  if (ui.tab === "counter" && !me.counter) ui.tab = "port";
+  const pane = ({ market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, counter: counterTab }[ui.tab] || portTab)();
   // The Mayor's side column is one outward-clearance document: harbour charges and the cargo declaration.
   // On the Port tab the race standings sit in the side column under the port art.
   const side = ui.tab === "market" ? dealerCard() + Pulse.card() : ui.tab === "chart" ? clearanceLedger()
@@ -1860,7 +1864,7 @@ function clearanceLedger() {
    The figures come from the account book the server keeps (me.books, engine.py _book). */
 const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
-  ["port", ["dues", "gift", "depot", "repairs", "protection", "upkeep", "estate_upkeep", "pa_tax", "pa_fine", "pa_bribe", "pa_premium"]],
+  ["port", ["dues", "gift", "depot", "repairs", "protection", "upkeep", "estate_upkeep", "pa_tax", "pa_fine", "pa_bribe", "pa_premium", "tips"]],
   ["money", ["interest", "bank_interest", "contracts"]],
   ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed", "wh_robbed"]],
 ];
@@ -1935,7 +1939,6 @@ function hotPin() {
     : !on && me.port === tp.home ? te("hot.pin_buy", { goods, port: home })
     : !on ? te("hot.pin_go", { goods, where }) : te("hot.pin_race", { where });
   return `<section class="hot-pin${gone ? " gone" : on ? " on" : ""}" role="status" aria-label="${te("hot.badge")}">
-    <span class="hot-pin-art" aria-hidden="true">${Media.html("cargo", tp.good, "icon", "hot-pin-img", (D.graphics.goods || {})[tp.good], { mode: "fixed" })}</span>
     <div class="hot-pin-text">
       <p class="hot-pin-head"><span class="hot-badge">${HOT_FLAME}${te("hot.badge")}</span>
         <b>${te("hot.pin_route", { goods, where })}</b></p>
@@ -2131,6 +2134,13 @@ function portTodo() {
       port: esc(portName(br.where)), lo: Math.round(br.lo * 100), hi: Math.round(br.hi * 100) }),
     btn(te("bank.rest", { amount: money(br.amount) }) + arrow, "bank_rest", "", "pt-go")]);
   if (!me.used && !me.ready) items.push(["", te("port.todo.empty"), go("market", te("tab.market"))]);
+  // Wages carried by empty hold last month (Game 4 review): fill the hold, or lay ships up at home.
+  const idle = me.idle;
+  if (idle && idle.last >= (D.idle_note_min || 1000) && idle.share >= (D.idle_note_share || 0.25) && !me.ready)
+    items.push(["warn", te("port.todo.idle", { idle: money(idle.last), pct: Math.round(idle.share * 100) }), go("fleet", te("tab.fleet"))]);
+  // The Mayor's commissions on offer, at home (they were easy to miss under Services).
+  const offers = me.commissions && home ? Object.values(me.commissions.offers || {}).filter(Boolean).length : 0;
+  if (offers && !me.ready) items.push(["", te("port.todo.contract", { n: offers, s: offers === 1 ? "" : "s", home: esc(portName(myHome())) }), goView("services")]);
   // The Mayor's Parlour: a brass "!" while she thinks little of the house (standing under 50).
   const gv = me.gift;
   if (gv && gv.enabled && !me.ready) {
@@ -2198,8 +2208,15 @@ function portAccounts() {
     ? te(bk.last.sailed ? "port.pl.title_voyage" : "port.pl.title_month", { from: esc(portName(bk.last.from)), to: esc(portName(bk.last.to)), date: esc(bk.last.date) })
     : te("port.pl.title");
   return `<section class="card pt-plcard"><header class="pt-cardhead"><h2>${title}</h2>${seg}</header>${table}
-      ${portUnrealised()}<p class="muted pt-fine">${te("port.pl.note")}</p></section>
+      ${portUnrealised()}${portIdle()}<p class="muted pt-fine">${te("port.pl.note")}</p></section>
     <section class="card pt-owe"><h2>${te("port.owe.title")}</h2>${portOwe()}</section>`;
+}
+
+/* Wages carried by empty hold (Game 4 review): already inside Crew wages and upkeep above, shown apart. */
+function portIdle() {
+  const idle = S.me.idle;
+  if (!idle || !(idle.game > 0)) return "";
+  return `<p class="pt-unreal">${te("port.acct.idle", { last: money(idle.last || 0), year: money(idle.year || 0), game: money(idle.game || 0) })}</p>`;
 }
 
 /* Cargo aboard and in store: what it would fetch here now against what it cost. Not counted until sold. */
@@ -2594,7 +2611,8 @@ function shipCard(s, i, yard) {
     <div class="fl-art">${Media.html("ship", s.type, "card", "fl-img", D.graphics.ships[s.type], { slot: "fleet:" + s.name })}</div>
     <div class="fl-body">
       <header class="fl-name"><b>${esc(s.name)}</b>${spec.fast ? `<span class="tag">${te("tag.fast")}</span>` : ""}
-        <span class="fl-type">${line}</span></header>
+        ${s.crippled ? `<span class="tag fl-crippled" title="${esc(t("fleet.crippled_tip"))}">${te("fleet.crippled")}</span>` : ""}
+        <span class="fl-type">${line}${s.wage ? ` · ${te("fleet.wage", { wage: money(s.wage) })}` : ""}</span></header>
       <div class="fl-stat"><span class="fl-lbl">${te("col.hull")}</span>
         <div class="hull"><i style="width:${p}%" class="${p < 35 ? "low" : ""}"></i></div><span class="fl-v">${s.hull}/${spec.hull}</span></div>
       ${guns}
@@ -2602,7 +2620,10 @@ function shipCard(s, i, yard) {
         ${fix}
         ${yard && me.ships.length < 2 && me.trade_down
           ? btn(te("fleet.trade_down", { value: money(me.trade_down.value) }), "tradedown", `title="${esc(t("fleet.trade_down_tip", { junk: me.trade_down.junk, hold: me.trade_down.hold, guns: me.trade_down.guns, value: money(me.trade_down.value) }))}"`, "fl-btn ghost")
-          : yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "fl-btn ghost", me.ships.length < 2 || lastTrader) : ""}</div>
+          : yard ? btn(te("fleet.sell", { value: money(s.value) }), "sellship", `data-i="${i}"`, "fl-btn ghost", me.ships.length < 2 || lastTrader) : ""}
+        ${me.port === myHome() && me.ships.length > 1 && !lastTrader
+          ? btn(te("fleet.lay_up"), "layup", `data-i="${i}" title="${esc(t("fleet.lay_up_tip", { home: portName(myHome()), wage: money(Math.round((s.wage || 0) * (D.laid_up_wage != null ? D.laid_up_wage : 0.25))) }))}"`,
+            "fl-btn ghost", me.ready || (s.hold || 0) > Math.max(0, me.capacity - me.used)) : ""}</div>
     </div></article>`;
 }
 
@@ -2631,6 +2652,19 @@ function classHead(role, tag) {
     <span class="fl-class-n">${te("class.count", { n: c.n, max: c.max })}</span>${state}</${tag}>`;
 }
 
+/* Ships laid up at home (Game 4 review, 20 Nov 2026): a quarter of their wages, called back any month at home. */
+function laidUpCard() {
+  const me = S.me, laid = me.laid_up || [];
+  if (!laid.length) return "";
+  const home = myHome(), here = me.port === home;
+  return `<div class="fl-class fl-laid"><header class="fl-class-head"><b>${te("fleet.laid_up_title", { home: esc(portName(home)) })}</b>
+      <span class="fl-class-sub">${te("fleet.laid_up_info")}</span></header>
+    <ul class="pt-list">${laid.map((s, i) => `<li class="plain"><i aria-hidden="true">⚓</i>
+      <span><b>${esc(s.name)}</b> · ${esc((D.ships[s.type] || {}).name || s.type)} · ${te("fleet.laid_up_row", { wage: money(s.wage), full: money(s.full_wage) })}</span>
+      ${here ? btn(te("fleet.recall"), "recall", `data-i="${i}"`, "fl-btn", me.ready) : "<b></b>"}</li>`).join("")}</ul>
+    ${here ? "" : `<p class="muted">${te("fleet.laid_up_away", { home: esc(portName(home)) })}</p>`}</div>`;
+}
+
 function fleetTab() {
   const me = S.me, yard = yardAt(me.port);
   const totalRepair = me.ships.reduce((n, s) => n + s.repair, 0);
@@ -2640,7 +2674,7 @@ function fleetTab() {
     if (!mine.length && role !== "trader" && !c.open) return "";      // nothing to show until the line is full
     if (!mine.length && role === "flagship") return "";               // her place shows once she is bought
     return `<div class="fl-class">${classHead(role, "header")}
-      ${mine.length ? `<div class="fl-ships">${mine.map(([s, i]) => shipCard(s, i, yard)).join("")}</div>`
+      ${mine.length ? `<div class="fl-ships${role === "cargo" ? " fl-cargo-ships" : ""}">${mine.map(([s, i]) => shipCard(s, i, yard)).join("")}</div>`
         : `<p class="muted fl-none">${te("class.none")}</p>`}</div>`;
   }).join("");
   const esc_ = classInfo("escort").n, rear = classInfo("cargo").n;
@@ -2662,13 +2696,82 @@ function fleetTab() {
         <span class="mk-hold">${te("fleet.count", { n: me.ships.length, max: maxAll })}</span>${screen}
         ${totalRepair ? btn(te("fleet.repair_all", { cost: money(totalRepair) }), "repair", 'data-i="all"', "fl-btn primary") : ""}
         ${(fp => fp.n ? btn(te("fleet.fill_all"), "fill", `data-i="all" title="${esc(t("fleet.fill_all_tip", { n: fp.n, cost: money(fp.cost) }))}"`, "fl-btn primary") : "")(fillPlan("all"))}</header>
-      ${groups}</section>
+      ${groups}${laidUpCard()}</section>
     <section class="card fl yd">
       <header class="mk-head"><h2>${te("yard.title")}</h2>${yard ? `<span class="muted">${te("yard.classes", { n: D.max_fleet, max: (r.escort || {}).max || 0, cap: (r.cargo || {}).max || 0 })}</span>` : ""}</header>
       ${yardBody}</section>`;
 }
 
 /* ---------------------------------------------------------------- chart -- */
+/* Under the Counter (20 Nov 2026, engine counter.py): the port's tax lady sells a tip, paid before she
+   talks. Her price is a share of what the tip is worth to you, rising with your rank. Her picture is on
+   the stage (STAGE_WOMEN.counter) and on the rail (TAB_FACES.counter), never twice on one screen. Two tips
+   for now, more to come: a full hold (what to buy here, where to sell it) and what you're carrying (where
+   to sell the hold). A tip bought this visit stays on her counter, free to read, until you sail. */
+const COUNTER_TIPS = ["run", "hold"];
+function counterTab() {
+  const me = S.me, c = me.counter;
+  if (!c) return `<section class="card uc"><p class="muted">${tfb("counter.restart", "counter.restart")}</p></section>`;
+  const offers = COUNTER_TIPS.map(tip => counterOffer(tip, c.offers[tip] || {}, (c.bought || {})[tip])).join("");
+  return `<section class="uc">
+    <header class="uc-head"><small>${esc(c.name || "")}</small><h2>${te("counter.title")}</h2>
+      ${c.hello ? `<blockquote class="uc-say">${esc(c.hello)}</blockquote>` : ""}
+      <p class="muted">${te("counter.sub", { pct: Math.round((c.share || 0) * 100), rank: c.rank || me.rank || "" })}</p></header>
+    <div class="uc-offers">${offers}</div>
+    <p class="uc-note muted">${te("counter.note")}</p></section>`;
+}
+function counterOffer(tip, o, rv) {
+  const head = `<header><h3>${te("counter." + tip)}</h3><p>${te("counter." + tip + "_sub")}</p></header>`;
+  if (rv) return `<article class="uc-card bought">${head}${counterReveal(tip, rv)}</article>`;
+  if (o.none) {
+    return `<article class="uc-card none">${head}<p class="uc-none"><b>${te("counter.none")}</b><small>${te("counter.none_sub")}</small></p>
+      <div class="uc-act">${btn(te("counter.ask"), "counter_pay", `data-tip="${tip}"`, "ghost", S.me.ready)}</div></article>`;
+  }
+  const short = o.short > 0;
+  return `<article class="uc-card">${head}
+    <div class="uc-price"><span>${te("counter.worth", { worth: money(o.worth) })}</span>
+      <b><small>${te("counter.price")}</small>${money(o.fee)}</b></div>
+    <div class="uc-act">${btn(te("counter.pay", { price: money(o.fee) }), "counter_pay", `data-tip="${tip}"`, "primary", short)}
+      ${short ? `<small class="uc-short">${te("counter.short", { short: money(o.short) })}</small>` : ""}</div></article>`;
+}
+function counterReveal(tip, rv) {
+  const row = (k, v, cls) => `<div class="${cls || ""}"><dt>${te(k)}</dt><dd>${v}</dd></div>`;
+  const risk = `${Math.round((rv.risk || 0) * 100)}%`;
+  const say = `<blockquote class="uc-say">${esc(rv.text || "")}</blockquote>`;
+  let rows = "", acts = "";
+  if (tip === "run") {
+    const good = D.goods[rv.good] ? D.goods[rv.good].name : rv.good;
+    rows = row("counter.r_buy", te("counter.r_buy_v", { qty: Number(rv.qty).toLocaleString(), good, cost: money(rv.cost), price: money(rv.unit_buy) }))
+      + row("counter.r_sail", `<b>${esc(portName(rv.port))}</b>`)
+      + row("counter.r_sell", te("counter.r_sell_v", { sale: money(rv.sale), price: money(rv.unit_sell) }))
+      + row("counter.r_tax", money(rv.tax))
+      + row("counter.r_profit", `<b>${signed(rv.profit)}</b>`, "uc-big up")
+      + row("counter.r_risk", risk) + row("counter.r_paid", money(rv.fee));
+    acts = btn(te("counter.go_market"), "counter_market", `data-good="${esc(rv.good)}"`, "ghost")
+      + btn(te("counter.go_sail"), "counter_sail", `data-port="${esc(rv.port)}"`, "primary", S.me.ready);
+  } else {
+    rows = (rv.lines || []).map(l => row("", "", "")
+      .replace("<dt></dt>", `<dt>${Number(l.qty).toLocaleString()} ${esc(D.goods[l.good] ? D.goods[l.good].name : l.good)}</dt>`)
+      .replace("<dd></dd>", `<dd>${l.banned ? `<span class="down">${te("counter.banned")}</span>` : money(l.sale)}</dd>`)).join("")
+      + row("counter.r_sail", `<b>${esc(portName(rv.port))}</b>`)
+      + row("counter.r_tax", money(rv.tax))
+      + row("counter.r_there", money(rv.net)) + row("counter.r_here", money(rv.here))
+      + row("counter.r_gain", `<b>${signed(rv.gain)}</b>`, "uc-big up")
+      + row("counter.r_risk", risk) + row("counter.r_paid", money(rv.fee));
+    acts = btn(te("counter.go_sail"), "counter_sail", `data-port="${esc(rv.port)}"`, "primary", S.me.ready);
+  }
+  return `${say}<dl class="uc-dl">${rows}</dl><div class="uc-act">${acts}</div>`;
+}
+/* Her greeting is read aloud once a visit, the first time the tab opens (by the port's officer). */
+function counterHello() {
+  const c = S.me && S.me.counter, plan = S.voice && S.voice.counter;
+  if (!c || !c.hello || !plan || !plan[0]) return;
+  const tag = "counter:" + S.turn + ":" + S.me.port;
+  if (ui.ucSpoken === tag) return;
+  ui.ucSpoken = tag;
+  Voice.say([Object.assign({ text: c.hello, tag }, plan[0])], { group: "msg", replace: "msg", front: true });
+}
+
 function chartTab() {
   const me = S.me;
   const dest = me.ready ? me.dest : ui.dest;
@@ -2864,7 +2967,11 @@ app.addEventListener("click", async e => {
     case "cap_house": ui.capHouse = d.hid; return render();
     case "cap_back": ui.capSel = ""; ui.vals.pin = ""; return render();
     case "cap_join": return doJoinCaptain();
-    case "tab": ui.tab = d.tab; ui.tally = false; return render();
+    case "tab": ui.tab = d.tab; ui.tally = false; render(); if (d.tab === "counter") counterHello(); return;
+    // Under the Counter: pay her and hear the tip; then go to the Market or set the course she named.
+    case "counter_pay": await act("counter", { tip: d.tip }); return render();
+    case "counter_market": ui.tab = "market"; ui.tally = false; Pulse.pin(d.good); return render();
+    case "counter_sail": ui.tab = "chart"; ui.tally = false; if (!S.me.ready && D.ports[d.port]) ui.dest = d.port; return render();
     case "pulse_pin": Pulse.pin(d.good); return render();
     case "pulse_free": Pulse.free(); return render();
     case "tally": ui.tally = !ui.tally; ui.meOpen = false; return render();
@@ -2929,6 +3036,8 @@ app.addEventListener("click", async e => {
     case "sellcannon": return act("sell_cannon", { index: +d.i });
     case "repair": return act("repair", { index: d.i === "all" ? "all" : +d.i });
     case "sellship": return act("sell_ship", { index: +d.i });
+    case "layup": return act("lay_up", { index: +d.i });
+    case "recall": return act("recall", { index: +d.i });
     case "tradedown": return act("trade_down", {});
     case "buyship": {
       const flag = roleOf(d.ship) === "flagship";
@@ -2958,36 +3067,32 @@ app.addEventListener("click", async e => {
 window.addEventListener("ceremony:free-play", () => { if (S && S.me) act("free_play"); });
 
 /* ------------------------------------------------------------ the Tally Book -- */
-/* The Tally Book (stats.js at /stats?embed=1) opens inside this same window, never a new one.
-   In a game, Tally in the rail swaps the working pane and the side column for it (deck.css,
-   .deck[data-tab="tally"]); in the lobby or at the end it covers the screen (.tally-solo).
+/* The Tally Book (stats.js at /stats?embed=1) opens inside this same window, never a new one,
+   and always takes over the whole screen (.tally-solo) — in a game, in the lobby and at the end.
    The frame is kept while it is hidden so it reopens at once and where it was left; the deck tells
    it when it is shown or hidden and when a month has passed. Its close button (or Escape) brings
-   back the tab the player was on. */
+   back the screen the player was on. */
 const TALLY_SRC = "/stats?embed=1";
 function tallyPost(f, msg) {
   if (f && f.contentWindow) f.contentWindow.postMessage({ tally: msg }, location.origin);
 }
-function syncTally(inGame) {
-  const wantSolo = ui.tally && !inGame;
+function syncTally() {
   let solo = document.getElementById("tallySolo");
-  if (!wantSolo && solo) { solo.remove(); solo = null; }
-  if (wantSolo && !solo) {
+  if (!solo) {
+    if (!ui.tally) return;
     solo = document.createElement("div");
     solo.id = "tallySolo";
     solo.className = "tally-solo";
     document.body.appendChild(solo);
   }
-  const host = inGame ? document.getElementById("tallyHost") : solo;
-  if (!host) return;
-  let f = host.querySelector(".tally-frame");
+  solo.hidden = !ui.tally;
+  let f = solo.querySelector(".tally-frame");
   if (!f) {
-    if (!ui.tally) return;
     f = document.createElement("iframe");
     f.className = "tally-frame";
     f.title = t("st.title");
     f.src = TALLY_SRC;
-    host.appendChild(f);
+    solo.appendChild(f);
     ui.tallyShown = true;
     ui.tallyTurn = S.turn;
     return;

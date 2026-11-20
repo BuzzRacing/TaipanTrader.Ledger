@@ -144,8 +144,16 @@ DEFAULTS = {
                    # silver a month for each cargo: purse_depths x the cargo's depth x its normal price there
                    # x the port's own purse size (Ports table). Silver asked past it is paid at purse_over.
                    "purse_enabled": True, "purse_depths": 0.75, "purse_over": 0.35,
-                   "review3_v1": False},
-        "bank": {"bank_rate": 0.005, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
+                   "review3_v1": False,
+                   # Wild cargoes (Game 4 review, 20 Nov 2026): Maijiuana (porcelain) swings wildly. Each month a
+                   # port may start a run: its price climbs or falls runs_drift_min..max a month for runs_min..max
+                   # months, on top of a bigger monthly swing (wild_vol), a weaker pull back (wild_reversion) and a
+                   # much wider floor and ceiling (wild_floor..wild_ceiling x usual). No signal: no News, no arrow.
+                   "wild_goods": ["porcelain"], "wild_vol": 0.35, "wild_reversion": 0.08,
+                   "wild_floor": 0.15, "wild_ceiling": 6.0,
+                   "runs_chance": 0.15, "runs_min": 2, "runs_max": 4, "runs_drift_min": 0.15, "runs_drift_max": 0.35,
+                   "review4_v1": False},
+        "bank": {"bank_rate": 0.01, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
                  "debt_grace_months": 3, "debt_call_every": 3,
                  "debt_cap_mult": 3.0, "bankrupt_enabled": True, "bankrupt_months": 12, "bankrupt_warn": 3,
@@ -168,7 +176,14 @@ DEFAULTS = {
                   # ship's price plus upkeep_gun for each gun or cannon, times (1 + upkeep_rank for each rank
                   # the house holds above upkeep_rank_from): a famous house's crews expect famous pay.
                   "upkeep_enabled": True, "upkeep_rate": 0.02, "upkeep_gun": 15,
-                  "upkeep_rank": 0.25, "upkeep_rank_from": "merchant"},
+                  "upkeep_rank": 0.25, "upkeep_rank_from": "merchant",
+                  # Game 4 review (20 Nov 2026): the flagship's wage is flat, like a big merchantman's (times the
+                  # rank multiplier as every ship), not 2% of her price. A ship laid up at home pays
+                  # laid_up_wage of her wage. The Captain's Log notes wages carried by empty hold from idle_note_min.
+                  "flagship_wage": 6000, "laid_up_wage": 0.25, "idle_note_min": 1000, "idle_note_share": 0.25,
+                  # An escort that would sink limps home crippled cripple_chance of the time (hull 1, every gun
+                  # and cannon gone); mending her costs cripple_repair of a new one.
+                  "cripple_chance": 0.5, "cripple_repair": 0.333},
         "events": {"shock_chance": 0.35, "shock_mults": [0.4, 0.5, 2.0, 2.5, 3.0],
                    "shock_min_turns": 2, "shock_max_turns": 3, "ban_chance": 0.15,
                    "ban_min_turns": 3, "ban_max_turns": 5, "ban_price_mult": 1.5,
@@ -213,6 +228,16 @@ DEFAULTS = {
         # The sea battle played on screen (engine.Game, "sea battles"). A captain at a screen chooses
         # each round; the month waits at sea until every fight is over.
         "battle": {"interactive": True, "parley": True, "parley_per_junk": 60, "parley_cargo": 0.05,
+                   # Game 4 review (20 Nov 2026): a fair price to pass, parley_cargo..parley_cargo_max of the
+                   # hold's value (drawn for each fight), so paying in cargo is always there when silver is short.
+                   "parley_cargo_max": 0.10,
+                   # Three kinds of enemy (Game 4 review): Admiral Li Yue's heavy war fleet (her own chance),
+                   # and the ordinary pirates come either as raiders or, band_share of the time, a small lucky band.
+                   # Raiders: fast, few guns (raider_guns x their fire), go for the hold, easy to outrun (+raider_run).
+                   # A band: band_strength x the usual hull and guns, at most band_ships_max junks, band_booty x
+                   # the booty; spare them (after the first round) and they pass on a price they know.
+                   "fleet_types": True, "band_share": 0.3, "raider_guns": 0.6, "raider_run": 0.25,
+                   "band_strength": 0.45, "band_ships_max": 4, "band_booty": 0.5, "lord_booty": 2.0,
                    "retreat_min": 0.15, "retreat_max": 0.30, "retreat_floor": 5,
                    "round_secs": 10, "first_extra": 10, "voice_grace": 0,
                    "gun_loss": 0.25, "gun_loss_two": 0.25,
@@ -333,6 +358,10 @@ DEFAULTS = {
                       "fee_share": 0.25, "fee_share_year": 0.35, "supply_mult": 1.5, "shortage_at": 1.35,
                       "standing_short": 10, "standing_year": 25, "standing_fee": 0.0015,
                       "rep_short": 3, "rep_year": 8, "fee_wealth": True},
+        # Under the Counter (counter.py, 20 Nov 2026): the port's tax lady sells a tip. Her price is a share
+        # of the tip's worth, from fee_min at the lowest rank to fee_max at the top.
+        "counter": {"enabled": True, "fee_min": 0.10, "fee_max": 0.30, "fee_floor": 25, "min_worth": 150,
+                    "risk_loss": 0.4},
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
                       "hot_enabled": True, "hot_home_chance": 0.25, "hot_away_chance": 0.1,
                       "hot_every": 3, "hot_lead": 1, "hot_months": 2, "hot_hold": True,
@@ -747,6 +776,20 @@ SECTIONS = [
                "The average price per unit of a buy, against the posted price. Sales use the same line upside down.",
                min=1, max=20, step=0.1),
              F("rules.market.avg_red", "Trade bar turns red at (x posted)", "num", min=1, max=50, step=0.1)]},
+         {"title": "Wild cargoes (Maijiuana)", "fields": [
+             F("rules.market.wild_goods", "Wild cargoes", "lines",
+               "Cargo keys, one per line. Maijiuana is porcelain under its NSFW name. Their prices run in trends "
+               "and swing far wider than the rest. No News and no arrow give a run away.", max=20),
+             _pct("rules.market.wild_vol", "Wild cargo: monthly swing", "", 0, 2),
+             _pct("rules.market.wild_reversion", "Wild cargo: monthly pull back to the usual price", "", 0, 1),
+             F("rules.market.wild_floor", "Wild cargo: lowest price (x usual)", "num", min=0.01, max=1, step=0.01),
+             F("rules.market.wild_ceiling", "Wild cargo: highest price (x usual)", "num", min=1, max=50, step=0.1),
+             _pct("rules.market.runs_chance", "Chance a port starts a run each month",
+                  "For each wild cargo in each port with no run going."),
+             F("rules.market.runs_min", "A run lasts at least (months)", "int", min=1, max=24),
+             F("rules.market.runs_max", "A run lasts at most (months)", "int", min=1, max=24),
+             _pct("rules.market.runs_drift_min", "A run moves the price each month, least", "", 0, 2),
+             _pct("rules.market.runs_drift_max", "A run moves the price each month, most", "", 0, 2)]},
          {"title": "The dealers' purse", "fields": [
              F("rules.market.purse_enabled", "Dealers have only so much silver a month", "bool",
                "Each port's dealers can pay only so much for each cargo each month, so a huge hold has to be sold across "
@@ -844,7 +887,18 @@ SECTIONS = [
              F("rules.fleet.upkeep_gun", "Each month, for each gun or cannon", "num", min=0, max=100000, step=1),
              F("rules.fleet.upkeep_rank", "Wages rise by this much for each rank above the one below", "num",
                "A famous house's crews expect famous pay. 0.25 is a quarter more for each rank.", min=0, max=10, step=0.05),
-             F("rules.fleet.upkeep_rank_from", "Wages start rising above this rank", "text", max=30)]},
+             F("rules.fleet.upkeep_rank_from", "Wages start rising above this rank", "text", max=30),
+             F("rules.fleet.flagship_wage", "The flagship's monthly wage (flat, before the rank rise)", "int",
+               "Like a big merchantman's, not a share of her price.", min=0, max=10**8),
+             _pct("rules.fleet.laid_up_wage", "A ship laid up at home pays this share of her wage"),
+             F("rules.fleet.idle_note_min", "Note wages carried by empty hold from (silver a month)", "int",
+               "The Captain's Log and the Port to-do list say how much of the month's wages carried empty space.",
+               min=0, max=10**9),
+             _pct("rules.fleet.idle_note_share", "... when at least this share of the hold is empty")]},
+         {"title": "Crippled escorts", "fields": [
+             _pct("rules.fleet.cripple_chance", "An escort that would sink limps home crippled instead",
+                  "Hull 1, every gun and cannon gone. She sits out the rest of the fight."),
+             _pct("rules.fleet.cripple_repair", "Mending a crippled escort costs this share of a new one")]},
          {"title": "Repairs", "fields": [
              F("rules.fleet.repair_base", "Cost per hull point: base", "num", min=0, max=10000, step=0.5),
              F("rules.fleet.repair_price_div", "Plus ship price divided by", "int", min=1, max=10**7),
@@ -1023,6 +1077,19 @@ SECTIONS = [
                "it, the next landings are quiet. 1 and 1: every landing. The Registrar's price tip is always read.",
                min=1, max=20),
              F("rules.customs.greet_aloud_max", "... and at most every (landings)", "int", min=1, max=20)]},
+         {"title": "Under the Counter (the tax lady's paid tips)", "fields": [
+             F("rules.counter.enabled", "The Under the Counter tab is open", "bool",
+               "A tab on the left rail with the port's tax lady. She sells two tips (a full hold: what to buy here "
+               "and where to sell it; what you're carrying: where to sell the hold), paid before she talks."),
+             _pct("rules.counter.fee_min", "Her price at the lowest rank (share of the tip's worth)",
+                  "Her price is this share of what the tip is worth to the house, rising evenly with rank."),
+             _pct("rules.counter.fee_max", "Her price at the top rank (share of the tip's worth)"),
+             F("rules.counter.fee_floor", "She never charges less than", "int", min=0, max=1000000),
+             F("rules.counter.min_worth", "A tip worth less than this she gives away (no sale)", "int",
+               "Below this she says nothing pays and charges nothing.", min=0, max=1000000),
+             _pct("rules.counter.risk_loss", "Share of the profit a pirate fight is reckoned to cost",
+                  "Her figure of a tip's worth takes this share of the profit off, times the chance of a fight on "
+                  "the way, so a dangerous run must pay more to come top.")]},
          {"title": "The Registrar (Mrs. Marlowe, at each captain's home port)", "fields": [
              F("rules.registrar.enabled", "The Registrar meets each house in its home port with a price tip", "bool",
                "On: a house coming home is met by the Registrar (cast key taxlady) instead of the port's officer, "
@@ -1334,7 +1401,19 @@ SECTIONS = [
              F("rules.battle.parley", "Pirates name a price to let the fleet pass", "bool",
                "Before the first shot. The pirate queen's fleet never does."),
              F("rules.battle.parley_per_junk", "Their price: silver per junk", "int", min=0, max=10**7),
-             _pct("rules.battle.parley_cargo", "Their price: share of the cargo's usual value"),
+             _pct("rules.battle.parley_cargo", "Their price: share of the cargo's usual value, least"),
+             _pct("rules.battle.parley_cargo_max", "Their price: share of the cargo's usual value, most",
+                  "Drawn for each fight. If silver and the bank fall short, they take the rest in cargo."),
+             F("rules.battle.fleet_types", "Three kinds of enemy (raiders, a small band, the war fleet)", "bool",
+               "Raiders are fast, lightly gunned and go for the hold; a small band is weak and can be spared for a "
+               "price tip; Admiral Li Yue's war fleet is tough and pays big booty."),
+             _pct("rules.battle.band_share", "Ordinary pirates who come as a small band"),
+             F("rules.battle.raider_guns", "Raiders' guns (x usual)", "num", min=0, max=5, step=0.05),
+             _pct("rules.battle.raider_run", "Outrunning raiders: extra chance"),
+             F("rules.battle.band_strength", "A band's hull and guns (x usual)", "num", min=0.05, max=5, step=0.05),
+             F("rules.battle.band_ships_max", "A band: most junks", "int", min=1, max=60),
+             F("rules.battle.band_booty", "A band's booty (x usual)", "num", min=0, max=10, step=0.05),
+             F("rules.battle.lord_booty", "The war fleet's booty (x usual)", "num", min=0, max=10, step=0.05),
              _pct("rules.battle.retreat_min", "Retreat: cargo thrown overboard, least"),
              _pct("rules.battle.retreat_max", "Retreat: cargo thrown overboard, most"),
              F("rules.battle.retreat_floor", "Retreat: hull left on the last ship", "int",
@@ -1727,6 +1806,14 @@ def validate(raw):
             if key in saved:                       # a saved chance is halved; a missing one is already the new default
                 reg[key] = round(float(reg[key]) * 0.5, 4)
         mk["review3_v1"] = True
+
+    # Game 4 review (20 Nov 2026), once: bank interest moves from the old 0.5% a month to 1% (a rate set by
+    # hand to anything else stays). Maijiuana's swing is set by the wild-cargo rules from now on.
+    if not mk.get("review4_v1"):
+        bk = cfg["rules"]["bank"]
+        if abs(float(bk.get("bank_rate", 0)) - 0.005) < 1e-9:
+            bk["bank_rate"] = DEFAULTS["rules"]["bank"]["bank_rate"]
+        mk["review4_v1"] = True
 
     # Bigger pirate fleets (19 Nov 2026): saved settings still at the old shipped caps (12 junks, the
     # pirate queen 16) move to the new ones, once; caps set by hand stay.

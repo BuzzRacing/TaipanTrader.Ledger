@@ -54,6 +54,7 @@ MAX_IMAGE = 40 * 1024 * 1024
 MAX_VIDEO = 600 * 1024 * 1024
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,47}$")
 ITEM_RE = re.compile(r"^m[0-9a-f]{10}$")
+PAIR_RE = re.compile(r"^p[0-9a-f]{8}$")
 TAG_RE = re.compile(r"[^a-z0-9 _-]")
 URL_RE = re.compile(r"^/(uploads|media|assets)/[A-Za-z0-9._/-]+$")
 
@@ -362,6 +363,20 @@ def _clean_item(it):
         "added": str(it.get("added") or "")[:20],
         "replaces": str(it.get("replaces") or "") if ITEM_RE.match(str(it.get("replaces") or "")) else "",
     }
+    # Clips made from a picture (Anthony, 20 Nov 2026: videos in the Media Library). "from_item" is the
+    # picture it was made from (its poster), "pair" links the clean and NSFW clips made together.
+    if out["type"] == "video":
+        frm = str(it.get("from_item") or "")
+        pair = str(it.get("pair") or "")
+        out.update({
+            "from_item": frm if ITEM_RE.match(frm) else "",
+            "pair": pair if PAIR_RE.match(pair) else "",
+            "seconds": _clamp(it.get("seconds"), 0, 600, 0),
+            "loop": bool(it.get("loop")),
+            "model": " ".join(str(it.get("model") or "").split())[:40],
+            "motion": str(it.get("motion") or "")[:1000],
+            "render_s": _clamp(it.get("render_s"), 0, 10 ** 6, 0),
+        })
     return out
 
 
@@ -419,16 +434,21 @@ def _image_size(path):
 
 
 def _make_item(url, kind, subject, roles=(), tags=(), nsfw=False, source="import", prompt="", seed=None,
-               title="", reviewed=None, replaces=""):
+               title="", reviewed=None, replaces="", extra=None):
     p = path_for(url)
     size = os.path.getsize(p) if p and os.path.isfile(p) else 0
     w, h = _image_size(p) if p and os.path.splitext(p)[1].lower() in IMAGE_EXT else (0, 0)
-    return _clean_item({
+    d = {
         "id": new_id(), "url": url, "kind": kind, "subject": subject, "roles": list(roles), "tags": list(tags),
         "nsfw": nsfw, "reviewed": (not nsfw) if reviewed is None else reviewed, "enabled": True, "primary": False,
         "weight": 3, "title": title, "prompt": prompt, "seed": seed, "width": w, "height": h, "bytes": size,
         "source": source, "added": time.strftime("%Y-%m-%d %H:%M"), "replaces": replaces,
-    })
+    }
+    for k, v in (extra or {}).items():
+        if k in ("width", "height") and d.get(k):
+            continue
+        d[k] = v
+    return _clean_item(d)
 
 
 def nsfw_from_prompt(prompt, options=None):
@@ -797,7 +817,7 @@ def compact_picture(data, ext=".png"):
 
 
 def add_bytes(data, ext, kind, subject, roles=(), tags=(), nsfw=False, source="upload", prompt="", seed=None,
-              title="", stem=None, reviewed=None, primary=False, replaces=""):
+              title="", stem=None, reviewed=None, primary=False, replaces="", extra=None):
     """Save a file into web/media/<kind>/<subject>/ and register it. Returns the new item."""
     ext = ext.lower()
     if ext not in IMAGE_EXT + VIDEO_EXT:
@@ -811,15 +831,15 @@ def add_bytes(data, ext, kind, subject, roles=(), tags=(), nsfw=False, source="u
     with open(path, "wb") as f:
         f.write(data)
     return register_file(path, kind, subject, roles, tags, nsfw, source, prompt, seed, title, reviewed, primary,
-                         replaces)
+                         replaces, extra)
 
 
 def register_file(path, kind, subject, roles=(), tags=(), nsfw=False, source="upload", prompt="", seed=None,
-                  title="", reviewed=None, primary=False, replaces=""):
+                  title="", reviewed=None, primary=False, replaces="", extra=None):
     url = _url_for(path)
     with LOCK:
         lib = load()
-        it = _make_item(url, kind, subject, roles, tags, nsfw, source, prompt, seed, title, reviewed, replaces)
+        it = _make_item(url, kind, subject, roles, tags, nsfw, source, prompt, seed, title, reviewed, replaces, extra)
         if it is None:
             raise MediaError("That file name cannot be used.")
         if primary or not any(i["kind"] == it["kind"] and i["subject"] == it["subject"] and i["primary"]
@@ -998,9 +1018,20 @@ def public(cfg):
         # A family picture stands in for the cargo's own pictures in every role (the market icon,
         # the hot tip pin, the desk, the Tally Book), so it is sent with no roles.
         roles = [] if is_family_pic(it) else it["roles"]
-        items.setdefault(it["kind"], {}).setdefault(it["subject"], []).append(
-            {"id": it["id"], "u": it["url"], "t": it["type"], "r": roles, "w": it["weight"],
-             "p": it["primary"], "g": it["tags"]})
+        entry = {"id": it["id"], "u": it["url"], "t": it["type"], "r": roles, "w": it["weight"],
+                 "p": it["primary"], "g": it["tags"]}
+        if it["type"] == "video" and it.get("from_item"):
+            entry["from"] = it["from_item"]
+        items.setdefault(it["kind"], {}).setdefault(it["subject"], []).append(entry)
+    # A clip made from a picture shows that picture as its poster (and while it loads), but only if the
+    # picture may be shown on this screen too.
+    shown = {e["id"]: e["u"] for subj in items.values() for lst in subj.values() for e in lst if e["t"] == "image"}
+    for subj in items.values():
+        for lst in subj.values():
+            for e in lst:
+                frm = e.pop("from", "")
+                if frm and frm in shown:
+                    e["po"] = shown[frm]
     out = {"items": items, "rules": lib["rules"], "options": lib["options"], "family": fam,
            "fallback": {k: v["default_role"] for k, v in KINDS.items()}}
     _public_cache.clear()
@@ -1083,28 +1114,99 @@ class Jobs:
         self.jobs = []
         self.wake = threading.Event()
         self.thread = None
-        self.render = None      # function(prompt, prefix, width, height, negative) -> (bytes, seed)
+        self.render = None      # function(prompt, prefix, width, height, negative, seed=None) -> (bytes, seed)
+        self.render_video = None  # function(image_path, motion, width, height, seconds, seed, prefix, progress) -> (bytes, info)
         self.log = None         # function(level, text)
 
-    def start(self, render, log=None):
+    def start(self, render, log=None, render_video=None):
         self.render, self.log = render, log
+        if render_video is not None:
+            self.render_video = render_video
         if self.thread is None:
             self.thread = threading.Thread(target=self._run, daemon=True, name="media-jobs")
             self.thread.start()
 
     def add(self, kind, subject, roles, prompt, width, height, count, nsfw, negative=None, tags=(), aspect="",
-            replaces=""):
+            replaces="", seed=None):
         job = {"id": "j" + secrets.token_hex(4), "kind": kind, "subject": subject, "roles": list(roles),
                "tags": list(tags), "prompt": prompt, "negative": negative, "width": width, "height": height,
                "aspect": aspect, "count": count, "done": 0, "failed": 0, "items": [], "nsfw": nsfw,
                "status": "waiting", "error": "", "started": time.time(), "finished": None,
-               "replaces": replaces if ITEM_RE.match(replaces or "") else ""}
+               "replaces": replaces if ITEM_RE.match(replaces or "") else "",
+               # Anthony, 20 Nov 2026: a fixed seed re-renders a known picture (Media Library quick "Regen").
+               "seed": seed if isinstance(seed, int) and seed >= 0 else None}
         with self.lock:
             self.jobs.append(job)
             self.jobs = [j for j in self.jobs if j["status"] in ("waiting", "running")] + \
                         [j for j in self.jobs if j["status"] not in ("waiting", "running")][-30:]
         self.wake.set()
         return job
+
+    def add_video(self, source, motion, seeds, nsfw, tags=(), pair="", seconds=10, loop=True, width=0, height=0):
+        """Queue clips made from one library picture: one clip per seed. nsfw is "yes" or "no" (the pair button
+        decides it) or "auto" (a single clip copies its picture's flag)."""
+        seeds = [int(x) for x in seeds if isinstance(x, int) and 0 <= x < 2 ** 63][:8] or [secrets.randbits(48)]
+        job = {"id": "j" + secrets.token_hex(4), "type": "video", "kind": source["kind"], "subject": source["subject"],
+               "roles": list(source.get("roles") or []), "tags": list(tags), "prompt": str(motion or "")[:1000],
+               "negative": None, "width": int(width or 0), "height": int(height or 0), "aspect": "",
+               "count": len(seeds), "seeds": seeds, "done": 0, "failed": 0, "items": [], "nsfw": nsfw,
+               "status": "waiting", "error": "", "started": time.time(), "finished": None, "replaces": "",
+               "seed": None, "source_id": source["id"], "source_url": source["url"],
+               "pair": pair if PAIR_RE.match(pair or "") else "", "seconds": int(seconds), "loop": bool(loop),
+               "progress": ""}
+        with self.lock:
+            self.jobs.append(job)
+            self.jobs = [j for j in self.jobs if j["status"] in ("waiting", "running")] + \
+                        [j for j in self.jobs if j["status"] not in ("waiting", "running")][-30:]
+        self.wake.set()
+        return job
+
+    def _run_video(self, job):
+        src = path_for(job["source_url"])
+        if not src or not os.path.isfile(src):
+            job["failed"] = job["count"]
+            job["error"] = "The picture this clip was to be made from is gone."
+            return
+        if self.render_video is None:
+            job["failed"] = job["count"]
+            job["error"] = "Video generation is not set up on this server."
+            return
+        for n, seed in enumerate(job["seeds"]):
+            if job["status"] == "cancelling":
+                break
+            try:
+                def progress(text, _n=n):
+                    job["progress"] = "clip {} of {}: {}".format(_n + 1, job["count"], text)
+                t0 = time.time()
+                data, info = self.render_video(src, job["prompt"], job["width"], job["height"], job["seconds"], seed,
+                                               "seatrader/video-{}-{}".format(job["kind"], job["subject"] or "item"),
+                                               progress)
+                if job["nsfw"] in ("yes", "no"):
+                    nsfw = job["nsfw"] == "yes"
+                else:
+                    srcit = next((i for i in load()["items"] if i["id"] == job["source_id"]), None)
+                    nsfw = bool(srcit and srcit["nsfw"]) or nsfw_from_prompt(job["prompt"])
+                ext = info.get("ext") or ".mp4"
+                extra = {"from_item": job["source_id"], "pair": job["pair"], "seconds": info.get("seconds") or job["seconds"],
+                         "loop": job["loop"], "model": info.get("model") or "", "motion": job["prompt"],
+                         "render_s": int(time.time() - t0), "width": info.get("width") or job["width"],
+                         "height": info.get("height") or job["height"]}
+                it = add_bytes(data, ext, job["kind"], job["subject"], job["roles"], job["tags"], nsfw, "generated",
+                               "", seed, stem="video-{}-{}".format(job["kind"], job["subject"]), reviewed=False,
+                               extra=extra)
+                job["items"].append(it["id"])
+                job["done"] += 1
+                if self.log:
+                    self.log("INFO", "Media library: made clip {} from {} (seed {}{}, {} s to render)".format(
+                        it["url"], job["source_url"], seed, ", NSFW" if nsfw else "", extra["render_s"]))
+            except Exception as e:      # the farm being down must not stop the queue
+                job["failed"] += 1
+                job["error"] = str(e)[:300]
+                if self.log:
+                    self.log("ERROR", "Media library: clip failed from {}: {}".format(job["source_url"], e))
+                if job["failed"] >= 2 and job["done"] == 0:
+                    break
+        job["progress"] = ""
 
     def cancel(self, jid):
         with self.lock:
@@ -1133,12 +1235,18 @@ class Jobs:
                 self.wake.wait(5)
                 self.wake.clear()
                 continue
+            if job.get("type") == "video":
+                self._run_video(job)
+                job["status"] = "cancelled" if job["status"] == "cancelling" else ("failed" if not job["done"] else "done")
+                job["finished"] = time.time()
+                continue
             for _n in range(job["count"]):
                 if job["status"] == "cancelling":
                     break
                 try:
+                    fixed = {"seed": job["seed"]} if job.get("seed") is not None else {}
                     data, seed = self.render(job["prompt"], "seatrader/{}-{}".format(job["kind"], job["subject"] or "item"),
-                                             job["width"], job["height"], job["negative"])
+                                             job["width"], job["height"], job["negative"], **fixed)
                     nsfw = nsfw_from_prompt(job["prompt"], {"new_nsfw": job["nsfw"]})
                     data, ext = compact_picture(data)
                     it = add_bytes(data, ext, job["kind"], job["subject"], job["roles"], job["tags"], nsfw,

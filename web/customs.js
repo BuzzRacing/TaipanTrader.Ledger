@@ -137,13 +137,28 @@ const Customs = (() => {
   }
 
   /* ------------------------------------------------------------------- html -- */
+  /* The tax badge's heat: 0% is cool jade, about 3% brass, RATE_HOT (6%) and above red. Base rates run
+     1% to 4.5% and drift up to 1.25 points either side, so the whole scale is in use. */
+  const RATE_HOT = 0.06;
+  function heatColor(h) {
+    const stops = [[0, [127, 211, 168]], [0.5, [226, 186, 96]], [1, [230, 92, 80]]];
+    const i = h <= 0.5 ? 0 : 1, a = stops[i], b = stops[i + 1], f = (h - a[0]) / (b[0] - a[0]);
+    return "rgb(" + a[1].map((v, k) => Math.round(v + (b[1][k] - v) * f)).join(",") + ")";
+  }
+
   function head(c) {
     const port = esc(portName(c.port));
     let rate = "";
     if (!c.free) {
       const diff = Math.round((c.rate - c.base) * 1000) / 10;
       const move = Math.abs(diff) < 0.05 ? te("customs.rate_base") : te(diff > 0 ? "customs.rate_up" : "customs.rate_down", { base: pct(c.base) + "%" });
-      rate = `<div class="cx-rate${diff > 0.05 ? " up" : diff < -0.05 ? " dn" : ""}"><small>${te("customs.rate")}</small><b>${pct(c.rate)}%</b><em>${move}</em></div>`;
+      // D4 (owner's decision, 20 Nov 2026): a small badge pinned top right, heat-mapped from a low rate (jade)
+      // through brass to a high one (red), with the number and a marker on the low-to-high scale.
+      const heat = Math.max(0, Math.min(1, (Number(c.rate) || 0) / RATE_HOT));
+      const arrow = diff > 0.05 ? "&#9650;" : diff < -0.05 ? "&#9660;" : "";
+      rate = `<div class="cx-rate heat${diff > 0.05 ? " up" : diff < -0.05 ? " dn" : ""}" style="--heat:${heatColor(heat)};--at:${Math.round(heat * 100)}%" title="${move}">` +
+        `<small>${te("customs.rate")}</small><b>${pct(c.rate)}%${arrow ? `<i aria-hidden="true">${arrow}</i>` : ""}</b>` +
+        `<span class="cx-heat" aria-hidden="true"><i></i></span></div>`;
     } else {
       rate = `<div class="cx-rate free"><b>${te(c.home_free ? "port.glance.home_free" : "customs.free")}</b></div>`;
     }

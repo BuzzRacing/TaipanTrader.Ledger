@@ -1,102 +1,87 @@
-/* The jail (jail.js, 19 Nov 2026): the full jail screen and the plea deal popup. */
-
-/* ---- the full jail screen: covers the whole player screen --------------------------------------- */
+/* The jail (jail.js), dressed as the sea battle's Reckoning (owner's decision, 20 Nov 2026: "C4 should look
+   like C3"). The card itself is battle.css's own .sf-result / .sf-rwho / .sf-rline / .sf-card, so the two
+   screens stay one family. This file adds only what the jail needs on top: the full-screen layer and the
+   cell behind it, the warden's clip, the accent per card (oxblood locked up, jade free, brass for the plea),
+   the month ticks, the waiting line and the plea's three choices. */
 body.in-jail { overflow: hidden; }
 body.in-jail #app { visibility: hidden; }
-.jl-screen { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; padding: clamp(.6rem, 2vw, 1.6rem);
-  background: #0b0806; color: var(--deck-ivory, #f1e3c5); font-family: var(--sans); overflow: hidden; }
-.jl-bg { position: absolute; inset: -2%; background: #120d0a center / cover no-repeat;
-  filter: saturate(.85) brightness(.8); animation: jl-drift 60s ease-in-out infinite alternate; }
-@keyframes jl-drift { from { transform: scale(1.02) translate(0, 0); } to { transform: scale(1.08) translate(-1.2%, -.8%); } }
-.jl-shade { position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 45%, transparent 0 35%, #0009 80%), linear-gradient(#0003, #0009); }
-/* iron bars across the cell, faint */
-.jl-bars { position: absolute; inset: 0; pointer-events: none; opacity: .22;
-  background: repeating-linear-gradient(90deg, transparent 0 calc(12.5% - 9px), #000 calc(12.5% - 9px) calc(12.5% - 3px),
-    #6b5a48 calc(12.5% - 3px) 12.5%); }
 
-.jl-card { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  width: min(1120px, 94%); height: min(720px, 90%); border: 1px solid color-mix(in srgb, var(--deck-brass, #c9a34e) 55%, transparent);
-  border-radius: 6px; overflow: hidden; background: transparent;
-  box-shadow: 0 30px 120px #000e; backdrop-filter: blur(3px); }
+.jl-screen, .jl-dialog { position: fixed; inset: 0; box-sizing: border-box; padding: 0; overflow: hidden;
+  color: var(--deck-ivory); background: var(--deck-night); font-family: var(--sans); }
+.jl-screen { z-index: 900; }
+.jl-dialog { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border: 0; border-radius: 0; }
+.jl-dialog::backdrop { background: var(--deck-night); }
 
-/* the warden: one photo, big (never a small round medallion) */
-.jl-warden { position: relative; margin: 0; min-height: 0; overflow: hidden; background: #0b0806; }
-.jl-face { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
-.jl-noface { display: grid; place-items: center; font-size: 6rem; color: var(--deck-brass, #c9a34e); opacity: .5; }
-.jl-warden figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 2.4rem 1.2rem 1rem;
-  background: linear-gradient(transparent, #000d 60%); }
-.jl-warden figcaption strong { display: block; font: 400 clamp(1.3rem, 2.3vw, 1.9rem)/1.1 var(--serif); color: #fff3d6; }
-.jl-warden figcaption span { display: block; margin-top: .2rem; font: italic .95rem/1.3 var(--sans); color: var(--muted, #cdb99a); }
+/* the port's own cell, behind everything */
+.jl-bg, .jl-shade { position: absolute; inset: 0; pointer-events: none; }
+.jl-bg { background: var(--deck-night) center / cover no-repeat; animation: jl-drift 14s ease-out both; }
+@keyframes jl-drift { from { transform: scale(1.08); } to { transform: scale(1); } }
+.jl-shade { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-night) 70%, transparent), transparent 24%,
+  transparent 62%, color-mix(in srgb, var(--deck-night) 85%, transparent)); }
 
-.jl-body { display: flex; flex-direction: column; gap: .45rem; min-height: 0; overflow-y: auto; padding: clamp(1rem, 2.6vw, 2rem);
-  scrollbar-width: thin; }
-/* the cell shows through behind the words */
-.jl-card .jl-body { background: linear-gradient(90deg, #0b0806e6, #0b0806a8 70%, #0b080680); }
-.jl-eyebrow { margin: 0; font: 600 .78rem/1.2 var(--sans); letter-spacing: .18em; text-transform: uppercase;
-  color: var(--deck-brass, #c9a34e); }
-.jl-body h1 { margin: 0; font: 400 clamp(2.4rem, 5vw, 3.8rem)/1 var(--serif); color: #fff3d6; text-shadow: 0 2px 18px #000; }
-.jl-month { margin: .3rem 0 0; font: 700 1.25rem/1.2 var(--sans); color: var(--brass-hi, #e8d3a0); font-variant-numeric: tabular-nums; }
-.jl-ticks { display: flex; gap: .35rem; margin: .2rem 0; }
-.jl-tick { flex: 1 1 0; max-width: 4.5rem; height: .7rem; border: 1px solid var(--deck-brass, #c9a34e); border-radius: 2px; background: #0008; }
-.jl-tick.done { background: var(--deck-brass, #c9a34e); }
-.jl-tick.now { background: linear-gradient(90deg, var(--deck-brass, #c9a34e) 50%, #0008 50%); animation: jl-pulse 2.4s ease-in-out infinite; }
+/* the warden: a photo or her looping clip, exactly where the Reckoning puts the reader of the fight */
+.jl-result .sf-rwho > video { position: absolute; left: -1%; bottom: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 8%;
+  -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent 97%); mask-image: linear-gradient(90deg, #000 60%, transparent 97%);
+  filter: drop-shadow(0 0 2.5rem rgba(0, 0, 0, .6)); animation: sfWhoIn .9s ease-out both; }
+.jl-line .sf-rsay svg { width: 1.15rem; height: 1.15rem; }
+
+/* the accent of each card */
+.sf-card.jl-card.o-jailed { --result-accent: var(--blood-hi); }
+.sf-card.jl-card.o-freed { --result-accent: var(--jade-hi); }
+.sf-card.jl-card.o-plea { --result-accent: var(--brass-hi); }
+.jl-card .sf-remblem { color: var(--result-accent); }
+.jl-card .sf-rheading h2 { text-shadow: 0 0 1.8rem color-mix(in srgb, var(--result-accent) 35%, transparent), 0 2px 0 var(--deck-night); }
+
+/* the months, as ticks under the lead */
+.jl-ticks { display: flex; gap: .4rem; width: min(22rem, 100%); margin: .7rem 0 0; }
+.jl-tick { flex: 1 1 0; height: .45rem; border: 1px solid var(--edge-hi); border-radius: 2px; background: color-mix(in srgb, var(--deck-night) 60%, transparent); }
+.jl-tick.done { background: var(--deck-brass); }
+.jl-tick.now { background: var(--brass-hi); box-shadow: 0 0 .8rem color-mix(in srgb, var(--deck-brass) 60%, transparent); animation: jl-pulse 2.4s ease-in-out infinite; }
 @keyframes jl-pulse { 50% { opacity: .55; } }
-.jl-left { margin: 0; font: italic 1rem/1.3 var(--sans); color: var(--muted, #cdb99a); }
-.jl-charge { display: grid; grid-template-columns: auto 1fr; gap: .2rem .8rem; margin: .5rem 0; padding: .7rem .9rem;
-  border-left: 3px solid var(--deck-oxblood, #7b2428); background: #0006; }
-.jl-charge dt { font: 600 .75rem/1.6 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--blood-hi, #f0b5a8); }
-.jl-charge dd { margin: 0; font: 1rem/1.4 var(--sans); }
-.jl-body blockquote { margin: .2rem 0 .4rem; font: italic 1.1rem/1.4 var(--serif); color: #f5e6c6; }
-.jl-body h2 { margin: .5rem 0 0; font: 400 1.2rem/1.2 var(--serif); color: var(--brass-hi, #e8d3a0); }
-.jl-news { margin: 0; font: 1rem/1.5 var(--sans); }
-.jl-news.quiet { color: var(--muted, #cdb99a); font-style: italic; }
-.jl-log { margin: .2rem 0 0; padding-left: 1.1rem; font: .92rem/1.45 var(--sans); color: color-mix(in srgb, var(--deck-ivory, #f1e3c5) 85%, transparent); }
-.jl-foot { margin-top: auto; padding-top: .8rem; border-top: 1px solid var(--rule, #c9a34e33); font: .85rem/1.45 var(--sans);
-  color: var(--muted, #cdb99a); }
 
-/* portrait iPad and phones: the warden on top, still big */
-@media (orientation: portrait), (max-width: 760px) {
-  .jl-card { grid-template-columns: 1fr; grid-template-rows: minmax(0, 46%) minmax(0, 1fr); width: 100%; height: 100%; }
-  .jl-card .jl-body { background: linear-gradient(#0b0806e6, #0b0806b0); }
-  .jl-face { object-position: 50% 15%; }
+/* charges and the log read as plain lines in the ledger columns */
+.jl-card .sf-rcargo li { grid-template-columns: minmax(0, 1fr); }
+.jl-card .jl-charges li { color: var(--blood-hi); font-weight: 600; }
+.jl-card .jl-log li { font-size: .88rem; color: var(--muted); }
+
+/* the footer: the month on the left, the button (battle.css's oxblood-and-brass) or the wait on the right */
+.jl-card footer .sf-net span { max-width: 26rem; }
+.jl-card footer button.jl-go.free { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 75%, #8fd6bd 0%), color-mix(in srgb, var(--deck-jade) 70%, #000)); }
+.jl-card footer button.jl-go.free:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--deck-jade) 90%, #fff), var(--deck-jade)); }
+.jl-card footer button:disabled { opacity: .45; cursor: default; transform: none; }
+.jl-waiting { margin: 0 0 0 auto; max-width: 30rem; text-align: right; font: italic 1.1rem/1.4 var(--sans); color: var(--brass-hi); animation: jl-pulse 2.4s ease-in-out infinite; }
+
+/* the plea: her offer under the title, and three choices laid out like the Reckoning's figure tiles */
+.jl-lead { margin: .55rem 0 0; font: italic clamp(1.05rem, 1.7vw, 1.3rem)/1.35 var(--serif); color: var(--deck-ivory); }
+.jl-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.jl-opt { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .3rem; min-height: 0; padding: .8rem 1rem 1rem;
+  text-align: left; color: var(--deck-ivory); cursor: pointer; border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--deck-brass) 45%, transparent); background: color-mix(in srgb, var(--deck-night) 55%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 190, .06); transition: transform .15s, border-color .15s, box-shadow .15s; animation: sfEntryArrive .6s .3s both; }
+.jl-opt:nth-child(2) { animation-delay: .38s; } .jl-opt:nth-child(3) { animation-delay: .46s; }
+.jl-opt small { font: .8rem/1.2 var(--special); letter-spacing: .06em; color: var(--muted); }
+.jl-opt b { font: 400 clamp(1.15rem, 2vw, 1.5rem)/1.15 var(--serif); }
+.jl-opt .jl-amt { font: 600 1.25rem/1.2 var(--figures, var(--sans)); font-variant-numeric: tabular-nums; color: var(--brass-hi); }
+.jl-opt.pay { border-color: var(--deck-brass); background: linear-gradient(180deg, color-mix(in srgb, var(--deck-brass) 22%, var(--deck-night)), color-mix(in srgb, var(--deck-night) 70%, transparent)); }
+.jl-opt.cell .jl-amt { color: var(--deck-ivory); }
+.jl-opt:hover:not(:disabled), .jl-opt:focus-visible { transform: translateY(-2px); border-color: var(--brass-hi); outline: none;
+  box-shadow: 0 0 0 3px var(--deck-night), 0 0 0 4px var(--deck-brass), 0 .6rem 1.5rem rgba(0, 0, 0, .6); }
+.jl-opt:disabled { opacity: .45; cursor: default; }
+.jl-auto { margin: 0 0 0 auto; max-width: 24rem; text-align: right; font-size: .85rem; font-style: italic; color: var(--muted); }
+
+/* upright and small screens: battle.css stacks the Reckoning; the clip follows the photo */
+@media (orientation: portrait) {
+  .jl-result .sf-rwho > video { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: .45;
+    -webkit-mask-image: linear-gradient(0deg, transparent 25%, #000 75%); mask-image: linear-gradient(0deg, transparent 25%, #000 75%); }
 }
-
-/* ---- the plea deal popup ------------------------------------------------------------------------- */
-.jl-dialog { width: min(980px, calc(100vw - 1.5rem)); max-height: calc(100vh - 1.5rem); padding: 0; border: 1px solid var(--deck-brass, #c9a34e);
-  border-radius: 6px; color: var(--deck-ivory, #f1e3c5); background: #120d0a; box-shadow: 0 28px 100px #000c; overflow: hidden; }
-.jl-dialog::backdrop { background: #000b; backdrop-filter: blur(3px); }
-.jl-plea { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); height: min(640px, calc(100vh - 1.5rem)); }
-.jl-plea .jl-body h2 { margin: 0; font: 400 clamp(1.7rem, 3.4vw, 2.5rem)/1.05 var(--serif); color: #fff3d6; }
-.jl-why { margin: 0; font: 1rem/1.4 var(--sans); color: var(--blood-hi, #f0b5a8); }
-.jl-lead { margin: .3rem 0; font: italic 1.1rem/1.4 var(--serif); }
-.jl-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; margin: .4rem 0; }
-.jl-opt { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; min-height: 7.2rem; padding: .8rem;
-  border: 1px solid var(--btn-border, #c9a34e66); border-radius: 4px; color: var(--deck-ivory, #f1e3c5); background: #0008;
-  text-align: left; cursor: pointer; font: 1rem/1.25 var(--sans); }
-.jl-opt b { font: 700 1.05rem/1.2 var(--sans); color: #fff3d6; }
-.jl-opt .jl-amt { font: 700 1.15rem/1.2 var(--sans); font-variant-numeric: tabular-nums; color: var(--brass-hi, #e8d3a0); }
-.jl-opt small { margin-top: auto; font: .82rem/1.2 var(--sans); color: var(--muted, #cdb99a); }
-.jl-opt.cell { border-color: color-mix(in srgb, var(--deck-oxblood, #7b2428) 80%, var(--deck-brass, #c9a34e)); }
-.jl-opt:hover:not(:disabled), .jl-opt:focus-visible { border-color: var(--deck-brass, #c9a34e); background: #2a1b14; }
-.jl-opt:disabled { opacity: .5; cursor: wait; }
-.jl-note { margin: 0; font: .86rem/1.4 var(--sans); color: var(--muted, #cdb99a); }
-@media (orientation: portrait), (max-width: 760px) {
-  .jl-plea { grid-template-columns: 1fr; grid-template-rows: minmax(0, 38%) minmax(0, 1fr); height: calc(100vh - 1.5rem); }
-  .jl-opts { grid-template-columns: 1fr; }
-  .jl-opt { min-height: 0; }
+@media (max-width: 700px) {
+  .jl-opts { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  .jl-auto, .jl-waiting { margin-left: 0; text-align: left; }
 }
-
-/* ---- pacing (19 Nov 2026): the arrest card, the "Serve the month" button and the release card -------- */
-.jl-lead-big { margin: .3rem 0 .2rem; font: 400 clamp(1.15rem, 2vw, 1.45rem)/1.35 var(--serif); color: #fff3d6; }
-.jl-act { margin: .7rem 0 .2rem; }
-.jl-go { min-width: 15rem; min-height: 3.2rem; padding: .7rem 1.6rem; border: 1px solid var(--deck-brass, #c9a34e);
-  border-radius: 4px; color: #fff3d6; cursor: pointer; font: 700 1.15rem/1.2 var(--sans); letter-spacing: .04em;
-  background: linear-gradient(#7b2428, #4d1518); box-shadow: 0 6px 24px #000a; transition: opacity .4s, transform .15s; }
-.jl-go:hover:not(:disabled) { transform: translateY(-1px); }
-.jl-go:disabled { opacity: .35; cursor: default; }
-.jl-go.free { background: linear-gradient(#a8853a, #6d531f); }
-.jl-waiting { margin: 0; font: italic 1.05rem/1.4 var(--sans); color: var(--brass-hi, #e8d3a0); animation: jl-pulse 2.4s ease-in-out infinite; }
-.jl-shade.freed { background: radial-gradient(ellipse at 50% 40%, #e8d3a022 0 30%, #0008 80%), linear-gradient(#0002, #0008); }
-.jl-card.freed { animation: jl-open .9s ease-out both; }
-@keyframes jl-open { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+@media (max-height: 560px) {
+  .jl-ticks { margin-top: .35rem; }
+  .jl-lead { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jl-bg, .jl-tick.now, .jl-waiting, .jl-opt, .jl-result .sf-rwho > video { animation: none; }
+}

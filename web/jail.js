@@ -37,10 +37,44 @@ const Jail = (() => {
     return list.length ? list[list.length - 1] : null;
   }
 
+  /* Her clip (owner's decision, 20 Nov 2026: video on the jail screen, "always the clip"): when she has a
+     clip this screen may show, it plays instead of her photo, muted and looping, with the picture it was
+     made from as its poster. Same preference as the photo: the non-clean one first (a family-friendly
+     screen never receives NSFW clips, so it gets her clean one). A fresh pick for each card. */
+  let clipPick = { key: "", id: "" };
+  function wardenClip(cid) {
+    const all = Media.items("persona", cid, "portrait", true).filter(i => i.t === "video");
+    if (!all.length) return null;
+    const clean = i => (i.g || []).includes("clean");
+    const pick = all.filter(i => !clean(i));
+    const list = pick.length ? pick : all;
+    const key = cid + "|" + stage;
+    if (clipPick.key !== key || !list.some(i => i.id === clipPick.id)) {
+      const others = list.length > 1 ? list.filter(i => i.id !== clipPick.id) : list;
+      clipPick = { key, id: others[Math.floor(Math.random() * others.length)].id };
+    }
+    return list.find(i => i.id === clipPick.id);
+  }
+
   function wardenImg(cid, cls) {
+    const clip = wardenClip(cid);
     const item = wardenItem(cid) || Media.choose("persona", cid, "portrait", { mode: "fixed", slot: "jail-warden" });
     const url = item ? item.u : castOf(cid).portrait;
+    if (clip) {
+      const poster = clip.po || url || "";
+      return `<video class="${cls} jl-clip" data-jlclip="${esc(clip.id)}" src="${esc(clip.u)}"${poster ? ` poster="${esc(poster)}"` : ""} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
+    }
     return url ? `<img class="${cls}" src="${esc(url)}" alt="">` : `<div class="${cls} jl-noface" aria-hidden="true">⚿</div>`;
+  }
+
+  /* The screen is redrawn often (the log, the button arming): keep a clip that is already playing rather
+     than restarting it from the top. */
+  function redrawKeepingClip(html) {
+    const old = screen.querySelector("video[data-jlclip]");
+    screen.innerHTML = html;
+    if (!old) return;
+    const fresh = screen.querySelector(`video[data-jlclip="${old.dataset.jlclip}"]`);
+    if (fresh) { fresh.replaceWith(old); old.play && old.play().catch(() => {}); }
   }
   function cellUrl(port) {
     const item = Media.choose("port", port, "jail_cell", { mode: "fixed", slot: "jail-cell", strict: true })
@@ -48,9 +82,43 @@ const Jail = (() => {
     return item ? item.u : "";
   }
 
+  /* ---- the Reckoning look (owner's decision, 20 Nov 2026: "C4 should look like C3") -----------------
+     Every jail card is laid out like the sea battle's result (battle.css .sf-result): the warden huge on
+     the left, fading into the cell; her line in the quote card at her feet; the brass-cornered ledger
+     card on the right with the title, four figure tiles, two columns and the button in its footer.
+     The look comes from battle.css itself, so the two screens stay one family; jail.css only adds the
+     jail's own accents (oxblood locked up, jade free, brass for the plea), the month ticks and the clip. */
+  const tl = (key, fb, vars) => (T[key] == null ? esc(t(fb, vars)) : te(key, vars));
+  const KEY_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M11.2 11.2 20 20M16.5 16.5l2-2M14 14l2-2"/></svg>`;
+  const BARS = `<svg viewBox="0 0 48 52" aria-hidden="true"><path d="M8 6h32M8 46h32M6 6v40M42 6v40"/><path d="M15 6v40M24 6v40M33 6v40"/><path d="M6 24h36" opacity=".55"/><circle cx="28.5" cy="27" r="2.2"/></svg>`;
+  const OPEN = `<svg viewBox="0 0 48 52" aria-hidden="true"><path d="M8 6h20M8 46h20M6 6v40M15 6v40M24 6v40"/><path d="M28 6l14 5v34l-14 1z"/><path d="M33 8v37M38 10v34" opacity=".7"/></svg>`;
+  const SCALES = `<svg viewBox="0 0 48 52" aria-hidden="true"><path d="M24 6v38M14 46h20M10 12h28"/><path d="M10 12 4 28h12zM38 12l-6 16h12z"/><path d="M4 28a6 6 0 0 0 12 0M32 28a6 6 0 0 0 12 0"/></svg>`;
+
+  function bgHtml(port) {
+    const cell = cellUrl(port);
+    return `<div class="jl-bg"${cell ? ` style="background-image:url('${esc(cell)}')"` : ""}></div><div class="jl-shade"></div>`;
+  }
+  function wardenFigure(cid) {
+    const who = castOf(cid);
+    const face = wardenImg(cid, "jl-face");
+    const nopic = face.includes("jl-noface");
+    const line = who.catchphrase ? `<figcaption class="sf-rline jl-line"><header><span class="sf-rsay">${KEY_ICON}</span>
+        <span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header>
+        <p>“${esc(who.catchphrase)}”</p></figcaption>`
+      : who.name ? `<figcaption class="sf-rline jl-line"><header><span class="sf-rsay">${KEY_ICON}</span>
+        <span>${esc(who.name)}${who.title ? " · " + esc(who.title) : ""}</span></header></figcaption>` : "";
+    return `<figure class="sf-rwho jl-warden${nopic ? " nopic" : ""}">${nopic ? "" : face}${line}</figure>`;
+  }
+  function tile(label, value, cls) {
+    return `<div class="${cls || ""}"><small>${label}</small><b>${value}</b></div>`;
+  }
+  function goodsCount(goods) {
+    return Object.keys(goods || {}).reduce((n, g) => n + (goods[g] > 0 ? goods[g] : 0), 0);
+  }
+
   /* ---- the cell ---------------------------------------------------------------------------- */
   function drawScreen(j) {
-    const who = castOf(j.warden), port = portName(j.port);
+    const port = portName(j.port);
     const s = j.left === 1 ? "" : "s";
     const counter = j.fresh ? te("jail.starts")
       : j.left <= 0 ? te("jail.left_now") : te("jail.left", { left: j.left, s });
@@ -58,33 +126,37 @@ const Jail = (() => {
     const bars = Array.from({ length: j.months }, (_, i) =>
       `<span class="jl-tick${i < (j.served || 0) ? " done" : ""}${i === (j.served || 0) && !j.fresh ? " now" : ""}"></span>`).join("");
     const news = [];
-    if (j.drunk) news.push(te("jail.drunk", { lost: money(j.drunk) }));
-    if (j.spoiled && Object.keys(j.spoiled).length) news.push(te("jail.spoiled", { goods: esc(goodsText(j.spoiled)) }));
-    const log = (S.me.log || []).slice(-4).map(l => `<li>${esc(l)}</li>`).join("");
-    const cell = cellUrl(j.port);
-    return `<div class="jl-bg"${cell ? ` style="background-image:url('${esc(cell)}')"` : ""}></div>
-      <div class="jl-shade"></div>
-      <div class="jl-bars" aria-hidden="true"></div>
-      <section class="jl-card" role="dialog" aria-modal="true" aria-labelledby="jl-title">
-        <figure class="jl-warden">${wardenImg(j.warden, "jl-face")}
-          <figcaption>${who.name ? `<strong>${esc(who.name)}</strong><span>${esc(who.title || "")}</span>` : ""}</figcaption></figure>
-        <div class="jl-body">
-          <p class="jl-eyebrow">${te("jail.eyebrow", { port })}</p>
-          <h1 id="jl-title">${j.fresh ? te("jail.arrested") : te("jail.title")}</h1>
-          ${j.fresh ? `<p class="jl-lead-big">${te("jail.arrest_lead", { months: j.months, s: j.months === 1 ? "" : "s", port })}</p>`
-            : `<p class="jl-month">${te("jail.month_of", { n, months: j.months })}</p>`}
-          <div class="jl-ticks">${bars}</div>
-          <p class="jl-left">${counter}</p>
-          <dl class="jl-charge"><dt>${te("jail.charge")}</dt>
-            <dd>${(j.charges || [j.charge]).map(c => te("jail.charge." + c)).join("<br>")}</dd></dl>
-          ${who.catchphrase ? `<blockquote>“${esc(who.catchphrase)}”</blockquote>` : ""}
-          <h2>${te("jail.crew")}</h2>
-          ${news.length ? `<p class="jl-news">${news.join("<br>")}</p>` : `<p class="jl-news quiet">${te("jail.quiet")}</p>`}
-          ${log ? `<ul class="jl-log">${log}</ul>` : ""}
-          <div class="jl-act">${actButton(j)}</div>
-          <p class="jl-foot">${te("jail.fleet", { port })}<br>${te("jail.wait")}</p>
-        </div>
-      </section>`;
+    if (j.drunk) news.push(`<li><span>${te("jail.drunk", { lost: money(j.drunk) })}</span></li>`);
+    if (j.spoiled && Object.keys(j.spoiled).length) news.push(`<li><span>${te("jail.spoiled", { goods: esc(goodsText(j.spoiled)) })}</span></li>`);
+    const log = (S.me.log || []).slice(-4).map(l => `<li><span>${esc(l)}</span></li>`).join("");
+    const months = m => tl("jail.tile.months", m === 1 ? "{n} month" : "{n} months", { n: m });
+    const left = Math.max(0, j.fresh ? j.months : j.left);
+    const rows = tile(tl("jail.tile.sentence", "Sentence"), months(j.months))
+      + tile(tl("jail.tile.served", "Served"), months(j.served || 0), "gold")
+      + tile(tl("jail.tile.left", "Still to serve"), months(left), left ? "dn" : "up")
+      + tile(tl("jail.tile.drunk", "Silver lost aboard"), j.drunk ? "−" + money(j.drunk) : money(0), j.drunk ? "dn" : "");
+    return `${bgHtml(j.port)}
+      <div class="sf-result jl-result">
+        ${wardenFigure(j.warden)}
+        <section class="sf-card jl-card o-jailed" role="dialog" aria-modal="true" aria-labelledby="jl-title">
+          <header><p class="eyebrow">${te("jail.eyebrow", { port })}</p>
+            <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${BARS}</span><h2 id="jl-title">${j.fresh ? te("jail.arrested") : te("jail.title")}</h2></div>
+            <p class="sf-rreason">${j.fresh ? te("jail.arrest_lead", { months: j.months, s: j.months === 1 ? "" : "s", port })
+              : te("jail.month_of", { n, months: j.months })}</p>
+            <div class="jl-ticks">${bars}</div></header>
+          <div class="sf-rows">${rows}</div>
+          <div class="sf-cols">
+            <div><h3>${te("jail.charge")}</h3><ul class="sf-rcargo jl-charges">${(j.charges || [j.charge]).map(c => `<li><span>${te("jail.charge." + c)}</span></li>`).join("")}</ul></div>
+            <div class="sf-rledger"><h3>${te("jail.crew")}</h3><ul class="sf-rcargo">${news.join("") || `<li class="none">${te("jail.quiet")}</li>`}</ul>
+              ${log ? `<h3>${tl("jail.log", "Captain's log")}</h3><ul class="sf-rcargo jl-log">${log}</ul>` : ""}</div>
+          </div>
+          <p class="sf-note">${te("jail.fleet", { port })} ${te("jail.wait")}</p>
+          <footer>
+            <p class="sf-net jl-net"><span>${counter}</span><b>${j.fresh ? months(j.months) : te("jail.month_of", { n, months: j.months })}</b></p>
+            ${actButton(j)}
+          </footer>
+        </section>
+      </div>`;
   }
 
   function armed() { return Date.now() - armedAt >= ARM_MS; }
@@ -95,33 +167,40 @@ const Jail = (() => {
       return `<p class="jl-waiting">${names.length ? te("jail.waiting", { names: esc(names.join(", ")) }) : te("jail.served")}</p>`;
     }
     const label = j.fresh ? te("jail.btn_into") : j.left <= 1 ? te("jail.btn_last") : te("jail.btn_serve");
-    return `<button type="button" class="jl-go" data-go="jail_serve"${armed() ? "" : " disabled"}>${label}</button>`;
+    return `<button type="button" class="primary jl-go" data-go="jail_serve"${armed() ? "" : " disabled"}>${label} <span aria-hidden="true">&rarr;</span></button>`;
   }
 
   /* ---- the release card -------------------------------------------------------------------- */
   function drawFreed(f) {
-    const who = castOf(f.warden), port = portName(f.port), s = f.months === 1 ? "" : "s";
+    const port = portName(f.port), s = f.months === 1 ? "" : "s";
     const lines = [];
     if (f.drunk) lines.push(te("freed.drunk", { lost: money(f.drunk) }));
     if (f.spoiled && Object.keys(f.spoiled).length) lines.push(te("freed.spoiled", { goods: esc(goodsText(f.spoiled)) }));
     if (!lines.length) lines.push(te("freed.clean"));
-    const cell = cellUrl(f.port);
-    return `<div class="jl-bg"${cell ? ` style="background-image:url('${esc(cell)}')"` : ""}></div>
-      <div class="jl-shade freed"></div>
-      <section class="jl-card freed" role="dialog" aria-modal="true" aria-labelledby="jl-title">
-        <figure class="jl-warden">${wardenImg(f.warden, "jl-face")}
-          <figcaption>${who.name ? `<strong>${esc(who.name)}</strong><span>${esc(who.title || "")}</span>` : ""}</figcaption></figure>
-        <div class="jl-body">
-          <p class="jl-eyebrow">${te("freed.eyebrow", { port })}</p>
-          <h1 id="jl-title">${te("freed.title")}</h1>
-          <p class="jl-lead-big">${te("freed.lead", { months: f.months, s })}</p>
-          ${who.catchphrase ? `<blockquote>“${esc(who.catchphrase)}”</blockquote>` : ""}
-          <h2>${te("jail.crew")}</h2>
-          <p class="jl-news">${lines.join("<br>")}</p>
-          <p class="jl-news quiet">${te("freed.standing", { port })}</p>
-          <div class="jl-act"><button type="button" class="jl-go free" data-go="jail_free"${armed() ? "" : " disabled"}>${te("freed.btn")}</button></div>
-        </div>
-      </section>`;
+    const months = m => tl("jail.tile.months", m === 1 ? "{n} month" : "{n} months", { n: m });
+    const spoiled = goodsCount(f.spoiled);
+    const rows = tile(tl("jail.tile.served", "Served"), months(f.months), "gold")
+      + tile(tl("jail.tile.drunk", "Silver lost aboard"), f.drunk ? "−" + money(f.drunk) : money(0), f.drunk ? "dn" : "up")
+      + tile(tl("jail.tile.spoiled", "Cargo spoiled"), spoiled ? spoiled.toLocaleString("en-US") : "0", spoiled ? "dn" : "up")
+      + tile(tl("jail.tile.standing", "Standing"), tl("jail.tile.eased", "Eased"), "up");
+    return `${bgHtml(f.port)}
+      <div class="sf-result jl-result">
+        ${wardenFigure(f.warden)}
+        <section class="sf-card jl-card o-freed" role="dialog" aria-modal="true" aria-labelledby="jl-title">
+          <header><p class="eyebrow">${te("freed.eyebrow", { port })}</p>
+            <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${OPEN}</span><h2 id="jl-title">${te("freed.title")}</h2></div>
+            <p class="sf-rreason">${te("freed.lead", { months: f.months, s })}</p></header>
+          <div class="sf-rows">${rows}</div>
+          <div class="sf-cols">
+            <div><h3>${te("jail.crew")}</h3><ul class="sf-rcargo">${lines.map(l => `<li><span>${l}</span></li>`).join("")}</ul></div>
+            <div class="sf-rledger"><h3>${tl("jail.tile.standing", "Standing")}</h3><ul class="sf-rcargo"><li><span>${te("freed.standing", { port })}</span></li></ul></div>
+          </div>
+          <footer>
+            <p class="sf-net up"><span>${tl("jail.tile.served", "Served")}</span><b>${months(f.months)}</b></p>
+            <button type="button" class="primary jl-go free" data-go="jail_free"${armed() ? "" : " disabled"}>${te("freed.btn")} <span aria-hidden="true">&rarr;</span></button>
+          </footer>
+        </section>
+      </div>`;
   }
 
   async function press(btn) {
@@ -162,7 +241,7 @@ const Jail = (() => {
       armTimer = setTimeout(() => { shownKey = null; syncScreen(); }, ARM_MS + 50);
     }
     const key = JSON.stringify([j || f, (S.me.log || []).slice(-4), S.turn, S.me.cash, S.waiting, armed()]);
-    if (key !== shownKey) { shownKey = key; screen.innerHTML = j ? drawScreen(j) : drawFreed(f); }
+    if (key !== shownKey) { shownKey = key; redrawKeepingClip(j ? drawScreen(j) : drawFreed(f)); }
   }
 
   /* ---- the plea deal ----------------------------------------------------------------------- */
@@ -172,29 +251,30 @@ const Jail = (() => {
   }
 
   function drawPlea(pl) {
-    const port = portName(pl.port), who = castOf(pl.warden);
+    const port = portName(pl.port);
     const opt = o => {
       if (!o.months) {
-        return `<button type="button" class="jl-opt pay" data-m="0"><b>${te("plea.pay_all")}</b>
-          <span class="jl-amt">${money(o.pay)}</span><small>${te("plea.share", { pct: 100 })}</small></button>`;
+        return `<button type="button" class="jl-opt pay" data-m="0"><small>${te("plea.share", { pct: 100 })}</small>
+          <b>${te("plea.pay_all")}</b><span class="jl-amt">${money(o.pay)}</span></button>`;
       }
-      return `<button type="button" class="jl-opt cell" data-m="${o.months}">
+      return `<button type="button" class="jl-opt cell" data-m="${o.months}"><small>${te("plea.share", { pct: Math.round(o.share * 100) })}</small>
         <b>${te("plea.months", { months: o.months, s: o.months === 1 ? "" : "s" })}</b>
-        <span class="jl-amt">${te("plea.pay", { pay: money(o.pay) })}</span>
-        <small>${te("plea.share", { pct: Math.round(o.share * 100) })}</small></button>`;
+        <span class="jl-amt">${te("plea.pay", { pay: money(o.pay) })}</span></button>`;
     };
-    return `<section class="jl-plea">
-      <figure class="jl-warden small">${wardenImg(pl.warden, "jl-face")}
-        <figcaption>${who.name ? `<strong>${esc(who.name)}</strong><span>${esc(who.title || "")}</span>` : ""}</figcaption></figure>
-      <div class="jl-body">
-        <p class="jl-eyebrow">${te("plea.eyebrow", { port })}</p>
-        <h2>${te("plea.title", { fine: money(pl.amount) })}</h2>
-        <p class="jl-why">${te("plea.why." + pl.charge)}</p>
-        <p class="jl-lead">“${te("plea.lead")}”</p>
-        <div class="jl-opts">${pl.opts.map(opt).join("")}</div>
-        <p class="jl-note">${te("plea.note")}</p>
-        <p class="jl-note">${te("plea.auto")}</p>
-      </div></section>`;
+    return `${bgHtml(pl.port)}
+      <div class="sf-result jl-result">
+        ${wardenFigure(pl.warden)}
+        <section class="sf-card jl-card o-plea" aria-labelledby="jl-plea-title">
+          <header><p class="eyebrow">${te("plea.eyebrow", { port })}</p>
+            <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${SCALES}</span><h2 id="jl-plea-title">${te("plea.title", { fine: money(pl.amount) })}</h2></div>
+            <p class="sf-rreason">${te("plea.why." + pl.charge)}</p>
+            <p class="jl-lead">“${te("plea.lead")}”</p></header>
+          <div class="jl-opts">${pl.opts.map(opt).join("")}</div>
+          <p class="sf-note">${te("plea.note")}</p>
+          <footer><p class="sf-net dn"><span>${tl("jail.tile.fine", "The fine")}</span><b>${money(pl.amount)}</b></p>
+            <p class="jl-auto">${te("plea.auto")}</p></footer>
+        </section>
+      </div>`;
   }
 
   function syncPlea() {

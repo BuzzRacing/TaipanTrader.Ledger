@@ -107,9 +107,9 @@ body.board #ambient { display: none; }
 .dk-house .rankname { margin-left: .55rem; color: var(--brass-hi); font-size: .92rem; }
 .dk-house small { display: block; font: italic .86rem/1.3 var(--sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dk-house { flex: 0 1 auto; }
-.dk-port { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; line-height: 1; }
+.dk-port { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: .15rem; text-align: center; line-height: 1; }
 .dk-port span { font: .68rem/1.1 var(--special); letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, var(--deck-brass) 85%, var(--deck-ivory)); }
-.dk-port b { max-width: 100%; font: 400 clamp(1.3rem, 2.3vw, 1.95rem)/1.1 var(--title); color: var(--brass-hi); letter-spacing: .02em;
+.dk-port b { max-width: 100%; font: 400 clamp(1.3rem, 2.3vw, 1.95rem)/1.15 var(--serif); color: var(--brass-hi); letter-spacing: .04em;
   text-shadow: 0 2px 14px rgba(0, 0, 0, .65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dk-port small { font: italic .78rem/1.2 var(--sans); color: var(--muted); white-space: nowrap; }
 .dk-stats { display: grid; grid-template-columns: repeat(7, minmax(0, auto)); gap: .4rem; flex: none; }
@@ -138,7 +138,7 @@ body.board #ambient { display: none; }
   min-height: 4.4rem; padding: .45rem .2rem; background: transparent; border: 1px solid transparent; color: var(--muted);
   border-radius: calc(var(--radius) * 1); font: .7rem/1.1 var(--special); letter-spacing: .06em; transition: color .2s, background .2s, border-color .2s; }
 .dk-nav button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dk-nav svg { width: 1.7rem; height: 1.7rem; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.dk-nav svg { width: 2.1rem; height: 2.1rem; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .dk-nav button:hover:not(:disabled) { background: color-mix(in srgb, var(--deck-brass) 9%, transparent); color: var(--deck-ivory); border-color: var(--edge); }
 .dk-nav button.on { color: var(--brass-hi); border-color: var(--edge-hi);
   background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--deck-brass) 26%, transparent), color-mix(in srgb, var(--deck-oxblood) 22%, transparent) 75%);
@@ -786,6 +786,7 @@ body.player button.slim { padding: .3rem .65rem; font-size: .84rem; line-height:
 /* Matches player.js fleetTab(): .fl-ships > .fl-ship cards (art | body) and the .yd-table shipyard.
    Sized like the Market rows so the tab no longer shows ship pictures at full width. */
 .fl-ships { display: grid; gap: .55rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr)); margin: .3rem 0 0; }
+.fl-ship.fl-flagship { grid-column: 1 / -1; }
 .fl-ship { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: .8rem; align-items: center; min-width: 0;
   padding: .4rem .5rem .4rem .4rem; border: 1px solid var(--rule); border-radius: calc(var(--radius) * .7);
   background: color-mix(in srgb, var(--deck-night) 30%, transparent); }
@@ -842,6 +843,9 @@ body.player button.fl-btn { padding: .25rem .6rem; font-size: .8rem; line-height
 .fl-trader { --cls: var(--deck-brass); }
 .fl-cargo { --cls: #3f9a7a; }
 .fl-ship.fl-escort, .fl-ship.fl-trader, .fl-ship.fl-cargo { border-left: 3px solid var(--cls); }
+.fl-cargo-ships { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); }
+.fl-ship.fl-cargo { grid-template-columns: 4.75rem minmax(0, 1fr); gap: .5rem; }
+body.player .fl-cargo .fl-art :is(.gicon, .fl-img, img, video) { width: 4.75rem; height: 3.55rem; }
 .fl-screen { font-size: .76rem; color: var(--jade-hi); white-space: nowrap; }
 .fl-screen.thin { color: var(--vermilion, #d0573a); }
 .yd-table tr.yd-head th { padding: .55rem .2rem .15rem; border-bottom: 1px solid var(--edge-hi); text-transform: none; letter-spacing: 0; font: inherit; }
@@ -866,6 +870,7 @@ body.player .yd-ico .gicon, .yd-ico .yd-img, .yd-ico img, .yd-ico video { displa
 
 @container pane (max-width: 620px) {
   .fl-ships { grid-template-columns: 1fr; }
+  .fl-cargo-ships { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); }
   .fl-ship { grid-template-columns: 6.4rem minmax(0, 1fr); gap: .6rem; }
   body.player .fl-art .gicon, .fl-art .fl-img, .fl-art img, .fl-art video { width: 6.4rem; height: 4.8rem; }
   .fl-pips i { width: 1rem; height: .65rem; }
@@ -974,11 +979,10 @@ body.player .yd-ico .gicon, .yd-ico .yd-img, .yd-ico img, .yd-ico video { displa
 .dk-nav button.face.on::after, .dk-nav button.face:hover::after { background: transparent; }
 .dk-nav button.face span, .dk-nav button span { position: relative; z-index: 3; display: block !important;
   visibility: visible !important; opacity: 1 !important; color: #fff; }
-/* a bit smaller all round */
-.deck { grid-template-columns: 5.6rem minmax(0, 1fr) clamp(15.5rem, 28vw, 25rem); }
-.dk-nav { gap: .3rem; --ti: min(4.5rem, calc((100dvh - 19.5rem) / 5)); }
+.deck { grid-template-columns: 6.6rem minmax(0, 1fr) clamp(15.5rem, 28vw, 25rem); }
+.dk-nav { gap: .3rem; --ti: min(5.4rem, calc((100dvh - 19.5rem) / 5)); }
 .dk-nav button { min-height: 3.8rem; }
-.dk-nav button.face span { font-size: .8rem; padding: .8rem .1rem .2rem; }
+.dk-nav button.face span { font-size: .9rem; padding: .8rem .1rem .2rem; }
 .dk-nav button span { font-size: .74rem; }
 .dk-face img, .dk-face em { width: 2.2rem; height: 2.2rem; font-size: .9rem; }
 .dk-nav .dk-fly button { width: 3.8rem; min-height: 3.5rem; }
@@ -1786,7 +1790,7 @@ body.player button.mk-allcargo.lined { color: #fff6e3; border-color: var(--brass
 
 /* ====================================================== MASTHEAD PORT NAME UP (19 Nov 2026) == */
 /* The "in from {port}" line is gone, so the port name takes its room and goes up a size. */
-.dk-port b { font-size: clamp(1.6rem, 2.7vw, 2.4rem); line-height: 1.05; }
+.dk-port b { font-size: clamp(1.6rem, 2.7vw, 2.4rem); }
 @media (orientation: portrait) and (max-width: 600px) {
   .dk-port b { font-size: 1.45rem; } }
 @media (orientation: landscape) and (max-height: 560px) {
@@ -1885,3 +1889,16 @@ body.player .bank-rest span { flex: 1; }
 .mk-lot p { margin: 0; flex: 1; font-size: .9rem; }
 .mk-lot-tag { color: var(--heat); font-weight: 700; white-space: nowrap; }
 .yd-price.dear { color: var(--blood-hi); }
+
+/* D1 (owner's decision, 20 Nov 2026): the port we are in wears the game title's own treatment, the gilded
+   Uncial wordmark with its gleam (wordmark.css .st-wordmark-title), right in the masthead. The gleam crosses
+   once when the bar is drawn and then every 12 seconds. */
+.dk-port b { padding: 0 .12em; overflow: visible; font-family: "Ceremony Title", "Uncial Antiqua", Georgia, serif; font-weight: 400;
+  letter-spacing: -.01em; line-height: 1.2; text-shadow: none; color: transparent;
+  background: linear-gradient(110deg, transparent 43%, #fff8dc 49%, transparent 55%) -35% 0 / 250% 100% no-repeat,
+    linear-gradient(#fff5d8 12%, #e6bd68 52%, #ac6e28 54%, #efd18e 78%, #ffd99b);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: .6px #ffdfa173;
+  filter: drop-shadow(0 2px 0 #5a3217) drop-shadow(0 4px 10px #07090e);
+  animation: dkPortGleam 12s .4s ease-out infinite both; }
+@keyframes dkPortGleam { 0% { background-position: 135% 0, 0 0; } 16%, 100% { background-position: -35% 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .dk-port b { animation: none; } }

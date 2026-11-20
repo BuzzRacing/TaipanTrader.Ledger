@@ -1,0 +1,55 @@
+/* Under the Counter (20 Nov 2026, player.js counterTab): the port's tax lady sells a tip.
+   Lacquer and brass like the rest of the deck. Her picture lives on the stage, so the pane is all words:
+   her greeting, then one card per tip with its worth and her price, or the tip itself once paid. */
+
+/* The rail label is two short words longer than the others: let it wrap onto two lines. */
+.dk-nav button.dk-t-counter span { white-space: normal; text-align: center; line-height: 1.05; }
+
+.uc { display: flex; flex-direction: column; gap: clamp(.55rem, 1.2vw, .95rem); }
+.uc-head { padding: .2rem .2rem 0; }
+.uc-head small { display: block; font: .72rem/1.2 var(--special); letter-spacing: .14em; text-transform: uppercase; color: var(--brass-hi); }
+.uc-head h2 { margin: .1rem 0 .45rem; font-family: var(--serif); font-size: clamp(1.35rem, 2.6vw, 1.9rem); color: var(--deck-ivory);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .65); }
+.uc-head > p { margin: .45rem 0 0; font-size: .92rem; }
+
+.uc-say { position: relative; margin: 0; padding: .7rem 1rem .7rem 1.2rem; font: italic 1.02rem/1.45 var(--text, serif); color: var(--deck-ivory);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--deck-oxblood) 34%, transparent), color-mix(in srgb, var(--deck-night) 40%, transparent));
+  border-left: 3px solid var(--deck-brass); border-radius: 0 calc(var(--radius) * 1.2) calc(var(--radius) * 1.2) 0;
+  box-shadow: inset 0 1px 0 rgba(255, 236, 190, .08); }
+
+.uc-offers { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: clamp(.55rem, 1.2vw, .95rem); }
+.uc-card { display: flex; flex-direction: column; gap: .7rem; padding: .85rem 1rem 1rem;
+  background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--deck-brass) 14%, transparent), transparent 60%), var(--glass);
+  border: 1px solid var(--edge); border-radius: calc(var(--radius) * 1.4);
+  box-shadow: 0 14px 34px -18px #000, inset 0 1px 0 rgba(255, 236, 190, .08); }
+.uc-card header h3 { margin: 0; font-family: var(--head, var(--serif)); font-size: 1.15rem; color: var(--brass-hi); }
+.uc-card header p { margin: .2rem 0 0; font-size: .86rem; color: var(--muted); }
+.uc-card.bought { border-color: var(--edge-hi); box-shadow: 0 0 26px -10px color-mix(in srgb, var(--deck-brass) 70%, transparent), 0 14px 34px -18px #000; }
+.uc-card.none { opacity: .86; }
+
+.uc-price { display: flex; align-items: flex-end; justify-content: space-between; gap: .8rem; flex-wrap: wrap;
+  padding: .6rem .75rem; border: 1px dashed var(--edge); border-radius: var(--radius); }
+.uc-price span { font-size: .95rem; color: var(--deck-ivory); }
+.uc-price b { display: flex; flex-direction: column; align-items: flex-end; font: 700 1.45rem/1.05 var(--serif); color: var(--brass-hi); }
+.uc-price b small { font: .66rem/1.2 var(--special); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+.uc-none { display: flex; flex-direction: column; gap: .2rem; margin: 0; }
+.uc-none small { color: var(--muted); }
+
+.uc-act { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; margin-top: auto; }
+.uc-act button { flex: 1 1 auto; min-height: 2.6rem; }
+.uc-short { color: var(--blood-hi); font-size: .85rem; }
+
+.uc-dl { display: grid; gap: .1rem; margin: 0; }
+.uc-dl > div { display: flex; justify-content: space-between; gap: .8rem; padding: .32rem 0; border-bottom: 1px solid var(--rule); }
+.uc-dl dt { color: var(--muted); font-size: .9rem; }
+.uc-dl dd { margin: 0; text-align: right; font-size: .95rem; color: var(--deck-ivory); }
+.uc-dl .uc-big dd { font-size: 1.2rem; }
+.uc-dl .up dd b { color: var(--jade-hi); }
+.uc-dl .down { color: var(--blood-hi); }
+
+.uc-note { margin: 0; font-size: .8rem; }
+
+@media (orientation: portrait) {
+  .uc-offers { grid-template-columns: minmax(0, 1fr); }
+}

@@ -370,8 +370,10 @@ const Battle = (() => {
       bar && o ? riskBar(1 - o.run) : "", off, "run"));
     html.push(action("retreat", te("battle.btn.retreat"), retreatSub + (dump ? `<small>${dump}</small>` : ""),
       bar && o ? riskBar(o.retreat[1] / Math.max(1, b.hull)) : "", off, "retreat"));
+    // A small band, once the first broadside is traded: let them go, and they tell a price they know.
+    if (b.can_spare) html.push(action("spare", te("battle.btn.spare"), te("battle.btn.spare_sub"), "", off, "spare"));
     const orders = t("w." + b.orders);
-    return `<div class="sf-btns${html.length >= 5 ? " five" : b.stage === "parley" ? " four" : ""}">${html.join("")}</div>
+    return `<div class="sf-btns${html.length >= 5 ? " five" : b.stage === "parley" || html.length === 4 ? " four" : ""}">${html.join("")}</div>
       <p class="sf-skip"><span>${te("battle.timer_orders", { orders })}</span>
         <button type="button" class="sf-link" data-sf="skip" ${off ? "disabled" : ""} title="${te("battle.btn.skip_sub")}">${te("battle.btn.skip")} &raquo;</button></p>`;
   }
@@ -395,7 +397,9 @@ const Battle = (() => {
     header(b.where, b.stage === "parley" ? "" : t("battle.round", { n: Math.min(b.round, b.rounds), rounds: b.rounds }));
     $(".sf-enemy").hidden = false;
     junks(b.n, b.left, b.enemy_ships);
-    $(".sf-enemy p").textContent = b.enemy + " · " + t("battle.enemy", { left: b.left, n: b.n });
+    // Which of the three kinds of enemy this is (Game 4 review, 20 Nov 2026): raiders, a small band, the war fleet.
+    $(".sf-enemy p").textContent = b.enemy + " · " + t("battle.enemy", { left: b.left, n: b.n })
+      + (b.fleet && T["battle.fleet." + b.fleet] ? " · " + t("battle.fleet." + b.fleet) : "");
     const reward = b.reward, prize = $(".sf-reward");
     prize.hidden = !reward;
     if (reward) {
@@ -454,7 +458,7 @@ const Battle = (() => {
   }
 
   /* ------------------------------------------------------------- the reckoning -- */
-  const GOOD_MOOD = { won: 1, away: 1, broke_off: 1, paid: 1 };
+  const GOOD_MOOD = { won: 1, away: 1, broke_off: 1, paid: 1, spared: 1 };
   /* Wording with a fallback, so the screen reads right before strings.py has the key. */
   const tf = (key, fb, vars) => T[key] == null ? a(fb) : te(key, vars);
   const goodName = g => D.goods[g] ? D.goods[g].name : g;
@@ -509,6 +513,7 @@ const Battle = (() => {
       plundered: '<path d="M14 33h48v31H14ZM14 33l8-17h32l8 17M14 46h19m10 0h19M33 39h10v15H33ZM26 16v17m24-17v17M26 57h5m14 0h5"/>',
       wrecked: '<path d="m38 10 5 18-10 9 12 10-7 20M31 16a25 25 0 0 0-8 44m24-44a25 25 0 0 1 8 44M13 38h12m26 0h12M21 21l8 8m18 18 8 8M21 55l8-8m18-18 8-8M9 70q9-5 18 0t18 0 18 0"/>',
       broke_off: '<path d="M38 10 14 20v19c0 14 12 23 24 29 12-6 24-15 24-29V20ZM25 38l9 10 18-22"/>',
+      spared: '<path d="M38 12c-9 0-16 7-16 15 0 12 16 20 16 30 0-10 16-18 16-30 0-8-7-15-16-15ZM20 62h36M14 70h48"/>',
     };
     const emblem = `<svg viewBox="0 0 76 80" aria-hidden="true">${marks[outcome] || marks.broke_off}</svg>`;
     const compass = `<svg viewBox="0 0 320 320" aria-hidden="true"><circle cx="160" cy="160" r="140"/><circle cx="160" cy="160" r="126"/><circle cx="160" cy="160" r="83"/><path d="M160 6v32m0 244v32M6 160h32m244 0h32M51 51l23 23m172 172 23 23M51 269l23-23M246 74l23-23"/><path class="rose" d="m160 39 21 100 100 21-100 21-21 100-21-100-100-21 100-21Zm0 49v144M88 160h144"/></svg>`;
@@ -697,7 +702,7 @@ const Battle = (() => {
   document.addEventListener("keydown", e => {
     if (root.hidden || root.dataset.mode !== "fight" || e.metaKey || e.ctrlKey || e.altKey) return;
     if (playing && (e.key === " " || e.key === "Enter")) { e.preventDefault(); return nextFrame(); }
-    const key = { f: "fight", r: "run", t: "retreat", p: "pay", c: "pay_cargo", w: "pay_wu" }[e.key.toLowerCase()];
+    const key = { f: "fight", r: "run", t: "retreat", p: "pay", c: "pay_cargo", w: "pay_wu", s: "spare" }[e.key.toLowerCase()];
     const el = key && root.querySelector(`.sf-btn[data-sf="${key}"]`);
     if (el && !el.disabled) { e.preventDefault(); send(key); }
   });

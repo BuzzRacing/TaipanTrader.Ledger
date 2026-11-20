@@ -168,13 +168,11 @@
 
 /* The live hot tip, pinned across the top of the Port screen (player.js hotPin) from the month it is
    given until its boom is over. Brass while it is coming, a slow glow while it is booming, grey once
-   it has gone. The cargo picture is a large square, never a small round thumbnail. */
-.hot-pin { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .85rem; align-items: center;
-  padding: .5rem .85rem .5rem .5rem; border-radius: var(--radius); border: 2px solid var(--deck-brass);
+   it has gone. */
+.hot-pin { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem 1rem; align-items: center;
+  padding: .5rem .75rem; border-radius: var(--radius); border: 2px solid var(--deck-brass);
   background: linear-gradient(90deg, color-mix(in srgb, var(--deck-brass) 30%, transparent), color-mix(in srgb, var(--deck-brass) 10%, transparent));
   box-shadow: 0 0 0 1px #0006, 0 4px 14px #0007; }
-.hot-pin-art { width: 4.75rem; height: 4.75rem; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--edge-hi); box-shadow: 0 3px 10px #0008; }
-.hot-pin-art img, .hot-pin-art .hot-pin-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hot-pin-text p { margin: 0; }
 .hot-pin-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .hot-pin-head b { font: 1.35rem/1.15 var(--title); color: var(--brass-hi); }
@@ -185,14 +183,12 @@
 .hot-pin.on { animation: hot-pin-glow 2.4s ease-in-out infinite; }
 @keyframes hot-pin-glow { 50% { box-shadow: 0 0 0 1px #0006, 0 0 22px color-mix(in srgb, var(--deck-brass) 75%, transparent); } }
 .hot-pin.gone { border-color: var(--edge-hi); background: color-mix(in srgb, var(--muted) 12%, transparent); box-shadow: none; }
-.hot-pin.gone .hot-pin-art { filter: grayscale(1) brightness(.75); }
 .hot-pin.gone .hot-pin-head b, .hot-pin.gone .hot-pin-act b { color: var(--muted); }
 .hot-pin.gone .hot-badge { opacity: .55; }
 @media (prefers-reduced-motion: reduce) { .hot-pin.on { animation: none; } }
 @media (max-width: 760px) {
-  .hot-pin { grid-template-columns: auto minmax(0, 1fr); }
-  .hot-pin-art { width: 3.5rem; height: 3.5rem; }
-  .hot-pin-act { grid-column: 1 / -1; text-align: start; max-width: none; }
+  .hot-pin { grid-template-columns: minmax(0, 1fr); }
+  .hot-pin-act { text-align: start; max-width: none; }
 }
 /* The tipped cargo's row on the Market: the brass badge after its name. */
 .mk-table tr[data-hot] .mk-name b { color: var(--brass-hi); }
@@ -225,4 +221,30 @@
 @media (max-width: 760px), (orientation: portrait) {
   .cx-pay { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .deck .cx-desk button.cx-pay-btn { min-height: 3.4rem; }
+}
+
+/* D4 (owner's decision, 20 Nov 2026): the tax badge is small, pinned to the top right of the desk whatever the
+   length of her name, and heat-mapped from low (jade) to high (red): its edge, glow and number take the heat
+   colour, and a marker sits on a low-to-high scale under the number. */
+.cx-head { position: relative; padding-right: 7.2rem; }
+.cx-rate { position: absolute; top: 0; right: 0; width: 6.4rem; padding: .3rem .5rem .4rem; text-align: center; white-space: nowrap;
+  border-radius: calc(var(--radius) * .8); }
+.cx-rate small { font: .62rem/1.2 var(--special); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.cx-rate b { display: flex; align-items: baseline; justify-content: center; gap: .2rem; font: 400 1.3rem/1.15 var(--serif); }
+.cx-rate b i { font-style: normal; font-size: .62rem; }
+.cx-rate.heat { border-color: color-mix(in srgb, var(--heat) 70%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--heat) 24%, var(--deck-night)), color-mix(in srgb, var(--heat) 8%, var(--deck-night)));
+  box-shadow: 0 0 16px -6px var(--heat), inset 0 1px 0 rgba(255, 236, 190, .08); }
+.cx-rate.heat b, .cx-rate.heat.up b, .cx-rate.heat.dn b { color: var(--heat); }
+.cx-heat { position: relative; display: block; height: 5px; margin: .3rem .1rem 0; border-radius: 3px;
+  background: linear-gradient(90deg, rgb(127, 211, 168), rgb(226, 186, 96) 50%, rgb(230, 92, 80)); }
+.cx-heat i { position: absolute; top: -3px; left: var(--at); width: 3px; height: 11px; margin-left: -1.5px; border-radius: 1px;
+  background: #fff6e3; box-shadow: 0 0 0 1px var(--deck-night), 0 0 6px var(--heat); }
+.cx-rate.free { width: auto; max-width: 9rem; white-space: normal; border-color: color-mix(in srgb, var(--jade-hi) 60%, transparent); }
+.cx-rate.free b { font-size: 1rem; }
+.cx-rate em { display: none; }
+@media (max-width: 600px) {
+  .cx-head { padding-right: 6rem; }
+  .cx-rate { width: 5.4rem; padding: .25rem .4rem .35rem; }
+  .cx-rate b { font-size: 1.1rem; }
 }

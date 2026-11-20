@@ -452,6 +452,10 @@ class Hub:
             if plans and not cu.get("aloud", True):
                 plans[0] = None                  # a quiet landing: her greeting is shown, not read (her tip still is)
             v["voice"]["customs"] = plans
+        ct = me.get("counter")
+        if ct and ct.get("hello"):
+            # Under the Counter: her greeting when the tab opens, read by the officer of that port.
+            v["voice"]["counter"] = voice.PLAN.lines([ct["hello"]], "log", port=me.get("port"))
         return v
 
     def reload_settings(self, langs_saved=()):
@@ -1612,6 +1616,80 @@ class Handler(BaseHTTPRequestHandler):
                 count, kind, subject or "-"), **self._via())
             return self._send(200, {"ok": True, "job": job["id"], "msg": "Queued {} picture{}. Each is filed as it "
                                     "finishes.".format(count, "" if count == 1 else "s")})
+        if what == "redo":
+            # Anthony, 20 Nov 2026: quick buttons on a gallery picture. "same" re-renders it with its own prompt and
+            # seed; "new" rolls the same prompt on a fresh seed. The result is filed beside the original for review.
+            mode = "same" if body.get("mode") == "same" else "new"
+            iid = str(body.get("id") or "")
+            it = next((i for i in media.load(cfg)["items"] if i.get("id") == iid), None)
+            if not it:
+                return self._send(200, {"ok": False, "error": "That picture is no longer in the library."})
+            if it.get("type") == "video":
+                return self._send(200, {"ok": False, "error": "Clips cannot be re-rendered here."})
+            prompt = str(it.get("prompt") or "").strip()
+            if len(prompt) < 20:
+                return self._send(200, {"ok": False, "error": "This picture has no saved prompt to paint from."})
+            seed = it.get("seed") if isinstance(it.get("seed"), int) else None
+            if mode == "same" and seed is None:
+                return self._send(200, {"ok": False, "error": "No seed was saved with this picture. Use Reroll instead."})
+            w0, h0 = int(it.get("width") or 0), int(it.get("height") or 0)
+            if (w0, h0) in imagegen.ASPECTS.values():
+                aspect = next(a for a, wh in imagegen.ASPECTS.items() if wh == (w0, h0))
+            elif w0 and h0:
+                aspect = min(imagegen.ASPECTS, key=lambda a: abs(imagegen.ASPECTS[a][0] / imagegen.ASPECTS[a][1] - w0 / h0))
+            else:
+                aspect = "3:4"
+            w, h = imagegen.ASPECTS[aspect]
+            kind = it["kind"] if it.get("kind") in media.KINDS else "other"
+            nsfw = "yes" if it.get("nsfw") else "no"
+            job = media.JOBS.add(kind, it.get("subject") or "", it.get("roles") or [], prompt[:6000], w, h, 1, nsfw,
+                                 tags=it.get("tags") or [], aspect=aspect, replaces=iid,
+                                 seed=seed if mode == "same" else None)
+            journal.log("INFO", "admin", "Media library: {} {} ({}/{}){}".format(
+                "regen" if mode == "same" else "reroll", it.get("url"), kind, it.get("subject") or "-",
+                " seed {}".format(seed) if mode == "same" else ""), **self._via())
+            return self._send(200, {"ok": True, "job": job["id"], "msg": (
+                "Regenerating with the same seed. It lands next to the original." if mode == "same"
+                else "Rerolling on a new seed. It lands next to the original.")})
+        if what == "video":
+            # Anthony, 20 Nov 2026: make 10-second looping clips from library pictures (Wan 2.2 on the farm).
+            # One picture ("id"), or a pair: "nsfw_id" + "clean_id". In a pair the pair button decides the
+            # rating (the NSFW clip is NSFW, the clean clip is not); both share the motion and the seeds.
+            items = {i["id"]: i for i in media.load(cfg)["items"]}
+            motion = " ".join(str(body.get("motion") or "").split())[:1000]
+            if len(motion) < 10:
+                return self._send(200, {"ok": False, "error": "Describe the movement (at least 10 characters) first."})
+            try:
+                count = max(1, min(4, int(body.get("count") or 1)))
+            except (TypeError, ValueError):
+                count = 1
+            tags = media._tags(body.get("tags") or "")
+            seeds = [secrets.randbits(48) for _ in range(count)]
+            pair_ids = [str(body.get("nsfw_id") or ""), str(body.get("clean_id") or "")]
+            if any(pair_ids):
+                if not all(x in items for x in pair_ids) or pair_ids[0] == pair_ids[1]:
+                    return self._send(200, {"ok": False, "error": "Choose two different pictures for the pair."})
+                sources = [(items[pair_ids[0]], "yes", tags), (items[pair_ids[1]], "no",
+                                                                list(dict.fromkeys(tags + ["clean"])))]
+                pair = "p" + secrets.token_hex(4)
+            else:
+                iid = str(body.get("id") or "")
+                if iid not in items:
+                    return self._send(200, {"ok": False, "error": "That picture is no longer in the library."})
+                sources, pair = [(items[iid], "auto", tags)], ""
+            for it, _n, _t in sources:
+                if it["type"] != "image" or not it.get("subject"):
+                    return self._send(200, {"ok": False, "error": "Clips are made from a filed picture (with a subject)."})
+            jobs = [media.JOBS.add_video(it, motion, seeds, nsfw, tg, pair=pair, seconds=10, loop=True,
+                                         width=it.get("width") or 0, height=it.get("height") or 0)
+                    for it, nsfw, tg in sources]
+            journal.log("INFO", "admin", "Media library: queued {} clip(s) from {}{}".format(
+                count * len(sources), ", ".join(it["url"] for it, *_ in sources), " (pair {})".format(pair) if pair else ""),
+                **self._via())
+            n = count * len(sources)
+            return self._send(200, {"ok": True, "jobs": [j["id"] for j in jobs], "pair": pair,
+                                    "msg": "Queued {} clip{}. Each takes a while on the farm and is filed as it "
+                                    "finishes.".format(n, "" if n == 1 else "s")})
         if what == "cancel":
             ok = media.JOBS.cancel(str(body.get("job") or ""))
             return self._send(200, {"ok": ok, "msg": "Cancelled.", "error": "That job has already finished."})
@@ -1855,7 +1933,8 @@ def main():
     media.load(engine.CFG)
     media.sync_from_config(engine.CFG)
     media.on_change(_media_changed)
-    media.JOBS.start(imagegen.generate_image, lambda level, msg: journal.log(level, "media", msg))
+    media.JOBS.start(imagegen.generate_image, lambda level, msg: journal.log(level, "media", msg),
+                     render_video=imagegen.generate_video)
     join_url = (args.join_url or "").strip().rstrip("/") or "http://{}:{}".format(lan_address(), args.port)
     voicefloor.FLOOR.add_own(lan_address())
     journal.log("INFO", "server", "Server starting on port {} ({}, Python {}, code {})".format(

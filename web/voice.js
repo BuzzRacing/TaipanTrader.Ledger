@@ -202,11 +202,13 @@ const Voice = (() => {
       drawMute();
       return v;
     },
-    /* items: [{c: character, u: audio link, tag}] in reading order. */
+    /* items: [{c: character, u: audio link, f: clean audio link (optional), tag}] in reading order. */
     say(items, opts) {
       if (!enabled || muted) return;
       items = (items || []).filter(x => x && x.u);
       if (!items.length) return;
+      // A Family-friendly ("Clean") screen plays the clean twin of a line (clean cargo and ship names).
+      if (typeof screenFamily === "function" && screenFamily()) items = items.map(x => (x.f ? Object.assign({}, x, { u: x.f }) : x));
       if (opts && opts.replace) queue = queue.filter(q => q.group !== opts.replace);
       if (opts && opts.group) items.forEach(x => { x.group = opts.group; });
       if (opts && opts.front) queue.unshift(...items);   // read next, ahead of anything already waiting

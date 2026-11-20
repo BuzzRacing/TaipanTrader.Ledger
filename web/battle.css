@@ -446,3 +446,30 @@ body.seafighting #app { visibility: hidden; }
 
 /* What the crew stowed away before the pirates boarded (19 Nov 2026): still aboard. */
 .sf-rhid li em { color: #a8e6bd; }
+
+/* ----------------------------------------------- owner's screen fixes (20 Nov 2026) -- */
+/* C1: the fleet takes half the screen and the choice buttons the other half ("I have a lot of ships").
+   With the extra room the fleet lists in two columns (three for a big fleet) and keeps its gun pips. */
+.sf-foot, .sf-foot:has(ul.many) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.sf-foot .sf-fleet ul { grid-template-columns: 1fr 1fr; column-gap: 1.1rem; }
+.sf-foot .sf-fleet ul.many { grid-template-columns: 1fr 1fr 1fr; column-gap: .9rem; }
+.sf-foot .sf-fleet ul.many li { grid-template-columns: minmax(0, 1fr) 3.4rem auto; }
+.sf-btns.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sf-btns.five { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.sf-btns.five > * { grid-column: span 2; }
+.sf-btns.five > :nth-child(4) { grid-column: 2 / span 2; }
+@media (orientation: portrait) {
+  .sf-foot, .sf-foot:has(ul.many) { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* C3: no little round badge beside the reader's name (we are already looking at her). Her name is the
+   heading of her quote card, big and easy to read; a replay button, when her line has a clip, stays as a
+   plain speaker mark after the name. */
+.sf-rline header { gap: .7rem; margin-bottom: .5rem; font: 400 clamp(1.35rem, 2.2vw, 1.8rem)/1.15 var(--serif); letter-spacing: .01em;
+  color: var(--deck-ivory); text-shadow: 0 2px 8px #000; }
+.sf-rline header > span:not(.sf-rsay) { order: 1; }
+span.sf-rsay { display: none; }
+body.player button.sf-rsay, button.sf-rsay { order: 2; min-height: 0; box-shadow: none; width: auto; height: auto; margin: 0 0 0 auto; padding: .3rem; border: 0; border-radius: 4px;
+  background: none; color: var(--brass-hi); }
+body.player button.sf-rsay:hover { background: color-mix(in srgb, var(--deck-brass) 18%, transparent); }
+button.sf-rsay svg { width: 1.35rem; height: 1.35rem; }

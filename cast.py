@@ -17,6 +17,7 @@ import house_voice
 import jail_cast
 import jail_text
 import strings
+import trade_text
 
 STAT_KEYS = ["cunning", "nerve", "charm", "greed"]
 STAT_LABELS = {"cunning": "Cunning", "nerve": "Nerve", "charm": "Charm", "greed": "Greed"}
@@ -502,7 +503,9 @@ for _who, _keys in {
                 "m.customs_bribe_refused", "m.customs_buyback", "e.customs_first", "e.customs_bribe_cost",
                 "e.customs_nothing_back"] + [k for k in strings.EN if k.startswith("l.customs_welcome.")]
                # A hot tip from a port's own officer (engine _hot_tip), read by the officer of that port.
-               + [k for k in strings.EN if k.startswith("l.officer_hot.")],
+               + [k for k in strings.EN if k.startswith("l.officer_hot.")]
+               # Under the Counter (counter.py): her paid tips, read by the officer of the port the house is in.
+               + [k for k in strings.EN if k.startswith("l.counter_")] + ["e.counter_cost", "e.counter_off"],
     "crier": ["n.opening", "n.start_one", "n.start_many", "n.game_over", "n.scarce", "n.glut", "n.wrecked",
               "m.begin", "m.new_game"],
 }.items():
@@ -513,6 +516,9 @@ for _who, _keys in {
 for _k in jail_text.WARDEN_KEYS:
     LINE_DEFAULTS[_k] = "warden_hongkong"
 LINE_DEFAULTS["n.jail"] = "crier"
+# The comprador's buy and sell banks (trade_text.py): all hers.
+for _k in trade_text.KEYS:
+    LINE_DEFAULTS[_k] = "comprador"
 WARDEN_KEYS = frozenset(jail_text.WARDEN_KEYS)
 OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_DEFAULTS.items() if _w == "taxlady")
 # The Registrar's own lines (Mrs. Marlowe, at each captain's home port). Set after OFFICER_KEYS so they
@@ -529,6 +535,8 @@ for _k in ["l.registrar_home.{}".format(i) for i in range(15)] + ["l.registrar_t
 # (or stock family) wording; reword a line and it is read in full unless the
 # Admin page gives it a spoken version of its own (cfg voice.say).
 SAY = {
+    # Under the Counter: her price, said without the figures (shown on screen).
+    "e.counter_cost": "My price is more than you're carrying, Captain. I don't do favours on credit. Not that kind, anyway.",
     "l.slip_caught": "Slipping out of {port} in the dark, Captain? My watch never sleeps. You will pay double, and {port} will remember your name.",
     "l.slip_away": "You slipped out of {port} at night. The harbour watch never saw you, and the Mayor's dues went unpaid.",
     "m.gift.warm": "Now that is how a captain calls on a lady. My clerks will be told your house is a friend of the city.",
@@ -649,8 +657,11 @@ SAY.update({k: v.split("+{gain}. ", 1)[1] for k, v in strings.EN.items()
             if k.startswith(("m.gift.warm.", "m.gift.delighted.")) and "+{gain}. " in v})
 # The wardens say their lines without the numbers (jail_text.py).
 SAY.update(jail_text.SAY)
+# The comprador's banked receipts, without the amounts (trade_text.py).
+SAY.update(trade_text.SAY)
 # The same, for lines whose family-friendly wording differs.
 SAY_FAMILY = {
+    "e.counter_cost": "My price is more than you're carrying, Captain. I don't do favours on credit.",
     "l.jail_drink": "Your crew has been spending your silver ashore while you sit here, Captain.",
     "m.borrowed.easy.0": "Take it, Captain. Madam Wu does not lend to cowards, and you are not one.",
     "m.borrowed.easy.1": "Spend it boldly, Captain. Madam Wu so enjoys watching a good house grow.",
@@ -682,6 +693,7 @@ SAY_FAMILY = {
 
 # The house voice (house_voice.py): spoken versions of the rewritten lines. The spoken versions they
 # replace go with the old wording, now the family wording, so family-friendly voices keep their clips.
+SAY_FAMILY.update(trade_text.SAY_FAMILY)
 house_voice.apply_say(SAY, SAY_FAMILY)
 for _k, _v in house_voice.family_gift_say(strings.FAMILY).items():
     SAY_FAMILY.setdefault(_k, _v)

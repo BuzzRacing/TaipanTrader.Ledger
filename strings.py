@@ -9,6 +9,7 @@ these work in every line: {lender} {pirate} {bank} {winner} {home} {title}
 """
 
 import jail_text as _jail_text
+import trade_text as _trade_text
 
 EN = {
     # --- months, weather, small words -------------------------------------
@@ -2173,9 +2174,91 @@ FAMILY = {
     "l.registrar_tip.7": "A gift from the register, Captain, and it's worth more than tea: {goods} at {price} in {where}, this very month.",
 }
 
+# Under the Counter (20 Nov 2026, counter.py): the port's tax lady sells a tip. Her lines are read by the
+# officer of the port the house is in (cast.py hands every l.counter_* line to "taxlady").
+EN.update({
+    "tab.counter": "Under the Counter",
+    "counter.title": "Under the Counter",
+    "counter.stage": "Port Authority of {port}, off the record",
+    "counter.sub": "Her price is {pct}% of what a tip is worth to you, at your rank ({rank}). Pay first, then she talks.",
+    "counter.run": "A full hold", "counter.run_sub": "The best cargo to buy here with the silver and free hold you have, and the port to sell it in.",
+    "counter.hold": "What you're carrying", "counter.hold_sub": "The best port for the cargo already aboard, against selling it all here now.",
+    "counter.worth": "Worth about {worth} to you", "counter.price": "Her price", "counter.pay": "Pay {price}",
+    "counter.short": "{short} short", "counter.none": "Nothing worth paying for",
+    "counter.none_sub": "Nothing she knows beats what you'd make anyway. Asking costs nothing.", "counter.ask": "Ask her",
+    "counter.bought": "Bought this visit",
+    "counter.r_buy": "Buy here", "counter.r_buy_v": "{qty} {good} for {cost} ({price} each)",
+    "counter.r_sail": "Sail to", "counter.r_sell": "Sell there", "counter.r_sell_v": "about {sale} ({price} each)",
+    "counter.r_tax": "Port Authority tax there", "counter.r_profit": "Profit, before the sea has its say",
+    "counter.r_risk": "Chance of a pirate fight on the way", "counter.r_paid": "You paid her",
+    "counter.r_here": "Selling it all here now", "counter.r_there": "Selling it there, after tax",
+    "counter.r_gain": "Extra, before the sea has its say", "counter.banned": "banned there: seized",
+    "counter.go_market": "To the Market", "counter.go_sail": "Set the course",
+    "counter.note": "Her figures allow for the dealers' cut, their purse, the tax and how prices drift by the time you land. Storms, pirates and gluts are still up to the sea.",
+    "counter.restart": "Under the Counter opens once the Crimson Ledger server is restarted.",
+    "port.pl.tips": "Tips under the counter",
+    "e.counter_cost": "My price is {price}, Captain, and you've only {cash} aboard. I don't do favours on credit. Not that kind, anyway.",
+    "e.counter_off": "The counter is closed today, Captain. Nothing passes under it.",
+    # Her greeting when the tab opens (one a visit).
+    "l.counter_hello.0": "Back again, Captain? Close the door. What I know isn't free, but it is very, very good.",
+    "l.counter_hello.1": "Every manifest in {port} crosses my desk before it crosses anyone's mind. Pay me, darling, and I'll tell you what's in them.",
+    "l.counter_hello.2": "You want to know where the money's going, Captain. So does everyone. The difference is, you're about to pay me.",
+    "l.counter_hello.3": "Lean closer. Closer. I don't whisper for free, Captain, but I whisper beautifully.",
+    "l.counter_hello.4": "I've read every hold in {port} this month, Captain. Some of them twice. Shall I share the juicy parts?",
+    "l.counter_hello.5": "Under my counter, Captain, is everything the other houses wish they knew. Name your pleasure and pay my price.",
+    # A full hold: buy {goods} here, sell in {where}.
+    "l.counter_run.0": "Fill your hold with {goods}, Captain, and take it to {where}. They're desperate for it there. Don't keep them waiting.",
+    "l.counter_run.1": "{goods}. All you can carry. Then {where}, as fast as the wind will have you. You'll thank me later, darling. Generously, I hope.",
+    "l.counter_run.2": "Buy {goods} here while it's cheap and easy, Captain, and sell it in {where}, where it's neither. That's the whole secret.",
+    "l.counter_run.3": "My ledger says {goods} goes in here and comes out rich in {where}. My ledger and I are rarely wrong, and never in bed by nine.",
+    "l.counter_run.4": "Take {goods} to {where}, Captain. Load it gently, unload it slowly, and count every coin twice.",
+    "l.counter_run.5": "Between your hold and mine, Captain: {goods}, bound for {where}. Now go, before I start charging you for the view.",
+    # What you're carrying: sell it all in {where}.
+    "l.counter_hold.0": "Don't you dare unload that here, Captain. Take the lot to {where}. They'll pay you what it's really worth.",
+    "l.counter_hold.1": "{where}, Captain. Whatever you've got aboard, they want it more than we do. Much more.",
+    "l.counter_hold.2": "Keep your hatches shut until {where}, darling. Opening them early would waste a lovely cargo.",
+    "l.counter_hold.3": "Sail what you're carrying to {where}, Captain. I've seen their books. They're starving for it.",
+    "l.counter_hold.4": "Selling that here would be a crime, Captain, and I'd have to fine you. Take it to {where} instead.",
+    "l.counter_hold.5": "Your cargo belongs in {where}, Captain. Trust me, I've had my hands on every manifest in the East.",
+    # Nothing worth selling: she says so, free.
+    "l.counter_none.0": "Nothing worth your silver today, Captain. I'm many things, but I'm not a thief. Keep your purse closed. For now.",
+    "l.counter_none.1": "My ledger's dry this month, darling. Come back when the markets are feeling livelier.",
+    "l.counter_none.2": "I could take your money, Captain, but I'd only be selling you a sigh. Nothing pays from {port} just now.",
+    "l.counter_none.3": "No tip today, Captain. Sometimes the cleverest move is the one you don't make.",
+})
+FAMILY.update({
+    "e.counter_cost": "My price is {price}, Captain, and you've only {cash} aboard. I don't do favours on credit.",
+    "l.counter_hello.0": "Back again, Captain? Close the door. What I know isn't free, but it is very good.",
+    "l.counter_hello.1": "Every manifest in {port} crosses my desk first. Pay me, Captain, and I'll tell you what's in them.",
+    "l.counter_hello.2": "You want to know where the money's going, Captain. So does everyone. The difference is, you're about to pay me.",
+    "l.counter_hello.3": "Lean closer, Captain. I don't share secrets for free, but mine are worth it.",
+    "l.counter_hello.4": "I've read every hold in {port} this month, Captain. Shall I share the useful parts?",
+    "l.counter_hello.5": "Under my counter, Captain, is everything the other houses wish they knew. Choose a tip and pay my price.",
+    "l.counter_run.1": "{goods}. All you can carry. Then {where}, as fast as the wind will take you. You'll thank me later, Captain.",
+    "l.counter_run.3": "My ledger says {goods} goes in here and comes out rich in {where}. My ledger is rarely wrong.",
+    "l.counter_run.4": "Take {goods} to {where}, Captain. Load it carefully, sell it patiently, and count every coin twice.",
+    "l.counter_run.5": "Here's my tip, Captain: {goods}, bound for {where}. Now off you go.",
+    "l.counter_hold.2": "Keep your hatches shut until {where}, Captain. Selling early would waste a good cargo.",
+    "l.counter_hold.5": "Your cargo belongs in {where}, Captain. Trust me, I've read every manifest in the East.",
+    "l.counter_none.0": "Nothing worth your silver today, Captain. Keep your purse closed. For now.",
+    "l.counter_none.1": "My ledger's quiet this month, Captain. Come back when the markets are busier.",
+    "l.counter_none.2": "I could take your money, Captain, but I'd be selling you nothing. Nothing pays from {port} just now.",
+})
+
 # The jail's wording (jail_text.py).
 EN.update(_jail_text.EN)
 FAMILY.update(_jail_text.FAMILY)
+
+# The comprador's banks of buy and sell lines (trade_text.py, 20 Nov 2026): a new line each trade.
+EN.update(_trade_text.EN)
+FAMILY.update(_trade_text.FAMILY)
+
+# The Game 4 review's wording (review4_text.py, 20 Nov 2026): fleet types, sparing a band, crippled escorts,
+# laying ships up, wages carried by empty hold, the Mayor's offers.
+import review4_text as _review4_text  # noqa: E402
+EN.update(_review4_text.EN)
+FAMILY.update(_review4_text.FAMILY)
+EN.setdefault("log.battle_verdict.spared", "we beat a little band and let them go")
 
 # The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
 # wording it replaces becomes the family-friendly wording. Keep this after every other EN/FAMILY update.
@@ -2192,7 +2275,7 @@ GROUPS = [
     ["l", "Captain's log"], ["n", "News"], ["m", "Confirmations"], ["e", "Rule messages"],
     ["w", "Small words"], ["wx", "Weather"], ["mon", "Months"], ["ui", "Loading and connection"],
     ["st", "Tally Book (statistics)"], ["opt", "Options popup"],
-    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["band", "Standing bands"], ["lot", "Private lots"],
+    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["counter", "Under the Counter"], ["band", "Standing bands"], ["lot", "Private lots"],
 ]
 
 

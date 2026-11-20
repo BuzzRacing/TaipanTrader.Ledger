@@ -104,7 +104,8 @@ const Media = (() => {
 
   function element(item, cls, extra) {
     if (item.t === "video") {
-      return `<video class="${a(cls)} mslot" ${extra} data-mid="${a(item.id)}" src="${a(item.u)}" muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
+      // A clip made from a picture shows that picture while it loads (poster, 20 Nov 2026).
+      return `<video class="${a(cls)} mslot" ${extra} data-mid="${a(item.id)}" src="${a(item.u)}"${item.po ? ` poster="${a(item.po)}"` : ""} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
     }
     return `<img class="${a(cls)} mslot" ${extra} data-mid="${a(item.id)}" src="${a(item.u)}" alt="">`;
   }

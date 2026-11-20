@@ -38,22 +38,24 @@ def one_house(seed=3):
     return g, pid, p
 
 
-def test_worth_counts_cargo_at_normal_price():
+def test_worth_counts_cargo_at_what_dealers_pay():
+    """Game 4 review (20 Nov 2026) replaced the normal-price rule: cargo counts at what the dealers in the
+    port the fleet is in would pay for all of it today. A price elsewhere still never moves it."""
     fresh()
     g, pid, p = one_house()
     p["cargo"] = {"silk": 100}
     p["wh"], p["depots"] = {}, {}
     before = g.worth(p)
-    # A boom in Hong Kong (or anywhere) no longer moves net worth.
     for port in PORTS:
-        g.s["prices"][port]["silk"] *= 10
+        if port != p["port"]:
+            g.s["prices"][port]["silk"] *= 10
     assert abs(g.worth(p) - before) < 1e-6, "a price somewhere else moved net worth"
-    expect = R["market"]["worth_cargo"] * 100 * engine.normal_price("silk")
     no_cargo = dict(p, cargo={})
-    assert abs((g.worth(p) - engine.worth_of(no_cargo)) - expect) < 1e-6
-    # A journal snapshot of the house gives the same number.
-    snap = {k: copy.deepcopy(p[k]) for k in ("cash", "bank", "debt", "cargo", "wh", "depots", "ships")}
-    assert abs(engine.worth_of(snap) - g.worth(p)) < 1e-6
+    sale, _end = g.quote(p, "silk", 100, "sell")
+    assert abs((g.worth(p) - g.worth(no_cargo)) - sale) < 1e-6
+    # A journal snapshot keeps the figure it was taken with.
+    snap = [f for f in g.firms() if f["id"] == pid][0]
+    assert abs(engine.worth_of(snap) - g.worth(p)) < 1.0
 
 
 def test_boom_never_lowers_and_crash_never_raises():

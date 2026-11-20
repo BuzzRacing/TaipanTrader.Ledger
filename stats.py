@@ -253,6 +253,8 @@ def _fleet_row(f, prices):
                                                     for d in (f.get("depots") or {}).values())
     share = float(engine.R.get("market", {}).get("worth_cargo", 1.0))
     cargo_value = share * sum(q * engine.normal_price(g) for g, q in goods.items())
+    if f.get("goods_value") is not None:            # snapshots under the dealer rule (Game 4 review) carry it
+        cargo_value = float(f["goods_value"])
     fleet_value = f["worth"] - f["cash"] - f["bank"] + f["debt"] - cargo_value
     return {"types": types, "roles": roles, "cannons": sum(int(sh.get("cannons") or 0) for sh in ships),
             "hull": sum(int(sh.get("hull") or 0) for sh in ships), "stored": stored,
@@ -509,7 +511,7 @@ def _walk(events, ps, extra=None):
             continue
         if cat == "battle":
             if typ == "battle":
-                h.battle = {"turn": turn, "date": _date(turn), "enemy": e.get("enemy"), "count": e.get("count", 0),
+                h.battle = {"turn": turn, "date": _date(turn), "enemy": e.get("enemy"), "fleet": e.get("fleet"), "count": e.get("count", 0),
                             "orders": e.get("orders"), "guns": e.get("guns", 0), "rounds": 0, "result": "fought",
                             "booty": 0, "plundered": 0, "damage": 0, "sunk": 0, "ships_lost": 0,
                             "lord": "war" in str(e.get("enemy") or ""), "live": bool(e.get("live")),
@@ -537,6 +539,11 @@ def _walk(events, ps, extra=None):
                 elif typ == "broke_off":
                     b["result"], b["sunk"] = "broke_off", e.get("sunk", b["sunk"])
                     h.perils["broke_off"] += 1
+                elif typ == "spared":               # Game 4 review: a small band let go for a price tip
+                    b["result"] = "spared"
+                    b["sunk"] = b["count"] - int(e.get("left") or 0)
+                    h.perils["spared"] = h.perils.get("spared", 0) + 1
+
                 elif typ == "retreat":
                     v = h.lose(e.get("lost"), "overflow", turn)
                     b["result"], b["sunk"] = "retreated", b["count"] - e.get("enemy_left", b["count"])

@@ -26,6 +26,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import threading
 import time
 import urllib.error
@@ -443,9 +444,9 @@ BATTLE_OPEN = frozenset({"l.attack", "l.attack_met", "l.attack_noguns", "l.lord_
 BATTLE_KEYS = BATTLE_OPEN | frozenset({
     "l.spite", "l.tribute_paid", "l.parley_paid", "l.retreated", "l.sank_all", "l.outran", "l.long_fight",
     "l.plundered", "l.hid_pirates", "l.prize", "l.prize_left", "l.damage", "l.guns_lost", "l.cannons_lost",
-    "l.cargo_shot", "l.ship_lost", "l.cargo_lost"})
+    "l.cargo_shot", "l.ship_lost", "l.cargo_lost", "l.spared", "l.band_tip", "l.crippled"})
 # How a fight ended, worst first: the first found names the report.
-BATTLE_VERDICTS = ["l.plundered", "l.retreated", "l.long_fight", "l.sank_all", "l.outran",
+BATTLE_VERDICTS = ["l.plundered", "l.retreated", "l.long_fight", "l.sank_all", "l.spared", "l.outran",
                    "l.parley_paid", "l.tribute_paid"]
 VERDICT_DEFAULT = {
     "l.plundered": "they boarded us and plundered the hold",
@@ -455,6 +456,7 @@ VERDICT_DEFAULT = {
     "l.outran": "we outran them",
     "l.parley_paid": "we paid them to let us pass",
     "l.tribute_paid": "we paid her tribute and she let us pass",
+    "l.spared": "we beat a little band and let them go",
 }
 STANDING_KEYS = frozenset({"l.band_up", "l.band_down", "l.band_drift"})
 STANDING_DEFAULT = {"up": "up in {port} ({tier})", "down": "down in {port} ({tier})",
@@ -563,11 +565,45 @@ class Planner:
     def ready(self):
         return bool(self.cfg and self.cfg["voice"]["enabled"] and api_key()[0])
 
+    def _swaps(self):
+        """(NSFW name, clean name) pairs: every cargo with a family name, plus every ship at sea with a
+        clean name (Ships > NSFW ship names). Ship names live in the running game, which server.py
+        owns, so they come from its ship_swaps() when the server is running."""
+        out = [(g["name"], g["family_name"]) for g in (self.cfg.get("goods") or {}).values()
+               if g.get("family_name") and g.get("name") and g["family_name"] != g["name"]]
+        for mod in (sys.modules.get("server"), sys.modules.get("__main__")):
+            fn = getattr(mod, "ship_swaps", None)
+            if callable(fn):
+                try:
+                    out += list(fn())
+                except Exception:
+                    pass
+        return sorted(set(out), key=lambda ab: -len(ab[0]))
+
+    def clean(self, text):
+        """The words of a line as a Family-friendly ("Clean") screen says them: clean cargo and ship
+        names in place of the NSFW ones, same as the screen shows (server.family_view)."""
+        text = str(text or "")
+        for a, b in self._swaps():
+            for x, y in ((a, b), (a.lower(), b.lower())):
+                text = re.sub(r"(?<!\w){}(?!\w)".format(re.escape(x)), lambda _m, y=y: y, text)
+        return text
+
     def _clip(self, text, cid):
+        """{c: who, u: the clip} for a line. When the clean wording differs, also f: the clean clip,
+        which a Family-friendly screen plays instead (web/voice.js); a table that is Family-friendly
+        throughout gets the clean clip as u."""
         ch = self.cfg["characters"].get(cid)
         if not ch or not ch.get("voice_id") or not speech_text(text):
             return None
-        return {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, self.cfg["voice"])))}
+        vcfg = self.cfg["voice"]
+        clean = self.clean(text)
+        if ((self.cfg.get("content") or {}).get("rating") == "family"):
+            text = clean
+        out = {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, vcfg)))}
+        if clean != text:
+            out["f"] = "/voice/{}.mp3".format(register(_params(clean, ch, vcfg)))
+        return out
 
     def _who(self, key, port):
         """Who reads a line: the Port Authority's lines go to the officer of the player's port."""
@@ -627,7 +663,8 @@ class Planner:
 
     def compose_log(self, lines):
         """The Captain's Log as the arrival screen shows it (19 Nov 2026): every sea-battle line of the
-        visit folded into one report, and the standing moves (band up / down / drift) into one line.
+        visit folded into one short entry (20 Nov 2026: just how it ended, no "sea battle" heading), and
+        the standing moves (band up / down / drift) into one line.
         Returns [(text, key, fields)]; a folded entry has key "log.battle" or "log.standing".
         The house's own log (journal, records) keeps the full breakdown; this is only the screen."""
         lines = [str(x) for x in (lines or [])]
@@ -657,8 +694,7 @@ class Planner:
         shown = []
         for e in out:
             if e is battle:
-                text = self._t("log.battle_head", "Sea battle report:") + " " + " ".join(e["parts"])
-                shown.append((text, "log.battle", {"keys": e["keys"]}))
+                shown.append((self._battle_shown(e["parts"], e["keys"]), "log.battle", {"keys": e["keys"]}))
             elif e is stand:
                 parts = e["parts"]
                 if len(parts) == 1:
@@ -671,16 +707,38 @@ class Planner:
                 shown.append(e)
         return shown
 
-    def _battle_said(self, keys):
-        """The short spoken version of the folded battle report: how it ended, no numbers."""
+    def _verdict(self, keys):
+        """How the fight ended, worst first, as (key, short words with no numbers)."""
         ends = [k for k in BATTLE_VERDICTS if k in keys]
         end = ends[0] if ends else "l.attack"
-        verdict = self._t("log.battle_verdict." + end.split(".", 1)[1],
-                          VERDICT_DEFAULT.get(end, "the fleet fought them"))
-        said = self._t("log.battle_say", "Sea battle report, Captain: {verdict}.", verdict=verdict)
-        if "l.ship_lost" in keys:
-            said += " " + self._t("log.battle_ship_lost", "We lost a ship.")
-        return said
+        return end, self._t("log.battle_verdict." + end.split(".", 1)[1],
+                            VERDICT_DEFAULT.get(end, "the fleet fought them"))
+
+    def _ships_lost(self, keys):
+        n = sum(1 for k in keys if k == "l.ship_lost")
+        if not n:
+            return ""
+        if n == 1:
+            return " " + self._t("log.battle_ship_lost", "We lost a ship.")
+        return " " + self._t("log.battle_ships_lost", "We lost {n} ships.", n=n)
+
+    def _battle_shown(self, parts, keys):
+        """The written battle entry (owner's decision, 20 Nov 2026): no announcement that a battle
+        happened and no blow-by-blow, only the line saying how it ended, and any ships lost."""
+        end, verdict = self._verdict(keys)
+        if end in keys:
+            text = parts[keys.index(end)]
+        else:
+            text = verdict[:1].upper() + verdict[1:] + "."
+        return text + self._ships_lost(keys)
+
+    def _battle_said(self, keys):
+        """The short spoken version of the battle entry: how it ended, no numbers, no announcement."""
+        _end, verdict = self._verdict(keys)
+        # log.battle_said, not the old log.battle_say: that one opened "Sea battle report, Captain:".
+        said = self._t("log.battle_said", "{verdict}, Captain.", verdict=verdict)
+        said = said[:1].upper() + said[1:]
+        return said + self._ships_lost(keys)
 
     def captains_log(self, lines, port=None):
         """(shown lines, voice plan) for the Captain's Log. Only a few lines are read aloud (19 Nov

@@ -11,6 +11,9 @@
     sel: new Set(), last: null, genOpen: false, rulesOpen: false, jobs: [], jobsOpen: (() => { try { return localStorage.getItem("ml.jobsOpen") === "1"; } catch (_) { return false; } })(), poll: null, uploads: [],
     gen: { roles: [], aspect: "3:4", count: 2, nsfw: "auto", prompt: "", tags: "", forKey: "" },
     rulesDraft: null, timers: {},
+    // Videos (Anthony, 20 Nov 2026): the Make video panel and the side-by-side Compare of a clean + NSFW pair.
+    vid: { open: false, src: "", partner: "", pair: true, motion: "", preset: "keys", count: 2, tags: "" },
+    cmp: "",
   };
   const $ = id => document.getElementById(id);
   const e = s => esc(s);
@@ -37,6 +40,89 @@
   }
   const fmtBytes = n => n >= 1 << 30 ? (n / (1 << 30)).toFixed(1) + " GB" : n >= 1 << 20 ? (n / (1 << 20)).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
 
+  /* ------------------------------------------------------------ video -- */
+  // Clips made from a picture keep its id (from_item); a clean + NSFW pair made together shares a pair id.
+  const clipsOf = id => items().filter(i => i.type === "video" && i.from_item === id);
+  const posterOf = i => { const p = i && i.from_item ? byId(i.from_item) : null; return p && !p.missing ? p.url : ""; };
+  const pairOf = pid => items().filter(i => i.type === "video" && i.pair === pid);
+  // Motion prompts describe movement only: the look, the clothes and the rating come from the picture.
+  const MOTIONS = {
+    keys: ["Walk + spin the keys", "She walks slowly toward the camera with a confident sway, idly spinning a ring of heavy iron keys around one finger, the keys glinting and swinging, a knowing smile, then eases back to where she began, steady camera, smooth natural motion"],
+    keys_slow: ["Swing the keys (easier)", "She stands in place, slowly swinging a ring of heavy iron keys from one hand and shifting her weight from hip to hip, a knowing smile, steady camera, smooth natural motion"],
+    idle: ["Idle, breathing", "She breathes slowly with small natural movements, blinks, a faint smile, hair stirring in a light breeze, steady camera"],
+    speaking: ["Speaking to camera", "She talks to the camera with expressive hand gestures and a playful smile, steady camera, smooth natural motion"],
+    look: ["Turn to camera", "She turns her head toward the camera, holds its gaze and smiles slowly, steady camera"],
+  };
+  // The other half of a pair: the newest picture of the same subject on the other side of the NSFW line
+  // (a "clean" tag counts as clean), else any other picture of that subject.
+  function suggestPartner(src) {
+    if (!src || !src.tags) return "";
+    const pics = items().filter(i => i.type === "image" && i.kind === src.kind && i.subject === src.subject && i.id !== src.id && !i.missing);
+    const isClean = i => !i.nsfw || i.tags.includes("clean");
+    const want = pics.filter(i => isClean(i) !== isClean(src));
+    const pool = (want.length ? want : pics).slice().sort((a, b) => String(b.added).localeCompare(String(a.added)));
+    return pool[0] ? pool[0].id : "";
+  }
+  function openVideo(id) {
+    const i = byId(id);
+    if (!i || i.type !== "image") return;
+    M.vid.open = true; M.vid.src = id; M.vid.partner = suggestPartner(i); M.cmp = "";
+    M.vid.pair = !!M.vid.partner;
+    if (!M.vid.motion) M.vid.motion = MOTIONS[M.vid.preset][1];
+    if (!M.vid.tags && i.tags.some(t => t.includes("jail"))) M.vid.tags = "jail warden, motion-keys";
+  }
+
+  function vidPanel() {
+    if (!M.vid.open) return "";
+    const src = byId(M.vid.src);
+    if (!src) return "";
+    const pics = items().filter(i => i.type === "image" && i.kind === src.kind && i.subject === src.subject && i.id !== src.id && !i.missing);
+    const partner = M.vid.pair ? byId(M.vid.partner) : null;
+    // In a pair the pair button decides the rating: the NSFW-flagged picture makes the NSFW clip.
+    const [nsfwPic, cleanPic] = partner ? ((src.nsfw && !src.tags.includes("clean")) || !partner.nsfw || partner.tags.includes("clean") ? [src, partner] : [partner, src]) : [src, null];
+    const n = M.vid.count * (partner ? 2 : 1);
+    const face = (i, label) => `<figure class="ml-vid-pic"><img src="${e(i.url)}" alt=""><figcaption><b>${label}</b>${i.nsfw ? ' <em class="nsfw">NSFW</em>' : ""}${i.tags.includes("clean") ? " <em>clean</em>" : ""}</figcaption></figure>`;
+    const running = M.jobs.filter(j => j.type === "video" && ["waiting", "running", "cancelling"].includes(j.status));
+    return `<section class="card ml-vid"><h2>▶ Make video <small>Wan 2.2 on the AI farm · 10 seconds, looping</small></h2>
+      <p class="help">The clip starts and ends on the picture, so it loops without a jump. Describe the <b>movement only</b>:
+        her look, clothes and rating come from the picture. Each clip takes a while on the farm and is filed under
+        <b>${e(kinds()[src.kind].one)} · ${e(subjectName(src.kind, src.subject))}</b> with the picture's roles, marked "needs review".</p>
+      <div class="ml-vid-pics">${partner ? face(nsfwPic, "NSFW clip from") + face(cleanPic, "Clean clip from") : face(src, "Clip from")}</div>
+      <div class="ml-gen-grid">
+        <label class="ml-check"><input type="checkbox" data-mlvidf="pair"${M.vid.pair ? " checked" : ""}${pics.length ? "" : " disabled"}> Make a pair (clean + NSFW)</label>
+        ${M.vid.pair ? `<label>Other picture<select data-mlvidf="partner">${pics.map(i => `<option value="${e(i.id)}"${i.id === M.vid.partner ? " selected" : ""}>${e((i.title || i.tags.join(", ") || i.url.split("/").pop()).slice(0, 60))}${i.nsfw ? " (NSFW)" : ""}</option>`).join("")}</select></label>` : ""}
+        <label>Movement<select data-mlvidf="preset">${Object.entries(MOTIONS).map(([k, [n]]) => `<option value="${k}"${k === M.vid.preset ? " selected" : ""}>${e(n)}</option>`).join("")}<option value="own"${M.vid.preset === "own" ? " selected" : ""}>My own words</option></select></label>
+        <label>Takes${partner ? " each" : ""}<input type="number" min="1" max="4" value="${M.vid.count}" data-mlvidf="count"></label>
+        <label class="ml-grow">Tags<input type="text" value="${e(M.vid.tags)}" data-mlvidf="tags" placeholder="jail warden, motion-keys"></label>
+      </div>
+      <textarea rows="3" class="code" data-mlvidf="motion" id="mlvidmotion">${e(M.vid.motion)}</textarea>
+      <div class="row"><button type="button" class="primary" data-mlvidgo="1">Make ${n} clip${n === 1 ? "" : "s"}</button>
+        <button type="button" class="link" data-mlvidclose="1">close</button>
+        <span class="help">${partner ? "Both halves use the same movement and the same seeds, so you compare like with like. " : ""}${running.length ? `${running.length} video job${running.length === 1 ? "" : "s"} in the queue.` : ""}</span></div>
+      ${jobList()}
+    </section>`;
+  }
+
+  // Side by side: every take of a pair, NSFW on the left, clean on the right, matched by seed.
+  function comparePanel() {
+    if (!M.cmp) return "";
+    const clips = pairOf(M.cmp);
+    if (!clips.length) return "";
+    const seeds = [...new Set(clips.map(c => c.seed))];
+    const cell = c => !c ? `<div class="ml-cmp-cell empty">not made yet</div>` : `<div class="ml-cmp-cell${c.enabled ? "" : " off"}">
+        <video src="${e(c.url)}"${posterOf(c) ? ` poster="${e(posterOf(c))}"` : ""} muted loop playsinline preload="auto" data-mlcmpv="1"></video>
+        <p><b>${c.nsfw ? "NSFW" : "Clean"}</b> · ${c.seconds || "?"} s${c.loop ? " loop" : ""} · ${fmtBytes(c.bytes || 0)}${c.render_s ? ` · ${Math.round(c.render_s / 60)} min to render` : ""}${!c.reviewed ? ' · <em>needs review</em>' : ""}</p>
+        <div class="row"><button type="button" data-mlcmpset="${e(c.id)}" data-f="reviewed" data-v="1"${c.reviewed ? " disabled" : ""}>✓ Keep</button>
+          <button type="button" data-mlcmpset="${e(c.id)}" data-f="enabled" data-v="${c.enabled ? "0" : "1"}">${c.enabled ? "Switch off" : "Switch on"}</button>
+          <button type="button" class="danger" data-mlcmpdel="${e(c.id)}">🗑</button></div></div>`;
+    const first = clips[0];
+    return `<section class="card ml-cmp"><h2>Compare: ${e(subjectName(first.kind, first.subject))} <small>${e(first.model || "")}</small></h2>
+      <p class="help mono">${e(first.motion || "")}</p>
+      <div class="row"><button type="button" class="primary" data-mlcmpplay="1">▶ Play all from the start</button><button type="button" data-mlcmppause="1">❚❚ Pause</button><button type="button" class="link" data-mlcmpclose="1">close</button></div>
+      ${seeds.map(sd => `<div class="ml-cmp-row"><span class="ml-cmp-seed">seed ${e(sd)}</span>${cell(clips.find(c => c.seed === sd && c.nsfw))}${cell(clips.find(c => c.seed === sd && !c.nsfw))}</div>`).join("")}
+    </section>`;
+  }
+
   function filtered() {
     const q = M.q.trim().toLowerCase();
     return items().filter(i => {
@@ -46,12 +132,14 @@
       // mayor_<rank>, "taxlady" picks up taxlady_bored, _caught and the rest, and a tag naming the role counts too.
       if (M.role && i.roles.length && !(i.roles.some(r => r === M.role || r.startsWith(M.role + "_"))
           || i.tags.some(t => String(t).toLowerCase() === M.role))) return false;
-      if (M.type && i.type !== M.type) return false;
+      if (M.type === "pair") { if (i.type !== "video" || !i.pair) return false; }
+      else if (M.type === "hasvid") { if (i.type !== "image" || !clipsOf(i.id).length) return false; }
+      else if (M.type && i.type !== M.type) return false;
       if (M.nsfw === "sfw" && i.nsfw) return false;
       if (M.nsfw === "nsfw" && !i.nsfw) return false;
       if (M.nsfw === "off" && i.enabled) return false;
       if (M.review && i.reviewed) return false;
-      if (q && ![i.title, i.subject, i.url, i.tags.join(" "), i.prompt].join(" ").toLowerCase().includes(q)) return false;
+      if (q && ![i.title, i.subject, i.url, i.tags.join(" "), i.prompt, i.motion || "", i.model || ""].join(" ").toLowerCase().includes(q)) return false;
       return true;
     }).sort(SORTS[M.sort] || SORTS.new);
   }
@@ -106,7 +194,7 @@
   function thumb(i, cls) {
     if (i.missing) return `<div class="${cls} ml-missing">file missing</div>`;
     return i.type === "video"
-      ? `<video class="${cls}" src="${e(i.url)}#t=0.5" muted loop playsinline preload="metadata"></video>`
+      ? `<video class="${cls}" src="${e(i.url)}#t=0.5"${posterOf(i) ? ` poster="${e(posterOf(i))}"` : ""} muted loop playsinline preload="metadata"></video>`
       : `<img class="${cls}" src="${e(i.url)}" alt="" loading="lazy">`;
   }
 
@@ -124,6 +212,17 @@
       <button type="button" data-mlkind="" class="${M.kind === "" ? "on" : ""}">Everything <i>${items().length}</i></button></div>`;
   }
 
+  // Anthony, 20 Nov 2026: quick Regen (same prompt + seed) and Reroll (same prompt, new seed), beside Trash and Approve.
+  // tag is "button" on grid tiles and "span" inside subject cards (those are buttons already).
+  function quickRedo(i, tag) {
+    if (!i || i.type === "video" || !i.prompt || i.prompt.length < 20) return "";
+    const attr = tag === "span" ? ' role="button" tabindex="0"' : ' type="button"';
+    const noSeed = i.seed == null;
+    return `<${tag}${attr} class="ml-quickredo${noSeed ? " none" : ""}" data-mlquickredo="${e(i.id)}" data-mode="same"
+        title="${noSeed ? "Regen needs a saved seed (this picture has none). Use Reroll." : "Regen this: same prompt, same seed " + e(i.seed)}" aria-label="Regen this picture">↻</${tag}>` +
+      `<${tag}${attr} class="ml-quickredo" data-mlquickredo="${e(i.id)}" data-mode="new" title="Reroll this: same prompt, new seed" aria-label="Reroll this picture">🎲</${tag}>`;
+  }
+
   function subjectCards() {
     if (!M.kind || M.subject || M.review) return "";
     const subs = subjectsFor(M.kind);
@@ -134,7 +233,7 @@
       const face = mine.find(i => i.primary && ok(i)) || mine.find(ok);
       const vids = mine.filter(i => i.type === "video").length, nsfw = mine.filter(i => i.nsfw).length;
       return `<button type="button" class="ml-subject" data-mlsubject="${e(k)}">
-        <span class="ml-subject-art">${face ? `<img src="${e(face.url)}" alt="" loading="lazy"><span class="ml-quickdel" role="button" tabindex="0" data-mlquickdel="${e(face.id)}" title="Delete this picture (moves it to the media trash)" aria-label="Delete this picture">🗑</span>${!face.reviewed ? `<span class="ml-quickok" role="button" tabindex="0" data-mlquickok="${e(face.id)}" title="Approve this picture (marks it reviewed)" aria-label="Approve this picture">✓</span>` : ""}` : `<i>${e(String(name).slice(0, 1))}</i>`}</span>
+        <span class="ml-subject-art">${face ? `<img src="${e(face.url)}" alt="" loading="lazy"><span class="ml-quick"><span class="ml-quickdel" role="button" tabindex="0" data-mlquickdel="${e(face.id)}" title="Delete this picture (moves it to the media trash)" aria-label="Delete this picture">🗑</span>${!face.reviewed ? `<span class="ml-quickok" role="button" tabindex="0" data-mlquickok="${e(face.id)}" title="Approve this picture (marks it reviewed)" aria-label="Approve this picture">✓</span>` : ""}${quickRedo(face, "span")}</span>` : `<i>${e(String(name).slice(0, 1))}</i>`}</span>
         <b>${e(name)}</b><small>${mine.length} item${mine.length === 1 ? "" : "s"}${vids ? ` · ${vids} video` : ""}${nsfw ? ` · <em>${nsfw} NSFW</em>` : ""}</small></button>`;
     }).join("")}</div>`;
   }
@@ -155,7 +254,7 @@
         `<option value="${e(k)}"${k === M.subject ? " selected" : ""}>${e(n)}</option>`).join("")}</select></label>` : ""}
       ${roles.length ? `<label>Role<select data-mlf="role"><option value="">Any</option>${roles.map(([k, n]) =>
         `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n.split(":")[0])}</option>`).join("")}</select></label>` : ""}
-      <label>Type<select data-mlf="type"><option value="">Pictures & video</option><option value="image"${M.type === "image" ? " selected" : ""}>Pictures</option><option value="video"${M.type === "video" ? " selected" : ""}>Video</option></select></label>
+      <label>Type<select data-mlf="type"><option value="">Pictures & video</option><option value="image"${M.type === "image" ? " selected" : ""}>Pictures</option><option value="video"${M.type === "video" ? " selected" : ""}>Video</option><option value="pair"${M.type === "pair" ? " selected" : ""}>Video pairs</option><option value="hasvid"${M.type === "hasvid" ? " selected" : ""}>Pictures with clips</option></select></label>
       <label>Rating<select data-mlf="nsfw"><option value="">All</option><option value="sfw"${M.nsfw === "sfw" ? " selected" : ""}>Family-friendly only</option><option value="nsfw"${M.nsfw === "nsfw" ? " selected" : ""}>NSFW only</option><option value="off"${M.nsfw === "off" ? " selected" : ""}>Switched off</option></select></label>
       <label>Sort<select data-mlf="sort">${SORT_NAMES.map(([k, n]) => `<option value="${k}"${k === M.sort ? " selected" : ""}>${n}</option>`).join("")}</select></label>
       ${reviewButton()}
@@ -388,7 +487,7 @@
     const shown = (M.jobsOpen ? M.jobs : M.jobs.filter(active)).slice(0, 8);
     const toggle = finished ? `<button type="button" class="link ml-jobs-toggle" data-mljobs="1">${M.jobsOpen ? "hide finished" : `show ${finished} finished`}</button>` : "";
     const items = shown.length ? `<ul class="ml-jobs">${shown.map(j => `<li class="${e(j.status)}">
-        <b>${e(subjectName(j.kind, j.subject))}</b> <span>${j.done}/${j.count} painted${j.failed ? `, ${j.failed} failed` : ""} · ${e(j.status)}</span>
+        <b>${e(subjectName(j.kind, j.subject))}</b> <span>${j.type === "video" ? "▶ " : ""}${j.done}/${j.count} ${j.type === "video" ? (j.nsfw === "yes" ? "NSFW clips" : j.nsfw === "no" ? "clean clips" : "clips") : "painted"}${j.failed ? `, ${j.failed} failed` : ""} · ${e(j.status)}${j.progress ? " · " + e(j.progress) : ""}</span>
         ${j.error ? `<small>${e(j.error)}</small>` : ""}
         ${["waiting", "running"].includes(j.status) ? `<button type="button" class="link" data-mlcancel="${e(j.id)}">stop</button>` : ""}</li>`).join("")}</ul>` : "";
     return toggle + items;
@@ -431,9 +530,9 @@
     const inUse = M.lib.in_use.includes(i.url);
     return `<div class="ml-tile${on ? " on" : ""}${i.enabled ? "" : " off"}${i.nsfw ? " nsfw" : ""}" data-mlitem="${e(i.id)}" tabindex="0">
       <div class="ml-art">${thumb(i, "ml-img")}
-        <span class="ml-badges">${i.primary && i.kind !== "persona" ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? "<b>▶ video</b>" : ""}${i.nsfw ? '<b class="nsfw">NSFW</b>' : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span>
-        <button type="button" class="ml-quickdel" data-mlquickdel="${e(i.id)}" title="Delete (moves it to the media trash)" aria-label="Delete">🗑</button>
-        ${!i.reviewed ? `<button type="button" class="ml-quickok" data-mlquickok="${e(i.id)}" title="Approve (marks it reviewed)" aria-label="Approve">✓</button>` : ""}</div>
+        <span class="ml-badges">${i.primary && i.kind !== "persona" ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? `<b>▶ ${i.seconds ? i.seconds + " s" : "video"}${i.loop ? " ⟲" : ""}</b>` : ""}${i.type === "video" && i.pair ? '<b class="pair" title="Part of a clean + NSFW pair">pair</b>' : ""}${i.type === "image" && clipsOf(i.id).length ? `<b title="Clips made from this picture">▶ ${clipsOf(i.id).length}</b>` : ""}${i.nsfw ? '<b class="nsfw">NSFW</b>' : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span>
+        <span class="ml-quick"><button type="button" class="ml-quickdel" data-mlquickdel="${e(i.id)}" title="Delete (moves it to the media trash)" aria-label="Delete">🗑</button>
+        ${!i.reviewed ? `<button type="button" class="ml-quickok" data-mlquickok="${e(i.id)}" title="Approve (marks it reviewed)" aria-label="Approve">✓</button>` : ""}${quickRedo(i, "button")}${i.type === "image" && !i.missing && i.subject ? `<button type="button" class="ml-quickvid" data-mlvidfrom="${e(i.id)}" title="Make a video from this picture" aria-label="Make a video">▶</button>` : ""}</span></div>
       <div class="ml-cap"><b>${e(i.title || subjectName(i.kind, i.subject))}</b>
         <small>${i.roles.length ? i.roles.map(r => e(roleName(i.kind, r))).join(", ") : "any role"}${i.tags.length ? " · " + i.tags.map(e).join(", ") : ""}</small></div></div>`;
   }
@@ -447,7 +546,8 @@
     const free = (K.subjects === "free" || i.kind === "scene");
     return `<aside class="card ml-detail">
       <div class="ml-big">${i.missing ? '<div class="ml-missing">file missing</div>' : i.type === "video"
-        ? `<video src="${e(i.url)}" controls loop playsinline></video>` : `<a href="${e(i.url)}" target="_blank" rel="noopener"><img src="${e(i.url)}" alt=""></a>`}</div>
+        ? `<video src="${e(i.url)}"${posterOf(i) ? ` poster="${e(posterOf(i))}"` : ""} controls loop playsinline></video>` : `<a href="${e(i.url)}" target="_blank" rel="noopener"><img src="${e(i.url)}" alt=""></a>`}</div>
+      ${videoBits(i)}
       <div class="ml-switches">
         <button type="button" class="ml-nsfw${i.nsfw ? " on" : ""}" data-mlset="nsfw" data-v="${i.nsfw ? "0" : "1"}">${i.nsfw ? "NSFW" : "Family-friendly"}</button>
         ${i.kind !== "persona" ? `<button type="button" class="${i.primary ? "on" : ""}" data-mlset="primary" data-v="${i.primary ? "0" : "1"}" title="Shown when the rule is Fixed">★ ${i.primary ? "Primary" : "Make primary"}</button>` : ""}
@@ -471,6 +571,21 @@
         ? `<button type="button" data-mlprofile="${e(i.id)}"${CFG.characters[i.subject].portrait === i.url ? " disabled" : ""}>${CFG.characters[i.subject].portrait === i.url ? "Profile picture" : "Make profile picture"}</button>` : ""}
         <button type="button" class="danger" data-mldel="${e(i.id)}">Remove</button></div>
     </aside>`;
+  }
+
+  // In a picture's panel: Make video and the clips made from it. In a clip's panel: where it came from and Compare.
+  function videoBits(i) {
+    if (i.type === "image") {
+      const clips = clipsOf(i.id);
+      return `<div class="ml-vidbits">${!i.missing && i.subject ? `<button type="button" class="primary" data-mlvidfrom="${e(i.id)}">▶ Make video…</button>` : ""}
+        ${clips.length ? `<span>Clips from this picture:</span><span class="ml-vidstrip">${clips.map(c => `<button type="button" class="ml-vidthumb" data-mlpick="${e(c.id)}" title="${e((c.nsfw ? "NSFW · " : "") + (c.seconds || "") + " s")}"><img src="${e(i.url)}" alt=""><b>▶</b></button>`).join("")}</span>` : ""}</div>`;
+    }
+    const src = i.from_item ? byId(i.from_item) : null;
+    return `<div class="ml-vidbits">
+      ${src ? `<span>Made from</span><button type="button" class="ml-vidthumb" data-mlpick="${e(src.id)}"><img src="${e(src.url)}" alt=""></button>` : ""}
+      ${i.pair ? `<button type="button" class="primary" data-mlcmp="${e(i.pair)}">Compare the pair</button>` : ""}
+      <p class="help">${[i.seconds ? i.seconds + " s" : "", i.loop ? "loops" : "", i.model, i.render_s ? Math.round(i.render_s / 60) + " min to render" : "", i.width ? i.width + " × " + i.height : ""].filter(Boolean).map(e).join(" · ")}</p>
+      ${i.motion ? `<details><summary>Movement</summary><p class="mono ml-prompt">${e(i.motion)}</p></details>` : ""}</div>`;
   }
 
   function bulk() {
@@ -502,7 +617,7 @@
       `<div class="ml-stats"><span><b>${c.total}</b> items</span><span><b>${c.video}</b> video</span><span><b>${c.nsfw}</b> NSFW</span>
         ${c.review ? `<button type="button" class="link ml-stat-review" data-mlreviewall="1" title="Show every item that needs review"><b>${c.review}</b> need review</button>` : `<span><b>0</b> need review</span>`}<span><b>${fmtBytes(c.bytes)}</b> on disk</span>
         <span class="muted">Drop files into <code>web/media/&lt;kind&gt;/&lt;subject&gt;/</code> (a folder named <code>nsfw</code> tags them) and press Scan folders.</span></div>` +
-      kindTabs() + toolbar() + uploadBar() + genPanel() + rulesPanel() + subjectCards() + crumbs + bulk() +
+      kindTabs() + toolbar() + uploadBar() + genPanel() + vidPanel() + comparePanel() + rulesPanel() + subjectCards() + crumbs + bulk() +
       `<div class="ml-body${M.sel.size === 1 ? " with-detail" : ""}${CFG.content.rating === "family" ? " ml-family" : ""}">
         <div class="ml-grid">${list.map(tile).join("") || `<p class="muted ml-empty">Nothing here yet. Upload pictures or clips, generate some, or drop files into the folder and scan.</p>`}</div>
         ${detail()}</div>`;
@@ -573,7 +688,7 @@
   async function onClick(ev) {
     if (section !== "media") return;
     const t = ev.target;
-    const el = t.closest("[data-mlquickdel],[data-mlquickok],[data-mlkind],[data-mlsubject],[data-mlitem],button");
+    const el = t.closest("[data-mlquickdel],[data-mlquickok],[data-mlquickredo],[data-mlvidfrom],[data-mlkind],[data-mlsubject],[data-mlitem],button");
     if (!el) return;
     const d = el.dataset;
     if (d.mlreview) { M.review = !M.review; M.sel.clear(); return redraw(); }
@@ -598,6 +713,54 @@
       const res = await api("media/update", { ids: [d.mlquickok], changes: { reviewed: true } });
       toast(res.ok ? "Approved." : (res.error || "Not saved."), !res.ok);
       if (M.review) M.sel.delete(d.mlquickok);
+      return load(true);
+    }
+    if (d.mlquickredo) {
+      // Anthony, 20 Nov 2026: one-click Regen (same seed) / Reroll (new seed). Queues one picture beside the original.
+      ev.preventDefault(); ev.stopPropagation();
+      if (el.classList.contains("none")) return toast("No seed was saved with this picture. Use Reroll instead.", true);
+      if (el.dataset.busy) return;
+      el.dataset.busy = "1"; el.disabled = true; el.classList.add("busy");
+      const res = await api("media/redo", { id: d.mlquickredo, mode: d.mode === "same" ? "same" : "new" });
+      toast(res.ok ? res.msg : res.error, !res.ok);
+      return load(true);
+    }
+    if (d.mlvidfrom) {
+      ev.preventDefault(); ev.stopPropagation();
+      openVideo(d.mlvidfrom);
+      redraw();
+      return window.scrollTo(0, 0);
+    }
+    if (d.mlpick) { M.sel.clear(); M.sel.add(d.mlpick); M.last = d.mlpick; return redraw(); }
+    if (d.mlvidclose) { M.vid.open = false; return redraw(); }
+    if (d.mlvidgo) {
+      const motion = (($("mlvidmotion") || {}).value || M.vid.motion).trim();
+      const src = byId(M.vid.src), partner = M.vid.pair ? byId(M.vid.partner) : null;
+      if (!src) return toast("That picture is no longer in the library.", true);
+      let body = { motion, count: M.vid.count, tags: M.vid.tags };
+      if (partner) {
+        const srcNsfw = src.nsfw && !src.tags.includes("clean"), partnerClean = !partner.nsfw || partner.tags.includes("clean");
+        const [n, c] = srcNsfw || partnerClean ? [src, partner] : [partner, src];
+        body = Object.assign(body, { nsfw_id: n.id, clean_id: c.id });
+      } else body.id = src.id;
+      el.disabled = true;
+      const res = await api("media/video", body);
+      el.disabled = false;
+      toast(res.ok ? res.msg : res.error, !res.ok);
+      if (res.ok) { M.kind = src.kind; M.subject = src.subject; return load(true); }
+      return;
+    }
+    if (d.mlcmp) { M.cmp = d.mlcmp; M.vid.open = false; redraw(); return window.scrollTo(0, 0); }
+    if (d.mlcmpclose) { M.cmp = ""; return redraw(); }
+    if (d.mlcmpplay || d.mlcmppause) {
+      document.querySelectorAll("[data-mlcmpv]").forEach(v => { if (d.mlcmpplay) { v.currentTime = 0; v.play().catch(() => {}); } else v.pause(); });
+      return;
+    }
+    if (d.mlcmpset) return change([d.mlcmpset], { [d.f]: d.v === "1" });
+    if (d.mlcmpdel) {
+      if (!d.armed) { d.armed = "1"; el.textContent = "Again to delete"; setTimeout(() => { if (el.isConnected) { delete d.armed; el.textContent = "🗑"; } }, 3500); return; }
+      const res = await api("media/delete", { ids: [d.mlcmpdel] });
+      toast(res.ok ? res.msg : res.error, !res.ok);
       return load(true);
     }
     if (d.mlitem) {
@@ -779,6 +942,16 @@
         }
         return redraw();
       }
+      return;
+    }
+    if (d.mlvidf) {
+      const k = d.mlvidf;
+      if (k === "pair") { M.vid.pair = el.checked; if (M.vid.pair && !M.vid.partner) M.vid.partner = suggestPartner(byId(M.vid.src) || {}); return redraw(); }
+      if (k === "partner") { M.vid.partner = el.value; return redraw(); }
+      if (k === "preset") { M.vid.preset = el.value; if (MOTIONS[el.value]) M.vid.motion = MOTIONS[el.value][1]; return redraw(); }
+      if (k === "count") { M.vid.count = Math.max(1, Math.min(4, parseInt(el.value, 10) || 1)); if (ev.type === "change") redraw(); return; }
+      if (k === "motion") { M.vid.motion = el.value; if (M.vid.preset !== "own" && MOTIONS[M.vid.preset] && el.value !== MOTIONS[M.vid.preset][1]) M.vid.preset = "own"; return; }
+      M.vid[k] = el.value;
       return;
     }
     if (d.mlrule && ev.type === "change") {
