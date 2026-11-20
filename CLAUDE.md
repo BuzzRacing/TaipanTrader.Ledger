@@ -30,3 +30,10 @@ keeps them from overwriting each other.
 
 The big shared files (`engine.py`, `strings.py`, `config.py`, `server.py`) are
 where clashes happen. Keep changes to them focused and check in promptly.
+
+## Writing dialogue
+Every line a character says aloud follows the house voice in `house_voice.py` (`HOUSE_STYLE`):
+sexy, funny, full of innuendo, never explicit, each character in her own voice. Brand-new lines go in
+`strings.py` as usual, written in that voice, with a clean version in `FAMILY`. To reword an existing
+spoken line, put it in `house_voice.LINES` (and `SPOKEN` for a number-free voice version) so the old
+wording becomes the family line. Run `tests/house_voice_test.py`.

@@ -1,7 +1,9 @@
 """Jail (19 Nov 2026, planned with Anthony one decision at a time; project doc "SeaTrader Jail").
 
 A Captain can be locked up for 1 or 3 months. While inside, the House's fleet is held at anchor in that
-port and the House sits the months out (it is marked "set sail" every month so nobody waits for it).
+port and the House sits the months out (the Captain taps "Serve the month" on the jail
+screen, so each month inside gets its own beat instead of flashing past on the 3-second turn watcher;
+an absent Captain holds nobody up, and a forced month end serves it anyway).
 The port still eats into it: the crew drinks a share of the silver aboard each month and perishable
 cargo spoils. There is no early way out. On release, standing in that port is lifted to a floor so the
 Captain is not arrested again straight away.
@@ -20,6 +22,10 @@ difficulty level's "jail" setting (easy 0.5, normal 1, hard 1.5).
 State on the house:
   p["jail"] = {"port", "months", "left", "charge", "since", "fresh", "served"}   (None when free)
   p["plea"] = {"id", "port", "charge", "amount", "book", "arrival", "opts": [{months, share, pay}], "turn"}
+  p["jail_freed"] = {"port", "months", "charge", "drunk", "spoiled", "turn"}   (the release card, until "Walk free")
+
+Pacing (owner's decision, 19 Nov 2026, "Tap to serve each month"): the arrest card ("Into the cell"),
+each month ("Serve the month") and the release card ("Walk free") wait for a tap.
 """
 import math
 
@@ -33,7 +39,10 @@ DEFAULTS = {
     "contraband_chance": 0.25,       # contraband seized: also locked up
     "contraband_low_rep": 20,        # below this standing...
     "contraband_low_mult": 1.5,      # ...that chance is multiplied by this
-    "slip_chance": 0.30,             # caught slipping out: the Mayor also locks you up
+    "slip_chance": 0.20,             # caught slipping out: the Mayor also locks you up, the first time...
+    "slip_repeat": 0.15,             # ...plus this for each earlier catch in that port...
+    "slip_repeat_months": 24,        # ...within this many months...
+    "slip_jail_max": 0.65,           # ...never more than this
     "collectors_chance": 0.20,       # the collectors call past the debt cap: debtors' prison
     "bankrupt_months": 3,            # bankruptcy: always, served at home before the fresh start
     "plea": True,                    # big fines may be swapped for time
@@ -113,7 +122,8 @@ def lock_up(g, p, months, charge, news=None, port=None, fresh=True):
     else:
         j = p["jail"] = {"port": port, "months": months, "left": months, "charge": charge, "charges": [charge],
                          "since": g.s["turn"], "served": 0, "fresh": bool(fresh), "drunk": 0, "spoiled": {}}
-    p["ready"], p["dest"], p["slip"] = True, None, False
+    p["ready"], p["dest"], p["slip"] = False, None, False      # the Captain taps "Serve the month"
+    p.pop("jail_freed", None)
     p["jail_count"] = int(p.get("jail_count", 0)) + 1
     name = _port_name(j["port"])
     s = "" if months == 1 else "s"
@@ -170,13 +180,22 @@ def on_seized(g, p, news, port):
     return False
 
 
-def on_slip_caught(g, p, news, port):
-    """Caught slipping out at night: a chance the Mayor locks the Captain up (the fleet stays in port)."""
+def slip_jail_odds(r, prior):
+    """Repeat offenders (owner's decision, 19 Nov 2026): slip_chance the first time, slip_repeat more for each
+    earlier catch in that port within slip_repeat_months, at most slip_jail_max (before the difficulty)."""
+    odds = float(r["slip_chance"]) + float(r["slip_repeat"]) * max(0, int(prior))
+    return max(0.0, min(float(r["slip_jail_max"]), odds))
+
+
+def on_slip_caught(g, p, news, port, prior=0):
+    """Caught slipping out at night: a chance the Mayor locks the Captain up (the fleet stays in port).
+    prior: earlier catches in this port that she still remembers."""
     if not on():
         return False
     r = rules()
-    if _chance(g, p, float(r["slip_chance"]), "jail_slip", "{}: the Mayor of {} locks the captain up for "
-               "slipping out".format(p["name"], _port_name(port)), port=port):
+    if _chance(g, p, slip_jail_odds(r, prior), "jail_slip", "{}: the Mayor of {} locks the captain up for "
+               "slipping out ({} earlier catches there)".format(p["name"], _port_name(port), int(prior)), port=port,
+               prior=int(prior)):
         lock_up(g, p, r["arrest_months"], "slip", news, port)
         return True
     return False
@@ -353,6 +372,8 @@ def release(g, p):
                       "spoiled": dict(j.get("spoiled") or {}), "turn": g.s["turn"]}
     p["jail"] = None
     p["ready"] = False
+    p["jail_freed"] = {"port": port, "months": int(j.get("months", 0)), "charge": j.get("charge"),
+                       "drunk": int(j.get("drunk", 0)), "spoiled": dict(j.get("spoiled") or {}), "turn": g.s["turn"]}
     p["log"].append(e.tx("l.jail_release", port=_port_name(port)))
     g._ev("jail", "jail_release", "{} was released from jail in {} after {} month(s); standing there at least {}".format(
         p["name"], _port_name(port), j.get("served", 0), int(floor)), p, port=port,
@@ -360,14 +381,31 @@ def release(g, p):
 
 
 def after_finish(g, players):
-    """The new month opens: a House still inside is marked ready, so nobody waits for it."""
+    """The new month opens: a House still inside waits for its Captain to tap "Serve the month"."""
     for p in players:
         if jailed(p):
-            p["ready"], p["dest"], p["slip"] = True, None, False
+            p["ready"], p["dest"], p["slip"] = False, None, False
+
+
+def act_jail(g, p, kind):
+    """jail_serve: the Captain lets the month pass (marks the House as sailed; the month turns when
+    everyone present is ready). jail_free: the release card is closed and the Captain is back in port."""
+    e = E()
+    if kind == "jail_free":
+        p.pop("jail_freed", None)
+        return e.tx("m.jail_free")
+    if not jailed(p):
+        raise e.GameError(e.tx("e.jail_not"))
+    j = p["jail"]
+    p["ready"], p["dest"], p["slip"] = True, None, False
+    g._ev("jail", "jail_serve", "{} lets the month pass in the {} gaol ({} of {} served, {})".format(
+        p["name"], _port_name(j["port"]), j.get("served", 0), j["months"],
+        "arrest month" if j.get("fresh") else "a month served"), p, port=j["port"], left=j["left"])
+    return e.tx("m.jail_into" if j.get("fresh") else "m.jail_serve")
 
 
 # ------------------------------------------------------------- actions --
-ALLOWED = ("plea", "promotion_ack", "house", "free_play")
+ALLOWED = ("plea", "promotion_ack", "house", "free_play", "jail_serve", "jail_free")
 
 
 def check_act(g, p, kind):
@@ -384,7 +422,7 @@ def check_act(g, p, kind):
 # ---------------------------------------------------------------- view --
 def view(g, p):
     j = p.get("jail") if jailed(p) else None
-    out = {"plea": None, "jail": None, "last": p.get("jail_last"),
+    out = {"plea": None, "jail": None, "last": p.get("jail_last"), "freed": p.get("jail_freed"),
            "months_total": int(p.get("jail_months", 0))}
     if pending(p):
         pl = p["plea"]
@@ -394,5 +432,8 @@ def view(g, p):
         out["jail"] = {"port": j["port"], "months": j["months"], "left": j["left"], "served": j.get("served", 0),
                        "charge": j["charge"], "charges": j.get("charges") or [j["charge"]], "since": j.get("since"),
                        "drunk": int(j.get("drunk", 0)), "spoiled": j.get("spoiled") or {},
-                       "last": j.get("last") or {}, "warden": warden_of(j["port"]), "fresh": bool(j.get("fresh"))}
+                       "last": j.get("last") or {}, "warden": warden_of(j["port"]), "fresh": bool(j.get("fresh")),
+                       "ready": bool(p.get("ready"))}
+    if out["freed"]:
+        out["freed"] = dict(out["freed"], warden=warden_of(out["freed"]["port"]))
     return out

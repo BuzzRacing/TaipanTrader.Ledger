@@ -368,7 +368,8 @@ function render() {
     region("solo", html);
   }
   syncTally(inGame);
-  syncPromotion(inGame, S.phase === "ended" || (inGame && S.phase === "port" && !portOverlay));
+  syncPromotion(inGame, S.phase === "ended" || (inGame && S.phase === "port" && !portOverlay
+    && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Jail !== "undefined" && Jail.busy())));
   syncBands(inGame && S.phase === "port" && !portOverlay && !S.me.promotion
     && !(typeof Battle !== "undefined" && Battle.busy()));
 
@@ -538,7 +539,7 @@ function tabFaceUrl(k) {
   const f = TAB_FACES[k], me = S.me;
   if (!f) return "";
   if (f.woman) {
-    const tagged = subs => Media.items("port", subs, f.woman, false).filter(i => i.r.includes(f.woman));
+    const tagged = subs => plainWomen(subs, f.woman, false);
     let list = tagged(me.port);
     if (!list.length) list = tagged(Object.keys(D.ports));
     if (list.length) {
@@ -557,15 +558,23 @@ function tabFaceUrl(k) {
 }
 function womanTabbed(k) {
   const f = TAB_FACES[k];
-  return !!(f && f.woman && Media.items("port", Object.keys(D.ports), f.woman, false).some(i => i.r.includes(f.woman)));
+  return !!(f && f.woman && plainWomen(Object.keys(D.ports), f.woman, false).length);
 }
 function tabFace(k) {
   const u = tabFaceUrl(k);
   const isPort = TAB_FACES[k] && TAB_FACES[k].port && !womanTabbed(k);
   return u ? `<img class="dk-tabimg${isPort ? " port" : ""}" src="${esc(u)}" alt="">` : (DECK_ICONS[k] || "");
 }
+/* A port woman's plain portraits: pictures tagged with her role (Mayor, Tax lady, Market keeper,
+   Ship master) and with none of that role's moods or moments (mayor_congrats, mayor_<rank>,
+   taxlady_bored, taxlady_caught...). The mood pictures belong to the story scenes that ask for them
+   by name (promotion certificates, the Port Authority desk), never to the tab rail or the idle stage. */
+function plainWomen(subs, role, video) {
+  return Media.items("port", subs, role, video)
+    .filter(i => i.r.includes(role) && !i.r.some(r => r !== role && r.startsWith(role + "_")));
+}
 function stageWomanHtml(port, role) {
-  const tagged = subs => Media.items("port", subs, role, true).filter(i => i.r.includes(role));
+  const tagged = subs => plainWomen(subs, role, true);
   let list = tagged(port);
   if (!list.length) list = tagged(Object.keys(D.ports));
   if (!list.length) return "";
@@ -887,16 +896,39 @@ function promotionArt(port, rank) {
   return { mayor: mayor && mayor.t === "image" ? mayor.u : "", scene: scene && scene.t === "image" ? scene.u
     : (((D.graphics || {}).ports || {})[port] || "") };
 }
+/* The ceremony waits for a quiet moment before it opens (19 Nov 2026): no other popup open and no other
+   voice mid-line (the Port Authority's ruling, a headline). It waits at most PROMO_QUIET_MS for a voice;
+   a popup it waits for until it is closed. While it is open only the Mayor speaks (Voice.only). */
+const PROMO_QUIET_MS = 8000;
+const promoWait = { key: null, since: 0, timer: null };
+function promoQuiet(key, inGame, canShow) {
+  if (promoWait.key !== key) { promoWait.key = key; promoWait.since = Date.now(); }
+  const popup = document.querySelector("dialog[open]:not(.fleet-promotion)") || document.querySelector(".ceremony");
+  const line = typeof Voice !== "undefined" ? Voice.current() : null;
+  const talking = line && line.group !== "promotion" && Date.now() - promoWait.since < PROMO_QUIET_MS;
+  if (!popup && !talking) return true;
+  clearTimeout(promoWait.timer);
+  // Look again shortly with the latest arguments (any new state redraws and calls this again anyway).
+  promoWait.timer = setTimeout(() => { if (S) syncPromotion(inGame, canShow); }, 400);
+  return false;
+}
+function closePromotion(dialog) {
+  if (dialog._stop) dialog._stop();
+  dialog.remove();
+  if (typeof Voice !== "undefined") Voice.only(null);
+}
 function syncPromotion(inGame, canShow) {
+  clearTimeout(promoWait.timer);      // only the latest call's look-again stands
   const promotion = canShow && S.me && S.me.promotion;
   let dialog = app.querySelector(".fleet-promotion");
   if (!promotion) {
-    if (dialog) dialog.remove();
+    if (dialog) closePromotion(dialog);
     return;
   }
   const key = S.game_id + ":" + promotion.id;
   if (dialog && dialog.dataset.promotion === key) return;
-  if (dialog) dialog.remove();
+  if (dialog) closePromotion(dialog);
+  if (!promoQuiet(key, inGame, canShow)) return;
   const me = S.me, port = portName(promotion.port);
   const record = promotion.record || {};
   const ranks = record.ranks || D.ranks || [];
@@ -935,6 +967,7 @@ function syncPromotion(inGame, canShow) {
   if (style) for (const k of ["tone", "deep", "metal", "paper", "ink"]) dialog.style.setProperty("--pr-" + k, style[k]);
   dialog.dataset.promotion = key;
   dialog.setAttribute("aria-labelledby", "fleet-promotion-title");
+  dialog.tabIndex = -1;
   dialog.innerHTML = `
     ${art.scene ? `<img class="pr-scene" src="${esc(art.scene)}" alt="">` : ""}<div class="pr-shade" aria-hidden="true"></div>
     <div class="pr-ceremony">
@@ -978,17 +1011,72 @@ function syncPromotion(inGame, canShow) {
     </footer>
       <div class="fleet-promotion-error" role="alert"></div>
     </div>`;
-  // The Mayor says her congratulations as the ceremony opens, and again from the speaker button.
+  // The Mayor says her congratulations when her words appear (beat 5), and again from the speaker button.
+  const tag = "promo:" + key;
   const sayIt = () => {
-    if (!clip || typeof Voice === "undefined") return;
+    if (!clip || typeof Voice === "undefined") return false;
     Voice.drop("promotion");
-    Voice.say([Object.assign({ tag: "promo:" + key, text: said }, clip)], { group: "promotion" });
+    Voice.say([Object.assign({ tag, text: said }, clip)], { group: "promotion", front: true });
+    return !Voice.muted() && Voice.enabled();
   };
   const again = dialog.querySelector("[data-pr=say]");
-  if (again) again.addEventListener("click", sayIt);
+  if (again) again.addEventListener("click", e => { e.stopPropagation(); sayIt(); });
   dialog.addEventListener("cancel", e => e.preventDefault());
   const button = dialog.querySelector("[data-pr=go]");
+
+  /* One thing at a time: the beats (promotion.css, .seq.b1 to .b6).
+     1 scene, House and the Mayor's picture · 2 the letter's opening · 3 the seal is stamped · 4 the new rank ·
+     5 her words, and her voice with them · 6 when she has finished: the record, signature and Continue.
+     A tap anywhere before the end plays the remaining beats at once (her voice carries on). */
+  const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const BEATS = reduced ? [0, 0, 0, 0, 0] : [150, 1300, 2500, 3600, 4800];
+  const AFTER_LINE_MS = 600, NO_VOICE_MS = 2600, START_WAIT_MS = 4000, LINE_CAP_MS = 15000;
+  const timers = [];
+  let poll = null, beat = 0;
+  const line = dialog.querySelector(".pr-line");
+  const stopClock = () => { timers.forEach(clearTimeout); timers.length = 0; clearInterval(poll); poll = null; };
+  dialog._stop = () => { stopClock(); if (line) line.classList.remove("talking"); };
+  const reach = n => {
+    while (beat < n) { beat++; dialog.classList.add("b" + beat); }
+    if (beat >= 6) { stopClock(); button.focus({ preventScroll: true }); }
+  };
+  const later = (ms, fn) => timers.push(setTimeout(() => { if (dialog.isConnected) fn(); }, ms));
+  // Beat 5: her words, then wait for her line to start and finish before beat 6.
+  const speakBeat = () => {
+    reach(5);
+    const voiced = sayIt();
+    if (!voiced) return later(NO_VOICE_MS, () => reach(6));
+    const t0 = Date.now();
+    let started = false;
+    poll = setInterval(() => {
+      if (!dialog.isConnected) return clearInterval(poll);
+      const now = typeof Voice !== "undefined" ? Voice.current() : null;
+      const hers = !!(now && now.tag === tag);
+      if (line) line.classList.toggle("talking", hers);
+      if (hers) started = true;
+      const waited = Date.now() - t0;
+      if ((started && !hers) || (!started && waited > START_WAIT_MS) || waited > LINE_CAP_MS) {
+        clearInterval(poll); poll = null;
+        later(started && !hers ? AFTER_LINE_MS : 0, () => reach(6));
+      }
+    }, 200);
+  };
+  // Her caption keeps showing who is speaking whenever she is heard again from the speaker button.
+  const talkWatch = setInterval(() => {
+    if (!dialog.isConnected) return clearInterval(talkWatch);
+    if (poll || !line) return;
+    const now = typeof Voice !== "undefined" ? Voice.current() : null;
+    line.classList.toggle("talking", !!(now && now.tag === tag));
+  }, 300);
+  dialog.addEventListener("click", e => {
+    if (beat >= 6 || e.target.closest("button")) return;
+    clearInterval(poll); poll = null;
+    if (beat < 5) { timers.forEach(clearTimeout); timers.length = 0; sayIt(); }
+    reach(6);
+  });
+
   button.addEventListener("click", async () => {
+    if (beat < 6) reach(6);
     if (typeof Voice !== "undefined") Voice.drop("promotion");
     const error = dialog.querySelector(".fleet-promotion-error");
     error.textContent = "";
@@ -1001,16 +1089,21 @@ function syncPromotion(inGame, canShow) {
     }
     if (S.me && S.game_id + ":" + (S.me.promotion || {}).id === key) S.me.promotion = null;
     if (inGame && S.phase === "port") {
-      ui.tab = "fleet";
       ui.tally = false;
+      ui.tab = "fleet";
     }
+    closePromotion(dialog);
     render();
   });
+  dialog.classList.add("seq");
   app.appendChild(dialog);
   dialog.showModal();
-  button.focus({ preventScroll: true });
+  dialog.focus({ preventScroll: true });
   dialog.scrollTop = 0;
-  setTimeout(() => { if (dialog.isConnected && dialog.open) sayIt(); }, 900);
+  // While the ceremony is open only the Mayor is heard; the rest of the queue waits and follows after.
+  if (typeof Voice !== "undefined") Voice.only("promotion");
+  BEATS.slice(0, 4).forEach((ms, i) => later(ms, () => reach(i + 1)));
+  later(BEATS[4], speakBeat);
 }
 
 /* Reputation swings (19 Nov 2026): when standing in a port crosses into another band, a big card with
@@ -1741,7 +1834,7 @@ function clearanceLedger() {
   const levelLine = `<span class="cl-rate ${level < 0.95 ? "credit" : level > 1.05 ? "surcharge" : ""}">${te(levelKey, { port: esc(portName(me.port)), level: +level.toFixed(2) })}</span>`;
   const total = bill.total, after = me.cash - total, owed = Math.max(0, -after);
   const slipping = me.ready ? !!me.slip : !!ui.slip;
-  const caughtCost = money(Math.ceil(bill.total * ((D.dues_rules || {}).slip_mult || 2)));
+  const caughtCost = slipFine(me, bill);
   // Cargo is declared to the Port Authority on arrival (customs.js), not on leaving.
   const status = slipping && bill.total ? te("clearance.slip", { caught: caughtCost }) : "";
   return `<section class="cl-card${slipping && bill.total ? " slipping" : ""}">
@@ -2674,14 +2767,22 @@ function protectionNote() {
 
 /* Leaving port: pay the Mayor's bill, or try to slip out at night (engine Game._depart). Only offered
    when there is a bill to dodge. While orders stand, the choice shows as given and cannot change. */
+/* The fine if caught slipping out (engine Game.slip_quote): at least slip_mult x the bill, or a share of net
+   worth set by the standing band, so it is shown as a range when the floor could be larger. */
+function slipFine(me, bill) {
+  const q = me.slip_quote;
+  if (!q) return money(Math.ceil(bill.total * ((D.dues_rules || {}).slip_mult || 2)));
+  return q.fine_max > q.fine_min ? `${money(q.fine_min)}–${money(q.fine_max)}` : money(q.fine_min);
+}
+
 function slipChoice() {
-  const me = S.me, bill = me.dues, r = (D.dues_rules || {});
+  const me = S.me, bill = me.dues, q = me.slip_quote || {};
   if (!bill || !bill.total) return "";
   const slip = me.ready ? !!me.slip : !!ui.slip;
-  const caught = money(Math.ceil(bill.total * (r.slip_mult || 2)));
+  const caught = slipFine(me, bill);
   return `<h2 class="du-choice-h">${te("dues.choice")}</h2>
     <div class="seg">${btn(te("dues.pay", { total: money(bill.total) }), "slip", 'data-s="0"', slip ? "" : "on", me.ready)}${btn(te("dues.slip"), "slip", 'data-s="1"', slip ? "on bad" : "", me.ready)}</div>
-    ${slip ? `<p class="muted du-slipnote">${te("dues.slip_note", { pct: Math.round((r.slip_caught == null ? .35 : r.slip_caught) * 100), caught, rep: r.slip_rep == null ? 10 : r.slip_rep, port: esc(portName(me.port)) })}</p>` : ""}`;
+    ${slip ? `<p class="muted du-slipnote">${te("dues.slip_note", { pct: Math.round((q.caught == null ? .35 : q.caught) * 100), caught, port: esc(portName(me.port)) })}</p>` : ""}`;
 }
 
 /* ---------------------------------------------------------- price ages -- */

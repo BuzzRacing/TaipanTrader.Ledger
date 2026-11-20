@@ -51,7 +51,9 @@ def clear_customs(game, pid, rng, wild=False):
         check(game)
     if jail.pending(p):                         # a big desk fine: the plea, answered at random
         assert try_act(game, pid, {"type": "plea", "months": rng.choice([0, 1, 3])})
-    if jail.jailed(p):                          # chose the cell: nothing more to do this month
+    if jail.jailed(p):                          # chose the cell: tap "Serve the month", nothing more
+        if not p["ready"]:
+            assert try_act(game, pid, {"type": "jail_serve"})
         return
     cu = p.get("customs")
     if cu and cu["status"] == "verdict":
@@ -152,9 +154,13 @@ def play(seed, years=5):
             p = game.s["players"][pid]
             if jail.pending(p):                 # the plea: answer it at random
                 assert try_act(game, pid, {"type": "plea", "months": rng.choice([0, 1, 3])})
-            if jail.jailed(p):                  # nothing to do from a cell; the House is marked as sailed
+            if jail.jailed(p):                  # nothing to do from a cell but tap "Serve the month"
+                if not p["ready"]:
+                    assert try_act(game, pid, {"type": "jail_serve"})
                 assert p["ready"]
                 continue
+            if p.get("jail_freed"):             # the release card: "Walk free"
+                assert try_act(game, pid, {"type": "jail_free"})
             bot(game, pid, rng)
         assert game.maybe_advance(set(game.s["order"])), "turn did not advance"
         game.fight_out(set(game.s["order"]))   # captains at their screens fight their battles

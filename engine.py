@@ -2456,6 +2456,59 @@ class Game:
             out["welcome"] = tx(key, line=out["line"], port=name, rate=pct(cu["rate"]))
         return out
 
+    # Slipping out at night (owner's decisions, 19 Nov 2026; doc "SeaTrader Slipping Out"). The harbour
+    # watch spots big fleets more often and watches houses the port distrusts; the fine has a floor set by
+    # net worth; standing falls by the band's roll and word travels; the Mayor jails repeat offenders more.
+    def slip_odds(self, p, port=None):
+        """Chance the harbour watch catches this house slipping out of port."""
+        d, port = R["dues"], port or p["port"]
+        ships = len(p.get("ships") or [])
+        fleet = min(float(d.get("slip_ship_max", 0.6)),
+                    float(d.get("slip_base", 0.25)) + float(d.get("slip_per_ship", 0.03)) * ships)
+        if self.standing_on():
+            fleet += float(d.get("slip_" + self.BANDS[self.band_here(p, port)], 0.0) or 0.0)
+        lo, hi = sorted((float(d.get("slip_min", 0.1)), float(d.get("slip_max", 0.7))))
+        return max(lo, min(hi, fleet))
+
+    def _slip_floor(self, p, port):
+        d = R["dues"]
+        band = self.BANDS[self.band_here(p, port)]
+        return sorted((float(d.get("slip_floor_{}_lo".format(band), 0) or 0),
+                       float(d.get("slip_floor_{}_hi".format(band), 0) or 0)))
+
+    def slip_quote(self, p):
+        """What the Set sail card says about slipping out: the odds, the least and most the fine can be if
+        caught now (the floor is set by the band after the fall, so the real fine may be higher), and the
+        standing at stake before the band's roll."""
+        d = R["dues"]
+        bill = self.dues(p)["total"]
+        lo, hi = self._slip_floor(p, p["port"])
+        worth = max(0.0, float(self.worth(p)))
+        least = int(math.ceil(max(bill * float(d["slip_mult"]), worth * lo)))
+        most = int(math.ceil(max(bill * float(d["slip_mult"]), worth * hi)))
+        return {"caught": round(self.slip_odds(p), 4), "fine_min": least, "fine_max": most,
+                "rep": float(d["slip_rep"]), "travel": bool(d.get("slip_travel", True))}
+
+    def _slip_fine(self, p, port, bill):
+        """The fine for a caught house, set by the band it is in after the fall: the larger of slip_mult x the
+        bill, or net worth x a roll between the band's slip floors (its own dice, not the game's)."""
+        d = R["dues"]
+        by_bill = bill * float(d["slip_mult"])
+        lo, hi = self._slip_floor(p, port)
+        by_worth = max(0.0, float(self.worth(p))) * self._band_rng(p, "slip_floor").uniform(lo, hi)
+        fine = int(math.ceil(max(by_bill, by_worth) - 1e-9))
+        self._ev("finance", "slip_fine", "{}: caught slipping out of {} ({}): fine {} ({}x the bill {}, net worth floor {})".format(
+            p["name"], PORTS[port]["name"], self.BANDS[self.band_here(p, port)], money(fine), d["slip_mult"],
+            money(by_bill), money(by_worth)), p, port=port, bill=bill, fine=fine)
+        return fine
+
+    def _slip_prior(self, p, port):
+        """Earlier catches slipping out of this port that the Mayor still remembers."""
+        months = int(jail.rules().get("slip_repeat_months", 24))
+        now = int(self.s.get("turn", 0))
+        seen = (p.get("slip_caught_at") or {}).get(port) or []
+        return sum(1 for t in seen if now - int(t) < months)
+
     def _depart(self, p, news):
         """Leaving port: pay the Mayor, or try to slip out at night without paying."""
         p.pop("lot", None)                      # a private lot is offered for the one visit only
@@ -2465,29 +2518,42 @@ class Game:
         bill = self.dues(p)["total"]
         if bill <= 0:
             return self._pay_dues(p)
-        if self._chance(d["slip_caught"], "slip_caught", "{}: slipping out of {} without paying {} in dues".format(
+        odds = self.slip_odds(p)
+        if self._chance(odds, "slip_caught", "{}: slipping out of {} without paying {} in dues".format(
                 p["name"], PORTS[port]["name"], money(bill)), p, bill=bill):
-            self._gain_rep(p, port, -d["slip_rep"])
+            before = float(p["rep"][port])
+            if self.standing_on():
+                self._standing(p, port, -float(d["slip_rep"]), "slip_caught", travel=bool(d.get("slip_travel", True)))
+            else:
+                self._gain_rep(p, port, -float(d["slip_rep"]))
+            lost = before - float(p["rep"][port])
+            fine = self._slip_fine(p, port, bill)
+            prior = self._slip_prior(p, port)
+            seen = p.setdefault("slip_caught_at", {}).setdefault(port, [])
+            seen.append(int(self.s.get("turn", 0)))
+            del seen[:-12]
             p["log"].append(tx("l.slip_caught", port=PORTS[port]["name"]))
+            p["log"].append(tx("l.slip_fine", port=PORTS[port]["name"], fine=money(fine), rep=int(round(lost))))
             news.append(tx("n.slip_caught", name=p["name"], firm=p["firm"], port=PORTS[port]["name"]))
-            self._ev("finance", "slip_caught", "{} was caught slipping out of {}: pays {} times the bill, standing -{}".format(
-                p["name"], PORTS[port]["name"], d["slip_mult"], d["slip_rep"]), p, port=port, bill=bill)
-            if jail.on_slip_caught(self, p, news, port):
-                # Locked up: the fleet stays in port. A big bill may be swapped for time (the plea).
-                total = int(math.ceil(self.dues(p)["total"] * d["slip_mult"]))
-                if not jail.offer_plea(self, p, total, "slip", port, "dues"):
-                    self._pay_dues(p, mult=d["slip_mult"])
+            self._ev("finance", "slip_caught", "{} was caught slipping out of {} ({} odds): fined {}, standing -{:.1f}".format(
+                p["name"], PORTS[port]["name"], pct(odds), money(fine), lost), p, port=port, bill=bill, fine=fine,
+                odds=round(odds, 4), rep=round(lost, 2), prior=prior)
+            if jail.on_slip_caught(self, p, news, port, prior=prior):
+                # Locked up: the fleet stays in port. A big fine may be swapped for time (the plea).
+                if not jail.offer_plea(self, p, fine, "slip", port, "dues"):
+                    self._pay_dues(p, total=fine)
                 p["tab"] = self._new_tab()          # this visit's bill is settled
                 return "held"
-            return self._pay_dues(p, mult=d["slip_mult"])
+            return self._pay_dues(p, total=fine)
         p["log"].append(tx("l.slip_away", port=PORTS[port]["name"], total=money(bill)))
-        self._ev("finance", "slip_away", "{} slipped out of {} at night without paying {} in dues".format(
-            p["name"], PORTS[port]["name"], money(bill)), p, port=port, bill=bill)
+        self._ev("finance", "slip_away", "{} slipped out of {} at night without paying {} in dues ({} odds)".format(
+            p["name"], PORTS[port]["name"], money(bill), pct(odds)), p, port=port, bill=bill, odds=round(odds, 4))
 
-    def _pay_dues(self, p, mult=1.0):
-        """Charge the mayor's bill as the house leaves port. Silver first; any shortfall goes on the debt."""
+    def _pay_dues(self, p, mult=1.0, total=None):
+        """Charge the mayor's bill as the house leaves port. Silver first; any shortfall goes on the debt.
+        total: charge this instead of the bill (a caught slip-out's fine)."""
         bill = self.dues(p)
-        total = int(math.ceil(bill["total"] * mult))
+        total = int(math.ceil(bill["total"] * mult)) if total is None else int(math.ceil(total))
         if total <= 0:
             return
         paid = int(min(total, max(0.0, p["cash"])))
@@ -2926,6 +2992,8 @@ class Game:
             raise GameError(tx("e.not_running"))
         if kind == "plea":
             return jail.act_plea(self, p, a)
+        if kind in ("jail_serve", "jail_free"):
+            return jail.act_jail(self, p, kind)     # the jail screen's taps: serve the month, walk free
         jail.check_act(self, p, kind)            # nothing from a cell; answer a plea first
         if kind == "unsail":
             p["ready"], p["dest"], p["slip"] = False, None, False
@@ -5992,7 +6060,7 @@ class Game:
                 "basis": {g: round(v, 2) for g, v in (p.get("basis") or {}).items()},   # average paid per unit
                 "spread": round(sp, 4),
                 "purse": self.purse_view(port),             # the dealers' purse here: {good: [left, size]}
-                "dues": self.dues(p), "slip": bool(p.get("slip")),
+                "dues": self.dues(p), "slip": bool(p.get("slip")), "slip_quote": self.slip_quote(p),
                 "customs": self.customs_view(p), "bond": self.sealed(p),
                 "battle": self.battle_view(p), "fights": p.get("fights") or [],
                 "books": self.books_view(p),
@@ -6062,7 +6130,7 @@ def static_data():
             "impact": R["market"]["impact"], "lengths": R["game"]["lengths"],
             "start_year": R["game"]["start_year"], "renew_at": R["liyuen"]["renew_at"],
             "ban_price_mult": R["events"]["ban_price_mult"],
-            "dues_rules": {k: R["dues"][k] for k in ("slip_caught", "slip_mult", "slip_rep")},
+            "dues_rules": {k: R["dues"][k] for k in ("slip_base", "slip_mult", "slip_rep")},
             "forecast_accuracy": R["weather"]["forecast_accuracy"],
             "brand": b, "graphics": CFG["graphics"], "colors": CFG["theme"]["player_colors"],
             "ranks": CFG["ranks"], "promotion_styles": _config.promotion_styles(),

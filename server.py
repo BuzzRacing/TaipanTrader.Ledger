@@ -412,7 +412,14 @@ class Hub:
         v["cfg"] = self.cfg_version
         # Who reads each line aloud, with a link to the audio (made only when a screen asks for it).
         me = v.get("me") or {}
-        v["voice"] = {"log": voice.PLAN.lines(me.get("log"), "log", port=me.get("port")),
+        # The Captain's Log as shown: the sea battle folded into one report, the standing moves into
+        # one line, and only the top couple of lines read aloud (voice.Planner.captains_log).
+        if me.get("log") is not None:
+            shown, log_plan = voice.PLAN.captains_log(me.get("log"), port=me.get("port"))
+            me["log"] = shown
+        else:
+            log_plan = voice.PLAN.lines(me.get("log"), "log", port=me.get("port"))
+        v["voice"] = {"log": log_plan,
                       "news": voice.PLAN.lines(v.get("news"), "news", 14)}
         if me.get("battle") or me.get("fights"):
             v["voice"]["battle"] = self._battle_voice(me)

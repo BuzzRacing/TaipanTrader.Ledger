@@ -206,7 +206,8 @@ EN = {
     "l.dues": "You paid the Mayor of {port} {total} in harbour dues.",
     "l.slip_away": "You slipped out of {port} at night. The harbour watch never saw you, and the Mayor's {total} went unpaid.",
     "l.gift": "You called on the Mayor of {port} with a purse of {amount}. Your standing there rose by {gain}.",
-    "l.slip_caught": "The harbour watch caught you slipping out of {port}. The Mayor made you pay double, and your name suffers there.",
+    "l.slip_caught": "The harbour watch caught you slipping out of {port}. The Mayor is furious, and word of it is spreading along the coast.",
+    "l.slip_fine": "Caught slipping out of {port}: the Mayor fined you {fine}, and your standing there fell by {rep}.",
     "l.dues_short": "You paid the Mayor of {port} {paid} in harbour dues. The {owed} you could not pay went on your debt.",
     "l.seized": "Customs officers searched the fleet, seized {qty} chests of {contraband} and fined you {fine}.",
     "l.attack": "{n} {enemy} attacked. Your orders were to {orders}.",
@@ -460,6 +461,23 @@ EN = {
     "advice.soon": "One of the cast will study your ledger, your hold and the markets, and tell you what they would do next. "
                    "This is not built yet.",
     "log.eyebrow": "Captain's log", "log.ashore": "Go ashore", "log.reading": "Now reading",
+    # The Captain's Log on arrival folds the sea battle into one report and the standing moves into one
+    # line (voice.Planner.compose_log, 19 Nov 2026). The battle report is read aloud short, with no numbers.
+    "log.battle_head": "Sea battle report:",
+    "log.battle_say": "Sea battle report, Captain: {verdict}.",
+    "log.battle_ship_lost": "We lost a ship.",
+    "log.battle_verdict.plundered": "they boarded us and plundered the hold",
+    "log.battle_verdict.retreated": "we broke away under fire, with cargo over the side",
+    "log.battle_verdict.long_fight": "we sank some of them and the rest broke off",
+    "log.battle_verdict.sank_all": "we sank every one of them",
+    "log.battle_verdict.outran": "we outran them",
+    "log.battle_verdict.parley_paid": "we paid them to let us pass",
+    "log.battle_verdict.tribute_paid": "we paid her tribute and she let us pass",
+    "log.battle_verdict.attack": "the fleet fought them",
+    "log.standing_head": "Word of your name:",
+    "log.standing_up": "up in {port} ({tier})",
+    "log.standing_down": "down in {port} ({tier})",
+    "log.standing_drift": "settled in {port} ({tier})",
 
     # --- market ------------------------------------------------------------
     "market.title": "{port} market",
@@ -1455,7 +1473,7 @@ EN = {
     "dues.choice": "Leaving port",
     "dues.pay": "Pay the Mayor {total}",
     "dues.slip": "Slip out at night",
-    "dues.slip_note": "{pct}% chance the harbour watch catches you. Get away and you pay nothing; get caught and you pay {caught} and lose {rep} standing in {port}.",
+    "dues.slip_note": "{pct}% chance the harbour watch spots your fleet. Get away and you pay nothing. Get caught and the Mayor fines you {caught}, your name suffers in {port} and along its coast, and she may lock you up.",
     "dues.slipping": "Slipping out at night: nothing to pay if you get away, {caught} if you are caught.",
     "dues.anchorage": "Anchorage", "dues.anchorage_sub": "{n} ship(s) × {rate}",
     "dues.tonnage": "Tonnage", "dues.tonnage_sub": "{n} hold × {rate} per 100",
@@ -2057,6 +2075,9 @@ EN = {
 
 # Softer wording used when the content rating is family-friendly.
 FAMILY = {
+    "log.battle_verdict.plundered": "they caught us and carried off cargo",
+    "log.battle_verdict.long_fight": "we drove some of them off and the rest gave up",
+    "log.battle_verdict.sank_all": "we drove them all off",
     "m.borrowed.easy.0": "Borrowed {amount} at {rate}% a month. Take it, Captain. Madam Wu does not lend to cowards, and you are not one.",
     "m.borrowed.easy.1": "Borrowed {amount} at {rate}% a month. Spend it boldly, Captain. Madam Wu so enjoys watching a good house grow.",
     "m.borrowed.easy.2": "Borrowed {amount} at {rate}% a month. Go and make us both rich, Captain. Madam Wu will be waiting when you come back.",
@@ -2155,6 +2176,11 @@ FAMILY = {
 # The jail's wording (jail_text.py).
 EN.update(_jail_text.EN)
 FAMILY.update(_jail_text.FAMILY)
+
+# The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
+# wording it replaces becomes the family-friendly wording. Keep this after every other EN/FAMILY update.
+import house_voice as _house_voice  # noqa: E402
+_house_voice.apply_text(EN, FAMILY)
 
 GROUPS = [
     ["join", "Join screen"], ["lobby", "Lobby"], ["end", "End of game"], ["host", "Host controls"], ["stat", "Header figures"],

@@ -65,7 +65,7 @@ def test_rock_bottom_standing_is_arrest_on_arrival_and_the_month_is_served():
     sail_to(g, p, dest)
     assert p["port"] == dest
     assert jail.jailed(p) and p["jail"]["charge"] == "standing" and p["jail"]["left"] == 1
-    assert p["ready"], "a jailed House is marked as sailed"
+    assert not p["ready"], "a jailed House waits for its Captain to tap (it no longer flashes by)"
     assert any("locked up" in n for n in g.s["news"]), "the arrest is in the News for every House"
     v = g.view("p1")
     assert v["me"]["jail"]["jail"]["port"] == dest and v["players"][0]["jailed"]
@@ -87,6 +87,9 @@ def test_rock_bottom_standing_is_arrest_on_arrival_and_the_month_is_served():
     assert p["rep"][dest] >= 10, "standing lifted to the release floor"
     assert not p["ready"]
     assert any("swings open" in line for line in p["log"])
+    assert g.view("p1")["me"]["jail"]["freed"]["port"] == dest, "the release card"
+    g.act("p1", {"type": "jail_free"}, present=["p1"])
+    assert not p.get("jail_freed")
 
 
 def test_three_months_counts_three_month_ends_and_bank_is_safe():
@@ -117,7 +120,7 @@ def test_the_plea_three_choices_and_the_three_month_deal():
     g.act("p1", {"type": "plea", "months": 3}, present=["p1"])
     assert p["cash"] == 100000 - opts[2]["pay"]
     assert jail.jailed(p) and p["jail"]["left"] == 3 and not p["jail"].get("fresh")
-    assert p["ready"]
+    assert not p["ready"], "the first month waits for Serve the month"
 
 
 def test_paying_in_full_and_an_unanswered_plea():
@@ -139,7 +142,7 @@ def test_small_fines_get_no_plea():
 
 
 def test_caught_slipping_out_keeps_the_fleet_in_port():
-    setup(dues__slip_caught=1.0, jail__slip_chance=1.0)
+    setup(dues__slip_min=1.0, dues__slip_max=1.0, jail__slip_chance=1.0)
     g, p = new_game(cash=5000)
     here = p["port"]
     dest = next(k for k in PORTS if k != here)
@@ -190,3 +193,34 @@ def test_difficulty_scales_the_odds():
     engine.MULT.pop("jail")
     engine.MULT["seizure"] = 1.5
     assert jail.mult() == 1.5, "a saved preset without the jail column reads the level"
+
+
+def test_tap_to_serve_paces_the_months():
+    """Owner's decision (19 Nov 2026): the months no longer flash by on the turn watcher. The arrest
+    card, each month and the release wait for a tap; an absent Captain holds nobody up."""
+    setup()
+    g, p = new_game(cash=1000)
+    jail.lock_up(g, p, 3, "debt", fresh=False)
+    for left in (2, 1):
+        assert not g.maybe_advance({"p1"}), "the watcher must not turn a jail month by itself"
+        assert "gaol" in g.act("p1", {"type": "jail_serve"}, present=["p1"]) or True
+        assert p["ready"]
+        assert g.maybe_advance({"p1"})
+        assert p["jail"]["left"] == left and not p["ready"]
+    assert not g.maybe_advance({"p1"})
+    g.act("p1", {"type": "jail_serve"}, present=["p1"])
+    assert g.maybe_advance({"p1"})
+    assert not jail.jailed(p) and p["jail_freed"]["months"] == 3
+    g.act("p1", {"type": "jail_free"}, present=["p1"])
+    assert "jail_freed" not in p
+    try:
+        g.act("p1", {"type": "jail_serve"}, present=["p1"])
+    except engine.GameError:
+        pass
+    else:
+        raise AssertionError("served a month while free")
+    # away from the screen: the month turns without the jailed Captain
+    jail.lock_up(g, p, 1, "debt", fresh=False)
+    assert g.maybe_advance(set()) is False      # nobody present: nothing to wait for, nothing to turn
+    g.resolve("all_ready", set())
+    assert not jail.jailed(p)

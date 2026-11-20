@@ -21,6 +21,11 @@ const Voice = (() => {
   let cast = {}, enabled = false, muted = store("seatrader_mute") === "1";
   let queue = [], cur = null, asking = false, blocked = false, onChange = () => {};
   let seq = 0, floorOk = true, floorRetryAt = 0, retryTimer = null, holding = false;
+  // While a ceremony has the floor (Voice.only("promotion")), only its own lines play; everything else
+  // waits in the queue, in order, and is read once the ceremony lets go (Voice.only(null)).
+  let only = null;
+  const next = () => (only ? queue.find(q => q.group === only) : queue[0]) || null;
+  const take = item => { const i = queue.indexOf(item); if (i >= 0) queue.splice(i, 1); return item; };
   const FLOOR_RETRY_MS = 20000;   // an older server had no turn-taking: ask again after this (it may have restarted)
 
   // One audio element for the whole page: two lines cannot play through it at once, and
@@ -94,7 +99,7 @@ const Voice = (() => {
   }
   function finish(n) {
     if (!release(n)) return;
-    if (!queue.length) freeFloor();     // more lines waiting: keep the turn so this screen finishes its batch
+    if (!next()) freeFloor();     // more lines waiting: keep the turn so this screen finishes its batch
     hide();
     onChange(null);
     setTimeout(pump, GAP_MS);
@@ -102,17 +107,17 @@ const Voice = (() => {
 
   function pump() {
     clearTimeout(retryTimer);
-    if (!cur && !asking && holding && (!queue.length || muted || !enabled)) freeFloor();
-    if (cur || asking || muted || !enabled || !queue.length) return;
-    const item = queue[0];
+    if (!cur && !asking && holding && (!next() || muted || !enabled)) freeFloor();
+    if (cur || asking || muted || !enabled || !next()) return;
+    const item = next();
     asking = true;
     floor("take", item).then(r => {
       asking = false;
       if (r.granted) holding = true;
-      if (queue[0] !== item || muted || !enabled) return pump();   // dropped or muted while we waited
-      if (r.skip) { queue.shift(); return pump(); }  // another screen here just read this headline
+      if (next() !== item || muted || !enabled) return pump();   // dropped or muted while we waited
+      if (r.skip) { take(item); return pump(); }  // another screen here just read this headline
       if (!r.granted) { retryTimer = setTimeout(pump, Math.max(150, (r.wait || 0.35) * 1000)); return; }
-      start(queue.shift());
+      start(take(item));
     });
   }
 
@@ -124,7 +129,7 @@ const Voice = (() => {
     player.src = item.u;
     show(item);
     onChange(item);
-    if (queue[0]) fetch(queue[0].u).catch(() => {});     // have the next line ready
+    if (next()) fetch(next().u).catch(() => {});     // have the next line ready
     cur.renew = setInterval(() => floor("renew"), RENEW_MS);
     cur.watch = setInterval(() => {
       if (!cur || cur.n !== n) return;
@@ -215,6 +220,8 @@ const Voice = (() => {
       if (cur && cur.item.group === group) { player.pause(); finish(cur.n); }
     },
     current: () => (cur ? cur.item : null),
+    /* Let only one kind of line play (a ceremony's own), holding the rest back in order; null lets go. */
+    only(group) { only = group || null; pump(); },
     /* The player screen's own Voices switch (in the captain's menu) uses these. */
     enabled: () => enabled,
     muted: () => muted,

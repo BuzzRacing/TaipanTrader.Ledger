@@ -100,6 +100,7 @@ The game's lines are read aloud by a cast of ten characters through [Inworld](ht
 - **Cost.** A line is sent to Inworld only the first time a screen plays it, then kept in `cache/voice/` for good and replayed from there for free; nothing is pruned. `cache/voice/index.jsonl` lists what every clip says and who says it. Lines with amounts in them ("Bought 60 Rice for $951.") are spoken as a short version without the numbers ("Bought Rice."), so they sound the same every time and are paid for once; the screen still shows the full line. The spoken versions are in `cast.py` (`SAY`) and can be edited per line under Cast & Voices > Who reads what. Changing a voice or speed simply makes fresh lines; "Clear saved clips" on the Cast & Voices page moves them to `cache/voice_cleared/` rather than deleting them.
 - **Each character** has a portrait, an Inworld voice (any system voice, or your own cloned and designed voices), speaking speed, a delivery note (followed by the full TTS-2 model only), and a made-up profile: story, catchphrase, quirk, weakness, secret and four stats. Each card also has a portrait prompt for your image generator, written to the Art Bible.
 - **Who reads what.** Every line of the captain's log, news, confirmations and rule messages can be given to any character or kept silent.
+- **The house voice.** Every character talks the way Madam Shek Yu-lan does at sea: sexy, funny and full of innuendo, each in her own voice. The rule and the rewritten lines are in `house_voice.py` (`HOUSE_STYLE`); write every new spoken line to it. The wording each line replaced is now its family-friendly wording, so the family switch still gives clean lines (and their old clips). New wording is recorded fresh the first time each line is heard. Only the full TTS-2 model follows delivery notes; on TTS-2 Flash the words carry the style.
 - **On each device** a speaker button mutes the voices on that screen only. The full-screen launchers let the board and the host's screen play sound without a tap; other phones and tablets start speaking after the first tap.
 
 ## Moving to a Raspberry Pi
@@ -172,6 +173,7 @@ One turn is one month. Everyone does their port business at the same time: trade
 | `strings.py` | Every line of wording, in English. |
 | `cast.py` | The default cast: profile cards, voices and who reads which line. |
 | `voice.py` | Inworld voices: works out who reads a line, makes the audio on request, keeps it in `cache/voice/`. |
+| `house_voice.py` | The house voice: the style every spoken line is written in, and the rewritten lines laid over `strings.py` (old wording becomes the family wording). |
 | `server.py` | Web server, live updates to every screen, saves, and the admin interface. |
 | `journal.py` | The records: writes the game journal and the server log, reads them back for the Captain's Report, and prunes old ones. |
 | `stats.py` | The Tally Book's numbers: works out a player's voyage and career from the journal, with the fair-play rules. Never writes anything. |
@@ -189,3 +191,4 @@ One turn is one month. Everyone does their port business at the same time: trade
 | `tests/lender_test.py` | Checks Madam Wu's advice when a house borrows or repays: the tier follows the collectors' line, the lines take turns, the voice drops the amounts, and family wording. |
 | `tests/customs_test.py` | Checks the Port Authority: the desk on arrival, over-declaring, buyouts and buy-backs, the honest filing at month end, drifting rates and who reads her lines. |
 | `tests/voice_test.py` | Checks the cast and the voice layer against a pretend Inworld, so it runs offline. |
+| `tests/house_voice_test.py` | Checks the house voice: every rewritten line keeps its names, the voice reads the new lines without amounts, and family wording still gives the old ones. |

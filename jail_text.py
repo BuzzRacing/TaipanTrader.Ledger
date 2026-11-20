@@ -36,13 +36,24 @@ EN = {
     "e.plea_choice": "Choose to pay in full, 1 month or 3 months.",
     "e.plea_first": "Answer the warden about your fine first.",
     "e.jailed": "You are in the {port} gaol, Captain. Nothing can be done until you are released.",
+    "e.jail_not": "You are not in a cell, Captain.",
+    "m.jail_into": "The door shuts behind you. Your sentence starts when the month turns.",
+    "m.jail_serve": "You lie back on the straw and let the month go by.",
+    "m.jail_free": "Back to your ships, Captain.",
     # ---- the jail screen ------------------------------------------------------------------------------
     "jail.eyebrow": "The {port} gaol",
     "jail.title": "Locked up",
     "jail.month_of": "Month {n} of {months}",
     "jail.left": "{left} month{s} to go",
-    "jail.left_now": "Released when the month turns",
+    "jail.left_now": "Your last month: serve it and you walk free",
     "jail.starts": "Your sentence starts when the month turns",
+    "jail.arrested": "Arrested",
+    "jail.arrest_lead": "The irons go on. {months} month{s} in the {port} gaol.",
+    "jail.btn_into": "Into the cell",
+    "jail.btn_serve": "Serve the month",
+    "jail.btn_last": "Serve the last month",
+    "jail.served": "The month is passing...",
+    "jail.waiting": "Month served. Waiting for {names} to finish their month.",
     "jail.charge": "Charge",
     "jail.charge.standing": "Your name in this port fell to nothing",
     "jail.charge.hostile": "Arrested on sight in a Hostile port",
@@ -58,7 +69,16 @@ EN = {
     "jail.spoiled": "Spoiled in the hold so far: {goods}",
     "jail.quiet": "No word from the ship yet.",
     "jail.keeper": "{name}, {title}",
-    "jail.wait": "Your House is marked as sailed every month, so nobody waits for you.",
+    "jail.wait": "Each month passes when you tap. If you leave the screen, the months pass without you.",
+    # ---- the release card -----------------------------------------------------------------------------
+    "freed.eyebrow": "The {port} gaol",
+    "freed.title": "Free",
+    "freed.lead": "The cell door swings open. {months} month{s} served.",
+    "freed.drunk": "The crew drank {lost} of the silver aboard while you were inside.",
+    "freed.spoiled": "Spoiled in the hold: {goods}.",
+    "freed.clean": "The ship and the hold came through untouched.",
+    "freed.standing": "Your standing in {port} has been eased: the town has had its satisfaction.",
+    "freed.btn": "Walk free",
     "jail.fleet": "Your fleet waits at anchor in {port}. The bank is safe; silver aboard is not.",
     # ---- the plea deal popup --------------------------------------------------------------------------
     "plea.eyebrow": "The warden of {port}",
@@ -86,6 +106,7 @@ FAMILY = {
     "st.line.jail_drink": "Spent by the crew while jailed",
     "jail.drunk": "Spent by the crew so far: {lost}",
     "plea.note": "While you are inside, your fleet stays at anchor, the crew spends the silver aboard and perishable cargo spoils.",
+    "freed.drunk": "The crew spent {lost} of the silver aboard on shore leave while you were inside.",
 }
 
 # Spoken versions (cast.SAY): the warden says these without the numbers.
@@ -106,7 +127,9 @@ SAY = {
     "l.jail_release": "Off you go, Captain. Try not to come back.",
     "m.plea_paid": "Paid in full. You're free to go, Captain.",
     "m.plea_jail": "In you go, Captain. Mind your head.",
+    "m.jail_into": "In you go, Captain. Mind your head.",
+    "m.jail_free": "Off you go, Captain. Try not to come back.",
 }
 
 LOG_KEYS = [k for k in EN if k.startswith(("l.jail_", "l.plea_"))]
-WARDEN_KEYS = LOG_KEYS + ["m.plea_paid", "m.plea_jail", "e.plea_first", "e.jailed"]
+WARDEN_KEYS = LOG_KEYS + ["m.plea_paid", "m.plea_jail", "e.plea_first", "e.jailed", "m.jail_into", "m.jail_free"]

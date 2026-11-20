@@ -13,6 +13,7 @@ An empty speaker ("") keeps a line silent.
 import copy
 import re
 
+import house_voice
 import jail_cast
 import jail_text
 import strings
@@ -678,6 +679,12 @@ SAY_FAMILY = {
     "l.plundered": "They caught you and carried off cargo.",
     "l.seized": "Customs officers searched the fleet, took your {contraband} and fined you.",
 }
+
+# The house voice (house_voice.py): spoken versions of the rewritten lines. The spoken versions they
+# replace go with the old wording, now the family wording, so family-friendly voices keep their clips.
+house_voice.apply_say(SAY, SAY_FAMILY)
+for _k, _v in house_voice.family_gift_say(strings.FAMILY).items():
+    SAY_FAMILY.setdefault(_k, _v)
 
 
 def say_default(text, key):

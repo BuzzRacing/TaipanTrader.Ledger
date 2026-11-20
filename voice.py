@@ -34,6 +34,7 @@ import urllib.request
 from collections import OrderedDict
 
 import cast
+import house_voice
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.join(ROOT, "cache", "voice")
@@ -206,7 +207,7 @@ def synthesize(text, voice_id, model_id, rate=1.0, temperature=1.0, delivery="")
     if not voice_id:
         raise VoiceError("This character has no voice ID yet.")
     if delivery and steers(model_id):
-        text = "[{}] {}".format(" ".join(delivery.split())[:200], text)
+        text = "[{}] {}".format(" ".join(delivery.split())[:320], text)   # own note + house style
     payload = {
         "text": text,
         "voice_id": voice_id,
@@ -308,7 +309,8 @@ def _params(text, ch, vcfg):
     return {"text": speech_text(text), "voice_id": ch.get("voice_id", ""), "model_id": model,
             "rate": round(float(ch.get("speaking_rate", 1.0)), 3),
             "temperature": round(float(vcfg.get("temperature", 1.0)), 3),
-            "delivery": ch.get("delivery", "") if steers(model) else ""}
+            # The house style rides on every character's own note (house_voice.DELIVERY).
+            "delivery": house_voice.delivery(ch.get("delivery", "")) if steers(model) else ""}
 
 
 def clip_id(params):
@@ -433,6 +435,63 @@ def clear_cache():
 # screen, but are not read aloud unless voice.read_routine_log is on, so the log reads only the news.
 ROUTINE_LOG = frozenset({"l.sailed", "l.anchored", "l.anchor", "l.dues", "l.dues_short", "l.customs_paid"})
 
+# The Captain's Log on arrival (owner's decision, 19 Nov 2026): only a couple of lines are read aloud,
+# the highest ranked; the sea battle shows as one report and the standing moves as one line.
+LOG_MAX = 2            # lines read aloud per log (cfg voice.log_max overrides)
+VOICE_FLOOR = 50       # lines ranked below this are shown, never read
+BATTLE_OPEN = frozenset({"l.attack", "l.attack_met", "l.attack_noguns", "l.lord_found"})
+BATTLE_KEYS = BATTLE_OPEN | frozenset({
+    "l.spite", "l.tribute_paid", "l.parley_paid", "l.retreated", "l.sank_all", "l.outran", "l.long_fight",
+    "l.plundered", "l.hid_pirates", "l.prize", "l.prize_left", "l.damage", "l.guns_lost", "l.cannons_lost",
+    "l.cargo_shot", "l.ship_lost", "l.cargo_lost"})
+# How a fight ended, worst first: the first found names the report.
+BATTLE_VERDICTS = ["l.plundered", "l.retreated", "l.long_fight", "l.sank_all", "l.outran",
+                   "l.parley_paid", "l.tribute_paid"]
+VERDICT_DEFAULT = {
+    "l.plundered": "they boarded us and plundered the hold",
+    "l.retreated": "we broke away under fire, with cargo over the side",
+    "l.long_fight": "we sank some of them and the rest broke off",
+    "l.sank_all": "we sank every one of them",
+    "l.outran": "we outran them",
+    "l.parley_paid": "we paid them to let us pass",
+    "l.tribute_paid": "we paid her tribute and she let us pass",
+}
+STANDING_KEYS = frozenset({"l.band_up", "l.band_down", "l.band_drift"})
+STANDING_DEFAULT = {"up": "up in {port} ({tier})", "down": "down in {port} ({tier})",
+                    "drift": "settled in {port} ({tier})"}
+LOG_RANK = {
+    # The hot tip first, then the big losses and gains.
+    "l.registrar_hot_logged": 100, "l.officer_hot_logged": 100,
+    "l.bankrupt": 95, "l.wrecked": 95,
+    "l.customs_caught": 90, "l.seized": 90, "l.customs_bought": 85,
+    "log.battle": 80, "l.ship_lost": 80, "l.wh_robbed": 80, "l.robbed": 75, "l.slip_caught": 75,
+    "l.collectors": 75, "l.band_hostile": 75, "l.bankrupt_warn": 70, "l.contract_done": 70, "l.estate": 70,
+    "l.lord_found": 70,
+    # Worth hearing when nothing bigger happened.
+    "l.typhoon": 60, "l.storm": 55, "l.offcourse": 60, "l.cargo_lost": 60, "l.collectors_warn": 60,
+    "l.protect_lapsed": 60, "l.band_favoured": 60, "l.debt_capped": 55, "l.boom_spent": 55,
+    "l.driven_off": 55, "l.band_warned": 55, "l.band_lot": 55, "l.share_earned": 55,
+    "l.arrive": 55, "l.hid_customs": 50, "l.hid_desk": 50, "l.hid_bankrupt": 50, "l.protect_low": 50,
+    # Everything else (standing moves, dues, upkeep, sealed cargo, contracts missed ...) is shown only.
+    "log.standing": 10,
+    # Crew wages are never read aloud, monthly or yearly (owner's decision, 19 Nov 2026: too specific).
+    "l.upkeep_debt": 0, "l.yearly_upkeep": 0,
+}
+JAIL_RANK = {"l.jail_contraband": 90, "l.jail_debt": 90, "l.jail_desk": 90, "l.jail_hostile": 90,
+             "l.jail_slip": 90, "l.jail_standing": 90, "l.jail_bankrupt": 90, "l.jail_release": 60}
+_MONEY = re.compile(r"\$\s?([\d,]+)")
+
+
+def _biggest_sum(text):
+    """The largest silver amount in a line (to rank two equal lines: the bigger loss or gain first)."""
+    best = 0
+    for m in _MONEY.finditer(str(text)):
+        try:
+            best = max(best, int(m.group(1).replace(",", "")))
+        except ValueError:
+            pass
+    return best
+
 
 class Matcher:
     """Finds the wording key that produced a line of game text, and the names filled into it."""
@@ -444,7 +503,9 @@ class Matcher:
             parts = re.split(r"(\{\w+\})", tpl)
             literal = sum(len(p) for p in parts if not p.startswith("{"))
             names = [p[1:-1] for p in parts if p.startswith("{") and p.endswith("}")]
-            rx = "".join("(.+?)" if p.startswith("{") and p.endswith("}") else re.escape(p) for p in parts)
+            # {s} (the plural ending) is empty for one of a thing: "1 of your cannon" must match too.
+            rx = "".join(("(.*?)" if p == "{s}" else "(.+?)") if p.startswith("{") and p.endswith("}") else re.escape(p)
+                         for p in parts)
             try:
                 pats.append((literal, key, re.compile("^" + rx + "$", re.DOTALL), names))
             except re.error:
@@ -555,6 +616,109 @@ class Planner:
         if not self.ready():
             return None
         return self.line(text, "msg", port)
+
+    # ------------------------------------------------ the Captain's Log --
+    def _t(self, key, default, **kw):
+        tpl = self.text.get(key) or default
+        try:
+            return tpl.format(**kw)
+        except (KeyError, IndexError, ValueError):
+            return tpl
+
+    def compose_log(self, lines):
+        """The Captain's Log as the arrival screen shows it (19 Nov 2026): every sea-battle line of the
+        visit folded into one report, and the standing moves (band up / down / drift) into one line.
+        Returns [(text, key, fields)]; a folded entry has key "log.battle" or "log.standing".
+        The house's own log (journal, records) keeps the full breakdown; this is only the screen."""
+        lines = [str(x) for x in (lines or [])]
+        if not self.matcher:
+            return [(x, None, {}) for x in lines]
+        out, battle, stand, in_fight = [], None, None, False
+        for line in lines:
+            key, fields = self.matcher.match(line)
+            if key in BATTLE_OPEN or (in_fight and key in BATTLE_KEYS):
+                in_fight = True
+                if battle is None:
+                    battle = {"parts": [], "keys": []}
+                    out.append(battle)
+                battle["parts"].append(line.strip())
+                battle["keys"].append(key)
+                continue
+            in_fight = False
+            if key in STANDING_KEYS:
+                if stand is None:
+                    stand = {"parts": []}
+                    out.append(stand)
+                way = {"l.band_up": "up", "l.band_down": "down"}.get(key, "drift")
+                stand["parts"].append(self._t("log.standing_" + way, STANDING_DEFAULT[way],
+                                              port=fields.get("port", ""), tier=fields.get("tier", "")))
+                continue
+            out.append((line, key, fields))
+        shown = []
+        for e in out:
+            if e is battle:
+                text = self._t("log.battle_head", "Sea battle report:") + " " + " ".join(e["parts"])
+                shown.append((text, "log.battle", {"keys": e["keys"]}))
+            elif e is stand:
+                parts = e["parts"]
+                if len(parts) == 1:
+                    body = parts[0]
+                else:
+                    body = "; ".join(parts)
+                text = self._t("log.standing_head", "Word of your name:") + " " + body + "."
+                shown.append((text, "log.standing", {}))
+            else:
+                shown.append(e)
+        return shown
+
+    def _battle_said(self, keys):
+        """The short spoken version of the folded battle report: how it ended, no numbers."""
+        ends = [k for k in BATTLE_VERDICTS if k in keys]
+        end = ends[0] if ends else "l.attack"
+        verdict = self._t("log.battle_verdict." + end.split(".", 1)[1],
+                          VERDICT_DEFAULT.get(end, "the fleet fought them"))
+        said = self._t("log.battle_say", "Sea battle report, Captain: {verdict}.", verdict=verdict)
+        if "l.ship_lost" in keys:
+            said += " " + self._t("log.battle_ship_lost", "We lost a ship.")
+        return said
+
+    def captains_log(self, lines, port=None):
+        """(shown lines, voice plan) for the Captain's Log. Only a few lines are read aloud (19 Nov
+        2026): the top voice.log_max (default 2) by LOG_RANK, and only lines ranked at VOICE_FLOOR or
+        above, read in the order they appear. Hot tips, big losses and gains rank first; standing moves,
+        lost cannons and the like are shown but never read."""
+        shown = self.compose_log(lines)
+        texts = [t for t, _k, _f in shown]
+        if not self.ready():
+            return texts, None
+        v = self.cfg["voice"]
+        plan = [None] * len(shown)
+        if not v["read_log"]:
+            return texts, plan
+        try:
+            most = max(0, int(v.get("log_max", LOG_MAX)))
+        except (TypeError, ValueError):
+            most = LOG_MAX
+        ranked = []
+        for i, (text, key, fields) in enumerate(shown):
+            rank = LOG_RANK.get(key, 10) if key else 0
+            if key and key.startswith("l.jail_"):
+                rank = max(rank, JAIL_RANK.get(key, 10))
+            if rank < VOICE_FLOOR or (key in ROUTINE_LOG and not v.get("read_routine_log")):
+                continue
+            ranked.append((-rank, -_biggest_sum(text), i))
+        for _r, _amt, i in sorted(ranked):
+            if sum(1 for x in plan if x) >= most:
+                break
+            text, key, fields = shown[i]
+            if key == "log.battle":
+                cid = self._who("l.attack", port)
+                clip = self._clip(self._battle_said(fields["keys"]), cid) if cid else None
+            else:
+                clip = self.line(text, "log", port)
+            if clip:
+                plan[i] = clip
+        return texts, plan
 
     def public(self):
         """Settings the screens need: who is who, and what they read."""

@@ -86,3 +86,17 @@ body.in-jail #app { visibility: hidden; }
   .jl-opts { grid-template-columns: 1fr; }
   .jl-opt { min-height: 0; }
 }
+
+/* ---- pacing (19 Nov 2026): the arrest card, the "Serve the month" button and the release card -------- */
+.jl-lead-big { margin: .3rem 0 .2rem; font: 400 clamp(1.15rem, 2vw, 1.45rem)/1.35 var(--serif); color: #fff3d6; }
+.jl-act { margin: .7rem 0 .2rem; }
+.jl-go { min-width: 15rem; min-height: 3.2rem; padding: .7rem 1.6rem; border: 1px solid var(--deck-brass, #c9a34e);
+  border-radius: 4px; color: #fff3d6; cursor: pointer; font: 700 1.15rem/1.2 var(--sans); letter-spacing: .04em;
+  background: linear-gradient(#7b2428, #4d1518); box-shadow: 0 6px 24px #000a; transition: opacity .4s, transform .15s; }
+.jl-go:hover:not(:disabled) { transform: translateY(-1px); }
+.jl-go:disabled { opacity: .35; cursor: default; }
+.jl-go.free { background: linear-gradient(#a8853a, #6d531f); }
+.jl-waiting { margin: 0; font: italic 1.05rem/1.4 var(--sans); color: var(--brass-hi, #e8d3a0); animation: jl-pulse 2.4s ease-in-out infinite; }
+.jl-shade.freed { background: radial-gradient(ellipse at 50% 40%, #e8d3a022 0 30%, #0008 80%), linear-gradient(#0002, #0008); }
+.jl-card.freed { animation: jl-open .9s ease-out both; }
+@keyframes jl-open { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }

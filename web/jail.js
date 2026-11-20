@@ -6,9 +6,15 @@
      Nothing can be done from here; the House is marked "set sail" every month.
    - A big fine may be swapped for time: the plea popup offers pay it all, 1 month and a share, or
      3 months and a smaller share.
+   - Pacing (owner's decision, 19 Nov 2026, "Tap to serve each month"): the months used to turn on the
+     server's 3-second watcher and flashed by. Now the arrest card waits for "Into the cell", each month
+     for "Serve the month", and the release card for "Walk free" (back to the Port). Buttons arm after a
+     short pause so a stray tap can't skip a card before the warden has spoken.
    Reads the player screen's state (S.me.jail, S.me.plea) and is called from player.js render(). */
 const Jail = (() => {
   let screen = null, shownKey = null, dialog = null, dialogId = null, busy = false;
+  let stage = null, armedAt = 0, armTimer = null;
+  const ARM_MS = 2500;                       // a beat before a card's button can be pressed
 
   function castOf(cid) {
     const c = (typeof VS !== "undefined" && VS && VS.cast && VS.cast[cid]) || null;
@@ -64,8 +70,9 @@ const Jail = (() => {
           <figcaption>${who.name ? `<strong>${esc(who.name)}</strong><span>${esc(who.title || "")}</span>` : ""}</figcaption></figure>
         <div class="jl-body">
           <p class="jl-eyebrow">${te("jail.eyebrow", { port })}</p>
-          <h1 id="jl-title">${te("jail.title")}</h1>
-          <p class="jl-month">${j.fresh ? "" : te("jail.month_of", { n, months: j.months })}</p>
+          <h1 id="jl-title">${j.fresh ? te("jail.arrested") : te("jail.title")}</h1>
+          ${j.fresh ? `<p class="jl-lead-big">${te("jail.arrest_lead", { months: j.months, s: j.months === 1 ? "" : "s", port })}</p>`
+            : `<p class="jl-month">${te("jail.month_of", { n, months: j.months })}</p>`}
           <div class="jl-ticks">${bars}</div>
           <p class="jl-left">${counter}</p>
           <dl class="jl-charge"><dt>${te("jail.charge")}</dt>
@@ -74,26 +81,88 @@ const Jail = (() => {
           <h2>${te("jail.crew")}</h2>
           ${news.length ? `<p class="jl-news">${news.join("<br>")}</p>` : `<p class="jl-news quiet">${te("jail.quiet")}</p>`}
           ${log ? `<ul class="jl-log">${log}</ul>` : ""}
+          <div class="jl-act">${actButton(j)}</div>
           <p class="jl-foot">${te("jail.fleet", { port })}<br>${te("jail.wait")}</p>
         </div>
       </section>`;
   }
 
+  function armed() { return Date.now() - armedAt >= ARM_MS; }
+
+  function actButton(j) {
+    if (j.ready) {
+      const names = (S.waiting || []).filter(n => n !== S.me.name);
+      return `<p class="jl-waiting">${names.length ? te("jail.waiting", { names: esc(names.join(", ")) }) : te("jail.served")}</p>`;
+    }
+    const label = j.fresh ? te("jail.btn_into") : j.left <= 1 ? te("jail.btn_last") : te("jail.btn_serve");
+    return `<button type="button" class="jl-go" data-go="jail_serve"${armed() ? "" : " disabled"}>${label}</button>`;
+  }
+
+  /* ---- the release card -------------------------------------------------------------------- */
+  function drawFreed(f) {
+    const who = castOf(f.warden), port = portName(f.port), s = f.months === 1 ? "" : "s";
+    const lines = [];
+    if (f.drunk) lines.push(te("freed.drunk", { lost: money(f.drunk) }));
+    if (f.spoiled && Object.keys(f.spoiled).length) lines.push(te("freed.spoiled", { goods: esc(goodsText(f.spoiled)) }));
+    if (!lines.length) lines.push(te("freed.clean"));
+    const cell = cellUrl(f.port);
+    return `<div class="jl-bg"${cell ? ` style="background-image:url('${esc(cell)}')"` : ""}></div>
+      <div class="jl-shade freed"></div>
+      <section class="jl-card freed" role="dialog" aria-modal="true" aria-labelledby="jl-title">
+        <figure class="jl-warden">${wardenImg(f.warden, "jl-face")}
+          <figcaption>${who.name ? `<strong>${esc(who.name)}</strong><span>${esc(who.title || "")}</span>` : ""}</figcaption></figure>
+        <div class="jl-body">
+          <p class="jl-eyebrow">${te("freed.eyebrow", { port })}</p>
+          <h1 id="jl-title">${te("freed.title")}</h1>
+          <p class="jl-lead-big">${te("freed.lead", { months: f.months, s })}</p>
+          ${who.catchphrase ? `<blockquote>“${esc(who.catchphrase)}”</blockquote>` : ""}
+          <h2>${te("jail.crew")}</h2>
+          <p class="jl-news">${lines.join("<br>")}</p>
+          <p class="jl-news quiet">${te("freed.standing", { port })}</p>
+          <div class="jl-act"><button type="button" class="jl-go free" data-go="jail_free"${armed() ? "" : " disabled"}>${te("freed.btn")}</button></div>
+        </div>
+      </section>`;
+  }
+
+  async function press(btn) {
+    if (busy || !armed()) return;
+    busy = true;
+    btn.disabled = true;
+    const ok = await act(btn.dataset.go, {});
+    busy = false;
+    if (!ok && btn.isConnected) btn.disabled = false;
+  }
+
   function syncScreen() {
-    const j = S && S.me && S.phase !== "lobby" && S.me.jail && S.me.jail.jail;
-    document.body.classList.toggle("in-jail", !!j);
-    if (!j) {
-      if (screen) { screen.remove(); screen = null; shownKey = null; }
+    const jv = S && S.me && S.phase !== "lobby" && S.me.jail;
+    const j = jv && jv.jail;
+    const f = !j && jv && S.phase === "port" && jv.freed;       // the release card, until "Walk free"
+    document.body.classList.toggle("in-jail", !!(j || f));
+    if (!j && !f) {
+      if (screen) { screen.remove(); screen = null; shownKey = null; stage = null; }
       return;
     }
     if (!screen) {
       screen = document.createElement("div");
       screen.id = "jail-screen";
       screen.className = "jl-screen";
+      screen.addEventListener("click", e => {
+        const b = e.target.closest(".jl-go");
+        if (b && !b.disabled) press(b);
+      });
       document.body.appendChild(screen);
     }
-    const key = JSON.stringify([j, (S.me.log || []).slice(-4), S.turn, S.me.cash]);
-    if (key !== shownKey) { shownKey = key; screen.innerHTML = drawScreen(j); }
+    // each new card (arrest, each month, release) gets a fresh pause before its button arms
+    const now = j ? ["jail", j.fresh, j.served, j.months] : ["free", f.turn, f.port];
+    const nowKey = JSON.stringify(now);
+    if (nowKey !== stage) {
+      stage = nowKey;
+      armedAt = Date.now();
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => { shownKey = null; syncScreen(); }, ARM_MS + 50);
+    }
+    const key = JSON.stringify([j || f, (S.me.log || []).slice(-4), S.turn, S.me.cash, S.waiting, armed()]);
+    if (key !== shownKey) { shownKey = key; screen.innerHTML = j ? drawScreen(j) : drawFreed(f); }
   }
 
   /* ---- the plea deal ----------------------------------------------------------------------- */
