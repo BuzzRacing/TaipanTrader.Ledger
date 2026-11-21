@@ -59,7 +59,7 @@ TAKES = ["", "seen from a slightly different angle, turned three-quarters to the
          "a different pose, standing with one hand on her hip, seen from a little lower",
          "a different moment, her hair a little looser, the scene behind her at another hour of the day",
          "a different pose, both hands busy with the tools of her trade, looking up at the viewer"]
-BARE = re.compile(r"\b(nude|naked|nudity|topless|undressed|nipples?|breasts?|bare (skin|hips|belly|body|d.colletage)|"
+BARE = re.compile(r"\b(nude|naked|nudity|topless|undressed|nipples|breasts|vagina|ass|bottom|bare (skin|hips|belly|body|d.colletage)|"
                   r"shown openly|exposing|unashamed)\b", re.I)
 STYLE_MARKS = (", sensual private-release", ", romanticized")
 

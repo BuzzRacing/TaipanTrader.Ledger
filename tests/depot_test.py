@@ -95,6 +95,63 @@ def test_sell_back_for_half():
     assert refused(game, pid, {"type": "depot", "op": "sell"})          # the home warehouse is not for sale
 
 
+def test_rent_curve():
+    r = engine.depot_rent
+    assert [r(n) for n in range(5)] == [250, 750, 1500, 2500, 3750]
+
+
+def test_rent_is_charged_monthly_and_empty_pays_half():
+    game, pid, p = fresh()
+    f = R["fleet"]
+    game.act(pid, {"type": "depot", "op": "open"})
+    p["bank"], p["cash"], p["debt"] = 0, 100000.0, 0.0
+    game.s["turn"] = 0                                  # home is rent-free the first year; the away one is not
+    (rent,) = game.warehouse_rents(p)
+    assert rent["port"] == "shanghai" and rent["empty"] and rent["rent"] == f["rent_base"] * f["rent_empty_share"]
+    game._pay_warehouse_rent(p)
+    assert p["cash"] == 100000.0 - rent["rent"]
+    assert p["books"]["cur"]["wh_rent"] == -rent["rent"] and p["books"]["cur"]["depot"] == -f["depot_open_cost"]
+    p["depots"]["shanghai"]["goods"]["tea"] = 10
+    assert game.warehouse_rents(p)[0]["rent"] == f["rent_base"]          # stock in it: full rent
+    p["depots"]["shanghai"]["level"] = 2
+    assert game.warehouse_rents(p)[0]["rent"] == engine.depot_rent(2) == 1500
+    me = game.view(pid)["me"]
+    assert me["wh_rent"]["here"] == 1500 and me["wh_rent"]["total"] == 1500
+    assert me["wh_rent"]["more"] == engine.depot_rent(3) - 1500
+
+
+def test_home_rent_starts_after_the_free_year():
+    game, pid, p = fresh(port="hongkong")
+    f = R["fleet"]
+    p["wh"]["tea"] = 5
+    level = (f["warehouse_cap"] - f["depot_cap"]) // f["depot_expand_cap"]
+    game.s["turn"] = f["rent_home_free"] - 1
+    assert game.warehouse_rents(p) == []
+    assert game.view(pid)["me"]["wh_rent"]["home_free"] == 1
+    game.s["turn"] = f["rent_home_free"]
+    (rent,) = game.warehouse_rents(p)
+    assert rent["home"] and rent["rent"] == int(round(engine.depot_rent(level) * f["rent_home_share"]))
+    p["wh"].clear()
+    assert game.warehouse_rents(p)[0]["rent"] == int(round(engine.depot_rent(level) * f["rent_home_share"] * f["rent_empty_share"]))
+
+
+def test_unpaid_rent_goes_on_the_debt_and_selling_back_stops_it():
+    game, pid, p = fresh()
+    game.act(pid, {"type": "depot", "op": "open"})
+    game.s["turn"] = 0
+    p["cash"], p["bank"], p["debt"] = 0.0, 50.0, 1000.0
+    rent = game.warehouse_rents(p)[0]["rent"]
+    game._pay_warehouse_rent(p)
+    assert p["cash"] == 0 and p["bank"] == 0 and p["debt"] == 1000.0 + rent - 50
+    assert any("went on your debt" in line or "on your debt" in line for line in p["log"])
+    p["cash"] = 5000.0
+    game.act(pid, {"type": "depot", "op": "sell"})
+    assert game.warehouse_rents(p) == []
+    debt = p["debt"]
+    game._pay_warehouse_rent(p)
+    assert p["debt"] == debt
+
+
 def test_home_needs_no_rent():
     game, pid, p = fresh(port="hongkong")
     assert refused(game, pid, {"type": "depot", "op": "open"})

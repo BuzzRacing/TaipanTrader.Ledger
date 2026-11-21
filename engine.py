@@ -113,6 +113,14 @@ def depot_cap(level):
     return int(f.get("depot_cap", 1000)) + int(level) * int(f.get("depot_expand_cap", 1000))
 
 
+def depot_rent(level):
+    """Monthly rent of an away warehouse enlarged `level` times: rent_base, plus rent_step x 2 for the first
+    enlargement, x 3 for the next, and so on (250 base and 250 step: 250, 750, 1,500, 2,500, 3,750...)."""
+    f = R["fleet"]
+    n = max(0, int(level))
+    return int(round(float(f.get("rent_base", 250)) + float(f.get("rent_step", 250)) * n * (n + 3) / 2.0))
+
+
 def depot_refund(level):
     """What a port pays to take an away warehouse back: half of what opening and enlarging it costs."""
     f = R["fleet"]
@@ -500,15 +508,51 @@ class Game:
         port, f = p["port"], R["fleet"]
         store = self._store_here(p)
         offered = port_has(p, port, "warehouse")
+        rents = self.warehouse_rents(p)
         away = {k: {"goods": dict(d.get("goods", {})), "cap": depot_cap(d.get("level", 0))}
                 for k, d in depots_of(p).items()}
         return {"wh": dict(store["goods"]) if store else {}, "wh_cap": store["cap"] if store else 0,
                 "wh_here": "home" if store and store["home"] else "open" if store else "closed" if offered else "none",
                 "bank_here": port_has(p, port, "bank"),
+                "wh_rent": {"here": next((r["rent"] for r in rents if r["port"] == port), 0),
+                            "total": sum(r["rent"] for r in rents),
+                            "empty": any(r["port"] == port and r["empty"] for r in rents),
+                            "home_free": max(0, int(f.get("rent_home_free", 12)) - self.s["turn"]),
+                            "by_port": {r["port"]: {"rent": r["rent"], "empty": r["empty"]} for r in rents},
+                            "more": (depot_rent(store["depot"].get("level", 0) + 1) - depot_rent(store["depot"].get("level", 0)))
+                            if store and not store["home"] else 0},
                 "wh_home": dict(p["wh"]), "wh_away": away, "stored": {g: stored(p, g) for g in GOODS if stored(p, g)},
                 "depot_rules": {"open": int(f.get("depot_open_cost", 10000)), "cap": depot_cap(0),
                                 "expand": int(f.get("depot_expand_cost", 100000)), "add": int(f.get("depot_expand_cap", 1000)),
                                 "sell": depot_refund(store["depot"].get("level", 0)) if store and not store["home"] else 0}}
+
+    def warehouse_rents(self, p):
+        """Rent due at this month's end, one entry per warehouse: {"port", "rent", "empty", "home"}. The home
+        warehouse is rent-free until month rent_home_free and pays rent_home_share of the rate for its size;
+        an empty warehouse pays rent_empty_share of its rent."""
+        f = R["fleet"]
+        out = []
+        empty_share = float(f.get("rent_empty_share", 0.5))
+        home = home_of(p)
+        free = int(f.get("rent_home_free", 12))
+        stores = [(home, p["wh"], True)] + [(k, d.get("goods") or {}, False) for k, d in sorted(depots_of(p).items())]
+        for port, goods, is_home in stores:
+            if is_home:
+                if self.s["turn"] < free:
+                    continue
+                per = max(1, int(f.get("depot_expand_cap", 1000)))
+                level = max(0, (int(f.get("warehouse_cap", 10000)) - int(f.get("depot_cap", 1000))) // per)
+                rent = depot_rent(level) * float(f.get("rent_home_share", 0.5))
+            else:
+                d = depots_of(p).get(port) or {}
+                rent = depot_rent(d.get("level", 0))
+            empty = sum(goods.values()) <= 0
+            if empty:
+                rent *= empty_share
+            rent = int(round(rent))
+            if rent > 0:
+                out.append({"port": port, "rent": rent, "empty": empty, "home": is_home})
+        return out
 
     def firms(self):
         """Every house's position, for snapshots."""
@@ -1267,8 +1311,26 @@ class Game:
             p["debt"] += owed
         return owed
 
+    def _pay_warehouse_rent(self, p):
+        """Month end: rent for every warehouse the house keeps. Silver, then the bank, then the debt."""
+        free = int(R["fleet"].get("rent_home_free", 12))
+        if free and self.s["turn"] == free:
+            p["log"].append(tx("l.wh_rent_begins", port=PORTS[home_of(p)]["name"]))
+        rents = self.warehouse_rents(p)
+        total = sum(r["rent"] for r in rents)
+        if not total:
+            return
+        owed = self._charge(p, total)
+        self._book(p, "wh_rent", -total)
+        self._ev("finance", "wh_rent", "{}: warehouse rent {} for {} warehouse(s){}".format(
+            p["name"], money(total), len(rents), "; {} went on the debt".format(money(owed)) if owed else ""),
+            p, amount=total, owed=owed, ports={r["port"]: r["rent"] for r in rents})
+        if owed:
+            p["log"].append(tx("l.wh_rent_debt", cost=money(total), owed=money(owed)))
+
     def _pay_running_costs(self, p):
         """Month end: wages and upkeep for the fleet; in December the great house and patronages too."""
+        self._pay_warehouse_rent(p)
         wages = self.upkeep(p)
         if wages:
             owed = self._charge(p, wages)
@@ -1374,8 +1436,12 @@ class Game:
         over to the lender lowered the line faster than the debt)."""
         b = R["bank"]
         ships = sum(self.ship_value(sh) for sh in p["ships"])
-        return b["debt_warn_mult"] * (b["loan_base"] + b["loan_per_rep"] * self.earned_rep(p, home_of(p))
+        line = b["debt_warn_mult"] * (b["loan_base"] + b["loan_per_rep"] * self.earned_rep(p, home_of(p))
                                       + b["loan_asset_share"] * max(ships, 0))
+        # A rich house is given more rope (21 Nov 2026): the line is never less than debt_worth_share of
+        # net worth. Repaying from silver leaves net worth where it was, so it still always helps.
+        share = float(b.get("debt_worth_share", 0) or 0)
+        return max(line, share * self.worth(p)) if share > 0 else line
 
     def collectors(self, p):
         """The debt clock shown on the player screen: the line the collectors watch, and how many

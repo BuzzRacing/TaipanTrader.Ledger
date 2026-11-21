@@ -16,7 +16,7 @@ const Ambient = (() => {
   const root = document.createElement("div");
   root.id = "ambient";
   root.setAttribute("aria-hidden", "true");
-  root.innerHTML = '<div class="amb"></div><div class="amb"></div><div class="amb-grain"></div>';
+  root.innerHTML = '<div class="amb"></div><div class="amb"></div>';
   document.body.prepend(root);
   const layers = Array.from(root.querySelectorAll(".amb"));
   const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -83,7 +83,8 @@ const Ambient = (() => {
   return {
     /* list: [{id, u, t, w}] — the pictures that suit what is on screen now. */
     set(list) {
-      list = (list || []).filter(i => i && i.u);
+      // Still pictures only: looping video backgrounds keep the GPU decoding all session.
+      list = (list || []).filter(i => i && i.u && i.t !== "video");
       const k = list.map(i => i.id).join("|");
       if (k === key) return;
       key = k;

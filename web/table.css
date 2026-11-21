@@ -24,8 +24,7 @@ body.harbor-view > .loading { color: #f1e3c5; }
 /* Lamplight: bright over the board, falling away to the table's edge, with a slow flicker. */
 .hv-lamp {
   position: absolute; inset: 0; pointer-events: none; z-index: 30;
-  background: radial-gradient(ellipse 70% 78% at 40% 44%, rgba(255, 214, 140, .10), transparent 46%, rgba(8, 4, 2, .62) 100%);
-  animation: hv-flicker 7s ease-in-out infinite;
+  background: radial-gradient(ellipse 70% 78% at 40% 44%, rgba(255, 214, 140, .10), transparent 46%, rgba(8, 4, 2, .45) 100%);
 }
 @keyframes hv-flicker { 0%, 100% { opacity: 1; } 23% { opacity: .93; } 31% { opacity: .98; } 58% { opacity: .9; } 77% { opacity: .97; } }
 
@@ -57,7 +56,7 @@ body.harbor-view > .loading { color: #f1e3c5; }
 
 /* Water that never sits still: slow light drifting over the sea. */
 .hv-water, .hv-shadows { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.hv-water { mix-blend-mode: soft-light; }
+.hv-water { display: none; }   /* the blurred, blended drift made a hard-edged dark band in Firefox */
 .hv-water i {
   position: absolute; width: 900px; height: 520px; border-radius: 50%; filter: blur(60px);
   background: radial-gradient(closest-side, rgba(255, 255, 255, .75), transparent);
@@ -70,7 +69,7 @@ body.harbor-view > .loading { color: #f1e3c5; }
 /* Cloud shadows crossing the whole board. */
 .hv-shadows i {
   position: absolute; width: 620px; height: 330px; border-radius: 50%; filter: blur(46px);
-  background: rgba(10, 16, 22, .22); animation: hv-cloud 140s linear infinite;
+  background: rgba(10, 16, 22, .22); animation: none;
 }
 .hv-shadows i:nth-child(1) { top: 60px; left: -700px; }
 .hv-shadows i:nth-child(2) { top: 430px; left: -700px; width: 480px; height: 250px; animation-duration: 190s; animation-delay: -80s; }
@@ -87,7 +86,7 @@ body.harbor-view > .loading { color: #f1e3c5; }
 }
 .hv-title .rose circle { fill: none; stroke: #5d4423; stroke-width: 1.4; }
 .hv-title .rose .pt { fill: rgba(93, 68, 35, .55); }
-.hv-title .rose .needle { fill: var(--ox); transform-origin: 0 0; animation: hv-needle 9s ease-in-out infinite; }
+.hv-title .rose .needle { fill: var(--ox); transform-origin: 0 0; animation: none; }
 @keyframes hv-needle { 0%, 100% { transform: rotate(-3deg); } 40% { transform: rotate(4deg); } 65% { transform: rotate(-1.5deg); } }
 .hv-title h1 { position: relative; margin: 0; line-height: 1; font-size: 54px; filter: drop-shadow(0 2px 3px rgba(255, 248, 225, .85)); }
 .hv-title h1 img.logo { display: block; width: 100%; height: auto; max-height: 190px; object-fit: contain; }
@@ -102,9 +101,9 @@ body.harbor-view > .loading { color: #f1e3c5; }
 #hv-sky .sea-wx { font: 800 15px var(--sans); fill: var(--jade); }
 #hv-sky .wx2 .sea-wx { fill: #8a5208; }
 #hv-sky .wx3 .sea-wx { fill: var(--vermilion); }
-#hv-sky .glint { fill: #fff; opacity: 0; animation: hv-glint 5s ease-in-out infinite; }
+#hv-sky .glint { fill: #fff; opacity: 0; animation: none; }
 @keyframes hv-glint { 0%, 100% { opacity: 0; } 50% { opacity: .85; } }
-#hv-sky .cloud { fill: rgba(70, 80, 92, .5); filter: blur(5px); animation: hv-cloudbob 14s ease-in-out infinite alternate; }
+#hv-sky .cloud { fill: rgba(70, 80, 92, .5); filter: blur(5px); animation: none; }
 #hv-sky .wx3 .cloud { fill: rgba(40, 44, 58, .62); }
 @keyframes hv-cloudbob { from { transform: translateX(-16px); } to { transform: translateX(18px); } }
 #hv-sky .rain { stroke: rgba(40, 60, 84, .75); stroke-width: 1.6; stroke-linecap: round; animation: hv-rain .8s linear infinite; }
@@ -116,7 +115,7 @@ body.harbor-view > .loading { color: #f1e3c5; }
 /* Pieces on the board. */
 #hv-pieces .piece { transition: transform 2.8s cubic-bezier(.45, 0, .2, 1); }
 #hv-pieces .piece.new { transition: none; }
-#hv-pieces .bob { animation: hv-bob 4.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+#hv-pieces .bob { animation: none; transform-box: fill-box; transform-origin: center; }
 @keyframes hv-bob { 0%, 100% { transform: translateY(-1.2px) rotate(-1.6deg); } 50% { transform: translateY(1.2px) rotate(1.6deg); } }
 #hv-pieces .hull { stroke: #fff6dc; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(1.5px 3px 1.5px rgba(0, 0, 0, .55)); }
 #hv-pieces .hull.behind { stroke: rgba(255, 246, 220, .75); stroke-width: 1.1; }
@@ -269,3 +268,48 @@ body.harbor-view > .loading { color: #f1e3c5; }
 @media (prefers-reduced-motion: reduce) {
   .hv-lamp, .hv-water i, .hv-shadows i, #hv-sky *, #hv-pieces .bob, .hv-title .needle, #hv-pieces .ready-ring, #hv-pieces .ban circle { animation: none !important; }
 }
+
+/* captains slice: painted ships, home-port flags (spectator feed) */
+#hv-pieces .piece .painted { filter: drop-shadow(0 3px 3px rgba(0,0,0,.35)); }
+#hv-pieces .piece .painted.hurt { filter: saturate(.55) drop-shadow(0 3px 3px rgba(0,0,0,.35)); }
+#hv-pieces .piece .berth { opacity: .2; filter: blur(3px); }
+#hv-pieces .piece .pennant { stroke: #f5e6bf; stroke-width: 1.5; }
+.hv-board .home .pole { stroke: #f5e6bf; stroke-width: 2.2; }
+.hv-board .home .flag { stroke: #f5e6bf; stroke-width: 1.2; }
+.hv-board .home .disc { stroke: #f5e6bf; stroke-width: 3; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.hv-board .home .anchor { stroke: #f5e6bf; stroke-width: 2.6; fill: none; stroke-linecap: round; }
+.hv-board .home .home-tag { fill: #f5e6bf; font: 800 15px var(--serif); text-anchor: middle; paint-order: stroke; stroke: rgba(20,10,4,.85); stroke-width: 4px; letter-spacing: .06em; text-transform: uppercase; }
+.hv-mat .fleet .homeline { display: block; font-size: 20px; opacity: .85; margin-top: 2px; }
+
+/* ports slice: share rings and stock-board cards */
+#hv-ports .share-ring .seg { fill: none; stroke-width: 5; stroke-linecap: butt; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.55)); }
+#hv-ports .share-ring .seg.empty { stroke: rgba(40, 24, 12, .28); stroke-width: 3; filter: none; }
+#hv-ports .share-ring .seg.fresh { stroke-dasharray: 40; animation: hv-sweep 1.4s ease-out both; }
+@keyframes hv-sweep { from { stroke-dashoffset: 40; opacity: .2; } to { stroke-dashoffset: 0; opacity: 1; } }
+#hv-ports .pcard rect { fill: rgba(22, 13, 7, .88); stroke: #c9a34e; stroke-width: 1.4; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
+#hv-ports .pcard .g { font: 700 11.5px var(--serif); fill: #f1e3c5; }
+#hv-ports .pcard .v { font: 800 11.5px var(--sans); fill: #ffe9a8; text-anchor: end; }
+#hv-ports .pcard .arr { stroke: none; }
+#hv-ports .pcard .arr.up { fill: #5fd08a; } #hv-ports .pcard .arr.down { fill: #ff7a6b; }
+#hv-ports .pcard .arr.flat { fill: none; stroke: #b9a98a; stroke-width: 2; }
+#hv-ports .pcard .row.tick-up .v { animation: hv-tick-up 1.6s ease-out; }
+#hv-ports .pcard .row.tick-down .v { animation: hv-tick-down 1.6s ease-out; }
+@keyframes hv-tick-up { 0% { fill: #5fd08a; } 100% { fill: #ffe9a8; } }
+@keyframes hv-tick-down { 0% { fill: #ff7a6b; } 100% { fill: #ffe9a8; } }
+
+/* activity slice: the camera pushes in on a big deal; the Mayor speaks it */
+#hv-world { position: absolute; inset: 0; transform-origin: 0 0; transition: transform 1.7s cubic-bezier(.45, 0, .2, 1); will-change: transform; }
+.hv-popup { position: absolute; z-index: 20; width: 470px; min-height: 180px; display: flex; gap: 16px; padding: 14px 18px 14px 14px; box-sizing: border-box;
+  border-radius: 10px; background: linear-gradient(160deg, rgba(48, 28, 14, .96), rgba(24, 13, 7, .97)); border: 2px solid #c9a34e;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .65), inset 0 0 0 1px rgba(255, 233, 168, .18); opacity: 0; transform: translateY(10px) scale(.97);
+  transition: opacity .6s .9s, transform .6s .9s; pointer-events: none; }
+.hv-popup.show { opacity: 1; transform: none; }
+.hv-popup .mayor { flex: none; width: 128px; height: 168px; border-radius: 6px; overflow: hidden; background: #2a1b12; box-shadow: 0 0 0 2px rgba(241, 227, 197, .55); display: grid; place-items: center; }
+.hv-popup .mayor img { width: 100%; height: 100%; object-fit: cover; }
+.hv-popup .mayor b { font: 400 56px var(--serif); color: #c9a34e; }
+.hv-popup .say { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.hv-popup .who { font: 800 15px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: #c9a34e; }
+.hv-popup .line { margin: 6px 0 8px; font: 700 25px/1.25 var(--serif); color: #f6ead0; }
+.hv-popup .amt { font: 800 34px var(--sans); color: #ffe9a8; }
+.hv-popup .amt.out { color: #ff9d8e; }
+.hv-popup .amt.in { color: #7fe0a1; }

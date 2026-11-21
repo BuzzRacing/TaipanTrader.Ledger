@@ -154,7 +154,7 @@ DEFAULTS = {
                    "runs_chance": 0.15, "runs_min": 2, "runs_max": 4, "runs_drift_min": 0.15, "runs_drift_max": 0.35,
                    "review4_v1": False},
         "bank": {"bank_rate": 0.01, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
-                 "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_rep_penalty": 1,
+                 "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_worth_share": 0.08, "debt_rep_penalty": 1,
                  "debt_grace_months": 3, "debt_call_every": 3,
                  "debt_cap_mult": 3.0, "bankrupt_enabled": True, "bankrupt_months": 12, "bankrupt_warn": 3,
                  "bankrupt_stake": 2000, "bankrupt_rep": 10, "wu_advice": True, "wu_easy_share": 0.25,
@@ -170,7 +170,14 @@ DEFAULTS = {
                   # Weapons take cargo space (19 Nov 2026): units of a ship's hold each gun / cannon takes.
                   "gun_hold": 5, "cannon_hold": 10,
                   "warehouse_cap": 10000, "depot_open_cost": 10000, "depot_cap": 1000,
-                  "depot_expand_cost": 100000, "depot_expand_cap": 1000, "repair_base": 6, "repair_price_div": 4000,
+                  "depot_expand_cost": 100000, "depot_expand_cap": 1000,
+                  # Monthly warehouse rent (owner's decisions, 21 Nov 2026; engine.depot_rent / Game.warehouse_rents).
+                  # An away warehouse pays rent_base; each enlargement adds rent_step more than the one before
+                  # (rent_base 250, rent_step 250: 250, 750, 1,500, 2,500, 3,750...). The home warehouse is rated as
+                  # if it had been enlarged to its size and pays rent_home_share of that, from month rent_home_free.
+                  # An empty warehouse pays rent_empty_share of its rent.
+                  "rent_base": 250, "rent_step": 250, "rent_empty_share": 0.5, "rent_home_share": 0.5,
+                  "rent_home_free": 12, "repair_base": 6, "repair_price_div": 4000,
                   "repair_noyard": 1.3, "repair_rep_discount": 0.2, "ship_rep": 2,
                   # Crew wages and upkeep (Game 3 review, 19 Nov 2026), paid every month: upkeep_rate of each
                   # ship's price plus upkeep_gun for each gun or cannon, times (1 + upkeep_rank for each rank
@@ -860,6 +867,9 @@ SECTIONS = [
              F("rules.bank.debt_warn_mult", "Collectors call when debt passes (x limit)", "num",
                "The limit here is the loan limit without silver or bank: base, home standing and the share of "
                "ship value. Repaying always brings the debt closer to this line.", min=1, max=100, step=0.1),
+             _pct("rules.bank.debt_worth_share", "Collectors' line is never less than (share of net worth)",
+                  "A rich house is given more rope: the line is the larger of the limit above or this share of net "
+                  "worth. The debt cap follows it. 0 = the old line only.", 0, 1),
              F("rules.bank.debt_grace_months", "Grace period before the first call (months)", "int",
                "Months in a row over the line before the collectors first call.", min=0, max=120),
              F("rules.bank.debt_call_every", "Then they call every (months)", "int", min=1, max=120),
@@ -931,6 +941,14 @@ SECTIONS = [
              F("rules.fleet.depot_cap", "Away warehouse: space when opened (units)", "int", min=0, max=10**8),
              F("rules.fleet.depot_expand_cost", "Away warehouse: price to enlarge", "int", min=0, max=10**9),
              F("rules.fleet.depot_expand_cap", "Away warehouse: space added each time (units)", "int", min=1, max=10**8),
+             F("rules.fleet.rent_base", "Warehouse rent: monthly rent of a plain away warehouse", "int",
+               "Taken from silver aboard, then the bank; whatever is left goes on the debt. Shown in the accounts.", min=0, max=10**9),
+             F("rules.fleet.rent_step", "Warehouse rent: each enlargement adds this much more than the one before", "int",
+               "With 250: the first enlargement adds 500, the next 750, then 1,000, and so on.", min=0, max=10**9),
+             _pct("rules.fleet.rent_empty_share", "Warehouse rent: share paid while the warehouse is empty", "", 0, 1),
+             _pct("rules.fleet.rent_home_share", "Warehouse rent: share of the away rate paid by the home warehouse", "The home warehouse is rated as if it had been enlarged to its size.", 0, 1),
+             F("rules.fleet.rent_home_free", "Warehouse rent: months the home warehouse is rent-free at the start", "int",
+               "Lets a new captain get going. 0 means home pays from the first month.", min=0, max=1200),
              F("rules.fleet.ship_rep", "Standing gained by buying a ship", "num", min=0, max=100, step=0.5)]},
          {"title": "Crew wages and upkeep", "fields": [
              F("rules.fleet.upkeep_enabled", "Ships cost wages and upkeep every month", "bool",

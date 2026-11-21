@@ -10,9 +10,23 @@ const T_FALLBACK = {
   "table.title": "Harbor View",
   "table.gazette": "The Gazette",
   "table.fleet": "Fleet · {n}",
+  "table.fleet_label": "Ships in fleet",
   "table.writing": "Writing orders…",
   "table.at": "At {port}",
   "table.jailed": "In jail at {port}",
+  "table.home": "Home",
+  "table.mayor": "Mayor of {port}",
+  "act.buy": "{firm} buys {qty} {good}.",
+  "act.sell": "{firm} sells {qty} {good}.",
+  "act.bank_out": "{firm} puts its silver in the bank.",
+  "act.bank_in": "{firm} draws its silver from the bank.",
+  "act.loan_in": "{firm} borrows against the House.",
+  "act.loan_out": "{firm} pays down its debt.",
+  "act.shares_out": "{firm} buys shares in our port.",
+  "act.shares_in": "{firm} sells its shares in our port.",
+  "act.estate_out": "{firm} builds a great house here.",
+  "act.estate_in": "{firm} sells its great house.",
+  "table.home_port": "Home port: {port}",
 };
 
 let D = null, S = null, reloading = false, retryInfo, VS = {}, newsSeen = null, newsShown = new Set();
@@ -43,55 +57,6 @@ function fitStage() {
 window.addEventListener("resize", fitStage);
 fitStage();
 
-/* ---------------------------------------------------------- month track -- */
-/* A point f (0..1) of the way round the rim, clockwise from the top-left corner. */
-function rimPoint(f) {
-  const x0 = 15, y0 = 15, w = 1370, h = 834, P = 2 * (w + h);
-  let d = ((f % 1) + 1) % 1 * P;
-  if (d <= w) return { x: x0 + d, y: y0, nx: 0, ny: 1, side: 0 };
-  d -= w;
-  if (d <= h) return { x: x0 + w, y: y0 + d, nx: -1, ny: 0, side: 1 };
-  d -= h;
-  if (d <= w) return { x: x0 + w - d, y: y0 + h, nx: 0, ny: -1, side: 2 };
-  d -= w;
-  return { x: x0, y: y0 + h - d, nx: 1, ny: 0, side: 3 };
-}
-
-function drawTrack() {
-  const years = Math.max(1, S.years || 1), total = years * 12;
-  const turn = Math.max(0, S.turn || 0);
-  const m = /(\d{4})/.exec(S.date || "");
-  const firstYear = m ? Number(m[1]) - Math.floor(turn / 12) : 0;
-  const every = Math.ceil(years / 12);
-  const key = [years, firstYear, Math.min(turn, total)].join(":");
-  const out = [];
-  const months = total <= 240;
-  for (let i = 0; i < total; i++) {
-    const isYear = i % 12 === 0;
-    if (!isYear && !months) continue;
-    const p = rimPoint(i / total), len = isYear ? 13 : 6;
-    const ax = p.x - p.nx * 13, ay = p.y - p.ny * 13;
-    out.push(`<line class="tick${isYear ? " year" : ""}${i < turn ? " done" : ""}" x1="${ax}" y1="${ay}" x2="${ax + p.nx * len}" y2="${ay + p.ny * len}"/>`);
-    if (isYear && (i / 12) % every === 0) {
-      const label = firstYear ? firstYear + i / 12 : i / 12 + 1;
-      const rot = p.side === 1 ? 90 : p.side === 3 ? -90 : 0;
-      const tx = p.x + (p.side === 0 ? 5 : p.side === 2 ? -5 : p.nx * 5), ty = p.y + (p.side === 1 ? 5 : p.side === 3 ? -5 : p.ny * 5);
-      out.push(`<text transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) rotate(${rot})" text-anchor="${p.side === 2 ? "end" : "start"}" dy="${p.side === 0 ? 9 : p.side === 2 ? 0 : 4}">${label}</text>`);
-    }
-  }
-  const at = rimPoint(Math.min(turn, total - .001) / total);
-  const track = document.getElementById("hv-track");
-  if (previous.get("hv-track-ticks") !== key) {
-    previous.set("hv-track-ticks", key);
-    const marker = track.querySelector(".marker");
-    track.innerHTML = out.join("") + `<g class="marker"><circle r="12"/><path d="M0 -6 L5 0 L0 6 L-5 0Z"/></g>`;
-    if (marker) track.querySelector(".marker").style.transform = marker.style.transform;   // step from where it was
-  }
-  requestAnimationFrame(() => {
-    track.querySelector(".marker").style.transform = `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px)`;
-  });
-}
-
 /* --------------------------------------------------------------- the sky -- */
 function drawSky() {
   const out = [];
@@ -112,8 +77,9 @@ function drawSky() {
       art = [[-34, -30], [8, -42], [36, -24], [-8, -18]].map(([dx, dy], i) =>
         `<path class="glint" style="animation-delay:${(i * 1.2).toFixed(1)}s" transform="translate(${dx} ${dy})" d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3Z"/>`).join("");
     }
-    out.push(`<g class="wx${lvl}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">${art}` +
-      `<text class="sea-wx" y="4">${esc(D.weather[lvl])}</text><text class="sea-name" y="21">${esc(reg.name)}</text></g>`);
+    out.push(`<g class="wx${lvl}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g transform="scale(1.7)">${art}</g>` +
+      `<rect class="plaque" x="-92" y="6" width="184" height="62" rx="9"/>` +
+      `<text class="sea-wx" y="38">${esc(D.weather[lvl])}</text><text class="sea-name" y="59">${esc(reg.name)}</text></g>`);
   }
   update("hv-sky", out.join(""));
 }
@@ -124,6 +90,73 @@ const SAILS = '<path class="deck" d="M0 -11 C4 -6 4.5 5 3 11 L-3 11 C-4.5 5 -4 -
   '<rect class="sail" x="-10" y="-7" width="20" height="5.5" rx="1.5"/><rect class="sail" x="-9" y="3" width="18" height="5" rx="1.5"/>';
 const pieces = new Map();      // player id -> { g, x, y, port, heading }
 
+/* The spectator feed (/api/table, harbor_view.py): each house's Captain, home port and ship classes.
+   Fetched again whenever the month, the phase or a fleet's size changes. */
+let TV = null, tvKey = "", tvBusy = false, tvTimer = null;
+function refreshTable() {
+  if (!S || tvBusy) return;
+  const key = [S.game_id, S.turn, S.phase, S.players.map(p => p.id + ":" + p.ships + ":" + p.port).join(","),
+    TV && TV.level === "open" ? Math.floor(Date.now() / 2500) : ""].join("|");   // prices tick: ask again every few seconds
+  if (key === tvKey) {      // nothing new yet: look again shortly, so a deal made just after a read is not missed
+    if (TV && TV.level === "open" && !tvTimer) tvTimer = setTimeout(() => { tvTimer = null; refreshTable(); }, 2600);
+    return;
+  }
+  tvBusy = true; tvKey = key;
+  let failed = false;
+  fetch("/api/table").then(r => r.json()).then(r => { if (r && r.ok) { TV = r; handleActivity(r.activity || []); render(); } })
+    .catch(() => { failed = true; tvKey = ""; setTimeout(refreshTable, 5000); })
+    .finally(() => { tvBusy = false; if (!failed) refreshTable(); });
+}
+const houseOf = p => (TV && TV.houses && TV.houses[p.id]) || null;
+
+/* A painted ship piece (Media Library > Ships, role "topdown", on white so it lifts off the chart), or "". */
+function shipArt(type) {
+  const item = Media.choose("ship", [type], "topdown", { mode: "fixed", strict: true });
+  return item && item.t === "image" ? cutout(item.u) : "";
+}
+
+/* The pictures are painted on plain white. Lift the ship off it in the browser: the white that touches the
+   picture's edge becomes clear (inner white, such as sails, stays), and the result is kept. "" until ready. */
+const cutouts = new Map();       // url -> data URL, or "" while loading / if it cannot be made
+function cutout(url) {
+  if (!url) return "";
+  if (cutouts.has(url)) return cutouts.get(url);
+  cutouts.set(url, "");
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const W = 360, c = document.createElement("canvas");
+      c.width = c.height = W;
+      const x = c.getContext("2d", { willReadFrequently: true });
+      x.drawImage(img, 0, 0, W, W);
+      const d = x.getImageData(0, 0, W, W), px = d.data, gone = new Uint8Array(W * W), stack = [];
+      const white = i => px[i * 4] > 226 && px[i * 4 + 1] > 226 && px[i * 4 + 2] > 226;
+      const seed = i => { if (!gone[i] && white(i)) { gone[i] = 1; stack.push(i); } };
+      for (let k = 0; k < W; k++) { seed(k); seed((W - 1) * W + k); seed(k * W); seed(k * W + W - 1); }
+      while (stack.length) {
+        const i = stack.pop(), cx = i % W, cy = (i - cx) / W;
+        if (cx > 0) seed(i - 1);
+        if (cx < W - 1) seed(i + 1);
+        if (cy > 0) seed(i - W);
+        if (cy < W - 1) seed(i + W);
+      }
+      for (let i = 0; i < W * W; i++) {
+        if (gone[i]) px[i * 4 + 3] = 0;
+        else if ((i % W && gone[i - 1]) || (i % W < W - 1 && gone[i + 1]) || (i >= W && gone[i - W]) || (i < W * (W - 1) && gone[i + W])) {
+          px[i * 4 + 3] = Math.min(px[i * 4 + 3], 150);          // soften the rim
+        }
+      }
+      x.putImageData(d, 0, 0);
+      cutouts.set(url, c.toDataURL("image/png"));
+      for (const rec of pieces.values()) rec.mark = "";        // draw the pieces again with the lifted pictures
+      render();
+    } catch (e) { console.warn("Could not lift ship picture", e); }
+  };
+  img.crossOrigin = "anonymous";
+  img.src = url;
+  return "";
+}
+
 function seatAt(port, index, count) {
   const p = D.ports[port];
   if (!p) return { x: TITLE_AT.x, y: 560 };
@@ -131,7 +164,28 @@ function seatAt(port, index, count) {
   return { x: p.x + side * 40, y: p.y + (index - (count - 1) / 2) * 34 };
 }
 
+function paintedMarkup(p, fleet) {
+  const col = colorOf(p), size = 92;
+  const shown = fleet.slice(0, 4).map(sh => ({ sh, u: shipArt(sh.type) }));
+  if (!shown.some(x => x.u)) return "";
+  let out = `<ellipse class="berth" rx="26" ry="38" fill="${col}"/>`;
+  for (let i = shown.length - 1; i >= 0; i--) {
+    const { sh, u } = shown[i];
+    if (!u) continue;
+    out += `<image class="painted${sh.crippled || sh.hull < .5 ? " hurt" : ""}" href="${u}" x="${-size / 2 + i * 9}" y="${-size / 2 + i * 6}" width="${size}" height="${size}"/>`;
+  }
+  return `<g class="turn"><g class="bob">${out}<circle class="pennant" cx="0" cy="-38" r="5" fill="${col}"/></g></g>` +
+    `<circle class="ready-ring" r="30"/>` +
+    ((p.ships || 0) > 1 ? `<text class="count" x="24" y="-20">×${p.ships}</text>` : "") +
+    `<text class="tag" y="46">${esc(p.firm)}</text>`;
+}
+
 function pieceMarkup(p) {
+  const house = houseOf(p);
+  if (house && house.ships && house.ships.length) {
+    const painted = paintedMarkup(p, house.ships);
+    if (painted) return painted;
+  }
   const n = Math.max(1, Math.min(5, p.ships || 1)), col = colorOf(p);
   let behind = "";
   for (let i = n - 1; i >= 1; i--) behind += `<path class="hull behind" fill="${col}" transform="translate(${i * 5} ${i * 3.5})" d="${HULL}"/>`;
@@ -146,8 +200,8 @@ function drawPieces(fighting) {
   const layer = document.getElementById("hv-pieces");
   let fleet = layer.querySelector("#hv-fleet");
   if (!fleet) {
-    layer.innerHTML = '<g id="hv-marks"></g><g id="hv-fleet"></g>';
-    previous.delete("hv-marks");
+    layer.innerHTML = '<g id="hv-ports"></g><g id="hv-marks"></g><g id="hv-fleet"></g>';
+    previous.delete("hv-marks"); previous.delete("hv-ports");
     fleet = layer.querySelector("#hv-fleet");
   }
   const byPort = {};
@@ -194,6 +248,22 @@ function drawPieces(fighting) {
       `<path d="M-5 1 v-3 a5 5 0 0 1 10 0 v3 M-7 1 h14 v8 h-14z"/>` +
       (cargo ? `<text y="33">${esc(cargo)}</text>` : "") + `</g>`);
   }
+  // Each house's home port wears its flag: a ring in the house colour with its crest (or an anchor).
+  const homes = {};
+  for (const p of S.players) { const h = houseOf(p); if (h && D.ports[h.home]) (homes[h.home] = homes[h.home] || []).push(p); }
+  for (const key of Object.keys(homes)) {
+    const port = D.ports[key], list = homes[key];
+    list.forEach((p, i) => {
+      const col = colorOf(p), crest = Faces.of(p).crest, id = "hv-home-" + String(p.id).replace(/\W/g, "");
+      const dx = (i - (list.length - 1) / 2) * 44, side = port.label_left ? 1 : -1;
+      marks.push(`<g class="home" transform="translate(${(port.x + side * 4 + dx).toFixed(1)} ${(port.y + (port.y < 90 ? 48 : -40)).toFixed(1)})">` +
+        `<path class="pole" d="M0 22 V-8"/><path class="flag" fill="${col}" d="M0 -8 H26 L20 0 L26 8 H0Z"/>` +
+        `<circle class="disc" r="17" fill="${col}"/>` +
+        (crest ? `<clipPath id="${id}"><circle r="14"/></clipPath><image href="${esc(crest)}" x="-14" y="-14" width="28" height="28" clip-path="url(#${id})"/>`
+          : `<path class="anchor" d="M0 -9 V9 M-7 3 Q0 12 7 3 M-5 -4 H5"/>`) +
+        `<text class="home-tag" y="36">${te("table.home")}</text></g>`);
+    });
+  }
   const byName = {};
   for (const k of Object.keys(D.ports)) byName[D.ports[k].name] = k;
   (fighting || []).forEach((fight, f) => {
@@ -214,26 +284,111 @@ function drawPieces(fighting) {
   if (previous.get("hv-marks") !== html) { previous.set("hv-marks", html); layer.querySelector("#hv-marks").innerHTML = html; }
 }
 
-/* -------------------------------------------------------------- the mats -- */
-function coins(worth) {
-  const n = worth > 0 ? Math.max(1, Math.min(45, Math.round((Math.log10(worth) - 2) * 7))) : 0;
-  let html = "";
-  for (let s = 0; s * 9 < n; s++) {
-    let stack = "";
-    for (let k = 0; k < Math.min(9, n - s * 9); k++) {
-      const gold = s * 9 + k >= 28;
-      stack += `<i class="coin${gold ? " gold" : ""}" style="top:${-k * 3}px;left:${-k}px;animation-delay:${((s * 9 + k) * .025).toFixed(2)}s"></i>`;
-    }
-    html += `<div class="stack">${stack}</div>`;
+/* ---------------------------------------------- the camera and the Mayor -- */
+// Big deals (harbor_view.activity: at least half the cash held before) pull the camera to the port for a few seconds
+// with the Mayor's popup; deals queue and play one after another, and a burst of the same kind is joined into one.
+const ZOOM = 3, HOLD_MS = 8000, EASE_MS = 1800;
+let seenN = null, zooming = false;
+const queue = [];
+function handleActivity(list) {
+  const top = list.reduce((m, e) => Math.max(m, e.n || 0), 0);
+  if (seenN === null) { seenN = top; return; }            // what happened before the view opened is not replayed
+  for (const e of list) {
+    if (!(e.n > seenN)) continue;
+    const last = queue[queue.length - 1];
+    if (last && last.pid === e.pid && last.port === e.port && last.type === e.type && last.good === e.good && last.cash_out === e.cash_out) {
+      last.value += e.value; last.qty += e.qty;
+    } else queue.push(Object.assign({}, e));
   }
-  return html;
+  seenN = Math.max(seenN, top);
+  playQueue();
+}
+function portPx(key) {
+  const world = document.getElementById("hv-world"), idx = Object.keys(D.ports).indexOf(key);
+  const g = document.getElementById("hv-chart-base").querySelectorAll(".port")[idx], dot = g && g.querySelector(".dot");
+  if (!dot) return null;
+  const was = [world.style.transform, world.style.transition];
+  world.style.transition = "none"; world.style.transform = "none";
+  const wr = world.getBoundingClientRect(), k = wr.width / world.offsetWidth, r = dot.getBoundingClientRect();
+  world.style.transform = was[0]; world.style.transition = was[1];
+  return { x: (r.left + r.width / 2 - wr.left) / k, y: (r.top + r.height / 2 - wr.top) / k, w: world.offsetWidth, h: world.offsetHeight };
+}
+function playQueue() {
+  if (zooming || !queue.length || !D || !S) return;
+  const e = queue.shift(), p = S.players.find(q => q.id === e.pid), pt = portPx(e.port);
+  if (!p || !pt) return playQueue();
+  zooming = true;
+  const world = document.getElementById("hv-world"), pop = document.getElementById("hv-popup");
+  const tx = Math.min(0, Math.max(pt.w - pt.w * ZOOM, pt.w / 2 - pt.x * ZOOM)), ty = Math.min(0, Math.max(pt.h - pt.h * ZOOM, pt.h / 2 - pt.y * ZOOM));
+  const sx = pt.x * ZOOM + tx, sy = pt.y * ZOOM + ty, PW = 470, PH = 190;
+  const left = sx + 70 + PW > pt.w - 10 ? sx - 70 - PW : sx + 70, top = Math.min(pt.h - PH - 10, Math.max(10, sy - PH / 2));
+  const key = e.type === "buy" || e.type === "sell" ? "act." + e.type : "act." + e.type + (e.cash_out ? "_out" : "_in");
+  const mayor = Media.choose("port", [e.port], "mayor", { mode: "fixed" });
+  const good = (D.goods[e.good] && D.goods[e.good].name) || e.good;
+  pop.style.left = left.toFixed(0) + "px"; pop.style.top = top.toFixed(0) + "px";
+  pop.innerHTML = `<div class="mayor">${mayor && mayor.t === "image" ? `<img src="${esc(mayor.u)}" alt="">` : "<b>M</b>"}</div>` +
+    `<div class="say"><span class="who">${te("table.mayor", { port: portName(e.port) })}</span>` +
+    `<p class="line">${te(key, { firm: p.firm, qty: e.qty, good })}</p>` +
+    `<span class="amt ${e.cash_out ? "out" : "in"}">${e.cash_out ? "−" : "+"}${esc(money(e.value))}</span></div>`;
+  world.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${ZOOM})`;
+  pop.classList.add("show");
+  setTimeout(() => {
+    pop.classList.remove("show");
+    world.style.transform = "none";
+    setTimeout(() => { zooming = false; playQueue(); }, EASE_MS);
+  }, HOLD_MS);
 }
 
-function hullIcons(n) {
-  const one = '<svg viewBox="-23 -11 46 22"><g transform="rotate(90)"><path class="hull" d="' + HULL + '"/>' +
-    '<rect class="sail" x="-9" y="-6" width="18" height="5" rx="1.5"/><rect class="sail" x="-8" y="3" width="16" height="4.5" rx="1.5"/></g></svg>';
-  return one.repeat(Math.max(0, Math.min(14, n)));
+/* ------------------------------------------------ port rings and cards -- */
+// One segment per share round the port, in the holder's house colour (sweeping in when bought); a small stock-board
+// card at ports in play (a ship, a home port, or a house holding shares) with the three goods that moved most.
+const SHARE_R = 15, lastRing = {}, lastPrice = {};
+function ringPath(i, n, r) {
+  const gap = 0.10, a0 = -Math.PI / 2 + (i / n) * 2 * Math.PI + gap, a1 = -Math.PI / 2 + ((i + 1) / n) * 2 * Math.PI - gap;
+  return `M${(r * Math.cos(a0)).toFixed(2)} ${(r * Math.sin(a0)).toFixed(2)} A${r} ${r} 0 0 1 ${(r * Math.cos(a1)).toFixed(2)} ${(r * Math.sin(a1)).toFixed(2)}`;
 }
+function drawPorts() {
+  if (!TV || !TV.ports) return;
+  const byId = new Map(S.players.map(p => [p.id, p]));
+  const active = new Set(S.players.map(p => p.port));
+  for (const h of Object.values(TV.houses || {})) if (h.home) active.add(h.home);
+  const out = [];
+  for (const key of Object.keys(D.ports)) {
+    const port = D.ports[key], info = TV.ports[key];
+    if (!info) continue;
+    const holders = Object.entries(info.shares || {}).filter(([id]) => byId.has(id)).sort((a, b) => b[1] - a[1]);
+    const colours = [];
+    for (const [id, n] of holders) for (let i = 0; i < n && colours.length < info.total; i++) colours.push(colorOf(byId.get(id)));
+    const before = lastRing[key] || [];
+    let ring = "";
+    for (let i = 0; i < info.total; i++) {
+      const c = colours[i];
+      ring += `<path class="seg${c ? "" : " empty"}${c && before[i] !== c ? " fresh" : ""}"${c ? ` stroke="${c}"` : ""} d="${ringPath(i, info.total, SHARE_R)}"/>`;
+    }
+    lastRing[key] = colours;
+    let card = "";
+    if (info.prices && (active.has(key) || holders.length)) {
+      const goods = Object.keys(info.prices);
+      const move = g => { const b = (info.base || {})[g] || info.prices[g]; return b ? (info.prices[g] - b) / b : 0; };
+      const rows = goods.sort((a, b) => Math.abs(move(b)) - Math.abs(move(a)) || info.prices[b] - info.prices[a]).slice(0, 3).map((g, i) => {
+        const m = move(g), prev = (lastPrice[key] || {})[g], tick = prev != null && prev !== info.prices[g] ? (info.prices[g] > prev ? " tick-up" : " tick-down") : "";
+        return `<g class="row${tick}" transform="translate(0 ${i * 17})"><text class="g" x="6" y="13">${esc(((D.goods[g] && D.goods[g].name) || g).slice(0, 9))}</text>` +
+          `<text class="v" x="92" y="13">${esc(money(info.prices[g]))}</text>` +
+          `<path class="arr ${m > .005 ? "up" : m < -.005 ? "down" : "flat"}" d="${m > .005 ? "M106 12 l4 -8 l4 8z" : m < -.005 ? "M106 5 l4 8 l4 -8z" : "M105 9 h10"}"/></g>`;
+      }).join("");
+      lastPrice[key] = Object.assign({}, info.prices);
+      card = `<g class="pcard" transform="translate(${(-60).toFixed(0)} ${port.y < 90 ? 20 : 20})"><rect width="120" height="55" rx="6"/>${rows}</g>`;
+    }
+    if (colours.length || card || active.has(key)) {
+      out.push(`<g class="share-ring" transform="translate(${port.x} ${port.y})">${ring}</g>` +
+        (card ? `<g transform="translate(${port.x} ${port.y})">${card}</g>` : ""));
+    }
+  }
+  update("hv-ports", out.join(""));
+}
+
+/* -------------------------------------------------------------- the mats -- */
+
 
 function drawMats(ranked, fighting) {
   const lobby = S.phase === "lobby", ended = S.phase === "ended";
@@ -250,16 +405,18 @@ function drawMats(ranked, fighting) {
     if (!lobby && !ended && p.ready && p.present && !battle) cls.push("ready");
     if (battle) cls.push("fighting");
     const initial = esc(String(p.firm || p.name || "?").trim().charAt(0).toUpperCase());
-    return `<article class="${cls.join(" ")}" style="--house:${colorOf(p)}">
+    const cloth = Media.choose("scene", ["table_cloth"], "background", { mode: "fixed" });
+    return `<article class="${cls.join(" ")}" style="--house:${colorOf(p)}${cloth ? `;--cloth:url('${esc(cloth.u)}')` : ""}">
       ${!lobby && n > 1 ? `<span class="place">${place.get(p.id) || ""}</span>` : ""}
       <div class="face">${faces.portrait ? `<img src="${esc(faces.portrait)}" alt="">` : `<b>${initial}</b>`}</div>
       ${faces.crest ? `<div class="crestbox"><img src="${esc(faces.crest)}" alt=""></div>` : ""}
       <div class="who"><h3>${esc(p.firm)}</h3><span class="cap">${esc(p.name)}${lobby && status ? " · " + esc(status) : ""}</span>${lobby ? "" : Ranks.label(p)}</div>
       ${lobby || ended ? "" : `<div class="orders"><div class="letter">${te("table.writing")}</div><span class="seal">${initial}</span>
         <small class="${battle ? "bad" : p.ready && p.present ? "ok" : ""}">${esc(status)}</small></div>`}
-      <div class="fleet"><span class="label">${te("table.fleet", { n: p.ships || 0 })}</span><div class="hulls">${hullIcons(p.ships || 0)}</div>
-        <span class="where">${te(p.jailed ? "table.jailed" : "table.at", { port: portName(p.port) })}</span></div>
-      ${lobby ? "" : `<div class="silver"><span class="worth">${esc(money(p.worth))}</span><div class="stacks">${coins(p.worth)}</div></div>`}
+      <div class="fleet"><span class="label">${te("table.fleet_label")}</span><span class="ships">${esc(String(p.ships || 0))}</span>
+        <span class="where">${te(p.jailed ? "table.jailed" : "table.at", { port: portName(p.port) })}</span>
+        ${houseOf(p) ? `<span class="homeline">${te("table.home_port", { port: portName(houseOf(p).home) })}</span>` : ""}</div>
+      ${lobby ? "" : `<div class="silver"><span class="label">${te("stat.worth")}</span><span class="worth">${esc(money(p.worth))}</span></div>`}
     </article>`;
   }).join(""));
 }
@@ -280,7 +437,7 @@ function drawDate(ranked, encounters) {
   }
   const sub = lobby ? t("board.length", { years: S.years }) : ended ? t("board.final") : t("board.months_left", { months: S.turns_left });
   document.getElementById("hv-date").classList.toggle("battle", encounters.length > 0);
-  update("hv-date", `<span class="kicker">${te(label)}</span><h2>${esc(S.date)}</h2><span class="sub">${esc(sub)}</span>
+  update("hv-date", `<span class="kicker">${te(label)}</span><h2>${esc(S.date)}</h2><span class="sub">${esc(sub)}</span>${lobby ? "" : `<div class="prog" title="${esc(sub)}"><i style="width:${Math.min(100, Math.round(100 * (S.turn || 0) / Math.max(1, (S.years || 1) * 12)))}%"></i></div>`}
     <div class="state">${esc(headline)}${detail ? `<small>${esc(detail)}</small>` : ""}</div>
     ${encounters.length ? `<ul>${encounters.map(f => `<li><b>${esc(f.firm)}</b> · ${te(f.where ? "board.encounter" : "board.encounter_unknown",
       { port: f.where, left: f.left, n: f.n, enemy: f.enemy })}</li>`).join("")}</ul>` : ""}
@@ -298,13 +455,6 @@ function drawNews() {
   if (update("hv-news", html)) news.forEach(line => newsShown.add(line));
 }
 
-function drawPostcard(ranked) {
-  const lead = ranked[0] || S.players[0];
-  const port = lead && D.ports[lead.port] ? lead.port : D.home;
-  const art = Media.html("port", [port], "board", "hv-postcard-img", "", { video: true, mode: "shuffle", slot: "table" });
-  update("hv-postcard", art ? `${art}<span class="cap">${esc(portName(port))}</span>` : "");
-}
-
 /* ------------------------------------------------------------------ draw -- */
 function render() {
   if (!D || !S) return;
@@ -317,21 +467,31 @@ function render() {
   const chart = update("hv-chart-base", Chart.svg({ data: D, players: [], crackdown: S.crackdown, hideWeather: true, hideRose: true }));
   update("hv-title", `<svg class="rose" viewBox="-170 -170 340 340"><circle r="160"/><circle r="120"/>` +
     `<path class="pt" d="M0 -160 L10 0 L0 160 L-10 0Z M-160 0 L0 -10 L160 0 L0 10Z"/>` +
-    `<path class="needle" d="M0 -150 L6 0 L-6 0Z"/></svg><h1>${brandHtml(D)}</h1>` +
+    `<path class="needle" d="M0 -150 L6 0 L-6 0Z"/></svg><h1>${wordmarkHtml(brandName(D.brand))}</h1>` +
     (D.brand.tagline ? `<p>${esc(D.brand.tagline)}</p>` : ""));
-  drawTrack();
   drawSky();
   drawPieces(encounters);
+  drawPorts();
   drawMats(ranked, fighting);
   drawDate(ranked, encounters);
   drawNews();
-  drawPostcard(ranked);
 
   app.hidden = false;
   loading.hidden = true;
-  if (chart) Chart.fit(chart);
+  const base = document.getElementById("hv-chart-base");
+  const here = new Set(S.players.map(p => p.port));
+  [...base.querySelectorAll(".port")].forEach((g, i) => g.classList.toggle("occupied", here.has(Object.keys(D.ports)[i])));
+  if (chart) { Chart.fit(chart); refitSoon(); }
   if (typeof Soundscape !== "undefined") Soundscape.sync(S, { battle: encounters.length > 0 });
 }
+
+/* Port label boxes are sized to their text, so measure again once the web fonts are really in. */
+let refitTimer = null;
+function refitSoon() {
+  clearTimeout(refitTimer);
+  refitTimer = setTimeout(() => Chart.fit(document.getElementById("hv-chart-base")), 900);
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => refitSoon());
 
 function showConnection(online) {
   connection.textContent = online ? "" : t("board.stale");
@@ -385,6 +545,7 @@ if (muteButton) document.getElementById("hv-controls").prepend(muteButton);
 Faces.onChange = () => render();
 listen(null, state => {
   S = state;
+  refreshTable();
   if (!D || state.cfg !== cfgSeen) return refreshInfo();
   render();
   speakNews();

@@ -90,7 +90,7 @@ def books_agree(gid, pid):
     lines, b = houses[pid].lines, bk["game"]
     pairs = {"dues": ["dues"], "customs": ["pa_tax", "pa_fine", "pa_bribe"], "booty": ["booty"], "gift": ["gift"],
              "repairs": ["repairs"], "bank_interest": ["bank_interest"], "loan_interest": ["interest"],
-             "robbed": ["robbed"]}
+             "robbed": ["robbed"], "wh_rent": ["wh_rent"], "depot": ["depot"]}
     for ours, theirs in pairs.items():
         a, z = lines.get(ours, 0), sum(b.get(k, 0) for k in theirs)
         assert abs(a - z) <= 2 + 0.001 * abs(z), (gid, pid, ours, a, z)

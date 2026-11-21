@@ -439,20 +439,26 @@ const Ledger = (() => {
       const goods = Object.entries(st.goods).filter(([, q]) => q > 0).map(([g, q]) =>
         `<span class="ldg-chip">${q.toLocaleString()} ${esc((D.goods[g] || {}).name || g)}</span>`).join("");
       const fill = st.cap ? Math.min(100, 100 * used / st.cap) : 0;
+      const wr = m.wh_rent || {}, rent = (wr.by_port || {})[st.port], isHome = st.port === home;
+      const rentNote = rent
+        ? `<small class="ldg-rent">${te("acct.house.rent_now", { rent: money(rent.rent), note: rent.empty ? te("acct.house.rent_half") : "" })}</small>`
+        : (isHome && wr.home_free > 0 ? `<small class="ldg-rent">${te("acct.house.rent_free", { months: wr.home_free, s: wr.home_free === 1 ? "" : "s" })}</small>` : "");
       return `<div class="ldg-store">
         <div class="ldg-storeimg">${Media.html("port", st.port, "banner", "", (D.graphics.ports || {})[st.port], Object.assign({ slot: "ldg-wh:" + st.port }, PIC))}</div>
         <div><b>${te("acct.house.wh", { port: esc(portName(st.port)) })}</b>
         ${st.cap ? `<small>${te("acct.house.used", { used: used.toLocaleString(), cap: st.cap.toLocaleString() })}</small><div class="ldg-fill"><i style="--w:${fill.toFixed(1)}%"></i></div>` : ""}
+        ${rentNote}
         <div class="ldg-chips">${goods || `<small>—</small>`}</div></div></div>`;
     }).join("") || `<p class="ldg-muted">${te("acct.house.none")}</p>`;
     const cost = range => {
       const l = (range === "year" ? bk.year : bk.game) || {};
-      return [["depot", "acct.house.rent"], ["estate_upkeep", "acct.house.estate"]].filter(([k]) => Math.round(l[k] || 0))
+      return [["wh_rent", "acct.house.rent"], ["depot", "acct.house.depot"], ["estate_upkeep", "acct.house.estate"]].filter(([k]) => Math.round(l[k] || 0))
         .map(([k, label]) => `<li><span><b>${te(label)}</b><small>${te("port.pl.range_" + range)}</small></span>${fig(l[k], "down")}</li>`).join("");
     };
     const costs = cost("year") + cost("game");
+    const due = (m.wh_rent || {}).total > 0 ? `<p class="ldg-caption">${te("acct.house.rent_total", { total: money(m.wh_rent.total) })}</p>` : "";
     const estate = m.estate && m.estate.stage ? `<p class="ldg-caption">${te("acct.house.estate_now", { n: m.estate.stage })}</p>` : "";
-    return `<h2>${te("acct.house.title")}</h2>${estate}<div class="ldg-stores">${cards}</div>
+    return `<h2>${te("acct.house.title")}</h2>${estate}${due}<div class="ldg-stores">${cards}</div>
       ${costs ? `<ul class="ldg-sheet">${costs}</ul>` : ""}
       <h3>${te("acct.bill.title", { port: esc(portName(m.port)) })}</h3>${bill()}`;
   }

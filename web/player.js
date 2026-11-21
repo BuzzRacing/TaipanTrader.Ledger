@@ -1682,7 +1682,7 @@ function clearanceLedger() {
    The figures come from the account book the server keeps (me.books, engine.py _book). */
 const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
-  ["port", ["dues", "gift", "depot", "repairs", "protection", "upkeep", "estate_upkeep", "pa_tax", "pa_fine", "pa_bribe", "pa_premium", "tips"]],
+  ["port", ["dues", "gift", "depot", "wh_rent", "repairs", "protection", "upkeep", "estate_upkeep", "pa_tax", "pa_fine", "pa_bribe", "pa_premium", "tips"]],
   ["money", ["interest", "bank_interest", "contracts"]],
   ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed", "wh_robbed"]],
 ];
@@ -2229,7 +2229,14 @@ function portPaper() {
   return `${notices}${news}<div class="pt-col pt-col-log">${log}</div>`;
 }
 
-/* ---- Home port services */
+/* ---- Home port services
+   THE TRANSFER BAR IS CENTRED (21 Nov 2026). One bar, two directions: left takes out (repay, withdraw,
+   load), right puts in (borrow, deposit, store). It used to be drawn to scale, so a small debt beside a
+   big borrowing limit left "repay" a sliver at the far edge that could not be grabbed. Now nothing-moved
+   sits mid-bar and each direction gets its own half, however lopsided the amounts (a direction with
+   nothing to move gets no half at all). The bar's value is a position, SVC_STEPS a side; ui.vals still
+   holds the amount moved (- left, + right). */
+const SVC_STEPS = 1000;
 function serviceTransfer(k, g) {
   const me = S.me;
   let left, right, out, into;
@@ -2243,20 +2250,39 @@ function serviceTransfer(k, g) {
       Math.min((me.cargo[g] || 0) - ((me.bond || {})[g] || 0), me.wh_cap - whUsed)];
   }
   const key = g ? "w_" + g : k;
-  const have = Math.max(0, Math.floor(out)), max = have + Math.max(0, Math.floor(into));
+  const have = Math.max(0, Math.floor(out)), room = Math.max(0, Math.floor(into)), max = have + room;
   const at = Math.max(0, Math.min(max, have + (parseInt(val(key), 10) || 0)));
   const delta = at - have, qty = Math.abs(delta);
   const label = g ? qty.toLocaleString() : money(qty);
-  return { key, have, max, at, qty, left, right, label,
-    op: delta < 0 ? left : right, side: delta < 0 ? "sell" : delta > 0 ? "buy" : "" };
+  const side = delta < 0 ? "sell" : delta > 0 ? "buy" : "";
+  // Where things sit along the bar, 0..1: nothing-moved in the middle when both directions are open.
+  const zero = have && room ? .5 : have ? 1 : 0;
+  const frac = delta < 0 ? zero * (1 + delta / have) : delta > 0 ? zero + (1 - zero) * delta / room : zero;
+  const pos = delta < 0 ? -Math.max(1, Math.round(-delta / have * SVC_STEPS))
+    : delta > 0 ? Math.max(1, Math.round(delta / room * SVC_STEPS)) : 0;
+  return { key, have, room, max, at, qty, left, right, label, pos,
+    op: delta < 0 ? left : right, side, bar: { max: 1, have: zero, at: frac, side } };
+}
+
+/* A bar position back to the amount it stands for (- left, + right); both ends are exact. */
+function serviceAmount(range) {
+  const p = +range.value || 0, have = +range.dataset.have || 0, room = +range.dataset.room || 0;
+  return p < 0 ? -Math.round(-p / SVC_STEPS * have) : Math.round(p / SVC_STEPS * room);
 }
 
 function serviceSlider(k, title, g) {
   const tr = serviceTransfer(k, g), locked = S.me.ready;
-  return `<div class="pt-transfer">
+  // Madam Wu's desk: one tap clears the debt (or as much of it as the silver ashore covers).
+  const whole = k === "loan" && tr.have >= Math.ceil(S.me.debt);
+  const quick = k === "loan" && tr.have > 0
+    ? `<div class="pt-actions pt-transfer-quick" style="margin:0 0 .55rem">${btn(
+        te("btn.repay") + " " + (whole ? te("btn.whole_debt") + " \u00b7 " : "") + esc(money(tr.have)),
+        "repay_all", "", "pt-go primary", locked)}</div>` : "";
+  return `<div class="pt-transfer">${quick}
     <div class="pt-transfer-scale"><span>${te("btn." + tr.left)}</span><span>${te("btn." + tr.right)}</span></div>
     <input type="range" class="mk-range pt-range" data-k="${tr.key}" data-service="${k}" data-good="${g || ""}"
-      min="${-tr.have}" max="${tr.max - tr.have}" step="1" value="${tr.at - tr.have}" style="${barStyle(tr)}"
+      data-have="${tr.have}" data-room="${tr.room}"
+      min="${tr.have ? -SVC_STEPS : 0}" max="${tr.room ? SVC_STEPS : 0}" step="1" value="${tr.pos}" style="${barStyle(tr.bar)}"
       aria-label="${title} · ${te("btn." + tr.left)} / ${te("btn." + tr.right)}"
       aria-valuetext="${tr.qty ? te("btn." + tr.op) + " " : ""}${esc(tr.label)}" ${locked || !tr.max ? "disabled" : ""}>
     <div class="pt-transfer-action" data-side="${tr.side}"><output>${esc(tr.label)}</output>
@@ -2270,7 +2296,7 @@ function serviceDrag(range) {
   const action = range.nextElementSibling;
   const button = action.querySelector("button");
   const label = tr.qty ? t("btn." + tr.op) : t("btn." + tr.left) + " / " + t("btn." + tr.right);
-  range.style.cssText = barStyle(tr);
+  range.style.cssText = barStyle(tr.bar);
   range.setAttribute("aria-valuetext", tr.qty ? label + " " + tr.label : tr.label);
   action.dataset.side = tr.side;
   action.querySelector("output").textContent = tr.label;
@@ -2309,7 +2335,7 @@ function jumpToService(id) {
 
 function portServiceCards() {
   const me = S.me, home = me.port === myHome(), port = esc(portName(me.port));
-  const locked = me.ready, dr = me.depot_rules || {};
+  const locked = me.ready, dr = me.depot_rules || {}, wr = me.wh_rent || {};
   let out = "", agentCard = "";
   if (home || me.bank_here) {
     out += serviceCard("bank", te("bank.title"), te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) })
@@ -2355,6 +2381,9 @@ function portServiceCards() {
       ? `<div class="pt-actions">${btn(te("wh.expand", { qty: (dr.add || 0).toLocaleString(), cost: money(dr.expand) }), "depot", 'data-op="expand"', "pt-go", locked || dr.expand > me.cash)}${btn(te("wh.sell", { gain: money(dr.sell || 0) }), "depot", `data-op="sell" title="${te(whUsed > 0 ? "wh.sell_full_tip" : "wh.sell_tip")}"`, "", locked || whUsed > 0)}</div>` : "";
     out += serviceCard("warehouse", home ? te("wh.title") : te("wh.title_away", { port }),
       te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(), hold_used: me.used, hold: me.capacity })
+      + (wr.here > 0 ? " " + te("wh.rent", { rent: money(wr.here), note: wr.empty ? te("wh.rent_empty") : "" }) : "")
+      + (home && wr.home_free > 0 ? " " + te("wh.rent_free", { months: wr.home_free, s: wr.home_free === 1 ? "" : "s" }) : "")
+      + (wr.more > 0 ? te("wh.rent_more", { more: money(wr.more) }) : "")
       + (others.length ? " " + te("wh.elsewhere", { list: others.join("; ") }) : ""), warehouse + expand);
   }
   if (me.commissions && (home || me.commissions.active.length)) out += commissionsCard(me);
@@ -2879,7 +2908,7 @@ app.addEventListener("input", e => {
   }
   if (k.startsWith("cx_")) { ui.drag = true; Customs.live(e.target); }
   if (k === "gift") { ui.drag = true; mayorLive(e.target); }
-  if (e.target.dataset.service) { serviceDrag(e.target); if (ui.ledger) Ledger.drag(); }
+  if (e.target.dataset.service) { ui.vals[k] = String(serviceAmount(e.target)); serviceDrag(e.target); if (ui.ledger) Ledger.drag(); }
 });
 app.addEventListener("pointerdown", e => {
   if (e.target.matches(".pt-range:enabled")) ui.drag = true;
@@ -2983,6 +3012,12 @@ app.addEventListener("click", async e => {
         ? await act("warehouse", { op: tr.op === "load" ? "take" : tr.op, good: d.good, qty: tr.qty })
         : await act(d.service, { op: tr.op, amount: tr.qty });
       if (ok) { delete ui.vals[tr.key]; render(); }
+      return;
+    }
+    case "repay_all": {
+      const tr = serviceTransfer("loan");
+      if (!tr.have || S.me.ready) return;
+      if (await act("loan", { op: "repay", amount: tr.have })) { delete ui.vals.loan; render(); }
       return;
     }
     case "bank_rest": {

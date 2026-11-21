@@ -700,6 +700,7 @@ EN = {
     "port.pl.overboard": "Cargo lost overboard (at cost)", "port.pl.ships_lost": "Ships and guns lost",
     "port.pl.wreck": "Shipwreck: silver lost and new debt", "port.pl.wreck_cargo": "Shipwreck: cargo lost (at cost)",
     "port.pl.robbed": "Robbed ashore",
+    "port.pl.wh_rent": "Warehouse rent", "port.pl.depot": "Warehouses opened, enlarged and sold back",
     "port.pl.upkeep": "Crew wages and ship upkeep", "port.pl.estate_upkeep": "Upkeep of the great house and patronages",
     "port.pl.bankrupt": "Bankruptcy: everything taken, debt cleared, stake given",
     "port.pl.aboard": "Still aboard: {n} units would fetch {worth} here, against {paid} paid ({gain}). Not counted until sold.",
@@ -1607,7 +1608,7 @@ EN = {
     "st.line.protection": "{pirate}'s protection", "st.line.bank_interest": "Bank interest earned",
     "st.line.loan_interest": "Interest to {lender}", "st.line.robbed": "Robbed ashore", "st.line.wh_robbed": "Stolen from warehouses", "st.line.booty": "Booty taken",
     "st.line.plundered": "Plundered at sea", "st.line.cargo_lost": "Cargo lost overboard",
-    "st.line.shipwreck": "Shipwreck (silver, cargo and debt)", "st.line.seized": "Seized by customs, with fines", "st.line.customs": "Port Authority: tax, fines and sweeteners", "st.line.gift": "Gifts to the Mayor", "st.line.depot": "Warehouses rented and enlarged",
+    "st.line.shipwreck": "Shipwreck (silver, cargo and debt)", "st.line.seized": "Seized by customs, with fines", "st.line.customs": "Port Authority: tax, fines and sweeteners", "st.line.gift": "Gifts to the Mayor", "st.line.depot": "Warehouses opened, enlarged and sold back",
     "st.loss.plunder_value": "Cargo plundered", "st.loss.seized_value": "Cargo seized", "st.loss.fines": "Customs fines",
     "st.loss.robbed_value": "Robbed ashore", "st.loss.wreck_cash": "Silver lost in wrecks",
     "st.loss.wreck_cargo_value": "Cargo lost in wrecks", "st.loss.cargo_lost_value": "Cargo thrown overboard",
@@ -1677,6 +1678,7 @@ EN = {
     "st.who.banker": "The bank", "st.who.shipwright": "The shipyards", "st.who.agent": "{pirate}'s agent",
     "st.who.pirates": "Pirates at sea", "st.who.thieves": "Thieves ashore", "st.who.warehouse": "Warehouses",
     "st.line.dues": "Harbour dues (the Mayor)", "st.line.guns_sold": "Guns and cannons sold",
+    "st.line.wh_rent": "Warehouse rent",
     "st.line.upkeep": "Crew wages and ship upkeep", "st.line.estate_upkeep": "Upkeep of the great house and patronages",
     "st.desk.none": "No Port Authority desk or harbour dues yet.",
     "st.desk.visits": "Desk visits", "st.desk.honesty": "Declared, of true value", "st.desk.tax": "Tax paid",
@@ -2316,6 +2318,12 @@ FAMILY.update(_acct_text.FAMILY)
 
 # Selling an away warehouse back to the port for half of what it cost (21 Nov 2026).
 EN.update({
+    "wh.rent": "Rent {rent} a month{note}.",
+    "wh.rent_empty": ", half while it stands empty",
+    "wh.rent_free": "Rent on your home warehouse starts in {months} month{s}.",
+    "wh.rent_more": " Enlarging adds {more} a month.",
+    "l.wh_rent_begins": "Your {port} warehouse starts paying rent this month, Captain. A year of free space was the grace period, and the grace is over.",
+    "l.wh_rent_debt": "Warehouse rent came to {cost} this month. With no silver left aboard or in the bank, {owed} went on your debt.",
     "wh.sell": "Sell it back for {gain}",
     "wh.sell_tip": "Half of what it cost to open and enlarge. The port takes it back as it stands.",
     "wh.sell_full_tip": "Empty it first: sell or load what is in store.",
@@ -2323,6 +2331,7 @@ EN.update({
     "e.depot_not_empty": "Empty your {port} warehouse first, Captain. Nobody takes a room with someone else's things still all over the floor.",
 })
 FAMILY.update({
+    "l.wh_rent_begins": "Your {port} warehouse starts paying rent this month. The first year was rent-free.",
     "m.depot_sold": "Sold your {port} warehouse back for {gain}, half of what it cost.",
     "e.depot_not_empty": "Empty your {port} warehouse first.",
 })

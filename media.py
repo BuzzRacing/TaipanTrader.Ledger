@@ -96,7 +96,8 @@ KINDS = {
              "default_role": "banner"},
     "ship": {"label": "Ships", "one": "Ship type", "subjects": "ships",
              "roles": [["card", "Fleet cards and the shipyard"], ["sailing", "Under sail"], ["battle", "In battle"],
-                       ["wrecked", "Wrecked: dismasted and listing, on the storm screen after a heavy or savage storm"]],
+                       ["wrecked", "Wrecked: dismasted and listing, on the storm screen after a heavy or savage storm"],
+                       ["topdown", "Top-down: the Table's ship pieces, painted as seen from straight above (no background)"]],
              "default_role": "card"},
     "cargo": {"label": "Cargo", "one": "Cargo", "subjects": "goods",
               "roles": [["icon", "Beside the cargo in the market"],
@@ -145,7 +146,9 @@ SCENES = [["title", "Title & lobby"], ["loading", "Loading / holding screen"], [
           ["legend", "Legend: any chapter (fallback)"],
           ["legend_palace_turtle", "Legend: The Palace Beneath the Waves, 1 The Turtle in the Net"],
           ["legend_palace_palace", "Legend: The Palace Beneath the Waves, 2 The Lady on the Anchor Chain"],
-          ["legend_palace_box", "Legend: The Palace Beneath the Waves, 3 The Box"]]
+          ["legend_palace_box", "Legend: The Palace Beneath the Waves, 3 The Box"],
+          # The Table (harbor view, 21 Nov 2026): the luxurious period cloth under each player mat.
+          ["table_cloth", "Table: the period fabric under the player mat"]]
 SERVICES = [["bank", "Merchants Bank"], ["lender", "Moneylender"], ["warehouse", "Warehouse"], ["agent", "Agent"],
             # Late game (19 Nov 2026): the harbour board's share office and each stage of the great house.
             ["shares", "Port Shares"], ["estate_0", "Great House: empty plot"], ["estate_1", "Great House: Townhouse"],
@@ -157,7 +160,7 @@ BRAND_SLOTS = [["logo", "Logo"], ["favicon", "Browser tab icon"], ["masthead_bg"
                ["chart_bg", "Chart artwork"]]
 
 RULE_DEFAULTS = {
-    "persona": {"mode": "random", "seconds": 7, "video_chance": 35},
+    "persona": {"mode": "random", "seconds": 7, "video_chance": 80},
     "captain": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "rank": {"mode": "fixed", "seconds": 30, "video_chance": 0},
     "house": {"mode": "fixed", "seconds": 30, "video_chance": 0},

@@ -143,7 +143,7 @@ VIDEO_DEFAULTS = {
     "low_noise": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
     "text_encoder": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
     "vae": "wan_2.1_vae.safetensors",
-    "short_side": 640,   # 20 Nov 2026: was 480; Wan draws real detail at 640 (about twice the render time)
+    "short_side": 480,   # 21 Nov 2026: back to 480 (half the render time of 640) so the PC is free sooner; 640 looked better but took twice as long
     # Wan renders at 16 fps; played back at 16 it looks slightly slow-motion. "fps" is what Wan is asked to
     # render at (keeps each pass at 81 frames), "playback_fps" is how fast the finished clip plays (20 = 25% quicker).
     "fps": 16,
@@ -152,8 +152,8 @@ VIDEO_DEFAULTS = {
     # "pass_frames" long (81 is what Wan 2.2 is trained on). 81 + 79 + 79 = 239 frames = 12 s at 20 fps.
     "pass_frames": 81,
     # 20 Nov 2026 (sharper): the clip is rendered small for speed, then enlarged with Lanczos and lightly
-    # sharpened on the farm (core ComfyUI nodes). with a 640 render 1.25 gives 800 x 1060; sharpen 0 switches it off.
-    "upscale": 1.25,
+    # sharpened on the farm (core ComfyUI nodes). with a 480 render 1.5 gives 720 x 960 (a 640 render at 1.25 gave 800 x 1060); sharpen 0 switches it off.
+    "upscale": 1.5,
     "sharpen": 0.4,
     "steps": 20,
     "split": 10,

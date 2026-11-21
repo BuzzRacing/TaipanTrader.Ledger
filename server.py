@@ -9,6 +9,7 @@ Run:  python server.py [--port 8765] [--new] [--admin-password WORD]
   /admin       command center: every setting, the look, the wording, the live game
   /stats       the player's statistics: this voyage and career, charts and heat maps (see stats.py)
   /voice/...   lines read aloud by the cast (Inworld voices; see voice.py)
+  /api/table        the Table's spectator feed: Captains, home ports, ship classes (harbor_view.py)
   /api/voice/floor  whose turn it is to speak, so screens never talk over each other (voicefloor.py)
   journal/     everything that happens, written down (see journal.py); read it on
                the Admin page under Captain's Report
@@ -42,6 +43,7 @@ import config
 import engine
 import finale
 import fonts
+import harbor_view
 import imagegen
 import journal
 import media
@@ -1010,6 +1012,9 @@ class Handler(BaseHTTPRequestHandler):
             cfg = engine.CFG
             return self._send(200, {"ok": True, "captains": captains.public_list(cfg),
                                     "typed": bool(engine.R.get("captains", {}).get("typed"))})
+        if path == "/api/table":
+            with HUB.cond:
+                return self._send(200, harbor_view.view(HUB.game, HUB.present()))
         if path == "/api/info":
             with HUB.cond:
                 cfg = engine.CFG

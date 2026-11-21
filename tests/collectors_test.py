@@ -139,6 +139,32 @@ def test_the_line_ignores_silver_so_repaying_always_helps():
     assert not any("has sent word" in line for line in p["log"])
 
 
+def test_a_rich_house_gets_a_line_tied_to_net_worth():
+    """21 Nov 2026: the line is never less than debt_worth_share of net worth, and the debt cap follows."""
+    game = Game(seed=12)
+    p = game.s["players"][game.pid_for_token(game.join("Tester", ""))]
+    bank = R["bank"]
+    keep = dict(bank)
+    try:
+        bank["debt_worth_share"] = 0.0
+        old = game.collectors_line(p)
+        bank["debt_worth_share"] = 0.08
+        assert game.collectors_line(p) == old             # a small house keeps the old line
+        p["bank"], p["debt"] = 300e6, 8e6
+        line = game.collectors_line(p)
+        assert abs(line - 0.08 * game.worth(p)) < 1 and line > 8e6     # $8M owed on ~$300M: nobody calls
+        assert not game.collectors(p)["over"]
+        assert abs(game.debt_cap(p) - bank["debt_cap_mult"] * line) < 1
+        p["cash"] = 8e6
+        before = game.collectors_line(p)
+        p["cash"], p["debt"] = 0.0, 0.0                   # repaying from silver leaves the line where it was
+        assert abs(game.collectors_line(p) - before) < 1
+        assert engine._config.DEFAULTS["rules"]["bank"]["debt_worth_share"] == 0.08
+    finally:
+        bank.clear()
+        bank.update(keep)
+
+
 def test_defaults_are_the_softer_rule():
     d = engine._config.DEFAULTS["rules"]["bank"]
     assert d["debt_grace_months"] == 3 and d["debt_call_every"] == 3

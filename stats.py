@@ -42,7 +42,7 @@ ACTION_LINES = {"buy_gun": "guns", "buy_cannon": "guns", "fill_cannons": "guns",
 TAKERS = {"dues": "mayor", "gift": "mayor", "customs": "officer", "loan_interest": "lender", "bank_interest": "banker",
           "repairs": "shipwright", "ships_bought": "shipwright", "guns": "shipwright", "protection": "agent",
           "parley": "pirates", "plundered": "pirates", "robbed": "thieves", "wh_robbed": "thieves",
-          "seized": "officer", "depot": "warehouse"}
+          "seized": "officer", "depot": "warehouse", "wh_rent": "warehouse"}
 
 
 # ------------------------------------------------------------- reading --
@@ -454,6 +454,15 @@ def _walk(events, ps, extra=None):
             h.line(ACTION_LINES[typ], now - was, e.get("port"))
             continue
 
+        if cat == "finance" and typ == "wh_rent":
+            # Monthly warehouse rent (21 Nov 2026): one line, shown by port so "who got your silver" can name them.
+            ports = e.get("ports") or {}
+            if ports:
+                for where, amount in ports.items():
+                    h.line("wh_rent", -float(amount or 0), where)
+            else:
+                h.line("wh_rent", -float(e.get("amount") or 0))
+            continue
         if cat == "finance" and typ in ("upkeep", "yearly_upkeep"):
             # Running costs (Game 3 review, 19 Nov 2026): crew wages monthly, the great house and patronage yearly.
             h.line("upkeep" if typ == "upkeep" else "estate_upkeep", -float(e.get("amount") or 0))
