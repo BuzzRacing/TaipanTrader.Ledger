@@ -35,6 +35,34 @@
     try { return new Intl.DisplayNames(undefined, { type: "language" }).of(code) || code; } catch (err) { return code; }
   }
   const lang2 = v => String(v.lang || "").slice(0, 2).toLowerCase();
+
+  /* Flags are drawn here as small SVGs (Windows does not show flag emoji, and the Pi may be offline).
+     A language with no flag in this table simply shows its name. Arabic has no single country, so
+     "ar" with no region shows Saudi Arabia unless Inworld gives a region (ar-EG and so on). */
+  const FLAG_REGION = { en: "US", ko: "KR", ar: "SA" };
+  const FLAGS = {
+    KR: `<svg viewBox="0 0 36 24" aria-hidden="true"><rect width="36" height="24" fill="#fff"/>
+      <circle cx="18" cy="12" r="6" fill="#cd2e3a"/><path d="M12 12a6 6 0 0 0 12 0a3 3 0 0 0-6 0a3 3 0 0 1-6 0z" fill="#0047a0"/>
+      <g stroke="#000" stroke-width="1.1"><path d="M5.2 5.6l3-1.8M4.4 7l3-1.8M6 4.2l3-1.8" transform="translate(0 .4)"/>
+      <path d="M30.8 5.6l-3-1.8M31.6 7l-3-1.8M30 4.2l-3-1.8" transform="translate(0 .4)"/>
+      <path d="M5.2 18.4l3 1.8M4.4 17l3 1.8M6 19.8l3 1.8" transform="translate(0 -.4)"/>
+      <path d="M30.8 18.4l-3 1.8M31.6 17l-3 1.8M30 19.8l-3 1.8" transform="translate(0 -.4)"/></g></svg>`,
+    SA: `<svg viewBox="0 0 36 24" aria-hidden="true"><rect width="36" height="24" fill="#006c35"/>
+      <g fill="#fff"><rect x="8" y="6.5" width="20" height="1.6" rx=".8"/><rect x="10" y="9.5" width="16" height="1.4" rx=".7"/>
+      <rect x="6" y="16.6" width="24" height="1.1"/><path d="M6 18.4h19l2.4-1.2v-.1H6z"/><rect x="25" y="15.6" width="1.2" height="3"/></g></svg>`,
+    US: `<svg viewBox="0 0 36 24" aria-hidden="true"><rect width="36" height="24" fill="#fff"/>
+      <g fill="#b22234"><rect width="36" height="1.85"/><rect y="3.7" width="36" height="1.85"/><rect y="7.4" width="36" height="1.85"/>
+      <rect y="11.1" width="36" height="1.85"/><rect y="14.8" width="36" height="1.85"/><rect y="18.5" width="36" height="1.85"/><rect y="22.2" width="36" height="1.85"/></g>
+      <rect width="15" height="12.9" fill="#3c3b6e"/></svg>`,
+  };
+  const regionNames = () => { try { return new Intl.DisplayNames(undefined, { type: "region" }); } catch (err) { return null; } };
+  function where(v) {          // { code, country, flag } for a voice, from "ko", "ko-KR", "ar-EG"…
+    const parts = String(v.lang || "").replace("_", "-").split("-"), lg = parts[0].toLowerCase();
+    const rg = (parts[1] || "").toUpperCase(), code = /^[A-Z]{2}$/.test(rg) ? rg : (FLAG_REGION[lg] || "");
+    let country = "";
+    try { country = code && regionNames() ? regionNames().of(code) : ""; } catch (err) { country = ""; }
+    return { code, country, flag: FLAGS[code] || "" };
+  }
   function users(id) { return Object.keys(C()).filter(cid => (C()[cid].voice_id || "").trim() === id); }
   function isNew(v) {
     const first = Math.min(...voices().map(x => x.first_seen || 0));
@@ -159,13 +187,17 @@
 
   function voiceRow(v) {
     const m = markOf(v.id), us = users(v.id);
-    const meta = [v.gender, v.age, v.lang, v.source === "SYSTEM" ? "Inworld" : "yours"].filter(Boolean).join(" · ");
+    const meta = [v.gender, v.age, v.source === "SYSTEM" ? "Inworld" : "yours"].filter(Boolean).join(" · ");
+    const w = where(v), lg = lang2(v);
+    const place = lg ? `<span class="vl-where">${w.flag ? `<span class="vl-flagpic" title="${e(w.country)}">${w.flag}</span>` : ""}
+      <b>${e(langName(lg))}</b>${w.country ? ` · ${e(w.country)}` : ""} <code>${e(v.lang)}</code></span>` : "";
     return `<article class="vl-row${m.rating ? " is-" + m.rating : ""}${v.gone_at ? " gone" : ""}${us.length ? " taken" : ""}" data-vlrow="${e(v.id)}">
       <div class="vl-voice">
         <button type="button" class="vl-play vl-big" data-vlplay="${e(v.id)}" aria-label="Play ${e(v.name)}">▶</button>
         <div class="vl-info">
           <h3>${e(v.name)}${v.id !== v.name ? ` <code>${e(v.id)}</code>` : ""}
             ${isNew(v) ? `<span class="vl-flag new">New</span>` : ""}${v.gone_at ? `<span class="vl-flag alert">Gone from Inworld ${e(day(v.gone_at))}</span>` : ""}</h3>
+          ${place ? `<p class="vl-meta">${place}</p>` : ""}
           <p class="vl-meta">${e(meta)}</p>
           ${v.description ? `<p class="vl-desc">${e(v.description)}</p>` : ""}
           ${(v.tags || []).length ? `<p class="vl-tags">${v.tags.map(t => `<span>${e(t)}</span>`).join("")}</p>` : ""}

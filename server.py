@@ -265,6 +265,7 @@ class Hub:
         self.conns = {}       # player id -> open stream count
         self.last_seen = {}   # player id -> time the last stream closed
         self.clock = {}       # player id -> (which step of which fight, deadline, seconds given)
+        self.storm_seen = {}  # player id -> (storm id, when its card was first held in front of a fight)
 
     # ------------------------------------------------- the sea battle's clock --
     def _deadline(self, pid, p, now):
@@ -284,8 +285,28 @@ class Hub:
             if pid in self.present():
                 secs += self._beat_secs(b.get("beat"))
             secs = round(secs, 1)
+            if self._storm_holds(pid, p, now):
+                # The storm card is on this captain's screen, in front of the fight: the fight's clock waits and
+                # starts fresh when the card closes (fixed 20 Nov 2026). Nothing is stored, so each look gives the
+                # full time again.
+                self.clock.pop(pid, None)
+                return (key, now + secs, secs)
             cur = self.clock[pid] = (key, now + secs, secs)
         return cur
+
+    STORM_HOLD_SECS = 60.0       # at most this long; a captain who walked away from the card does not stall the month
+
+    def _storm_holds(self, pid, p, now):
+        """True while a Heavy or Savage storm card is open in front of a captain who is at a screen. The fight
+        behind it does not start its clock (or play its pictures: web/battle.js waits too) until she taps Make port."""
+        st = p.get("storm")
+        if not (st and st.get("card")) or pid not in self.present():
+            self.storm_seen.pop(pid, None)
+            return False
+        seen = self.storm_seen.get(pid)
+        if not seen or seen[0] != st.get("id"):
+            seen = self.storm_seen[pid] = (st.get("id"), now)
+        return now - seen[1] < self.STORM_HOLD_SECS
 
     @staticmethod
     def _beat_secs(beat):
@@ -403,6 +424,56 @@ class Hub:
                "free": pick(["l.jail_release"]) if jv.get("freed") and not j else None}
         return out if any(out.values()) else {"caught": None, "warden": None, "free": None}
 
+    STORM_VOICE_ORDER = ("open", "cargo", "guns", "hull", "land", "close")
+
+    def _storm_voice(self, st):
+        """What the storm story (web/storm.js, 21 Nov 2026) says aloud: one clip for each of Roxana's lines on
+        the report, keyed by line ("open", "cargo", "guns", "hull", "land", "close"). A gun line that starts
+        "Powder: " is read by Powder. Cargo is named without the quantities (numbers stay on screen). Each is
+        {c, u, f?} like any clip, with f the Family-friendly wording. None when voices are off."""
+        plan = voice.PLAN
+        if not plan.ready() or not plan.cfg["voice"]["read_log"]:
+            return None
+        L = st.get("landing") or {}
+        ports = engine.PORTS
+        goods = [(engine.GOODS.get(c.get("good")) or {}).get("name") or str(c.get("good"))
+                 for c in st.get("cargo") or []]
+        what = ", ".join(x.lower() for x in goods)
+
+        class _Safe(dict):
+            def __missing__(self, key):
+                return "{" + key + "}"
+        vars_ = _Safe(goods=what, port=(ports.get(L.get("port")) or {}).get("name", ""),
+                      yard=(ports.get(L.get("yard_port")) or {}).get("name", "") if L.get("yard_port") else "")
+
+        def render(tpl):
+            try:
+                return str(tpl).format_map(vars_)
+            except (ValueError, IndexError, KeyError, AttributeError, TypeError):
+                return str(tpl)
+        out = {}
+        for name in self.STORM_VOICE_ORDER:
+            key = (st.get("lines") or {}).get(name)
+            if not key:
+                continue
+            text = render(engine.TEXT.get(key, key))
+            cid = "narrator"
+            if text.startswith("Powder: "):
+                text, cid = text[8:], "bosun"
+            clip = plan._clip(text, cid)
+            if not clip:
+                continue
+            fam = strings.FAMILY.get(key)
+            if fam:
+                ftext = render(fam)
+                if ftext.startswith("Powder: "):
+                    ftext = ftext[8:]
+                fclip = plan._clip(ftext, cid)
+                if fclip and fclip.get("u") != clip.get("u"):
+                    clip["f"] = fclip["u"]
+            out[name] = clip
+        return out or None
+
     def present(self):
         now = time.time()
         grace = engine.R["game"]["grace_seconds"]
@@ -465,6 +536,11 @@ class Hub:
         jstory = self._jail_story(me)
         if jstory:
             v["voice"]["jail"] = jstory
+        # The storm story (web/storm.js): one clip per line of the report while its card is open.
+        if (me.get("storm") or {}).get("card"):
+            sv = self._storm_voice(me["storm"])
+            if sv:
+                v["voice"]["storm"] = sv
         # A Legend (legend.py): one clip for each line on the story screen, said by whoever speaks it
         # (the storyteller or the Legend's own character). web/legend.js plays them in order.
         if me.get("legend") and voice.PLAN.ready():

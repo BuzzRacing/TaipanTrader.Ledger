@@ -226,3 +226,46 @@ def test_every_wording_line_exists():
     for k in storm.LINES:
         pass
     assert "storm.btn" in en and "l.storm_cargo" in en and "e.repair_yard" in en
+
+
+# ---- Game 5 review (20 Nov 2026): softer Savage numbers and limping home ----
+def test_savage_numbers_are_softer():
+    r = storm.rules()
+    assert (r["savage_hull_min"], r["savage_hull_max"]) == (0.25, 0.45)
+    assert (r["savage_cargo_min"], r["savage_cargo_max"]) == (0.15, 0.35)
+    assert r["savage_guns"] == 0.33 and r["limp_home"] is True
+
+
+def test_a_battered_ship_limps_home_instead_of_foundering():
+    setup(storm__base=[0, 120, 120, 120], storm__dice_min=1.0, storm__dice_max=1.0)
+    g, p = new_game(cargo={"tea": 40})
+    p["ships"][0]["hull"] = 5
+    sea(g, 3)
+    sail(g, p, [k for k in PORTS if k != p["port"]][0])
+    st = p.get("storm")
+    assert st and st["band"] == "savage"
+    assert len(p["ships"]) == 1 and p["ships"][0]["hull"] == 1
+    assert not st["ships"][0]["lost"]
+
+
+def test_without_limp_home_a_battered_ship_still_founders():
+    setup(storm__base=[0, 120, 120, 120], storm__dice_min=1.0, storm__dice_max=1.0, storm__limp_home=False)
+    g, p = new_game(cargo={"tea": 40})
+    p["ships"][0]["hull"] = 5
+    sea(g, 3)
+    sail(g, p, [k for k in PORTS if k != p["port"]][0])
+    assert not p["ships"] or p["ships"][0]["hull"] != 1
+
+
+def test_saved_old_savage_numbers_move_once_and_hand_set_ones_stay():
+    cfg = config.defaults()
+    st = cfg["rules"]["storm"]
+    st.update({"savage_hull_min": 0.45, "savage_hull_max": 0.75, "savage_cargo_min": 0.25,
+               "savage_cargo_max": 0.40, "savage_guns": 0.67})
+    st.pop("review5_v1", None)
+    cfg, errors = config.validate(cfg)
+    assert not errors, errors
+    st = cfg["rules"]["storm"]
+    assert (st["savage_hull_min"], st["savage_hull_max"], st["savage_guns"]) == (0.25, 0.45, 0.33)
+    assert st["savage_cargo_min"] == 0.15 and st["savage_cargo_max"] == 0.40      # set by hand: stays
+    assert st["review5_v1"] is True

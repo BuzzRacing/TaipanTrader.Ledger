@@ -97,6 +97,19 @@ body.in-legend #app { visibility: hidden; }
 .lg-card footer button:disabled { opacity: .45; cursor: default; transform: none; }
 .lg-rwho.nopic > img { display: none; }
 
+/* wide screens: the card keeps to the right third so the picture and the teller show; the shade is lighter on the left */
+@media (orientation: landscape) {
+  .lg-screen .lg-result { grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr); padding-inline: clamp(.6rem, 2vw, 1.6rem);
+    background: radial-gradient(ellipse 60% 80% at 30% 50%, transparent 0%, color-mix(in srgb, var(--deck-night) 35%, transparent) 70%, color-mix(in srgb, var(--deck-night) 80%, transparent) 100%),
+      linear-gradient(90deg, transparent 52%, color-mix(in srgb, var(--deck-night) 78%, transparent) 70%, color-mix(in srgb, var(--deck-night) 92%, transparent) 100%); }
+  .lg-screen .lg-card { gap: .7rem; padding: 1rem 1.1rem; }
+  .lg-screen .lg-card .sf-rheading h2 { font-size: clamp(1.5rem, 2.6vw, 2.3rem); }
+  .lg-screen .lg-card .sf-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+  .lg-screen .lg-card .sf-rows b { font-size: 1.25rem; }
+  .lg-screen .lg-card .sf-cols { grid-template-columns: minmax(0, 1fr); gap: .8rem; }
+  .lg-screen .lg-card footer button { padding: 0 1.2rem; min-height: 3rem; font-size: 1.1rem; }
+}
+
 /* upright and small screens */
 @media (orientation: portrait) {
   .lg-screen { --pw: 32vw; }

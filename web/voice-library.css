@@ -22,7 +22,15 @@
 .vl-persona small { padding: 0 .5rem; font-size: .72rem; line-height: 1.25; color: var(--muted); }
 .vl-persona small.vl-need { color: #ff9d92; }
 .vl-persona button.vl-hear { margin: .3rem .5rem 0; padding: .28rem .4rem; font-size: .76rem; }
+/* Under a voice the persona cards sit in two columns (most voices have two). */
+.vl-cast .vl-personas { display: grid; grid-template-columns: repeat(2, 132px); }
 .vl-needs { border-color: #8f211a; }
+
+/* Language, flag and full country name on each voice. */
+.vl-where { display: inline-flex; align-items: center; gap: .45rem; font-size: .9rem; color: var(--text, #f1e6cc); }
+.vl-where code { font: 400 .72rem var(--mono); color: var(--muted); }
+.vl-flagpic { display: inline-block; width: 36px; height: 24px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; flex: none; }
+.vl-flagpic svg { display: block; width: 100%; height: 100%; }
 .vl-needs .vl-personas { margin-top: .7rem; }
 
 .vl-filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem .9rem; }

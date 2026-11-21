@@ -38,11 +38,14 @@ DEFAULTS = {
     "rough_hull_min": 0.05, "rough_hull_max": 0.15,
     "heavy_hull_min": 0.20, "heavy_hull_max": 0.40, "heavy_cargo_min": 0.10, "heavy_cargo_max": 0.25,
     "heavy_guns": 0.33,
-    "savage_hull_min": 0.45, "savage_hull_max": 0.75, "savage_cargo_min": 0.25, "savage_cargo_max": 0.55,
-    "savage_guns": 0.67,
+    # Game 5 review (20 Nov 2026): Savage softened from 45-75% hull, 25-55% cargo and two thirds of the guns.
+    "savage_hull_min": 0.25, "savage_hull_max": 0.45, "savage_cargo_min": 0.15, "savage_cargo_max": 0.35,
+    "savage_guns": 0.33,
     "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4,
     "w_price": 0.5, "w_yard": 0.35, "w_standing": 0.15, "ban_penalty": 0.25,
     "patch_max": 0.5,
+    # Limp home (Game 5 review): a storm never sinks a ship. One that would founder is left at 1 hull.
+    "limp_home": True,
 }
 
 # How many wording variants each line has in storm_text.py (the server picks one, the screen shows it).
@@ -241,8 +244,12 @@ def hit(g, p, v, level, risk, news):
         if int(spec["hull"]) >= int(r["big_hull"]):
             mult *= float(r["big_mult"])
         took = max(1, int(round(spec["hull"] * share * mult)))
+        limped = False
+        if r.get("limp_home", True) and sh["hull"] - took < 1:
+            took = max(0, int(sh["hull"]) - 1)          # she limps in at 1 hull instead of foundering
+            limped = True
         sh["hull"] -= took
-        hits.append({"name": sh["name"], "damage": took, "hull": sh["hull"]})
+        hits.append({"name": sh["name"], "damage": took, "hull": sh["hull"], "limped": limped})
 
     # guns and cannons (Heavy and Savage)
     guns_lost = cannons_lost = 0

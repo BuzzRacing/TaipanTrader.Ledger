@@ -707,6 +707,12 @@ const Battle = (() => {
     if (typeof S === "undefined" || !S || !S.me || !D || (S.phase !== "sea" && S.phase !== "port")) return hide();
     const todo = pending();
     document.body.classList.toggle("seafighting", busy());
+    // A storm card comes first: the fight waits behind it (nothing drawn, said or played) and starts from its
+    // first picture when "Make port" closes the card (20 Nov 2026).
+    if (typeof Storm !== "undefined" && Storm.holding && Storm.holding()) {
+      if (typeof Voice !== "undefined") Voice.drop("battle");
+      return hide();
+    }
     if (todo.length) return showFight(todo[0], todo.length > 1 || !!S.me.battle);
     if (S.phase !== "sea") return hide();
     if (S.me.battle) return showBattle(S.me.battle, (S.me.fights || []).length);

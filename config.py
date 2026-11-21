@@ -213,11 +213,11 @@ DEFAULTS = {
                   "rough_hull_min": 0.05, "rough_hull_max": 0.15,
                   "heavy_hull_min": 0.20, "heavy_hull_max": 0.40, "heavy_cargo_min": 0.10,
                   "heavy_cargo_max": 0.25, "heavy_guns": 0.33,
-                  "savage_hull_min": 0.45, "savage_hull_max": 0.75, "savage_cargo_min": 0.25,
-                  "savage_cargo_max": 0.55, "savage_guns": 0.67,
+                  "savage_hull_min": 0.25, "savage_hull_max": 0.45, "savage_cargo_min": 0.15,
+                  "savage_cargo_max": 0.35, "savage_guns": 0.33,
                   "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4,
                   "w_price": 0.5, "w_yard": 0.35, "w_standing": 0.15, "ban_penalty": 0.25,
-                  "patch_max": 0.5},
+                  "patch_max": 0.5, "limp_home": True},
         # Legends (legend.py, 20 Nov 2026; project doc "SeaTrader Legends Library"). Big stories that break
         # into the game on a landfall and take no game time: rare (per_game of them begin), told in chapters
         # gap_min..gap_max months apart (for a 10-year game; scaled to the game's length), every effect sized
@@ -577,6 +577,9 @@ OLD_DEPTHS = {"opium": 60, "gold": 90, "silk": 160, "porcelain": 250, "arms": 25
 SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
 # Game 3 review (19 Nov 2026): the swingiest cargoes are calmed once to at most these monthly swings.
 CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
+# Game 5 review (20 Nov 2026): the old shipped Savage storm numbers and what they become (see load_config).
+STORM_R5 = {"savage_hull_min": (0.45, 0.25), "savage_hull_max": (0.75, 0.45), "savage_cargo_min": (0.25, 0.15),
+            "savage_cargo_max": (0.55, 0.35), "savage_guns": (0.67, 0.33)}
 
 # Paths whose whole value is replaced on save (rows can be deleted), not merged.
 WHOLE = ("goods", "ports", "ships", "regions", "ranks", "ship_names", "escort_names", "cargo_names",
@@ -1442,7 +1445,9 @@ SECTIONS = [
              F("rules.storm.w_standing", "Port score: standing there", "num", min=0, max=10, step=0.05),
              F("rules.storm.ban_penalty", "Port score: each banned cargo aboard costs", "num", min=0, max=10, step=0.05),
              _pct("rules.storm.patch_max", "A port with no shipyard can mend a ship up to", "A share of her full hull. "
-                  "100% turns the rule off; full repair then works in every port as before.")]},
+                  "100% turns the rule off; full repair then works in every port as before."),
+             F("rules.storm.limp_home", "A storm never sinks a ship", "bool", "On: a ship a storm would sink is left "
+               "at 1 hull and limps into port, so a second storm cannot wipe out a battered fleet. Off: she founders.")]},
      ]},
     {"id": "legends", "title": "Legends", "intro": "The Legend and Folklore Library: big stories that take over the "
      "Captain's screen on a landfall, told in chapters months apart. A Legend takes no game time.",
@@ -1955,6 +1960,16 @@ def validate(raw):
         if abs(float(bk.get("bank_rate", 0)) - 0.005) < 1e-9:
             bk["bank_rate"] = DEFAULTS["rules"]["bank"]["bank_rate"]
         mk["review4_v1"] = True
+
+    # Game 5 review (20 Nov 2026), once: Savage storms soften from 45-75% hull, 25-55% cargo and 0.67 of the
+    # guns to 25-45%, 15-35% and 0.33, and ships limp home at 1 hull instead of foundering. A value set by
+    # hand to anything but the old shipped one stays.
+    st5 = cfg["rules"]["storm"]
+    if not st5.get("review5_v1"):
+        for key, (old_v, new_v) in STORM_R5.items():
+            if abs(float(st5.get(key, old_v)) - old_v) < 1e-9:
+                st5[key] = new_v
+        st5["review5_v1"] = True
 
     # Bigger pirate fleets (19 Nov 2026): saved settings still at the old shipped caps (12 junks, the
     # pirate queen 16) move to the new ones, once; caps set by hand stay.

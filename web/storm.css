@@ -56,3 +56,29 @@ body.in-storm #app { visibility: hidden; }
 
 @media (max-height: 560px) { .st-card .st-notes { display: none; } }
 @media (prefers-reduced-motion: reduce) { .st-bg, .st-banner, .st-stamp { animation: none; } }
+
+/* the story before the card (storm.js): one big caption per screen, Roxana large on the left */
+.st-beat .st-cap { position: absolute; right: clamp(1rem, 4vw, 3.5rem); bottom: clamp(1rem, 7vh, 4rem); z-index: 2;
+  width: min(44rem, 50vw); box-sizing: border-box; padding: 1.2rem 1.5rem 1rem; color: var(--deck-ivory);
+  border: 1px solid var(--result-accent, var(--deck-brass)); border-radius: 4px;
+  background: color-mix(in srgb, var(--deck-night) 86%, transparent); box-shadow: 0 .8rem 2.4rem rgba(0, 0, 0, .6);
+  animation: st-rise .55s ease-out both; }
+.st-beat .st-cap.o-heavy { --result-accent: var(--brass-hi); }
+.st-beat .st-cap.o-savage { --result-accent: var(--blood-hi); }
+.st-eyebrow { margin: 0 0 .5rem; font: .85rem/1.2 var(--special); letter-spacing: .14em; text-transform: uppercase; color: var(--result-accent); }
+.st-say { margin: 0; font: italic clamp(1.35rem, 2.6vw, 2.2rem)/1.3 var(--serif); }
+.st-by { margin: .6rem 0 0; font: 1rem/1.2 var(--special); letter-spacing: .06em; color: var(--brass-hi); }
+.st-sub { margin: .8rem 0 0; padding-top: .6rem; border-top: 1px solid color-mix(in srgb, var(--result-accent) 40%, transparent);
+  font: 600 1.05rem/1.3 var(--sans); }
+.st-sub.bad { color: var(--blood-hi); }
+.st-sub.ok { color: var(--jade-hi); }
+.st-sub em { font-style: normal; }
+.st-cap footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: .8rem; }
+.st-dots { display: inline-flex; gap: .35rem; }
+.st-dots i { width: .55rem; height: .55rem; border-radius: 50%; background: color-mix(in srgb, var(--deck-ivory) 25%, transparent); }
+.st-dots i.done { background: color-mix(in srgb, var(--result-accent) 60%, transparent); }
+.st-dots i.now { background: var(--result-accent); box-shadow: 0 0 .6rem var(--result-accent); }
+.st-hint { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+@keyframes st-rise { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 900px) { .st-beat .st-cap { left: 1rem; right: 1rem; width: auto; } }
+@media (prefers-reduced-motion: reduce) { .st-beat .st-cap { animation: none; } }

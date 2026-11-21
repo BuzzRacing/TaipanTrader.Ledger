@@ -75,6 +75,9 @@ function connect() {
 /* Reads the month's log aloud while it is on screen, and any fresh news if this screen reads news. */
 function speak() {
   if (!S || !S.voice) return;
+  // A storm card (storm.js) is in front: nothing is read behind it. The log, the news and the desk greetings wait
+  // and are read when "Make port" closes it (the log used to read the sea battle's report behind the card).
+  if (typeof Storm !== "undefined" && Storm.holding && Storm.holding()) return;
   if (S.voice.log && document.querySelector(".captains-log") && ui.spokenTurn !== S.turn) {
     ui.spokenTurn = S.turn;
     // A jail story (jail.js) reads its own lines in order, so the log stays quiet over it (20 Nov 2026).
@@ -398,7 +401,7 @@ function render() {
   if (typeof Jail !== "undefined") Jail.sync();
   if (typeof Storm !== "undefined") Storm.sync();
   if (typeof Legend !== "undefined") Legend.sync();      // a Legend waits for the battle, the storm and the jail
-  if (typeof Soundscape !== "undefined") Soundscape.sync(S, { bell: true, battle: typeof Battle !== "undefined" && !!Battle.busy(),
+  if (typeof Soundscape !== "undefined") Soundscape.sync(S, { bell: true, battle: typeof Battle !== "undefined" && !!Battle.busy() && !(typeof Storm !== "undefined" && Storm.holding && Storm.holding()),
     jail: typeof Jail !== "undefined" && !!Jail.busy(), storm: typeof Storm !== "undefined" && !!Storm.busy() });
   TownCrier.sync(S, D, inGame && !portOverlay && !S.me.promotion && !Battle.busy()
     && !(typeof Storm !== "undefined" && Storm.busy()) && !document.querySelector(".ceremony") && !document.querySelector("dialog[open]"));
@@ -1604,10 +1607,17 @@ function lotCard() {
       can >= lot.qty ? te("lot.buy") : te("lot.buy_some", { qty: can })}</button></div>`;
 }
 
+/* Cargo lists dearest first by its Usual Price (the admin's Cargo table), the same order at every port and
+   every month, so each cargo stays in the same row. */
+function goodsByPrice(keys) {
+  const base = g => (D.goods[g] && Number(D.goods[g].base)) || 0;
+  return keys.slice().sort((a, b) => base(b) - base(a));
+}
+
 function marketTab() {
   const me = S.me;
   const banned = S.crackdown.includes(me.port);
-  const rows = Object.keys(D.goods).map(marketRow).join("");
+  const rows = goodsByPrice(Object.keys(D.goods)).map(marketRow).join("");
   return `<section class="card mk" style="--n:${Object.keys(D.goods).length}">
     <header class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
       <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span>

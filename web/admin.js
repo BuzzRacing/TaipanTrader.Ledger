@@ -305,10 +305,17 @@ function blankRow(tb) {
   return row;
 }
 
+/* Cargo always lists dearest first (by usual price), wherever it is shown. Edits do not re-sort while typing;
+   the list settles into order the next time it is drawn (add, remove, save, or opening the page). */
+function goodsByPrice(keys) {
+  const base = k => { const g = (CFG.goods || {})[k]; return g ? Number(g.base) || 0 : -1; };
+  return keys.slice().sort((a, b) => base(b) - base(a));
+}
+
 function tableHtml(tb) {
   const rows = get(CFG, tb.path);
   const dict = tb.kind === "dict";
-  const keys = dict ? Object.keys(rows) : rows.map((r, i) => i);
+  const keys = dict ? (tb.path === "goods" ? goodsByPrice(Object.keys(rows)) : Object.keys(rows)) : rows.map((r, i) => i);
   const head = (dict ? `<th>${esc(tb.id_label || "Key")}</th>` : "") +
     tb.columns.map(c => `<th title="${esc(c.help || "")}">${esc(c.label)}${c.help ? " ⓘ" : ""}</th>`).join("") + "<th></th>";
   const body = keys.map(k => "<tr>" + (dict ? `<td class="mono">${esc(k)}</td>` : "") +
@@ -327,8 +334,9 @@ function tableHtml(tb) {
 
 function matrixHtml(m) {
   const rows = get(CFG, m.path), cols = get(CFG, m.cols_from);
-  const head = "<th>Port</th>" + Object.keys(cols).map(g => `<th class="n">${esc(cols[g].name)}<br><span class="muted">${money(cols[g].base)}</span></th>`).join("");
-  const body = Object.keys(rows).map(p => `<tr><td><b>${esc(rows[p].name)}</b></td>` + Object.keys(cols).map(g => {
+  const colKeys = m.cols_from === "goods" ? goodsByPrice(Object.keys(cols)) : Object.keys(cols);
+  const head = "<th>Port</th>" + colKeys.map(g => `<th class="n">${esc(cols[g].name)}<br><span class="muted">${money(cols[g].base)}</span></th>`).join("");
+  const body = Object.keys(rows).map(p => `<tr><td><b>${esc(rows[p].name)}</b></td>` + colKeys.map(g => {
     const v = (rows[p][m.sub] || {})[g];
     const price = cols[g].base * (v == null ? 1 : v);
     return `<td class="${v == null ? "" : v < 1 ? "lo" : "hi"}"><input type="number" step="0.05" min="${m.min}" max="${m.max}" placeholder="1" ` +
@@ -501,7 +509,7 @@ function liveSection() {
       <td><button type="button" data-g="adjust">Apply</button> <button type="button" class="danger confirm" data-g="kick">Remove</button></td></tr>`;
   }).join("") : '<tr><td colspan="9" class="muted">Nobody has joined yet.</td></tr>';
   const shock = (port, g) => L.shocks.find(s => s.port === port && s.good === g);
-  const prices = Object.keys(L.prices).map(port => `<tr><td><b>${esc(pname(port))}</b></td>` + Object.keys(L.prices[port]).map(g => {
+  const prices = Object.keys(L.prices).map(port => `<tr><td><b>${esc(pname(port))}</b></td>` + goodsByPrice(Object.keys(L.prices[port])).map(g => {
     const s = shock(port, g);
     return `<td class="${s ? (s.mult > 1 ? "hi" : "lo") : ""}"><input type="number" min="0.01" step="any" value="${L.prices[port][g]}" data-price="${esc(port)}" data-good="${esc(g)}" ${s ? `title="${s.mult > 1 ? "Shortage" : "Glut"} x${s.mult}, ${s.turns} more months"` : ""}></td>`;
   }).join("") + `<td><input type="number" min="0" max="120" value="${L.crackdown[port] || 0}" data-ban="${esc(port)}" style="min-width:4rem;width:4rem"></td></tr>`).join("");
@@ -516,7 +524,7 @@ function liveSection() {
     `<div class="live"><div class="stats">${stats}</div>${controls}
     <section class="card"><h2>Trading houses</h2><div class="scroll"><table><thead><tr><th>House</th><th>Port</th><th>Silver</th><th>Bank</th><th>Debt</th><th>Protection (mo)</th><th class="n">Net worth</th><th>Fleet and cargo</th><th></th></tr></thead><tbody>${players}</tbody></table></div></section>
     <section class="card"><h2>Markets</h2><p class="help">Every price in every port. Type a new price and press Enter to set it. Green cells are in a glut, red in a shortage. The last column is months of contraband ban left (0 for none).</p>
-      <div class="scroll"><table class="matrix"><thead><tr><th>Port</th>${Object.keys(goods).map(g => `<th class="n">${esc(goods[g].name)}</th>`).join("")}<th>Ban</th></tr></thead><tbody>${prices}</tbody></table></div></section>
+      <div class="scroll"><table class="matrix"><thead><tr><th>Port</th>${goodsByPrice(Object.keys(goods)).map(g => `<th class="n">${esc(goods[g].name)}</th>`).join("")}<th>Ban</th></tr></thead><tbody>${prices}</tbody></table></div></section>
     <section class="card"><h2>Forecast for this month</h2><div class="fields c3">${weather}</div></section>
     <section class="card"><h2>News</h2><ul class="news">${L.news.map(n => "<li>" + esc(n) + "</li>").join("")}</ul></section>
     <section class="card"><h2>Earlier games</h2><p class="help">Restoring one sets the current game aside in the saves folder first.</p>${saves}</section></div>`;
