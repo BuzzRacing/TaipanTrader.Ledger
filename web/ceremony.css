@@ -233,6 +233,7 @@
 .ceremony .lg-book.lg-turn-back .lg-left { --hinge: right; animation-name: lg-flip-back; }
 .ceremony .lg-book.lg-turn-fwd .lg-left, .ceremony .lg-book.lg-turn-back .lg-right { animation: lg-ink .7s .15s both; }
 .ceremony .lg-book.lg-turn-swap .lg-left { animation: lg-ink .5s both; }
+.ceremony .lg-book.lg-swap { animation: none; }
 
 /* Spread 1, left: the house's story. Pictures are big and square-cornered: the captain's portrait
    as a tall card beside the port where the voyage ended. */

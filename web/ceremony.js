@@ -268,7 +268,8 @@ const Ceremony = (() => {
     const h = houseOf(view.house) || houseOf(S.me && S.me.id) || book.data.houses[0];
     view.house = h.id;
     const book2 = document.createElement("article");
-    book2.className = "ledger lg-book" + (turn ? " lg-turn-" + turn : "");
+    // Swapping the plain ledger for the book (or a page turn) must not replay the fade-in: that was the blink.
+    book2.className = "ledger lg-book" + (turn ? " lg-turn-" + turn : "") + (article ? " lg-swap" : "");
     book2.dataset.spread = view.spread;
     book2.innerHTML = spreadHtml(h);
     if (article) article.replaceWith(book2); else frame.prepend(book2);
