@@ -774,7 +774,7 @@ VOICE_DEFAULTS = {
 
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
-VOICE_RE = re.compile(r"^[A-Za-z0-9_.:\-/]{1,120}$")
+VOICE_RE = re.compile(r"^[\w.:\-/]{1,120}$")     # \w lets in accented Inworld ids such as "Hélène"
 
 
 def spoken_keys(text):
