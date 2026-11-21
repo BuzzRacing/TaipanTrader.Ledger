@@ -113,6 +113,12 @@ def depot_cap(level):
     return int(f.get("depot_cap", 1000)) + int(level) * int(f.get("depot_expand_cap", 1000))
 
 
+def depot_refund(level):
+    """What a port pays to take an away warehouse back: half of what opening and enlarging it costs."""
+    f = R["fleet"]
+    return (int(f.get("depot_open_cost", 10000)) + int(level) * int(f.get("depot_expand_cost", 100000))) // 2
+
+
 def stored(p, g=None):
     """Units ashore in every warehouse the house owns (home and away), for one cargo or all."""
     stores = [p["wh"]] + [d.get("goods", {}) for d in depots_of(p).values()]
@@ -501,7 +507,8 @@ class Game:
                 "bank_here": port_has(p, port, "bank"),
                 "wh_home": dict(p["wh"]), "wh_away": away, "stored": {g: stored(p, g) for g in GOODS if stored(p, g)},
                 "depot_rules": {"open": int(f.get("depot_open_cost", 10000)), "cap": depot_cap(0),
-                                "expand": int(f.get("depot_expand_cost", 100000)), "add": int(f.get("depot_expand_cap", 1000))}}
+                                "expand": int(f.get("depot_expand_cost", 100000)), "add": int(f.get("depot_expand_cap", 1000)),
+                                "sell": depot_refund(store["depot"].get("level", 0)) if store and not store["home"] else 0}}
 
     def firms(self):
         """Every house's position, for snapshots."""
@@ -3483,7 +3490,8 @@ class Game:
         return {"goods": d["goods"], "cap": depot_cap(d.get("level", 0)), "home": False, "depot": d}
 
     def _act_depot(self, p, a):
-        """Open a warehouse in this port (op "open") or enlarge it (op "expand"). Home's is free."""
+        """Open a warehouse in this port (op "open"), enlarge it (op "expand") or sell it back to the
+        port for half of what it cost (op "sell", empty warehouses only). Home's is free."""
         port, f = p["port"], R["fleet"]
         name = PORTS[port]["name"]
         if port == home_of(p):
@@ -3491,6 +3499,17 @@ class Game:
         if not port_has(p, port, "warehouse"):
             raise GameError(tx("e.no_warehouse_port", port=name))
         deps = depots_of(p)
+        if a.get("op") == "sell":
+            d = deps.get(port)
+            if d is None:
+                raise GameError(tx("e.depot_not_open", port=name))
+            if sum((d.get("goods") or {}).values()) > 0:
+                raise GameError(tx("e.depot_not_empty", port=name))
+            gain = depot_refund(d.get("level", 0))
+            del deps[port]
+            p["cash"] += gain
+            self._book(p, "depot", gain)
+            return tx("m.depot_sold", port=name, gain=money(gain))
         if a.get("op") == "expand":
             d = deps.get(port)
             if d is None:

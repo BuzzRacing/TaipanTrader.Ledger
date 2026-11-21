@@ -2314,6 +2314,19 @@ import acct_text as _acct_text  # noqa: E402
 EN.update(_acct_text.EN)
 FAMILY.update(_acct_text.FAMILY)
 
+# Selling an away warehouse back to the port for half of what it cost (21 Nov 2026).
+EN.update({
+    "wh.sell": "Sell it back for {gain}",
+    "wh.sell_tip": "Half of what it cost to open and enlarge. The port takes it back as it stands.",
+    "wh.sell_full_tip": "Empty it first: sell or load what is in store.",
+    "m.depot_sold": "Sold your {port} warehouse back for {gain}, half of what you put into it. Most captains get far less back for what they put in, darling.",
+    "e.depot_not_empty": "Empty your {port} warehouse first, Captain. Nobody takes a room with someone else's things still all over the floor.",
+})
+FAMILY.update({
+    "m.depot_sold": "Sold your {port} warehouse back for {gain}, half of what it cost.",
+    "e.depot_not_empty": "Empty your {port} warehouse first.",
+})
+
 # The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
 # wording it replaces becomes the family-friendly wording. Keep this after every other EN/FAMILY update.
 import house_voice as _house_voice  # noqa: E402

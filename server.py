@@ -5,6 +5,7 @@ Run:  python server.py [--port 8765] [--new] [--admin-password WORD]
 
   /            player screen (phones, tablets, laptops)
   /board       harbor board for a big shared screen
+  /table       harbor view: the game from above, on a table (big shared screen)
   /admin       command center: every setting, the look, the wording, the live game
   /stats       the player's statistics: this voyage and career, charts and heat maps (see stats.py)
   /voice/...   lines read aloud by the cast (Inworld voices; see voice.py)
@@ -988,6 +989,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._file("index.html")
         if path == "/board":
             return self._file("board.html")
+        if path == "/table":
+            return self._file("table.html")
         if path == "/design/ceremony-preview.html":
             with open(os.path.join(ROOT, "design", "ceremony-preview.html"), "rb") as preview:
                 return self._send(200, preview.read(), "text/html; charset=utf-8")

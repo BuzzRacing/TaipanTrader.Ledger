@@ -870,11 +870,11 @@ function gameScreen() {
   const nav = ["port", "market", "fleet", "chart"].concat(me.counter ? ["counter"] : []).map(k =>
     `<button type="button" class="${!ui.tally && ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""} dk-t-${k}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}" title="${te("tab." + k)}">` +
     `${tabFace(k)}<span>${te("tab." + k)}</span></button>`).join("") +
-    `<button type="button" class="dk-tally${ui.tally ? " on" : ""}${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-pressed="${ui.tally}" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
-    `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
     // The Accounting Ledger (ledger.js, 20 Nov 2026): the bookkeeper's face, or a quill until her pictures are filed.
     `<button type="button" class="dk-tally dk-acct${ui.ledger ? " on" : ""}${tabFaceUrl("acct") ? " face" : ""}" data-act="acct_open" aria-pressed="${!!ui.ledger}" aria-label="${te("acct.open_hint")}" title="${te("acct.open_hint")}">` +
     `${tabFaceUrl("acct") ? tabFace("acct") : Ledger.QUILL}<span>${te("tab.acct")}</span></button>` +
+    `<button type="button" class="dk-tally${ui.tally ? " on" : ""}${tabFaceUrl("tally") ? " face" : ""}" data-act="tally" aria-pressed="${ui.tally}" aria-label="${te("st.open_hint")}" title="${te("st.open_hint")}">` +
+    `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
     `<i class="dk-gap"></i>` + meButton();
   if (ui.tab === "counter" && !me.counter) ui.tab = "port";
   const pane = ({ market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, counter: counterTab }[ui.tab] || portTab)();
@@ -2352,7 +2352,7 @@ function portServiceCards() {
       .filter(([k, d]) => k !== me.port && Object.keys(d.goods || {}).length)
       .map(([k, d]) => esc(portName(k)) + " (" + Object.entries(d.goods).map(([g, q]) => q.toLocaleString() + " " + esc(D.goods[g] ? D.goods[g].name : g)).join(", ") + ")");
     const expand = me.wh_here === "open"
-      ? `<div class="pt-actions">${btn(te("wh.expand", { qty: (dr.add || 0).toLocaleString(), cost: money(dr.expand) }), "depot", 'data-op="expand"', "pt-go", locked || dr.expand > me.cash)}</div>` : "";
+      ? `<div class="pt-actions">${btn(te("wh.expand", { qty: (dr.add || 0).toLocaleString(), cost: money(dr.expand) }), "depot", 'data-op="expand"', "pt-go", locked || dr.expand > me.cash)}${btn(te("wh.sell", { gain: money(dr.sell || 0) }), "depot", `data-op="sell" title="${te(whUsed > 0 ? "wh.sell_full_tip" : "wh.sell_tip")}"`, "", locked || whUsed > 0)}</div>` : "";
     out += serviceCard("warehouse", home ? te("wh.title") : te("wh.title_away", { port }),
       te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(), hold_used: me.used, hold: me.capacity })
       + (others.length ? " " + te("wh.elsewhere", { list: others.join("; ") }) : ""), warehouse + expand);

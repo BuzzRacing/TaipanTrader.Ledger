@@ -82,3 +82,6 @@ body.in-storm #app { visibility: hidden; }
 @keyframes st-rise { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 900px) { .st-beat .st-cap { left: 1rem; right: 1rem; width: auto; } }
 @media (prefers-reduced-motion: reduce) { .st-beat .st-cap { animation: none; } }
+
+/* the foreground layer: the story screen and the card are swapped inside it while the broken ship behind stays put */
+.st-fg { position: absolute; inset: 0; }

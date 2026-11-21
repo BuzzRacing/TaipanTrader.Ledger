@@ -72,6 +72,29 @@ def test_open_store_expand_and_sell_all():
     assert p["cash"] > cash and not p["cargo"].get("tea") and not p["depots"]["shanghai"]["goods"].get("tea")
 
 
+def test_sell_back_for_half():
+    game, pid, p = fresh()
+    f = R["fleet"]
+    assert refused(game, pid, {"type": "depot", "op": "sell"})          # nothing open here yet
+    game.act(pid, {"type": "depot", "op": "open"})
+    game.act(pid, {"type": "depot", "op": "expand"})
+    half = (f["depot_open_cost"] + f["depot_expand_cost"]) // 2
+    assert game.view(pid)["me"]["depot_rules"]["sell"] == half
+    p["cargo"]["tea"] = 5
+    game.act(pid, {"type": "warehouse", "op": "store", "good": "tea", "qty": 5})
+    assert refused(game, pid, {"type": "depot", "op": "sell"})          # stock must come out first
+    game.act(pid, {"type": "warehouse", "op": "take", "good": "tea", "qty": 5})
+    cash = p["cash"]
+    game.act(pid, {"type": "depot", "op": "sell"})
+    assert p["cash"] == cash + half and "shanghai" not in p["depots"]
+    assert p["books"]["cur"]["depot"] == -half                          # spent the lot, got half back
+    assert game.view(pid)["me"]["wh_here"] == "closed"
+    game.act(pid, {"type": "depot", "op": "open"})                       # and it can be opened again
+    assert game.view(pid)["me"]["wh_cap"] == f["depot_cap"]
+    p["port"] = "hongkong"
+    assert refused(game, pid, {"type": "depot", "op": "sell"})          # the home warehouse is not for sale
+
+
 def test_home_needs_no_rent():
     game, pid, p = fresh(port="hongkong")
     assert refused(game, pid, {"type": "depot", "op": "open"})

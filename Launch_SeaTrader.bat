@@ -2,6 +2,7 @@
 rem SeaTrader launcher. Opens the game in a full-screen window.
 rem   Launch_SeaTrader.bat          player screen
 rem   Launch_SeaTrader.bat board    harbor board (for a second monitor or TV)
+rem   Launch_SeaTrader.bat table    harbor view: the game from above, on a table (TV)
 rem   Launch_SeaTrader.bat admin    admin command center (an ordinary browser window)
 rem
 rem By default the game server runs on this computer and is started if needed.
@@ -33,6 +34,8 @@ set "PAGE="
 set "PROFILE=player"
 if /i "%~1"=="board" set "PAGE=board"
 if /i "%~1"=="board" set "PROFILE=board"
+if /i "%~1"=="table" set "PAGE=table.html"
+if /i "%~1"=="table" set "PROFILE=table"
 if /i "%~1"=="admin" set "PAGE=admin"
 if defined ST_DEV set "PROFILE=dev-%PROFILE%"
 set "PIN_DNS="

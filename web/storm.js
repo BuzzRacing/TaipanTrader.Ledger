@@ -174,7 +174,7 @@ const Storm = (() => {
      landing each get one big screen (a different picture of her each time, her line as a large caption), moving
      on by themselves after a reading time; a tap, Space or Enter moves them sooner. Then the card. Captions only,
      not spoken (the sea battle behind it stays quiet: Storm.holding()). */
-  const readMs = txt => Math.max(3800, Math.min(9000, 2200 + String(txt).replace(/<[^>]*>/g, "").length * 55));
+  const readMs = txt => Math.max(2800, Math.min(5500, 1400 + String(txt).replace(/<[^>]*>/g, "").length * 40));
 
   function buildBeats(st) {
     const V = varsOf(st), L = st.landing || {};
@@ -188,14 +188,9 @@ const Storm = (() => {
       if (/^Powder: /.test(text)) { text = text.slice(8); cid = "bosun"; }
       beats.push({ kind: key, name: key, cid, text, eyebrow, sub: sub || "", cls: cls || "" });
     };
+    /* One story screen only (21 Nov 2026, Anthony: "one screen and then the result"): her opening line, then the
+       card carries the cargo, guns, hull and landing. */
     add("open", te("storm.eyebrow." + st.band) + " · " + te("storm.severity", { score: st.score }), "");
-    add("cargo", tl("storm.cargo", "Cargo"), (st.cargo || []).map(c => `${n0(c.qty)} ${esc(goodName(c.good))}`).join(", ")
-      + (st.cargo_cost ? ` · <em>−${money(st.cargo_cost)}</em>` : ""), "bad");
-    add("guns", tl("storm.t.guns", "Guns lost"), `${n0(armsLost)} ${tl("storm.t.guns", "Guns lost").toLowerCase()}`, "bad");
-    add("hull", tl("storm.hull", "Hulls"), `${tl("storm.t.hull", "Hull lost")} ${hullPct}%` + (sunk ? ` · ${te("storm.lost_ship")}: ${sunk}` : ""), "bad");
-    add("land", tl("storm.landed", "Where you landed"), L.diverted
-      ? `${esc(portName(L.port))} · ${tl(L.yard ? "storm.yard.yes" : "storm.yard.no", L.yard ? "A shipyard here" : "No shipyard here")}`
-      : tl("storm.course", "Still bound for {port}", { port: esc(portName(L.port)) }), L.diverted && !L.yard ? "bad" : "ok");
     return beats;
   }
 

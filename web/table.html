@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Harbor View</title>
+<link rel="icon" id="fav" href="/assets/branding/crimson-ledger-icon-v01.png">
+<link rel="apple-touch-icon" id="touch-icon" href="/assets/branding/crimson-ledger-icon-v01.png">
+<link rel="stylesheet" href="/style.css?v=20261117cr">
+<link rel="stylesheet" href="/ceremony.css?v=20261118ledger">
+<link rel="stylesheet" id="fonts" href="/fonts.css">
+<link rel="stylesheet" id="theme" href="/theme.css">
+<link rel="stylesheet" href="/wordmark.css?v=20261118text1">
+<link rel="stylesheet" href="/ranks.css?v=20261119ranks">
+<link rel="stylesheet" href="/table.css?v=20261121hv1">
+</head>
+<!-- Harbor View: the game seen from straight above, laid out on a captain's table (phase 1, 21 Nov 2026).
+     Read-only. Uses the same public stream as the harbor board. Plan: project doc "SeaTrader Harbor View". -->
+<body class="board harbor-view">
+<p id="hv-loading" class="loading">…</p>
+<div id="hv-fit">
+  <main id="app" class="hv-table board-room" hidden>
+    <div class="hv-lamp" aria-hidden="true"></div>
+
+    <section class="hv-board" aria-label="Sea chart">
+      <svg id="hv-track" class="hv-track" viewBox="0 0 1400 864" aria-hidden="true"></svg>
+      <div class="hv-chart">
+        <div id="hv-chart-base"></div>
+        <div class="hv-water" aria-hidden="true"><i></i><i></i><i></i></div>
+        <svg id="hv-sky" class="hv-layer" viewBox="0 0 1000 600" aria-hidden="true"></svg>
+        <div id="hv-title" class="hv-title"></div>
+        <svg id="hv-pieces" class="hv-layer" viewBox="0 0 1000 600"></svg>
+        <div class="hv-shadows" aria-hidden="true"><i></i><i></i></div>
+      </div>
+    </section>
+
+    <aside class="hv-side">
+      <section id="hv-date" class="hv-card hv-date"></section>
+      <section id="hv-postcard" class="hv-postcard"></section>
+      <section class="hv-gazette">
+        <h2 id="hv-gazette-head"></h2>
+        <div id="hv-news" class="hv-news"></div>
+      </section>
+    </aside>
+
+    <section id="hv-mats" class="hv-mats"></section>
+
+    <footer id="hv-controls" class="hv-controls">
+      <span id="hv-connection" role="status"></span>
+      <button id="hv-quit" type="button">Quit</button>
+    </footer>
+  </main>
+</div>
+<script src="/ranks.js?v=20261119ranks"></script>
+<script src="/wordmark.js?v=20261118text1"></script>
+<script src="/common.js?v=20261119ranks"></script>
+<script src="/media.js"></script>
+<script src="/audio.js?v=20261120snd"></script>
+<script src="/voice.js?v=20261120snd"></script>
+<script src="/chart.js"></script>
+<script src="/ceremony.js?v=20261119ranks"></script>
+<script src="/soundscape.js?v=20261120snd"></script>
+<script src="/table.js?v=20261121hv1"></script>
+</body>
+</html>
