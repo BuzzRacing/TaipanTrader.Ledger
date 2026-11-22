@@ -10,7 +10,7 @@
   const st = {
     data: null, err: "", loading: false, off: false,
     owner: "", surface: "", q: "", issues: false, thin: false, thinN: 5, written: false, singles: false,
-    open: new Set(), edit: null, arm: "",
+    open: new Set(), edit: null, arm: "", voiceOpen: false,
     gen: { busy: "", msg: "", err: "", opts: {}, edits: {}, derr: {}, models: [], open: false, key: "" },
   };
   const e = s => esc(s);
@@ -95,7 +95,7 @@
   }
   function voiceCard() {
     const now = st.data.voice_now;
-    return `<details class="bk-voice"><summary>How each screen speaks today</summary>
+    return `<details class="bk-voice" data-bkd="voice" ${st.voiceOpen ? "open" : ""}><summary>How each screen speaks today</summary>
       <p class="muted small">Voices are paid for only the first time a line is heard, then replayed free from the cache. Open a spoken bank
       to set its <b>Spoken</b> mode and a cap on new recordings per game; with nothing set a bank behaves as described here.</p>
       <table class="bk-t"><tbody>${st.data.surfaces.map(x => `<tr><th>${e(x.name)}</th><td>${e(now[x.id] || "")}</td></tr>`).join("")}</tbody></table></details>`;
@@ -184,7 +184,7 @@
     if (!g) return "";
     const s = g.settings, n = g.queue.length;
     const models = st.gen.models.map(m => `<option value="${e(m)}"></option>`).join("");
-    return `<details class="bk-genpanel" ${st.gen.open || n ? "open" : ""} data-bk="gtoggle"><summary>Generator${n ? ` · ${plural(n, "draft")} waiting for review` : ""}</summary>
+    return `<details class="bk-genpanel" data-bkd="gen" ${st.gen.open ? "open" : ""}><summary>Generator${n ? ` · ${plural(n, "draft")} waiting for review` : ""}</summary>
       ${st.gen.msg ? `<p class="muted small">${e(st.gen.msg)}</p>` : ""}${st.gen.err ? `<p class="bk-none">${e(st.gen.err)}</p>` : ""}
       <div class="bk-gset"><h3>Settings</h3>
         <label>Default writer <select data-bkg="s-provider"><option value="local"${s.provider === "local" ? " selected" : ""}>Local LLM</option><option value="api"${s.provider === "api" ? " selected" : ""}>Claude API</option></select></label>
@@ -207,7 +207,6 @@
   async function genAction(a, v, t) {
     const gg = st.gen, val = sel => { const el = main.querySelector(sel); return el ? el.value : ""; };
     gg.err = ""; gg.msg = "";
-    if (a === "gtoggle") return;
     if (a === "grun") {
       const o = gopt(v);
       gg.busy = v; redraw();
@@ -222,6 +221,7 @@
       if (a === "gkeyclear") body.key = ""; else if (key) body.key = key;
       gg.open = true;
       if (a === "gmodels") {
+        gg.msg = "Asking the local LLM for its models…"; redraw();
         const saved = await gcall("gen_settings", { base_url: body.base_url, model: body.model });   // so the redraw keeps what you typed
         if (saved.ok) {
           const res = await gcall("gen_models", { base_url: body.base_url });
@@ -367,6 +367,11 @@
       return redrawLists();
     }
   });
+  main.addEventListener("toggle", ev => {          // toggle does not bubble, so listen in the capture phase
+    const d = ev.target && ev.target.dataset && ev.target.dataset.bkd;
+    if (!d || !here()) return;
+    if (d === "voice") st.voiceOpen = ev.target.open; else st.gen.open = ev.target.open;
+  }, true);
   main.addEventListener("change", ev => {
     if (!here()) return;
     const gb = ev.target.dataset && ev.target.dataset.bkg;
@@ -385,5 +390,8 @@
     redrawLists();
   });
 
-  window.SeaTraderBanks = { render, enter: () => load(!!st.data), leave: () => {} };
+  /* admin.js calls enter() on EVERY draw of this section, and load() redraws: so only the first call after arriving may
+     fetch, or the page refetches the whole catalogue forever. */
+  let fresh = false;
+  window.SeaTraderBanks = { render, enter: () => { if (fresh) return; fresh = true; load(!!st.data); }, leave: () => { fresh = false; } };
 })();

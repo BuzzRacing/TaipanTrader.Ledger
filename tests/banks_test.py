@@ -429,6 +429,36 @@ def test_generator_api_provider_and_failures():
         assert banks.handle("gen_settings", {"key": ""}, CFG)["ok"] and not banks.view(CFG)["generator"]["key_set"]
 
 
+def test_admin_http_route_reaches_the_banks():
+    """The page POSTs to /api/admin/banks/<op>; the server must hand that to banks.handle (it once fell through to 404)."""
+    import threading
+    import types
+    import server
+    sent = []
+    req = object.__new__(server.Handler)
+    req.headers = {"X-SeaTrader": "admin"}
+    req._admin_ok = lambda: True
+    req._via = lambda: {}
+    req._send = lambda code, body, *a, **k: sent.append((code, body))
+    saved = (getattr(server, "HUB", None), server.journal.log)
+    server.HUB = types.SimpleNamespace(cond=threading.RLock(), reload_settings=lambda: None)
+    server.journal.log = lambda *a, **k: None
+    try:
+        with Overlay(), GenFiles("[]"):
+            for what, body in (("banks/gen_settings", {"provider": "local", "model": "m"}),
+                               ("banks/spoken", {"bank": "m.borrowed.easy", "spoken": "off"}),
+                               ("banks/edit", dict(GOOD, key="m.borrowed.easy.0")),
+                               ("banks/gen_models", {})):
+                req._body = lambda *a, body=body, **k: body
+                sent.clear()
+                req._admin_post(what, {})
+                code, res = sent[-1]
+                assert code == 200 and "ok" in res, (what, code, res)
+                assert res.get("error") != "Not found", what
+    finally:
+        server.HUB, server.journal.log = saved
+
+
 def test_overlay_survives_reload_and_leaves_no_trace_when_removed():
     key = "m.borrowed.easy.0"
     with Overlay() as o:

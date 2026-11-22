@@ -237,7 +237,8 @@
   const portKeys = () => ((M.lib && M.lib.subjects.port) || []).map(x => x[0]);
   const JOBS = [["mayor", "Mayor"], ["jailer", "Jailer / warden"], ["taxlady", "Tax lady / customs"], ["keeper", "Market keeper"], ["shipmaster", "Ship master"],
     ["lender", "Moneylender"], ["banker", "Banker"], ["comprador", "Comprador"], ["shipwright", "Shipwright"], ["crier", "Crier"],
-    ["bookmaker", "Bookmaker"], ["agent", "Pirate queen's agent"], ["pirate", "Pirate queen"], ["bosun", "Bosun"], ["narrator", "First mate"]];
+    ["bookmaker", "Bookmaker"], ["agent", "Pirate queen's agent"], ["pirate", "Pirate queen"], ["bosun", "Bosun"], ["narrator", "First mate"],
+    ["thieves", "Thieves (Magpie)"], ["legend", "Legends: storytellers, characters, scenes"], ["bookkeeper", "Bookkeeper"], ["gamemaster", "Game Master"]];
   const jobLabel = j => (JOBS.find(x => x[0] === j) || [0, subjectName("persona", j)])[1];
   function portOf(i) {
     if (i.kind === "port") return i.subject;
@@ -250,8 +251,10 @@
   function jobOf(i) {
     if (i.kind === "persona") {
       const k = i.subject || "";
+      if (/^(teller|legend)_/.test(k)) return ["legend"];
       return [k === "mayor" ? "mayor" : /^warden_/.test(k) ? "jailer" : (k === "taxlady" || k === "customs" || /^officer_/.test(k)) ? "taxlady" : k];
     }
+    if (i.kind === "scene") return i.roles.some(r => r === "legend" || r.startsWith("legend_")) ? ["legend"] : [];
     if (i.kind !== "port") return [];
     const out = [];
     i.roles.forEach(r => {
@@ -262,7 +265,27 @@
     });
     return out;
   }
-  const inFind = i => (!M.port || portOf(i) === M.port) && (!M.job || jobOf(i).includes(M.job));
+  // Every picture role in the game, grouped by kind, for the Role list when no Kind is chosen.
+  function allRoles() {
+    const out = [];
+    KIND_ORDER.forEach(k => {
+      const K = kinds()[k]; if (!K || !K.roles || !K.roles.length) return;
+      const short = K.roles.map(r => r[1].split(":")[0]);
+      out.push([K.label, K.roles.map((r, ix) => [r[0], short.filter(x => x === short[ix]).length > 1 ? r[1].slice(0, 70) : short[ix]])]);
+    });
+    return out;
+  }
+  const roleHit = (i, r) => i.roles.some(x => x === r || x.startsWith(r + "_")) || i.tags.some(t => String(t).toLowerCase() === r);
+  // Wallpapers, weather pictures and storm pictures belong to a woman's scenery, not to her port. With a Port or Job
+  // chosen and no Role picked, they stay out of the way; pick the Role (Wallpaper, Weather, Storm) to see them.
+  const SCENERY = ["wallpaper", "weather", "storm"];
+  const isScenery = i => i.kind === "persona" && ((i.roles.length && i.roles.every(r => SCENERY.includes(r)))
+    || i.tags.some(t => /^(weather|master-shot|wallpaper)/i.test(String(t))));
+  // Only a Port on its own hides scenery: a whole port's cast has hundreds of wallpapers and weather pictures. Once
+  // a Job is chosen it is one woman's pictures, so all of hers show (Game Master, Mayor of Hong Kong...).
+  const hideScenery = i => !!M.port && !M.job && !M.role && isScenery(i);
+  const inFind = i => (!M.port || portOf(i) === M.port) && (!M.job || jobOf(i).includes(M.job))
+    && !hideScenery(i);
 
   function filtered() {
     const q = M.q.trim().toLowerCase();
@@ -272,8 +295,7 @@
       if (M.subject && i.subject !== M.subject) return false;
       // A role also takes in its moods and variants (Anthony, 19 Nov 2026): "mayor" picks up mayor_congrats and
       // mayor_<rank>, "taxlady" picks up taxlady_bored, _caught and the rest, and a tag naming the role counts too.
-      if (M.role && i.roles.length && !(i.roles.some(r => r === M.role || r.startsWith(M.role + "_"))
-          || i.tags.some(t => String(t).toLowerCase() === M.role))) return false;
+      if (M.role && (i.roles.length || !M.kind) && !roleHit(i, M.role)) return false;
       if (M.type === "pair") { if (i.type !== "video" || !i.pair) return false; }
       else if (M.type === "hasvid") { if (i.type !== "image" || !clipsOf(i.id).length) return false; }
       else if (M.type && i.type !== M.type) return false;
@@ -373,7 +395,7 @@
   function findBox() {
     const all = items();
     const portN = {};
-    all.forEach(i => { const p = portOf(i); if (p) portN[p] = (portN[p] || 0) + 1; });
+    all.forEach(i => { const p = portOf(i); if (p && (!M.job || jobOf(i).includes(M.job)) && !(!M.job && !M.role && isScenery(i))) portN[p] = (portN[p] || 0) + 1; });
     const jobN = {};
     all.filter(i => !M.port || portOf(i) === M.port).forEach(i => jobOf(i).forEach(j => { if (j) jobN[j] = (jobN[j] || 0) + 1; }));
     const known = JOBS.map(x => x[0]);
@@ -382,7 +404,7 @@
     return `<div class="ml-rail-sec ml-find"><h3>Find by port &amp; job</h3>
       <label>Port<select data-mlfind="port"><option value="">Any port</option>${ports.map(([k, n]) => `<option value="${e(k)}"${k === M.port ? " selected" : ""}>${e(n)} (${portN[k] || 0})</option>`).join("")}</select></label>
       <label>Job<select data-mlfind="job"><option value="">Any job</option>${jobs.map(j => `<option value="${e(j)}"${j === M.job ? " selected" : ""}>${e(jobLabel(j))} (${jobN[j] || 0})</option>`).join("")}</select></label>
-      <p class="help">Pulls her pictures from Personas <em>and</em> Ports together, in any kind.</p></div>`;
+      <p class="help">Pulls her pictures from Personas <em>and</em> Ports together, in any kind. With a Port alone, wallpapers, weather and storm pictures stay hidden until you pick that Role below; pick a Job and all of her pictures show.</p></div>`;
   }
 
   function rail() {
@@ -411,7 +433,7 @@
       ${findBox()}
       <div class="ml-rail-sec"><h3>Kind</h3><div class="ml-list">${kindBtns}<button type="button" data-mlkind="" class="${M.kind === "" ? "on" : ""}"><span>Everything</span><i>${all.length}</i></button></div></div>
       ${subs.length ? `<div class="ml-rail-sec"><h3>${e(K.one)}</h3><div class="ml-list ml-scroll">${subBtns}</div></div>` : ""}
-      ${roles.length ? `<div class="ml-rail-sec"><h3>Role</h3><select data-mlf="role"><option value="">Any</option>${roles.map(([k, n]) => `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n.split(":")[0])}</option>`).join("")}</select></div>` : ""}
+      <div class="ml-rail-sec"><h3>Role</h3><select data-mlf="role"><option value="">Any</option>${K ? roles.map(([k, n]) => `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n.split(":")[0])}</option>`).join("") : allRoles().map(([g, rs]) => `<optgroup label="${e(g)}">${rs.map(([k, n]) => `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n)}</option>`).join("")}</optgroup>`).join("")}</select></div>
       <div class="ml-rail-sec"><h3>Rating</h3><div class="ml-seg ml-seg-v">${RATINGS.map(([k, n]) => `<button type="button" data-mlrating="${k}" class="${M.nsfw === k ? "on" : ""}">${n}</button>`).join("")}</div></div>
       <div class="ml-rail-sec"><h3>Status</h3><div class="ml-list">
         <button type="button" data-mlreview="1" class="${M.review ? "on" : ""}"><span>Needs review</span><i>${nReview}</i></button>
@@ -436,7 +458,7 @@
     if (M.job) add("job", "Job: " + jobLabel(M.job));
     if (M.kind) add("kind", kinds()[M.kind].label);
     if (M.subject) add("subject", subjectName(M.kind, M.subject));
-    if (M.role) add("role", "Role: " + roleName(M.kind, M.role));
+    if (M.role) add("role", "Role: " + (M.kind ? roleName(M.kind, M.role) : (allRoles().flatMap(g => g[1]).find(r => r[0] === M.role) || [0, M.role])[1]));
     if (M.type === "hasvid") add("type", "Has clips");
     if (M.nsfw) add("nsfw", (RATINGS.find(r => r[0] === M.nsfw) || [0, M.nsfw])[1]);
     if (M.review) add("review", "Needs review");
@@ -1515,7 +1537,7 @@
     if (section !== "media") return;
     const el = ev.target, d = el.dataset;
     if (d.mlfind) {
-      M[d.mlfind] = el.value; M.kind = ""; M.subject = ""; M.role = ""; M.tag = ""; M.sel.clear();
+      M[d.mlfind] = el.value; M.kind = ""; M.subject = ""; M.tag = ""; M.sel.clear();
       if (d.mlfind === "port" && M.job && !items().some(i => portOf(i) === M.port && jobOf(i).includes(M.job))) M.job = "";
       return redraw();
     }

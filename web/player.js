@@ -603,7 +603,7 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "sail.best_flat": "nothing above usual", "sail.best_seen": "seen {when}",
     "sail.run": "Buy here \u2192 sell there", "sail.run_none": "nothing from here pays",
     "sail.run_tip": "Buy {good} here for {buy} a unit (dealer's cut included). Sold in {port} it should fetch about {sell} a unit once the price has drifted and the dealer there takes his cut ({when}). Small buys only: big lots push the price against you.",
-    "sail.danger": "Danger monitor", "sail.danger_tip": "{pct}% chance of a pirate fight on the way to {port}.",
+    "sail.danger": "Danger monitor", "sail.danger_tip": "Pirates may be waiting on the way to {port}.",
     "sail.danger_0": "low", "sail.danger_1": "moderate", "sail.danger_2": "high", "sail.danger_3": "severe",
     "dues.title": "Harbour dues", "dues.due": "Due when you sail", "dues.paid_on_leave": "Paid as you leave",
     "dues.after": "Silver {from} → {to} after dues", "dues.short": "You are {owed} short. It will go on your debt.",
@@ -3012,7 +3012,7 @@ function chartTab() {
       : `<span class="dest-stat dest-run best-up" title="${esc(t("sail.run_tip", { good: D.goods[run.g].name, buy: money(run.buy),
           sell: money(Math.round(run.sell)), port: p.name, when: bookSeen(run.age) }))}">${sailIcon("run")}<span><small>${te("sail.run")}</small>
           <strong>${esc(D.goods[run.g].name)}: ${money(run.buy)} \u2192 \u2248${money(Math.round(run.sell))} <b class="dest-gain">+${runPct}%</b></strong></span></span>`;
-    const danger = pirateRisk(me.port, k), dangerPct = Math.round(danger * 100);
+    const danger = pirateRisk(me.port, k);
     const dangerTier = danger < .12 ? 0 : danger < .22 ? 1 : danger < .32 ? 2 : 3;
     const rep = Math.round(me.rep[k] || 0);
     const repTip = te("dealer.standing_tip", { rep });
@@ -3034,7 +3034,7 @@ function chartTab() {
         <span class="dest-title"><b>${esc(p.name)}</b><span class="dest-pct">${Math.round(score * 100)}%</span></span></span>
       <span class="dest-data">
         <span class="dest-stat wx${wx}">${sailIcon(weatherKind)}<span><small>${te("sail.weather")}</small><strong>${esc(D.weather[wx])}</strong></span></span>
-        <span class="dest-stat dz${dangerTier}" title="${te("sail.danger_tip", { pct: dangerPct, port: esc(p.name) })}">${sailIcon("danger")}<span><small>${te("sail.danger")}</small><strong>${dangerPct}% · ${te("sail.danger_" + dangerTier)}</strong></span></span>
+        <span class="dest-stat dz${dangerTier}" title="${te("sail.danger_tip", { port: esc(p.name) })}">${sailIcon("danger")}<span><small>${te("sail.danger")}</small><strong>${te("sail.danger_" + dangerTier)}</strong></span></span>
         <span class="dest-stat" title="${repTip}">${sailIcon("standing")}<span><small>${te("sail.standing")}</small><strong class="dest-rep" style="--heat:${standingHeat(standingTier(rep))}">${standingHeatSvg(rep, repTip, "dest-heat")}<em>${rep}</em></strong></span></span>
         <span class="dest-stat dest-best${bestCls}"${best ? ` title="${bestTip}"` : ""}>${sailIcon("best")}<span><small>${te("sail.best")}</small><strong>${bestText}</strong>${bestAge ? `<em class="dest-age">${bestAge}</em>` : ""}</span></span>
         ${runHtml}
@@ -3113,10 +3113,10 @@ function helmCard(dest, orders) {
   // Left heading: the pirate chance on the chosen route, where the fight-or-run choice is made.
   let routeChip = "";
   if (dest && dest !== me.port) {
-    const danger = pirateRisk(me.port, dest), pct = Math.round(danger * 100);
+    const danger = pirateRisk(me.port, dest);
     const tier = danger < .12 ? 0 : danger < .22 ? 1 : danger < .32 ? 2 : 3;
-    routeChip = heatChip(`${pct}% · ${te("sail.danger_" + tier)}`, danger / .4,
-      te("sail.danger_tip", { pct, port: esc(portName(dest)) }), helmIcon("skull"));
+    routeChip = heatChip(te("sail.danger_" + tier), danger / .4,
+      te("sail.danger_tip", { port: esc(portName(dest)) }), helmIcon("skull"));
   }
   const opt = (icon, label, o) => btn(helmLab(icon, label), "orders", `data-o="${o}"`, orders === o ? "on" : "");
   const fight = cannons() ? te("orders.fight_cannons", { guns: guns(), cannons: cannons() }) : te("orders.fight", { guns: guns() });

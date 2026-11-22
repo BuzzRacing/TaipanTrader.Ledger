@@ -1733,6 +1733,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "entry": entry})
         if what == "imagegen/example":
             return self._artbible_generate(body)
+        if what.startswith("banks/"):
+            # Dialogue Banks (banks.py, banks_gen.py): edit, add, remove, restore, reset, set Spoken, generate. Live at once.
+            res = banks.handle(what[len("banks/"):], body, engine.CFG)
+            if res.get("ok"):
+                with HUB.cond:
+                    HUB.reload_settings()
+                journal.log("INFO", "admin", "Dialogue bank: {} {}".format(what[len("banks/"):], res.get("key", "")), **self._via())
+            return self._send(200, res)
         if what.startswith("voice/"):
             return self._voice_admin(what[len("voice/"):], body)
         if what == "journal":
@@ -2274,14 +2282,6 @@ class Handler(BaseHTTPRequestHandler):
             journal.log("INFO", "voice", "Voice library checked against Inworld: {} new, {} gone, {} back".format(
                 len(diff["added"]), len(diff["removed"]), len(diff["back"])), **self._via())
             return self._send(200, dict(voicelib.public(), ok=True, diff=diff))
-        if what.startswith("banks/"):
-            # Dialogue Banks (banks.py): edit, add, remove, restore or reset one line. It goes live at once.
-            res = banks.handle(what[len("banks/"):], body, engine.CFG)
-            if res.get("ok"):
-                with HUB.cond:
-                    HUB.reload_settings()
-                journal.log("INFO", "admin", "Dialogue bank: {} {}".format(what[len("banks/"):], res.get("key", "")), **self._via())
-            return self._send(200, res)
         if what.startswith("clips/"):
             # The Clips page (voiceclips.py): rank, bin, restore, record.
             res = voiceclips.handle(what[len("clips/"):], body, engine.CFG, engine.TEXT)

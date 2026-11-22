@@ -170,6 +170,51 @@ _SOLD_STORE = [
      "Warehouse swept, hold empty, purse full.", "{good} sold. Warehouse swept, hold empty, purse full."),
 ]
 
+# Opium, bought in bulk (BULK_MIN or more): NSFW wording only. Family screens get a clean line they already know.
+_BOUGHT_OPIUM = [
+    ("Dark, sticky and sold by the chest. Mind where you put your fingers, darling. It clings.",
+     "{good} bought. Dark, sticky and sold by the chest. Mind where you put your fingers, darling. It clings.",
+     "Good choice, Captain.", "{good} bought. Good choice, Captain."),
+    ("Chests and chests of poppy, packed tight and heavy. You'll be dreaming of me all the way to port.",
+     "Chests and chests of {good}, packed tight and heavy. You'll be dreaming of me all the way to port.",
+     "Load it carefully, Captain.", "Chests of {good}. Load it carefully, Captain."),
+    ("Lamp lit, pipe warm, hold full. All that's missing is you staying the night, Captain.",
+     "{good}, yours. Lamp lit, pipe warm, hold full. All that's missing is you staying the night, Captain.",
+     "Signed, sealed and stowed.", "{good}, signed, sealed and stowed."),
+    ("That much smoke is hard to hide, darling. Wrap it tight, stow it deep, and keep a straight face. That's the hard part.",
+     "Bought {good}. That much smoke is hard to hide, darling. Wrap it tight, stow it deep, and keep a straight face. That's the hard part.",
+     "Bought and paid for, Captain.", "Your {good}, bought and paid for, Captain."),
+    ("Chasing the dragon by the chestful? Go gently, Captain. She bites, and I'd hate to lose you.",
+     "That's the {good}. Chasing the dragon by the chestful? Go gently, Captain. She bites, and I'd hate to lose you.",
+     "A firm grip on the market, Captain.", "{good} bought. A firm grip on the market, Captain."),
+]
+
+# A purchase of this many units or more uses the cargo's own bank below (PRODUCT_BUY), if it has one.
+BULK_MIN = 50
+PRODUCT_BUY = {}
+PRODUCT_BUY["opium"] = "m.bought.opium"
+
+
+# Marijuana, bought in bulk: NSFW wording only. Family screens (where it is Hemp) all get the one clean line.
+_BOUGHT_MARIJUANA = [
+    ("Sweet, green and stacked to the rafters. Careful, darling. The smell gets into everything, and so do I.",
+     "{good} bought. Sweet, green and stacked to the rafters. Careful, darling. The smell gets into everything, and so do I.",
+     "Good choice, Captain.", "{good} bought. Good choice, Captain."),
+    ("Bales of it, tightly rolled. You do know how to handle a bundle, Captain.",
+     "Bales of {good}, tightly rolled. You do know how to handle a bundle, Captain.",
+     "Good choice, Captain.", "{good} bought. Good choice, Captain."),
+    ("Light a little, darling, not the whole hold. Though I would watch you try.",
+     "{good}, yours. Light a little, darling, not the whole hold. Though I would watch you try.",
+     "Good choice, Captain.", "{good} bought. Good choice, Captain."),
+    ("That much green and I'll be giggling till the next tide. Take it before I get ideas.",
+     "That's the {good}. That much green and I'll be giggling till the next tide. Take it before I get ideas.",
+     "Good choice, Captain.", "{good} bought. Good choice, Captain."),
+    ("Everything goes slow and sweet with this aboard, Captain. Do keep your hands on the wheel. Mostly.",
+     "Bought {good}. Everything goes slow and sweet with this aboard, Captain. Do keep your hands on the wheel. Mostly.",
+     "Good choice, Captain.", "{good} bought. Good choice, Captain."),
+]
+PRODUCT_BUY["marijuana"] = "m.bought.marijuana"
+
 EN, FAMILY, SAY, SAY_FAMILY = {}, {}, {}, {}
 for _prefix, _lead, _bank in (("m.bought", BUY, _BOUGHT), ("m.sold", SELL, _SOLD),
                               ("m.sold_loss", SELL, _SOLD_LOSS), ("m.sold_store", STORE, _SOLD_STORE)):
@@ -179,6 +224,49 @@ for _prefix, _lead, _bank in (("m.bought", BUY, _BOUGHT), ("m.sold", SELL, _SOLD
         FAMILY[_k] = _lead + _fwink
         SAY[_k] = _say
         SAY_FAMILY[_k] = _fsay
+
+# loop: opium
+for _i, (_wink, _say, _fwink, _fsay) in enumerate(_BOUGHT_OPIUM):
+    _k = "m.bought.opium.{}".format(_i)
+    EN[_k] = BUY + _wink
+    FAMILY[_k] = BUY + _fwink
+    SAY[_k] = _say
+    SAY_FAMILY[_k] = _fsay
+
+# loop: marijuana
+for _i, (_wink, _say, _fwink, _fsay) in enumerate(_BOUGHT_MARIJUANA):
+    _k = "m.bought.marijuana.{}".format(_i)
+    EN[_k] = BUY + _wink
+    FAMILY[_k] = BUY + _fwink
+    SAY[_k] = _say
+    SAY_FAMILY[_k] = _fsay
+
+# Marijuana, sold in bulk at a profit: NSFW wording only. Family screens (where it is Hemp) get the one clean line.
+_SOLD_MARIJUANA = [
+    ("Fresh green and a buyer already breathless for it. Sweet doing business with you, Captain.",
+     "Sold your {good}. Fresh green and a buyer already breathless for it. Sweet doing business with you, Captain.",
+     "A pleasure doing business, Captain.", "Sold your {good}. A pleasure doing business, Captain."),
+    ("Every last bale gone up in smoke, as it were. Come back when you're stocked, darling.",
+     "All that {good}, gone up in smoke, as it were. Come back when you're stocked, darling.",
+     "A pleasure doing business, Captain.", "Sold your {good}. A pleasure doing business, Captain."),
+    ("They'll be giggling all over the harbor tonight, and you're the cause. Take a bow, Captain.",
+     "Sold your {good}. They'll be giggling all over the harbor tonight, and you're the cause. Take a bow, Captain.",
+     "A pleasure doing business, Captain.", "Sold your {good}. A pleasure doing business, Captain."),
+    ("That's a lot of green changing hands. Count it slowly, darling. I like to watch.",
+     "That's a lot of {good} changing hands. Count it slowly, darling. I like to watch.",
+     "A pleasure doing business, Captain.", "Sold your {good}. A pleasure doing business, Captain."),
+    ("Light up the profit, darling. You've earned a long, slow one.",
+     "Sold your {good}. Light up the profit, darling. You've earned a long, slow one.",
+     "A pleasure doing business, Captain.", "Sold your {good}. A pleasure doing business, Captain."),
+]
+PRODUCT_SELL = {"marijuana": "m.sold.marijuana"}
+# loop: sold marijuana
+for _i, (_wink, _say, _fwink, _fsay) in enumerate(_SOLD_MARIJUANA):
+    _k = "m.sold.marijuana.{}".format(_i)
+    EN[_k] = SELL + _wink
+    FAMILY[_k] = SELL + _fwink
+    SAY[_k] = _say
+    SAY_FAMILY[_k] = _fsay
 
 KEYS = list(EN)
 

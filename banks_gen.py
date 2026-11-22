@@ -31,7 +31,7 @@ QUEUE_FILE = os.path.join(config.CONFIG_DIR, "banks", "queue.json")
 
 OPS = ("gen_run", "gen_edit", "gen_approve", "gen_discard", "gen_settings", "gen_models")
 DEFAULTS = {"provider": "local",
-            "local": {"base_url": "http://192.168.1.214:11435/v1", "model": "", "timeout": 300},
+            "local": {"base_url": "http://192.168.1.213:11435/v1", "model": "", "timeout": 300},
             "api": {"model": "claude-sonnet-5-5"}}
 MAX_BATCH = 12
 MAX_QUEUE = 200

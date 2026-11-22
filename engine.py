@@ -3186,9 +3186,15 @@ class Game:
             n += 1
         return [i for i in range(n) if str(TEXT.get("{}.{}".format(prefix, i), "")).strip()]
 
-    def _trade_say(self, p, prefix, fallback=None):
+    def _trade_say(self, p, prefix, fallback=None, good=None, qty=0):
         """The comprador's line for a trade (trade_text.py): the next of the bank prefix.N for this house,
-        else the fallback's bank, else the plain line, so a busy trader seldom hears the same receipt."""
+        else the fallback's bank, else the plain line, so a busy trader seldom hears the same receipt.
+        A bulk purchase (trade_text.BULK_MIN or more) of a cargo with its own bank (trade_text.PRODUCT_BUY)
+        draws from that bank first."""
+        table = {"m.bought": trade_text.PRODUCT_BUY, "m.sold": getattr(trade_text, "PRODUCT_SELL", {})}.get(prefix)
+        own = table.get(good) if table and qty >= trade_text.BULK_MIN else None
+        if own and self._bank(own):
+            return self._draw(p, own)
         for bank in (prefix, fallback or prefix):
             if self._bank(bank):
                 return self._draw(p, bank)
@@ -3665,7 +3671,7 @@ class Game:
         p["cargo"][g] = p["cargo"].get(g, 0) + q
         self._push(p["port"], g, end)
         self._trade_rep(p, cost, g, q, mid=self._detail["price"][0])
-        return tx(self._trade_say(p, "m.bought"), qty=q, good=GOODS[g]["name"], cost=money(cost))
+        return tx(self._trade_say(p, "m.bought", good=g, qty=q), qty=q, good=GOODS[g]["name"], cost=money(cost))
 
     def _act_sell(self, p, a):
         if a.get("src") in ("wh", "all"):
@@ -3695,7 +3701,7 @@ class Game:
         self._dumped(p, g, q, gain, mid0)
         self._delivered(p, g, q)
         loss = gain < trade_text.LOSS_BELOW * unit * q
-        return tx(self._trade_say(p, "m.sold_loss" if loss else "m.sold", "m.sold"), qty=q, good=GOODS[g]["name"], gain=money(gain))
+        return tx(self._trade_say(p, "m.sold_loss" if loss else "m.sold", "m.sold", good=g, qty=q), qty=q, good=GOODS[g]["name"], gain=money(gain))
 
     def _sell_store(self, p, a):
         """Sell straight out of this port's warehouse (src "wh"), or everything of one cargo held here,
