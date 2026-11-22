@@ -39,7 +39,7 @@ def say(game, token, key, family=False):
         text = strings.FAMILY.get(key) or strings.EN.get(key)
     else:
         text = engine.TEXT.get(key) or strings.EN.get(key)
-    item = voice.PLAN._clip(text, cid) if text else None
+    item = voice.PLAN._clip(text, cid, key) if text else None
     if not item:
         return {"ok": False}
     if family:

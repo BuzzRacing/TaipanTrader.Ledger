@@ -3,7 +3,7 @@
 /* Storms and damage (storm.py, 20 Nov 2026).
    - A heavy or savage storm puts a full-screen card in front of the Captain, laid out like the sea battle's
      Reckoning (and the jail's cards): Roxana, battered, huge on the left with her line in the quote card at
-     her feet, the broken ship of the class that was hit behind her, and the brass-cornered damage ledger on
+     her feet, the broken ship of the class that was hit behind her, and the water-stained damage ledger on
      the right (hulls with the lost hull hatched, guns, cargo overboard, where the fleet landed). "Make port"
      closes it (storm_ack) after a short pause so a stray tap cannot skip it. It sits above the sea battle,
      so a pirate fight that follows waits behind it.
@@ -93,8 +93,7 @@ const Storm = (() => {
     const who = castOf("narrator"), P = picsFor(st);
     const face = P.who ? Media.faceMarkup(P.who, "") : who.portrait ? `<img src="${esc(who.portrait)}" alt="">` : "";
     const say = line(st, "open", varsOf(st));
-    const cap = say ? `<figcaption class="sf-rline st-line"${beat ? " hidden" : ""}><header><span class="sf-rsay">${SPEAKER}</span>
-        <span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header><p>“${say}”</p></figcaption>` : "";
+    const cap = say ? `<figcaption class="sf-rline st-line"${beat ? " hidden" : ""}><p>“${say}”</p></figcaption>` : "";
     return `<div class="st-bg"${P.bg ? ` style="background-image:url('${esc(P.bg.u)}')"` : ""}></div><div class="st-shade"></div>
       <div class="sf-result st-result${beat ? " st-beat" : ""}">
         <figure class="sf-rwho st-who${face ? "" : " nopic"}">${face}${cap}</figure>
@@ -260,12 +259,11 @@ const Storm = (() => {
   const telling = () => !!(story && story.i < story.beats.length);
 
   function drawBeat(st, b, i) {
-    const who = castOf(b.cid);
     const dots = story.beats.length > 1 ? story.beats.map((_, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}"></i>`).join("") : "";
     return `<section class="st-cap o-${esc(st.band)}" role="status" aria-live="polite">
           <p class="st-eyebrow">${b.eyebrow}</p>
+          <h1 class="st-story-title">${te("storm.title." + st.band)}</h1>
           <p class="st-say">“${b.text}”</p>
-          <p class="st-by">${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</p>
           ${b.sub ? `<p class="st-sub ${b.cls}">${b.sub}</p>` : ""}
           <footer><span class="st-dots" aria-hidden="true">${dots}</span><span class="st-hint">${tl("storm.tap", "Tap to go on")}</span></footer>
         </section>`;

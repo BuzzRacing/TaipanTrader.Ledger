@@ -326,13 +326,18 @@ def clip_path(cid):
 
 
 _who = {}                   # clip id -> character id, for the index (so the Clips page knows who spoke it)
+_key_of = {}                # clip id -> the line key it was planned for, so its bank's cap can be applied (banks.py)
 
 
-def register(params, who=""):
+def register(params, who="", key=""):
     cid = clip_id(params)
     with _reg_lock:
         if who:
             _who[cid] = who
+        if key:
+            _key_of[cid] = key
+            while len(_key_of) > REGISTRY_SIZE:
+                _key_of.pop(next(iter(_key_of)))
         _registry[cid] = params
         _registry.move_to_end(cid)
         while len(_registry) > REGISTRY_SIZE:
@@ -368,6 +373,11 @@ def render(params):
             _log("DEBUG", "Voice line played from the cache", clip=cid, voice=params.get("voice_id"))
             with open(path, "rb") as f:
                 return f.read()
+        key = _key_of.get(cid)
+        if key:
+            import banks
+            if not banks.charge(key):       # a NEW recording only: cached clips returned above are always free
+                raise VoiceError("The cap on new recordings for this line's bank has been reached for this game.")
         try:
             audio = synthesize(params["text"], params["voice_id"], params["model_id"], params["rate"],
                                params["temperature"], params["delivery"])
@@ -598,20 +608,24 @@ class Planner:
                 text = re.sub(r"(?<!\w){}(?!\w)".format(re.escape(x)), lambda _m, y=y: y, text)
         return text
 
-    def _clip(self, text, cid):
+    def _clip(self, text, cid, key=None):
         """{c: who, u: the clip} for a line. When the clean wording differs, also f: the clean clip,
         which a Family-friendly screen plays instead (web/voice.js); a table that is Family-friendly
         throughout gets the clean clip as u."""
         ch = self.cfg["characters"].get(cid)
         if not ch or not ch.get("voice_id") or not speech_text(text):
             return None
+        if key:
+            import banks
+            if not banks.may_speak(key):    # the line's bank is switched Off in Admin > Dialogue Banks
+                return None
         vcfg = self.cfg["voice"]
         clean = self.clean(text)
         if ((self.cfg.get("content") or {}).get("rating") == "family"):
             text = clean
-        out = {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, vcfg), cid))}
+        out = {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, vcfg), cid, key or ""))}
         if clean != text:
-            out["f"] = "/voice/{}.mp3".format(register(_params(clean, ch, vcfg), cid))
+            out["f"] = "/voice/{}.mp3".format(register(_params(clean, ch, vcfg), cid, key or ""))
         return out
 
     def _who(self, key, port):
@@ -649,7 +663,7 @@ class Planner:
                     (key.startswith("e.") and not v["read_errors"]):
                 return None
             cid = self._who(key, port)
-        return self._clip(self.spoken(key, fields, str(text).strip()), cid) if cid else None
+        return self._clip(self.spoken(key, fields, str(text).strip()), cid, key) if cid else None
 
     def lines(self, texts, kind, limit=None, port=None):
         if not self.ready():

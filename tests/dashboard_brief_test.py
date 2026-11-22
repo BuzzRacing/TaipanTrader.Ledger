@@ -55,7 +55,7 @@ assert 'Clean Cargo' in clean['text'] and 'Clean Cargo' in clean['speech']
 class Planner:
     calls=[]
     def ready(self): return True
-    def _clip(self,text,cid): self.calls.append((text,cid));return {'c':cid,'u':'/voice/test.mp3'}
+    def _clip(self,text,cid,key=None): self.calls.append((text,cid));return {'c':cid,'u':'/voice/test.mp3'}
 planner=Planner()
 reply=dashboard_brief.voice_reply(expiring,'bookmaker','detail',planner,engine.TEXT)
 assert reply['clip']['c']=='bookmaker' and planner.calls[-1][0]==expiring['speech']

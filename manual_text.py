@@ -27,7 +27,7 @@ CHAPTERS = [
 ]
 HOW_STEPS = {"cover": 4, "money": 4, "authority": 4, "market": 4}      # numbered "How it works" lines written
 MOMENTS = ("open",)                                                    # line banks written so far (the benches add more)
-BANK_SIZE = 3                                                          # lines in each bank so far
+BANK_SIZE = 3                                                          # lines each bank ships with; the live bank can grow
 
 EN = {
     # ---- the book itself ----
@@ -179,7 +179,26 @@ for _c in CHAPTERS:
             SPEAKER["man.{}.{}.{}".format(_c["id"], _m, _i)] = _c["who"]
 
 
-def chapters():
+def bank_keys(chapter_id, moment, live=None):
+    """The keys of one chapter's line bank that have wording right now: every contiguous `man.<chapter>.<moment>.N`,
+    skipping retired (blank) lines, so a line added in Admin > Language & Text > Dialogue Banks is used."""
+    if live is None:
+        import banks
+        import strings
+        banks.apply()
+        live = strings.EN
+    keys, i = [], 0
+    while True:
+        k = "man.{}.{}.{}".format(chapter_id, moment, i)
+        if k not in live:
+            break
+        if live[k]:
+            keys.append(k)
+        i += 1
+    return keys
+
+
+def chapters(live=None):
     """What the page needs to lay out the book: the chapters in order, each with its persona and the keys
     of its line banks (the page reads the wording itself from /api/info)."""
     out = []
@@ -187,6 +206,6 @@ def chapters():
         out.append({
             "id": c["id"], "who": c["who"], "level": c["level"], "ready": c["ready"],
             "how": HOW_STEPS.get(c["id"], 0),
-            "bank": {m: ["man.{}.{}.{}".format(c["id"], m, i) for i in range(BANK_SIZE)] for m in MOMENTS},
+            "bank": {m: bank_keys(c["id"], m, live) for m in MOMENTS},
         })
     return out

@@ -2468,29 +2468,60 @@ EN.update({
     "dash.whisper.teaser.other": "Something worth knowing, Captain. A moment of your attention.",
     "dash.whisper.weather.title": "{weather} in the {region}",
     "dash.whisper.weather.text": "The {region} currently reports {weather}. Check the sea chart before choosing a route through these waters. This is the current weather, not a promise about your voyage.",
-    "dash.whisper.weather.speech": "The {region} is reporting {weather}, Captain. Check the sea chart before you commit. She is in no mood to be taken for granted.",
+    "dash.whisper.weather.speech.0": "The {region} is reporting {weather}, Captain. Check the sea chart before you commit. She is in no mood to be taken for granted.",
     "dash.whisper.fleet.title": "{firm} has a crippled ship",
     "dash.whisper.fleet.text": "At least one ship in {firm}'s fleet is crippled. Review fleet condition before ordering another voyage; the fleet barometer opens the public hull figures.",
-    "dash.whisper.fleet.speech": "A crippled ship in {firm}'s fleet, Captain. Check her condition before another voyage. Pride is a poor substitute for a sound hull.",
+    "dash.whisper.fleet.speech.0": "A crippled ship in {firm}'s fleet, Captain. Check her condition before another voyage. Pride is a poor substitute for a sound hull.",
     "dash.whisper.ban.title": "A market effect with a customs catch",
     "dash.whisper.ban.text": "{good} has an active market effect at {port}, but this cargo is currently banned there. The posted quote does not make it a legal trade. Check the port detail before committing cargo.",
-    "dash.whisper.ban.speech": "There is a market effect for {good} at {port}, but that cargo is banned there. A tempting quote does not make the customs officer look away, darling.",
+    "dash.whisper.ban.speech.0": "There is a market effect for {good} at {port}, but that cargo is banned there. A tempting quote does not make the customs officer look away, darling.",
     "dash.whisper.expiring.title": "The {good} boom is in its final month",
     "dash.whisper.expiring.text": "{port}'s {good} boom has one month remaining. Its current target-price multiplier is {mult}. That is a market effect, not a guaranteed sale price; check the quote and voyage timing.",
-    "dash.whisper.expiring.speech": "The {good} boom at {port} is in its final month. Check the quote and your voyage timing, Captain. A late entrance can be terribly expensive.",
+    "dash.whisper.expiring.speech.0": "The {good} boom at {port} is in its final month. Check the quote and your voyage timing, Captain. A late entrance can be terribly expensive.",
     "dash.whisper.boom.title": "{good} is booming at {port}",
     "dash.whisper.boom.text": "The {good} boom at {port} has {months} months remaining, with a target-price multiplier of {mult}. Check current quotes and bans. Dealer margins, taxes and voyage costs still apply.",
-    "dash.whisper.boom.speech": "There is a live boom for {good} at {port}, Captain. Have a look at the quote and the timing. An invitation, perhaps; a guarantee, never.",
+    "dash.whisper.boom.speech.0": "There is a live boom for {good} at {port}, Captain. Have a look at the quote and the timing. An invitation, perhaps; a guarantee, never.",
     "dash.whisper.spread.title": "A price gap worth inspecting",
     "dash.whisper.spread.text": "{good} is quoted at {low} in {origin} and {high} in {port}: a gross gap of {gap} per unit. Both ports currently permit this cargo. These are posted quotes, before dealer margins, taxes and voyage costs; prices may change before arrival.",
-    "dash.whisper.spread.speech": "The posted quote for {good} is lower at {origin} than at {port}, Captain. Inspect the gap, then account for margins, taxes and the voyage. Temptation is not the same as profit.",
+    "dash.whisper.spread.speech.0": "The posted quote for {good} is lower at {origin} than at {port}, Captain. Inspect the gap, then account for margins, taxes and the voyage. Temptation is not the same as profit.",
 })
 FAMILY.update({k: v for k, v in EN.items() if k.startswith("dash.whisper.")})
 FAMILY.update({
     "dash.whisper.teaser.gamemaster": "Something worth knowing, Captain. Take a look.",
     "dash.whisper.teaser.bookmaker": "Something worth knowing, Captain. This deserves a closer look.",
-    "dash.whisper.weather.speech": "The {region} is reporting {weather}, Captain. Check the sea chart before choosing your route. This is the current weather, not a voyage forecast.",
-    "dash.whisper.ban.speech": "There is a market effect for {good} at {port}, but that cargo is banned there. Check the port detail before committing cargo.",
+    "dash.whisper.weather.speech.0": "The {region} is reporting {weather}, Captain. Check the sea chart before choosing your route. This is the current weather, not a voyage forecast.",
+    "dash.whisper.ban.speech.0": "There is a market effect for {good} at {port}, but that cargo is banned there. Check the port detail before committing cargo.",
+})
+
+# Dashboard whisper: each observation has a small bank of spoken variants (speech.0 is the original wording), drawn
+# without repeats (dashboard_brief.py); more can be added in Admin > Language & Text > Dialogue Banks.
+EN.update({
+    "dash.whisper.weather.speech.1": "The {region} is serving up {weather}, Captain. Consult the sea chart before you go getting ideas. She punishes the overconfident, and not in the fun way.",
+    "dash.whisper.weather.speech.2": "{weather} over the {region}, Captain. Read the chart before you go out there. Rough conditions are only thrilling when you've packed for them.",
+    "dash.whisper.fleet.speech.1": "One of {firm}'s ships is limping, Captain. See to her hull before you ask her for another long, hard voyage. A girl has her limits.",
+    "dash.whisper.fleet.speech.2": "A ship of {firm}'s is wounded, Captain. Look her over, gently, before she's sent anywhere strenuous. Neglect is never a good look.",
+    "dash.whisper.ban.speech.1": "{port} would adore some {good}, Captain, but customs would adore confiscating it even more. Check the port detail before you get your hopes up.",
+    "dash.whisper.ban.speech.2": "A tempting quote for {good} at {port}, and a locked door behind it. Banned is banned, darling, however sweetly the price whispers.",
+    "dash.whisper.expiring.speech.1": "The {good} boom at {port} is on its last month, Captain. Make your move now, or watch someone else enjoy the finish.",
+    "dash.whisper.expiring.speech.2": "Last call for the {good} boom at {port}, Captain. Arrive late and you'll find the party over and the bill still waiting.",
+    "dash.whisper.boom.speech.1": "{port} is positively feverish for {good}, Captain. Study the quote and the timing before you rush in. Passion is lovely; planning is lovelier.",
+    "dash.whisper.boom.speech.2": "Demand for {good} is running hot at {port}, Captain. Warm prices, tight timing. Do be sure you can finish what you start.",
+    "dash.whisper.spread.speech.1": "{good} costs less at {origin} than at {port}, Captain. A gap like that is tempting, but count the margins, taxes and miles before you fall for it.",
+    "dash.whisper.spread.speech.2": "There's a gap between {origin} and {port} for {good}, Captain. Wide enough to slip into, if you've the nerve and the arithmetic.",
+})
+FAMILY.update({
+    "dash.whisper.weather.speech.1": "The {region} is reporting {weather}, Captain. Consult the sea chart before you set out. The sea has little patience for overconfidence.",
+    "dash.whisper.weather.speech.2": "{weather} over the {region}, Captain. Read the chart before you head out. Rough conditions are best met with good preparation.",
+    "dash.whisper.fleet.speech.1": "One of {firm}'s ships is limping, Captain. See to her hull before you ask her for another long voyage. Every ship has her limits.",
+    "dash.whisper.fleet.speech.2": "A ship of {firm}'s is damaged, Captain. Look her over carefully before she is sent anywhere demanding. Neglect is never a good look.",
+    "dash.whisper.ban.speech.1": "{port} would welcome some {good}, Captain, but customs would happily confiscate it. Check the port detail before you commit.",
+    "dash.whisper.ban.speech.2": "A tempting quote for {good} at {port}, with a locked door behind it. Banned is banned, however sweetly the price whispers.",
+    "dash.whisper.expiring.speech.1": "The {good} boom at {port} is in its last month, Captain. Make your move now, or watch someone else enjoy the finish.",
+    "dash.whisper.expiring.speech.2": "Last call for the {good} boom at {port}, Captain. Arrive late and you'll find the party over and the bill waiting.",
+    "dash.whisper.boom.speech.1": "{port} is eager for {good}, Captain. Study the quote and the timing before you rush in. Enthusiasm is fine; planning is better.",
+    "dash.whisper.boom.speech.2": "Demand for {good} is running high at {port}, Captain. Strong prices, tight timing. Be sure you can finish what you start.",
+    "dash.whisper.spread.speech.1": "{good} costs less at {origin} than at {port}, Captain. A gap like that is tempting, but count the margins, taxes and miles before you commit.",
+    "dash.whisper.spread.speech.2": "There's a gap between {origin} and {port} for {good}, Captain. Wide enough to slip through, if you've the nerve and the arithmetic.",
 })
 
 # The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
@@ -2517,6 +2548,8 @@ GROUPS.append(["dash", "Dashboard"])
 
 def resolve(cfg, lang=None):
     """The wording in force: English, then the language file, then family wording."""
+    import banks as _banks  # noqa: E402  (Dialogue Banks overlay, banks.py: laid over EN and FAMILY in place)
+    _banks.apply()
     lang = lang or {"strings": {}, "family": {}}
     out = dict(EN)
     out.update({k: v for k, v in lang.get("strings", {}).items() if k in EN})

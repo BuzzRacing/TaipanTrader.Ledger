@@ -1091,17 +1091,24 @@ class Handler(BaseHTTPRequestHandler):
                 table = harbor_view.view(HUB.game, HUB.present(), snapshot)
                 table["version"] = HUB.version
                 name = (table.get("focus") or {}).get("name", "Captain")
-                keys = ["gm.welcome", "gm.month_open.{}".format(HUB.game.s["turn"] % 3),
-                        "gm.ask_sail", "gm.storm", "gm.ask_battle", "gm.finale", "gm.all_sealed.0",
+                # The month-open and all-sealed lines are drawn from the whole live bank (Admin > Dialogue Banks), no repeat
+                # until every line has been heard; the same turn always gets the same line, so polling does not flicker.
+                scope = (HUB.game.s.get("game_id"), HUB.game.s["turn"])
+                picked = {"gm.month_open": banks.pick_stable("gm.month_open", scope),
+                          "gm.all_sealed": banks.pick_stable("gm.all_sealed", scope)}
+                keys = ["gm.welcome", "gm.ask_sail", "gm.storm", "gm.ask_battle", "gm.finale",
                         "gm.departure", "gm.arrival", "gm.return", "gm.customs_clear", "gm.customs_caught",
                         "gm.customs_buyout", "gm.reckoning"]
 
                 def table_line(key, port=None, cid="gamemaster"):
                     text = engine.tx(key, name=name, port=(engine.PORTS.get(port) or {}).get("name", ""))
-                    return {"text": text, "clip": voice.PLAN._clip(text, cid) if voice.PLAN.ready() else None}
+                    return {"text": text, "clip": voice.PLAN._clip(text, cid, key) if voice.PLAN.ready() else None}
 
                 here = (table.get("focus") or {}).get("port")
                 table["host"] = {k: table_line(k, here) for k in keys}
+                for alias, real in picked.items():
+                    if real:
+                        table["host"][alias] = table_line(real, here)
                 for event in table["events"]:
                     kind, report = event["type"], event.get("report")
                     if kind == "sailed":
@@ -2267,6 +2274,14 @@ class Handler(BaseHTTPRequestHandler):
             journal.log("INFO", "voice", "Voice library checked against Inworld: {} new, {} gone, {} back".format(
                 len(diff["added"]), len(diff["removed"]), len(diff["back"])), **self._via())
             return self._send(200, dict(voicelib.public(), ok=True, diff=diff))
+        if what.startswith("banks/"):
+            # Dialogue Banks (banks.py): edit, add, remove, restore or reset one line. It goes live at once.
+            res = banks.handle(what[len("banks/"):], body, engine.CFG)
+            if res.get("ok"):
+                with HUB.cond:
+                    HUB.reload_settings()
+                journal.log("INFO", "admin", "Dialogue bank: {} {}".format(what[len("banks/"):], res.get("key", "")), **self._via())
+            return self._send(200, res)
         if what.startswith("clips/"):
             # The Clips page (voiceclips.py): rank, bin, restore, record.
             res = voiceclips.handle(what[len("clips/"):], body, engine.CFG, engine.TEXT)

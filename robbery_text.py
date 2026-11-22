@@ -10,9 +10,9 @@ freely; {port} is the port's name.
 EN = {
     # --- the screen ---------------------------------------------------------------------------------------
     "rob.eyebrow.street": "Robbed ashore · {port}",
-    "rob.eyebrow.house": "The godown · {port}",
+    "rob.eyebrow.house": "Warehouse break-in · {port}",
     "rob.title.street": "Mugged.",
-    "rob.title.house": "Broken into.",
+    "rob.title.house": "Burgled.",
     "rob.who": "Magpie",
     "rob.btn": "Back to the game",
     # --- what was taken ----------------------------------------------------------------------------------

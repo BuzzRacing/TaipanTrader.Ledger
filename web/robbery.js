@@ -97,7 +97,7 @@ const Robbery = (() => {
   }
 
   /* ---- what the screen says ----------------------------------------------------------------------------- */
-  const SAY_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>`;
+  const SAY_ICON = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle class="rb-say-ring" cx="20" cy="20" r="17"/><path class="rb-say-horn" d="M10 17h5l7-6v18l-7-6h-5z"/><path class="rb-say-wave" d="M26 15q5 5 0 10M30 11q9 9 0 18"/></svg>`;
   const PURSE = `<svg viewBox="0 0 48 52" aria-hidden="true"><path d="M17 12c0-4 2.5-6 7-6s7 2 7 6"/><path d="M14 16h20l5 7c3 6 1 17-6 21H15c-7-4-9-15-6-21z"/><path d="M19 28c2 3 8 3 10 0M24 20v4" opacity=".7"/></svg>`;
   const CRATE = `<svg viewBox="0 0 48 52" aria-hidden="true"><path d="M6 20 24 10l18 10v22L24 50 6 42z"/><path d="M6 20l18 10 18-10M24 30v20"/><path d="M13 16l17 9" opacity=".6"/></svg>`;
   const tile = (label, value, cls) => `<div class="${cls || ""}"><small>${label}</small><b>${value}</b></div>`;
@@ -137,16 +137,17 @@ const Robbery = (() => {
         </footer>
       </section>`;
   }
-  /* Magpie, big on the left, with her own line in a box (the written wording; the voice reads it) */
+  /* The quote stays directly on the portrait; no identity plaque. */
   function whoHtml(line) {
     const who = castOf(WHO);
     const text = line || who.catchphrase || "";
     const first = face && face.deck[0] ? faceMarkup(face.deck[0]).replace('class="rb-face', 'class="rb-face rb-in')
       : who.portrait ? `<img class="rb-face" src="${esc(who.portrait)}" alt="">` : "";
     return `<figure class="rb-persona rb-who${first ? "" : " nopic"}" style="--who:${esc(who.color || "var(--deck-brass)")}">${first}
-        <figcaption class="rb-quote rb-line"><header><button type="button" class="rb-say" data-say aria-label="${esc(tl("rob.hear", "Hear her again"))}">${SAY_ICON}</button>
-          <span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header>
-          ${text ? `<p>“${esc(text)}”</p>` : ""}</figcaption>
+        <figcaption class="rb-quote rb-line">
+          ${text ? `<p>“${esc(text)}”</p>` : ""}
+          <button type="button" class="rb-say" data-say aria-label="${esc(tl("rob.hear", "Hear her again"))}">${SAY_ICON}</button>
+        </figcaption>
       </figure>`;
   }
 

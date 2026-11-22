@@ -315,3 +315,9 @@ body.ml-active.ml-navmin .ml-navtab { top: calc(var(--top-height) + .6rem); }
 .ml-ab-diff del { background: rgba(200, 90, 80, .25); border-radius: 2px; padding: 0 .12rem; }
 
 .ml-cleantwin { display: flex; flex-direction: column; gap: .2rem; font-size: .74rem; color: var(--muted); margin-top: .5rem; } .ml-cleantwin small { font-weight: 400; } .ml-cleantwin textarea { width: 100%; resize: vertical; }
+
+/* Find by port & job (22 Nov 2026) */
+.ml-find label { display: block; margin: 0 0 .4rem; font-size: .72rem; color: var(--muted); }
+.ml-find select { margin-top: .15rem; }
+.ml-find .help { margin: .2rem 0 0; font-size: .7rem; }
+.ml-where { display: block; opacity: .8; font-weight: 600; }

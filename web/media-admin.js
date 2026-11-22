@@ -11,7 +11,7 @@
     sel: new Set(), last: null, genOpen: false, rulesOpen: false, jobs: [], jobsOpen: (() => { try { return localStorage.getItem("ml.jobsOpen") === "1"; } catch (_) { return false; } })(), poll: null, uploads: [],
     gen: { kind: "", subject: "", roles: [], aspect: "3:4", count: 2, nsfw: "auto", prompt: "", tags: "", forKey: "" },
     // Gallery 2 (Anthony, 21 Nov 2026): filter rail + chips, Pictures/Videos/Pairs toggle, generate drawer, density, left menu collapse.
-    tag: "", density: (() => { try { return localStorage.getItem("ml.density") || "m"; } catch (_) { return "m"; } })(),
+    port: "", job: "", tag: "", density: (() => { try { return localStorage.getItem("ml.density") || "m"; } catch (_) { return "m"; } })(),
     railOpen: (() => { try { return localStorage.getItem("ml.rail") !== "0"; } catch (_) { return true; } })(),
     navMin: (() => { try { return localStorage.getItem("ml.navmin") !== "0"; } catch (_) { return true; } })(),
     ab: { find: "", alts: "", view: "", expect: 0 }, motion: "",
@@ -230,9 +230,44 @@
     </section>`;
   }
 
+  /* ---- Find by port & job (Anthony, 22 Nov 2026) ----
+     A woman is filed under her own name (Personas) or under her port (Ports > port, role mayor, keeper...), so the
+     Kind > Subject rail could never show "the Mayor of Hong Kong" or "the Jailer of Bangkok" in one view.
+     portOf() and jobOf() read both places, so Port + Job pull every picture of her together. */
+  const portKeys = () => ((M.lib && M.lib.subjects.port) || []).map(x => x[0]);
+  const JOBS = [["mayor", "Mayor"], ["jailer", "Jailer / warden"], ["taxlady", "Tax lady / customs"], ["keeper", "Market keeper"], ["shipmaster", "Ship master"],
+    ["lender", "Moneylender"], ["banker", "Banker"], ["comprador", "Comprador"], ["shipwright", "Shipwright"], ["crier", "Crier"],
+    ["bookmaker", "Bookmaker"], ["agent", "Pirate queen's agent"], ["pirate", "Pirate queen"], ["bosun", "Bosun"], ["narrator", "First mate"]];
+  const jobLabel = j => (JOBS.find(x => x[0] === j) || [0, subjectName("persona", j)])[1];
+  function portOf(i) {
+    if (i.kind === "port") return i.subject;
+    if (i.kind !== "persona") return "";
+    const m = /_([a-z]+)$/.exec(i.subject || "");
+    if (m && portKeys().includes(m[1])) return m[1];
+    const c = ((typeof CFG !== "undefined" && CFG.characters) || {})[i.subject];
+    return (c && c.home_port) || "";
+  }
+  function jobOf(i) {
+    if (i.kind === "persona") {
+      const k = i.subject || "";
+      return [k === "mayor" ? "mayor" : /^warden_/.test(k) ? "jailer" : (k === "taxlady" || k === "customs" || /^officer_/.test(k)) ? "taxlady" : k];
+    }
+    if (i.kind !== "port") return [];
+    const out = [];
+    i.roles.forEach(r => {
+      if (r === "mayor" || r.startsWith("mayor_")) out.push("mayor");
+      else if (r === "taxlady" || r.startsWith("taxlady_")) out.push("taxlady");
+      else if (r === "keeper" || r === "shipmaster") out.push(r);
+      else if (r === "jail_cell") out.push("jailer");
+    });
+    return out;
+  }
+  const inFind = i => (!M.port || portOf(i) === M.port) && (!M.job || jobOf(i).includes(M.job));
+
   function filtered() {
     const q = M.q.trim().toLowerCase();
     return items().filter(i => {
+      if (!inFind(i)) return false;
       if (M.kind && i.kind !== M.kind) return false;
       if (M.subject && i.subject !== M.subject) return false;
       // A role also takes in its moods and variants (Anthony, 19 Nov 2026): "mayor" picks up mayor_congrats and
@@ -332,8 +367,23 @@
   }
 
   /* ---- Gallery 2: filter rail, view toggle, chips ---- */
-  const scopeItems = () => items().filter(i => (!M.kind || i.kind === M.kind) && (!M.subject || i.subject === M.subject));
+  const scopeItems = () => items().filter(i => inFind(i) && (!M.kind || i.kind === M.kind) && (!M.subject || i.subject === M.subject));
   const RATINGS = [["", "All"], ["sfw", "Family-friendly"], ["nsfw", "NSFW"], ["off", "Switched off"]];
+
+  function findBox() {
+    const all = items();
+    const portN = {};
+    all.forEach(i => { const p = portOf(i); if (p) portN[p] = (portN[p] || 0) + 1; });
+    const jobN = {};
+    all.filter(i => !M.port || portOf(i) === M.port).forEach(i => jobOf(i).forEach(j => { if (j) jobN[j] = (jobN[j] || 0) + 1; }));
+    const known = JOBS.map(x => x[0]);
+    const jobs = known.concat(Object.keys(jobN).filter(j => !known.includes(j)).sort()).filter(j => jobN[j] || j === M.job);
+    const ports = ((M.lib && M.lib.subjects.port) || []).filter(([k]) => portN[k] || k === M.port);
+    return `<div class="ml-rail-sec ml-find"><h3>Find by port &amp; job</h3>
+      <label>Port<select data-mlfind="port"><option value="">Any port</option>${ports.map(([k, n]) => `<option value="${e(k)}"${k === M.port ? " selected" : ""}>${e(n)} (${portN[k] || 0})</option>`).join("")}</select></label>
+      <label>Job<select data-mlfind="job"><option value="">Any job</option>${jobs.map(j => `<option value="${e(j)}"${j === M.job ? " selected" : ""}>${e(jobLabel(j))} (${jobN[j] || 0})</option>`).join("")}</select></label>
+      <p class="help">Pulls her pictures from Personas <em>and</em> Ports together, in any kind.</p></div>`;
+  }
 
   function rail() {
     const all = items();
@@ -358,6 +408,7 @@
         <button type="button" data-mlcovtoggle="1" class="${M.cov ? "on" : ""}">Coverage &amp; gaps</button>
         <button type="button" data-mlrecopen="1" class="${M.rec.open ? "on" : ""}">Recipes</button>
         <button type="button" data-mlpreset="clear" class="link">Clear all</button></div></div>
+      ${findBox()}
       <div class="ml-rail-sec"><h3>Kind</h3><div class="ml-list">${kindBtns}<button type="button" data-mlkind="" class="${M.kind === "" ? "on" : ""}"><span>Everything</span><i>${all.length}</i></button></div></div>
       ${subs.length ? `<div class="ml-rail-sec"><h3>${e(K.one)}</h3><div class="ml-list ml-scroll">${subBtns}</div></div>` : ""}
       ${roles.length ? `<div class="ml-rail-sec"><h3>Role</h3><select data-mlf="role"><option value="">Any</option>${roles.map(([k, n]) => `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n.split(":")[0])}</option>`).join("")}</select></div>` : ""}
@@ -371,7 +422,7 @@
   }
 
   function viewToggle() {
-    const sc = items().filter(i => (!M.kind || i.kind === M.kind) && (!M.subject || i.subject === M.subject));
+    const sc = scopeItems();
     const n = { "": sc.length, image: sc.filter(i => i.type === "image").length, video: sc.filter(i => i.type === "video").length, pair: sc.filter(i => i.type === "video" && i.pair).length };
     const cur = ["", "image", "video", "pair"].includes(M.type) ? M.type : "";
     return `<div class="ml-seg ml-view">${[["", "All"], ["image", "Pictures"], ["video", "Videos"], ["pair", "Pairs"]].map(([k, t]) =>
@@ -381,6 +432,8 @@
   function chips() {
     const out = [];
     const add = (f, label) => out.push(`<button type="button" class="ml-chip" data-mlchipx="${f}" title="Remove this filter">${e(label)} <b>×</b></button>`);
+    if (M.port) add("port", "Port: " + subjectName("port", M.port));
+    if (M.job) add("job", "Job: " + jobLabel(M.job));
     if (M.kind) add("kind", kinds()[M.kind].label);
     if (M.subject) add("subject", subjectName(M.kind, M.subject));
     if (M.role) add("role", "Role: " + roleName(M.kind, M.role));
@@ -1007,7 +1060,7 @@
         <span class="ml-quick"><button type="button" class="ml-quickdel" data-mlquickdel="${e(i.id)}" title="Delete (moves it to the media trash)" aria-label="Delete">🗑</button>
         ${!i.reviewed ? `<button type="button" class="ml-quickok" data-mlquickok="${e(i.id)}" title="Approve (marks it reviewed)" aria-label="Approve">✓</button>` : ""}${quickRedo(i, "button")}${i.type === "image" && !i.missing ? `<button type="button" class="ml-quickvid ml-quickedit" data-mledit="${e(i.id)}" title="Edit the prompt and regenerate" aria-label="Edit and regenerate">✎</button>` : ""}${i.type === "image" && !i.missing && i.subject ? `<button type="button" class="ml-quickvid" data-mlvidfrom="${e(i.id)}" title="Make a video from this picture" aria-label="Make a video">▶</button>` : ""}</span></div>
       <div class="ml-cap"><b>${e(i.title || subjectName(i.kind, i.subject))}</b>
-        <small>${i.roles.length ? i.roles.map(r => e(roleName(i.kind, r))).join(", ") : "any role"}${i.tags.length ? " · " + i.tags.map(e).join(", ") : ""}</small></div></div>`;
+        ${M.port || M.job ? `<small class="ml-where">${e((kinds()[i.kind] || {}).one || i.kind)} · ${e(subjectName(i.kind, i.subject))}</small>` : ""}<small>${i.roles.length ? i.roles.map(r => e(roleName(i.kind, r))).join(", ") : "any role"}${i.tags.length ? " · " + i.tags.map(e).join(", ") : ""}</small></div></div>`;
   }
 
   function detail() {
@@ -1191,14 +1244,15 @@
     if (d.mltag !== undefined) { M.tag = d.mltag; M.sel.clear(); return redraw(); }
     if (d.mlchipx) {
       const f = d.mlchipx;
-      if (f === "kind") { M.kind = ""; M.subject = ""; M.role = ""; } else if (f === "subject") { M.subject = ""; M.role = ""; }
+      if (f === "port") M.port = ""; else if (f === "job") M.job = "";
+      else if (f === "kind") { M.kind = ""; M.subject = ""; M.role = ""; } else if (f === "subject") { M.subject = ""; M.role = ""; }
       else if (f === "role") M.role = ""; else if (f === "type") M.type = ""; else if (f === "nsfw") M.nsfw = "";
       else if (f === "review") M.review = false; else if (f === "tag") M.tag = ""; else if (f === "motion") M.motion = ""; else if (f === "q") M.q = "";
       M.sel.clear(); return redraw();
     }
     if (d.mlpreset) {
       const p = d.mlpreset;
-      M.kind = ""; M.subject = ""; M.role = ""; M.type = ""; M.nsfw = ""; M.review = false; M.tag = ""; M.motion = ""; M.q = ""; M.sel.clear(); M.cov = false;
+      M.kind = ""; M.subject = ""; M.role = ""; M.port = ""; M.job = ""; M.type = ""; M.nsfw = ""; M.review = false; M.tag = ""; M.motion = ""; M.q = ""; M.sel.clear(); M.cov = false;
       if (p === "review") M.review = true; else if (p === "vidreview") { M.review = true; M.type = "video"; }
       else if (p === "clips") M.type = "hasvid"; else if (p === "nsfw") M.nsfw = "nsfw"; else if (p === "off") M.nsfw = "off";
       return redraw();
@@ -1460,6 +1514,11 @@
   function onInput(ev) {
     if (section !== "media") return;
     const el = ev.target, d = el.dataset;
+    if (d.mlfind) {
+      M[d.mlfind] = el.value; M.kind = ""; M.subject = ""; M.role = ""; M.tag = ""; M.sel.clear();
+      if (d.mlfind === "port" && M.job && !items().some(i => portOf(i) === M.port && jobOf(i).includes(M.job))) M.job = "";
+      return redraw();
+    }
     if (d.mlf) {
       M[d.mlf] = el.type === "checkbox" ? el.checked : el.value;
       if (d.mlf === "upNsfw") return;

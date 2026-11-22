@@ -146,7 +146,7 @@ class TableDirector {
       this.news.add(text);
     });
     if (this.last && this.last.turn !== s.turn) this.enqueue('month:' + s.turn,
-      [this.host('gm.month_open.' + s.turn % 3, base, feed.host?.['gm.month_open.' + s.turn % 3])], 3);
+      [this.host('gm.month_open', base, feed.host?.['gm.month_open'])], 3);   // the server draws the line from the whole bank
     this.last = { turn:s.turn, port:p?.port, phase:s.phase };
     this.tick();
   }

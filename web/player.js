@@ -678,7 +678,7 @@ function tabFaceUrl(k) {
     // agree on one pick; a clip shows on the tab as its poster picture.
     const tagged = subs => womanList(subs, f.woman);
     let list = tagged(me.port);
-    if (!list.length) list = tagged(Object.keys(D.ports));
+    if (!list.length && f.woman !== "mayor") list = tagged(Object.keys(D.ports));   // never a stranger for the Mayor (see stageWomanHtml)
     if (list.length) {
       const key = f.woman + ":" + me.port;   // same pick as the stage, so tab and stage match
       let it = list.find(i => i.id === womanPick[key]);
@@ -721,7 +721,9 @@ function womanList(subs, role) {
 function stageWomanHtml(port, role) {
   const tagged = subs => womanList(subs, role);
   let list = tagged(port);
-  if (!list.length) list = tagged(Object.keys(D.ports));
+  // The Mayor is never borrowed from another port: a stranger in her chair looks nothing like the Mayor the
+  // Port tab and the news show. With no Mayor of her own the stage falls back to the port's own banner.
+  if (!list.length && role !== "mayor") list = tagged(Object.keys(D.ports));
   if (!list.length) return "";
   const key = role + ":" + port;
   let it = list.find(i => i.id === womanPick[key]);
@@ -1932,10 +1934,14 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
    to visit and never flickers on a redraw. Stills only; the stage plays her clips. A port with no Mayor of its own
    borrows one, as the stage does. */
 function favourPortrait(port) {
-  let list = plainWomen(port, "mayor", false);
-  if (!list.length) list = plainWomen(Object.keys(D.ports), "mayor", false);
+  // The same Mayor as the stage and the tab rail (their shared pick, womanPick["mayor:<port>"]); a clip shows as
+  // its poster. Never borrowed from another port.
+  const shared = plainWomen(port, "mayor", true).find(i => i.id === womanPick["mayor:" + port]);
+  const sharedUrl = shared && (shared.t === "video" ? shared.po : shared.u);
+  if (sharedUrl) return sharedUrl;
+  const list = plainWomen(port, "mayor", false);
   if (!list.length) return "";
-  const key = "favour:" + port + ":" + S.turn;
+  const key = "mayor:" + port;
   let it = list.find(i => i.id === womanPick[key]);
   if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
   return it.u || "";

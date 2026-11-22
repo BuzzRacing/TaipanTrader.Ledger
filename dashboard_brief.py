@@ -2,6 +2,7 @@
 import hashlib
 import json
 
+import banks
 import engine
 
 PERSONAS = {'gamemaster', 'narrator', 'bookmaker', 'taxlady', 'mayor', 'bookkeeper',
@@ -67,8 +68,13 @@ def build(feed, snapshot, text=None, goods=None):
     identity = [feed.get('game_id'), feed.get('turn'), kind, target, fields.get('firm'), fields.get('weather')]
     key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:20]
     line = lambda suffix: text['dash.whisper.' + kind + '.' + suffix].format_map(fields)
+    # The spoken note is drawn from the whole variant bank (Admin > Dialogue Banks): added lines are used, retired
+    # ones skipped, and no line repeats until all have been heard. The same observation keeps the same line.
+    prefix = 'dash.whisper.' + kind + '.speech'
+    spoken = banks.pick_stable(prefix, key, text)
+    speech = text[spoken].format_map(fields) if spoken else text.get(prefix, '').format_map(fields)
     return {'id': key, 'kind': kind, 'title': line('title'), 'text': line('text'),
-            'speech': line('speech'), 'target': target,
+            'speech': speech, 'speech_key': spoken or prefix, 'target': target,
             'mood': 'concerned' if kind in ('weather', 'fleet', 'ban') else 'sly'}
 
 
@@ -81,4 +87,5 @@ def voice_reply(brief, persona, part, planner, text):
         return {'ok': True, 'brief': None, 'clip': None}
     key = 'dash.whisper.teaser.' + (persona if persona in ('gamemaster', 'narrator', 'bookmaker') else 'other')
     spoken = text[key] if part == 'teaser' else brief['speech']
-    return {'ok': True, 'brief': brief, 'clip': planner._clip(spoken, persona) if planner.ready() else None}
+    say_key = key if part == 'teaser' else brief.get('speech_key')
+    return {'ok': True, 'brief': brief, 'clip': planner._clip(spoken, persona, say_key) if planner.ready() else None}
