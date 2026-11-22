@@ -228,17 +228,17 @@ function render(animate) {
   const who = vs ? V.voyage.me : null;
   const name = (V && V.name) || (C && C.name) || ui.name || "";
   const head = vs
-    ? `<b>${esc(who.firm)}</b><small>${th("st.head_voyage", { name: esc(name), first: esc(V.voyage.game.first), last: esc(V.voyage.game.last) })}${lockNote()}</small>`
-    : `<b>${th("st.head_career", { name: esc(name) })}</b><small>${te("st.head_career_sub", { n: C ? C.career.totals.games : 0 })}</small>`;
+    ? `<b>${esc(who.firm)}</b>`
+    : `<b>${th("st.head_career", { name: esc(name) })}</b>`;
   const games = gameOptions();
   app.innerHTML = `<div class="tl" data-scope="${scope}" data-tab="${ui.tab}">
     <header class="tl-top">
-      <div class="tl-house">${captainPic(vs ? who : null, name)}${vs ? houseIco(who, "tl-crest", name) : icon("rank", "big")}
+      <div class="tl-house">${vs ? houseIco(who, "tl-crest", name) : icon("rank", "big")}
         <div><p class="eyebrow">${te("st.title")}</p>${head}</div></div>
       <div class="tl-scope seg" role="tablist">
         ${btn(te("st.voyage"), "scope", `data-s="voyage" ${V ? "" : "disabled"}`, scope === "voyage" ? "on" : "")}
         ${btn(te("st.career"), "scope", 'data-s="career"', scope === "career" ? "on" : "")}</div>
-      ${vs && games ? `<label class="tl-game"><span>${te("st.game")}</span><select data-act="game">${games}</select></label>` : ""}
+      ${vs && games ? `<label class="tl-game"><select data-act="game" aria-label="${te("st.game")}" title="${te("st.game")}">${games}</select></label>` : ""}
       ${btn(icon("close"), "back", `aria-label="${te("st.back")}" title="${te("st.back")}"`, "ghost tl-x")}
     </header>
     <section class="tl-kpis">${vs ? voyageKpis() : careerKpis()}</section>
@@ -614,14 +614,14 @@ const VOYAGE = {
       { empty: "st.desk.none" }, a));
     return `<div class="pg pg-purse">
       ${panel("parts", te("st.p.parts"), te("st.p.parts_sub"), "", { cls: "wide" })}
-      ${panel("takers", te("st.p.takers"), te("st.p.takers_sub"), takerCards(me.takers), { table: false })}
       ${panel("desk", te("st.p.desk"), te("st.p.desk_sub"), deskHtml(me), { table: false })}
-      ${panel("deskports", te("st.p.deskports"), te("st.p.deskports_sub"))}
+      ${panel("takers", te("st.p.takers"), te("st.p.takers_sub"), takerCards(me.takers), { cls: "wide", table: false })}
       ${panel("fleetc", te("st.p.fleet"), te("st.p.fleet_sub"))}
+      ${panel("deskports", te("st.p.deskports"), te("st.p.deskports_sub"))}
+      ${books ? panel("books", te("st.p.books"), te("st.p.books_sub", { date: me.books.date })) : ""}
       ${panel("ships", te("st.p.ships"), te("st.p.ships_sub"), shipCards(me.fleet), { table: false })}
       ${panel("tips", te("st.p.tips"), te("st.p.tips_sub"), tipList(me.tips), { table: false })}
-      ${panel("promos", te("st.p.promos"), te("st.p.promos_sub"), promoCards(me.promotions), { table: false })}
-      ${books ? panel("books", te("st.p.books"), te("st.p.books_sub", { date: me.books.date })) : ""}
+      ${panel("promos", te("st.p.promos"), te("st.p.promos_sub"), promoCards(me.promotions), { cls: "wide", table: false })}
     </div>`;
   },
 
@@ -1025,9 +1025,14 @@ function takerCards(list) {
   return `<ul class="takers">${list.slice(0, 8).map(r => {
     const ports = Object.entries(r.ports).filter(([p]) => D.ports[p]).slice(0, 3)
       .map(([p, v]) => `${esc(portName(p))} ${short(v)}`).join(" · ");
+    // What made up the sum: each line with its own amount (a lone line is the sum itself, so it is only named).
+    const ls = Object.entries(r.lines).sort((x, y) => Math.abs(+y[1] || 0) - Math.abs(+x[1] || 0));
+    const lines = ls.length > 1 && ls.every(([, v]) => typeof v === "number")
+      ? `<div class="tk-lines">${ls.slice(0, 5).map(([k, v]) => `<div><span>${te("st.line." + k)}</span><i>${short(v)}</i></div>`).join("")}</div>`
+      : `<small>${ls.map(([k]) => te("st.line." + k)).join(" · ")}</small>`;
     return `<li class="${r.amount > 0 ? "in" : "out"}"><div class="tk-pic">${takerPic(r, "tk-img")}</div>
       <div class="tk-txt"><span>${te("st.who." + r.who)}</span><b>${signed(r.amount)}</b>
-      <small>${Object.keys(r.lines).map(k => te("st.line." + k)).join(" · ")}</small>${ports ? `<small class="tk-ports">${ports}</small>` : ""}</div></li>`;
+      ${lines}${ports ? `<small class="tk-ports">${ports}</small>` : ""}</div></li>`;
   }).join("")}</ul>`;
 }
 
@@ -1070,14 +1075,26 @@ function tipList(tips) {
   }).join("")}</ul>`;
 }
 
+/* Commissions as small print: one picture of each Mayor who handed them out, with the ranks listed beside her, so
+   the same Mayor is never shown over and over. This voyage: every rank with its date. Career: one line per game,
+   the highest rank that House reached with her, how many commissions it took, and when the last one came. */
 function promoCards(list, withGame) {
   if (!list || !list.length) return emptyNote("st.promos.none");
-  return `<ul class="promos">${list.map((pr, i) => {
-    const mayor = mpic("port", pr.port, "mayor_" + pr.rank_id, "pm-img pz", { strict: true, slot: "promo-" + i })
-      || mpic("port", pr.port, "mayor", "pm-img pz", { strict: true, slot: "promo-" + i }) || face("mayor", "happy", "pm-img", "promo-" + i);
-    return `<li><div class="pm-pic">${mayor}</div>
-      <div>${Ranks.label(pr)}<small>${te("st.promos.line", { port: portName(pr.port), date: pr.date })}</small>${withGame && pr.firm ? `<small>${esc(pr.firm)}</small>` : ""}</div></li>`;
-  }).join("")}</ul>`;
+  const by = {};
+  list.forEach(pr => { (by[pr.port] = by[pr.port] || []).push(pr); });
+  const line = (pr, note) => `<li>${Ranks.label(pr)}<small>${note}</small></li>`;
+  return `<div class="promos">${Object.keys(by).map((port, i) => {
+    const mayor = mpic("port", port, "mayor", "pm-img pz", { strict: true, slot: "promo-" + i }) || face("mayor", "happy", "pm-img", "promo-" + i);
+    let rows;
+    if (withGame) {
+      const games = {};
+      by[port].forEach(pr => { const k = pr.game || pr.firm || ""; (games[k] = games[k] || []).push(pr); });
+      rows = Object.values(games).map(g => { const top = g[g.length - 1];
+        return line(top, "×" + g.length + (top.firm ? " · " + esc(top.firm) : "") + " · " + esc(top.date || "")); }).join("");
+    } else rows = by[port].map(pr => line(pr, esc(pr.date || ""))).join("");
+    return `<section class="pm-grp">${mayor ? `<div class="pm-pic">${mayor}</div>` : ""}
+      <div class="pm-list"><h4>${esc(portName(port))}<i>×${by[port].length}</i></h4><ul>${rows}</ul></div></section>`;
+  }).join("")}</div>`;
 }
 
 /* Booms and crashes in the markets this house could know of, with what it made of each. */
@@ -1124,8 +1141,8 @@ const CAREER = {
     return `<div class="pg pg-cpurse">
       ${panel("cptiles", te("st.p.cpurse"), te("st.p.cpurse_sub"), `<div class="tiles">${tiles.map(x =>
         `<div class="tile">${icon(x[0])}<span>${esc(x[1])}</span><b>${esc(String(x[2]))}</b><small>${esc(x[3])}</small></div>`).join("")}</div>`, { cls: "wide", table: false })}
-      ${panel("ctakers", te("st.p.takers"), te("st.p.ctakers_sub"), takerCards(c.takers || []), { table: false })}
-      ${panel("cpromos", te("st.p.promos"), te("st.p.cpromos_sub"), promoCards(c.promotions || [], true), { table: false })}
+      ${panel("ctakers", te("st.p.takers"), te("st.p.ctakers_sub"), takerCards(c.takers || []), { cls: "wide", table: false })}
+      ${panel("cpromos", te("st.p.promos"), te("st.p.cpromos_sub"), promoCards(c.promotions || [], true), { cls: "wide", table: false })}
     </div>`;
   },
   routes() {

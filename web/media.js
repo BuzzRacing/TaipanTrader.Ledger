@@ -34,6 +34,30 @@ const Media = (() => {
   const a = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+  /* Scene pictures are made for ONE slot and nowhere else. They are wide scenes, not figures, so they never turn up
+     as a portrait, a speaker picture, a fallback or an "any picture" pick. Two kinds, told apart by role and tag:
+       "masthead"   tagged masthead*, reclining       -> the Dashboard masthead only (opts.scene = "masthead")
+       "wallpaper"  role wallpaper or tagged
+                    wallpaper / master-shot           -> the Ledger's faded page backdrop only (opts.scene = "wallpaper")
+       "certificate" tagged certificate (21 Nov 2026) -> the Voyage Certificate only (opts.scene = "certificate"):
+                    its port backdrops and the women composed at one side of a wide, dark frame. Checked
+                    first, because those pictures also carry the wallpaper tags (an older media.js keeps
+                    them off every other screen by those).
+       "weather"    role weather or tagged
+                    weather / weather-<kind>          -> behind the Newspaper's forecast only (opts.scene = "weather";
+                                                         weather-glass.js picks the kind by its tag)
+     A slot that wants one asks for it by name with opts.scene; every other request leaves all of them out,
+     whatever role it asks for and however far it falls back. */
+  function sceneOf(i) {
+    const marks = [...(i.g || []), ...(i.r || [])].map(x => String(x).toLowerCase());
+    if (marks.includes("certificate")) return "certificate";
+    if (marks.some(x => x === "reclining" || x.startsWith("masthead"))) return "masthead";
+    if (marks.some(x => x === "wallpaper" || x === "master-shot")) return "wallpaper";
+    if (marks.some(x => x === "weather" || x.startsWith("weather-"))) return "weather";
+    return "";
+  }
+  const sceneOk = (i, scene) => { const k = sceneOf(i); return scene ? k === scene : !k; };
+
   function rule(kind, subject) {
     const d = (L.rules.defaults || {})[kind] || { mode: "random", seconds: 10, video_chance: 0 };
     const s = (L.rules.subjects || {})[kind + ":" + subject] || {};
@@ -43,10 +67,10 @@ const Media = (() => {
   /* Items for one subject (or several) in one role. An item with no roles fits any role.
      Without a match the kind's usual role is tried, then a persona's profile pictures. */
   function pool(kind, subjects, role, opts) {
-    const all = [].concat(...[].concat(subjects).map(s => ((L.items[kind] || {})[s] || [])));
-    const fits = r => all.filter(i => !r || !i.r.length || i.r.includes(r));
+    const all = [].concat(...[].concat(subjects).map(s => ((L.items[kind] || {})[s] || []))).filter(i => sceneOk(i, opts.scene));
+    const fits = r => all.filter(i => !r || !i.r.length || i.r.includes(r) || (opts.scene && sceneOf(i) === opts.scene));
     let list = fits(role);
-    if (!list.length && !opts.strict) {
+    if (!list.length && !opts.strict && !opts.scene) {
       if (role !== L.fallback[kind]) list = fits(L.fallback[kind]);
       if (!list.length && kind === "persona") list = fits("portrait");
       if (!list.length) list = all;
@@ -72,7 +96,7 @@ const Media = (() => {
   }
 
   function keyOf(kind, subjects, role, opts) {
-    return [kind, [].concat(subjects).join("+"), role || "", opts.slot || "", opts.video ? "v" : ""].join("|");
+    return [kind, [].concat(subjects).join("+"), role || "", opts.slot || "", opts.video ? "v" : "", opts.scene || ""].join("|");
   }
 
   /* The item to show now for a place on screen. opts: {video, fresh, strict, slot, mode}. */
@@ -104,7 +128,8 @@ const Media = (() => {
   function attrs(kind, subjects, role, opts) {
     return `data-mk="${a(kind)}" data-ms="${a([].concat(subjects).join("+"))}" data-mr="${a(role || "")}"` +
       (opts.video ? ' data-mv="1"' : "") + (opts.slot ? ` data-mslot="${a(opts.slot)}"` : "") +
-      (opts.mode ? ` data-mmode="${a(opts.mode)}"` : "") + (opts.strict ? ' data-mstrict="1"' : "");
+      (opts.mode ? ` data-mmode="${a(opts.mode)}"` : "") + (opts.strict ? ' data-mstrict="1"' : "") +
+      (opts.scene ? ` data-mscene="${a(opts.scene)}"` : "");
   }
 
   function element(item, cls, extra) {
@@ -151,7 +176,7 @@ const Media = (() => {
 
   function optsOf(el) {
     const d = el.dataset;
-    return { video: d.mv === "1", slot: d.mslot || "", mode: d.mmode || "", strict: d.mstrict === "1" };
+    return { video: d.mv === "1", slot: d.mslot || "", mode: d.mmode || "", strict: d.mstrict === "1", scene: d.mscene || "" };
   }
 
   /* Every second: mark what is on screen as seen, and move timed rotations along. */
@@ -192,10 +217,10 @@ const Media = (() => {
     html, has, choose,
     /* Every item of a kind for these subjects that fits a role (an item with no roles fits any role).
        Used for full-screen backgrounds, which rotate on their own clock. */
-    items(kind, subjects, role, video) {
+    items(kind, subjects, role, video, scene) {
       const out = [];
       [].concat(subjects).forEach(s => ((L.items[kind] || {})[s] || []).forEach(i => {
-        if ((!role || !i.r.length || i.r.includes(role)) && ((video && !imagesOnly) || i.t === "image")) out.push(i);
+        if (sceneOk(i, scene || "") && (!role || !i.r.length || i.r.includes(role) || (scene && sceneOf(i) === scene)) && ((video && !imagesOnly) || i.t === "image")) out.push(i);
       }));
       return out;
     },

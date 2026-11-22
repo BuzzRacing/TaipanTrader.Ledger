@@ -1,0 +1,99 @@
+/* THE CAPTAIN'S MANUAL (/Manual, 21 Nov 2026). A leather book with image tabs down its edge, a persona on the
+   left page and a practice bench on the right. A sibling of the Accounting Ledger (ledger.css): same linen,
+   ink and brass, but its own class names (mn-*) so neither file can break the other. The page never scrolls;
+   only a page's own text does. Reduced motion stills the page turn. */
+body.manual { margin: 0; height: 100vh; height: 100dvh; overflow: hidden; background: #15100c; color: #f1e3c5; }
+body.manual #app { height: 100%; }
+.mn {
+  --ink: #2a170e; --sepia: #6b452d; --oxblood: #8a2219; --jade: #1f5c46; --gilt: #a8772c; --linen: #f1e3c5;
+  --rule-blue: #6f8fa833; --rule-red: #b0302a80; --who: #c9a34e;
+  height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: .6rem; padding: .7rem .9rem .8rem; box-sizing: border-box;
+  background: radial-gradient(120% 90% at 50% 0%, #3a2416, #15100c 70%);
+}
+
+/* ---- the head ---- */
+.mn-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .8rem; }
+.mn-head h1 { margin: 0; font: 400 clamp(1.3rem, 2.6vw, 2rem)/1.05 var(--serif);
+  background: linear-gradient(100deg, #f6d98c, #c9a34e 45%, #fff3cf 55%, #b48a3a); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.mn-head small { display: block; color: #bfa77a; font: italic .8rem/1.2 var(--sans); }
+.mn-tools { display: flex; gap: .5rem; align-items: center; }
+.mn-btn { min-height: 0; padding: .4rem .9rem; border-radius: 999px; font: 600 .85rem/1 var(--sans); background: #2a1b14; border: 1px solid #8a6a38;
+  color: #f0d79a; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: .35rem; }
+.mn-btn:hover { background: #3a2416; }
+.mn-btn[aria-pressed="true"] { background: linear-gradient(#f4e7cc, #e7d3ad); color: var(--ink); border-color: #a8772c; }
+.mn-btn:focus-visible, .mn-tab:focus-visible { outline: 2px solid #f6d98c; outline-offset: 2px; }
+
+/* ---- the book: image tabs on the left edge, two facing pages ---- */
+.mn-body { min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0; }
+.mn-tabs { display: flex; flex-direction: column; gap: .3rem; padding: .3rem 0; overflow-y: auto; scrollbar-width: none; margin-right: -2px; position: relative; z-index: 2; }
+.mn-tabs::-webkit-scrollbar { display: none; }
+.mn-tab { min-height: 0; display: grid; grid-template-columns: 2.6rem auto; align-items: center; gap: .5rem; padding: .3rem .8rem .3rem .3rem;
+  border: 1px solid #6b452d; border-right: 0; border-radius: .6rem 0 0 .6rem; background: linear-gradient(90deg, #3a2416, #5a3a26); color: #e8d4ae;
+  font: 600 .82rem/1.15 var(--sans); text-align: left; cursor: pointer; transform: translateX(.5rem); transition: transform .2s, background .2s; }
+.mn-tab:hover { transform: translateX(.2rem); }
+.mn-tab.on { background: linear-gradient(90deg, #e7d3ad, #f4e7cc); color: var(--ink); border-color: #a8772c; transform: none; }
+.mn-tab .mn-face { width: 2.6rem; height: 2.6rem; border-radius: .4rem; overflow: hidden; background: #15100c; box-shadow: 0 0 0 1px var(--who, #c9a34e); display: grid; place-items: center; }
+.mn-tab .mn-face img, .mn-tab .mn-face video { width: 100%; height: 100%; object-fit: cover; object-position: 50% 14%; display: block; }
+.mn-tab .mn-face i { font: normal .9rem/1 var(--special); color: #c9a34e; }
+.mn-tab b { display: block; font-weight: 600; }
+.mn-tab em { display: block; font: normal .68rem/1.1 var(--special); letter-spacing: .1em; text-transform: uppercase; color: #c9a34e; }
+.mn-tab.on em { color: var(--oxblood); }
+.mn-tab.soon { opacity: .7; }
+
+.mn-book { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); position: relative; color: var(--ink);
+  border: 3px solid #3a2416; border-radius: .4rem; box-shadow: 0 0 0 1px #8a6a38, 0 18px 50px #000c;
+  background: linear-gradient(90deg, #d9bf92, var(--linen) 8%, var(--linen) 44%, #c9a77a 50%, var(--linen) 56%, var(--linen) 92%, #d9bf92); }
+.mn-book::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: repeating-linear-gradient(180deg, #6b452d 0 6px, transparent 6px 12px); opacity: .5; pointer-events: none; }
+.mn-page { min-height: 0; overflow-y: auto; padding: 1rem 1.3rem 1.2rem 1.6rem; position: relative; scrollbar-width: thin;
+  background: repeating-linear-gradient(180deg, transparent 0 1.55rem, var(--rule-blue) 1.55rem calc(1.55rem + 1px)); }
+.mn-page + .mn-page { padding-left: 1.6rem; }
+.mn-turning .mn-page { animation: mn-turn .45s ease both; }
+@keyframes mn-turn { from { opacity: 0; transform: translateX(.6rem); } to { opacity: 1; transform: none; } }
+
+/* ---- left page: the persona, her line, the lessons ---- */
+.mn-who { display: grid; grid-template-columns: clamp(6.5rem, 12vw, 9.5rem) minmax(0, 1fr); gap: .9rem; align-items: start; margin-bottom: .6rem; }
+.mn-keeper { aspect-ratio: 3 / 4; border-radius: .35rem; overflow: hidden; background: #15100c; transform: rotate(-1.5deg);
+  box-shadow: 0 0 0 2px var(--who, #c9a34e), 0 0 0 5px #3a2416, 0 10px 26px #000a; display: grid; place-items: center; }
+.mn-keeper img, .mn-keeper video { width: 100%; height: 100%; object-fit: cover; object-position: 50% 14%; display: block; }
+.mn-keeper i { font: normal 2rem/1 var(--special); color: #c9a34e; }
+.mn-kicker { font: .7rem/1.2 var(--special); letter-spacing: .14em; text-transform: uppercase; color: var(--sepia); }
+.mn-who h2 { margin: .1rem 0 .15rem; font: 400 clamp(1.15rem, 2vw, 1.6rem)/1.1 var(--serif); color: var(--ink); }
+.mn-name { font: italic .82rem/1.25 var(--sans); color: var(--sepia); }
+.mn-say { margin: .5rem 0 0; padding: .55rem .75rem; border-radius: .6rem; background: #fff8e4cc; border: 1px solid #c9a34e88; position: relative;
+  font: italic 1rem/1.4 var(--sans); color: var(--ink); }
+.mn-say::before { content: ""; position: absolute; left: -.45rem; top: .9rem; width: .8rem; height: .8rem; background: inherit; border-left: 1px solid #c9a34e88; border-bottom: 1px solid #c9a34e88; transform: rotate(45deg); }
+.mn-say-tools { display: flex; gap: .4rem; margin-top: .4rem; }
+.mn-say-tools .mn-btn { background: #fff8e4; color: var(--ink); border-color: #a8772c; padding: .28rem .7rem; font-size: .78rem; }
+.mn-note { margin: .3rem 0 0; font: italic .78rem/1.3 var(--sans); color: var(--sepia); }
+
+.mn-page h3 { font: 400 1.05em/1.2 var(--serif); margin: .9rem 0 .35rem; color: var(--oxblood); }
+.mn-how { margin: 0; padding-left: 1.3rem; display: grid; gap: .35rem; font: 1rem/1.4 var(--sans); }
+.mn-how li::marker { color: var(--gilt); font-weight: 700; }
+.mn-tip, .mn-warn { margin: .55rem 0 0; padding: .45rem .7rem; border-radius: .4rem; font: 1rem/1.4 var(--sans); }
+.mn-tip { background: #1f5c4622; border-left: 4px solid var(--jade); }
+.mn-warn { background: #8a221922; border-left: 4px solid var(--oxblood); }
+.mn-tip b { color: var(--jade); } .mn-warn b { color: var(--oxblood); }
+.mn-soon { margin: 1rem 0; padding: .8rem 1rem; border: 1px dashed #a8772c; border-radius: .5rem; font: italic 1rem/1.4 var(--sans); color: var(--sepia); }
+
+/* ---- right page: the practice bench ---- */
+.mn-bench { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: .6rem; }
+.mn-bench h2 { margin: 0; font: 400 clamp(1.15rem, 2vw, 1.5rem)/1.1 var(--serif); }
+.mn-bench-frame { min-height: 0; border-radius: .5rem; border: 2px dashed #a8772c88; display: grid; place-items: center; padding: 1rem; text-align: center;
+  background: linear-gradient(#2a1b1410, #2a1b142a); font: italic 1rem/1.45 var(--sans); color: var(--sepia); }
+
+/* ---- the gate and the errors ---- */
+.mn-gate { min-height: 100%; display: grid; place-items: center; padding: 1.5rem; }
+.mn-gate div { max-width: 34rem; padding: 1.4rem 1.6rem; border-radius: .6rem; background: #f1e3c5; color: #2a170e; border: 3px solid #3a2416; box-shadow: 0 18px 50px #000c; text-align: center; }
+.mn-gate h1 { margin: 0 0 .5rem; font: 400 1.6rem/1.1 var(--serif); }
+.mn-gate p { margin: .4rem 0 1rem; font: 1.05rem/1.45 var(--sans); }
+
+/* ---- narrow and portrait ---- */
+@media (max-width: 900px) {
+  .mn-body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .mn-tabs { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 0 0 .3rem; margin: 0; }
+  .mn-tab { grid-template-columns: 2.2rem auto; border-right: 1px solid #6b452d; border-radius: .6rem .6rem 0 0; transform: none; flex: none; }
+  .mn-tab .mn-face { width: 2.2rem; height: 2.2rem; }
+  .mn-book { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .mn-book::after { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .mn-turning .mn-page { animation: none; } .mn-tab { transition: none; } }

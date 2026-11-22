@@ -10,11 +10,26 @@ function update(id, html) {
   if (!el) return null;
   el.innerHTML = html; previous.set(id, html); return el;
 }
+/* Liquid stage: the Table fills whatever window it is in. The design unit is the 1920x1080 "reference pixel";
+   the stage keeps the reference AREA but takes the window's own shape, so a 16:9 screen looks exactly as
+   designed while ultrawide, 16:10, 4:3 and upright screens get more width or more height instead of black
+   bars. The CSS lays everything out from --w and --h (stage size in reference pixels). */
+let resizeTimer = 0;
 function fitStage() {
-  const k = Math.min(innerWidth / 1920, innerHeight / 1080);
-  app.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px,${(innerHeight - 1080 * k) / 2}px) scale(${k})`;
+  const vw = Math.max(1, innerWidth), vh = Math.max(1, innerHeight);
+  const k = Math.max(0.25, Math.sqrt(vw * vh / (1920 * 1080)));
+  app.style.setProperty("--w", (vw / k).toFixed(2) + "px");
+  app.style.setProperty("--h", (vh / k).toFixed(2) + "px");
+  app.style.transform = `scale(${k})`;
 }
-window.addEventListener("resize", fitStage);
+function onResize() {
+  app.classList.add("is-resizing");               /* no easing while the window is being dragged */
+  fitStage();
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => app.classList.remove("is-resizing"), 250);
+}
+window.addEventListener("resize", onResize);
+window.addEventListener("orientationchange", onResize);
 fitStage();
 /* --------------------------------------------------------------- the sky -- */
 function drawSky(S) {
@@ -313,7 +328,9 @@ function chooseArt(who, mood, key, port, story) {
     const image = portraits.find(i => (i.r || []).includes(role));
     if (image) return image;
   }
-  const list = Media.items('persona', who);
+  // The persona spot is a figure standing in the scene. Wallpaper master shots (Accounting Ledger backdrops) and the
+  // Dashboard's masthead pictures and banners are wide scenes used elsewhere, so they never appear here.
+  const list = Media.items('persona', who).filter(i => !notFigure(i));
   const dedicated = list.filter(i => (i.g || []).includes('table-' + mood));
   const pick = dedicated.length ? dedicated : list.filter(i => (i.r || []).includes(mood));
   if (pick.length) {
@@ -321,8 +338,16 @@ function chooseArt(who, mood, key, port, story) {
     for (const c of String(key)) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
     return pick[Math.abs(hash) % pick.length];
   }
-  return Media.choose('persona', who, 'wallpaper', { strict: true, mode: 'fixed' })
-    || Media.choose('persona', who, 'portrait', { mode: 'fixed' });
+  // No picture for this mood: her starred portrait, else any portrait, else any other figure picture. Never null-routed
+  // through the wallpaper role (the old fallback); with nothing left, figure() shows her profile portrait.
+  const portraits = list.filter(i => !(i.r || []).length || i.r.includes('portrait'));
+  return portraits.find(i => i.p) || portraits[0] || list.find(i => i.p) || list[0] || null;
+}
+
+/* A persona picture that is a wide scene for another screen: tagged or filed as wallpaper / master shot, or masthead. */
+function notFigure(item) {
+  const marks = [...(item.g || []), ...(item.r || [])].map(x => String(x).toLowerCase());
+  return marks.some(x => x === 'wallpaper' || x === 'master-shot' || x === 'reclining' || x.startsWith('masthead'));
 }
 
 function characterOf(s) {

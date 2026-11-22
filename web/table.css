@@ -1,6 +1,6 @@
 body.harbor-view{margin:0;height:100vh;overflow:hidden;background:#090705;color:#f1e3c5;font-family:var(--sans,Georgia,serif)}
 #hv-fit{position:fixed;inset:0;overflow:hidden}
-.hv-table{--brass:#c9a34e;--ivory:#f1e3c5;--jade:#2f6b5a;--ox:#7b2428;position:absolute;width:1920px;max-width:none;height:1080px;margin:0;padding:0;transform-origin:0 0;overflow:hidden;background:repeating-linear-gradient(92deg,#2f1f14 0 74px,#24170f 75px 79px,#382519 80px 159px)}
+.hv-table{--brass:#c9a34e;--ivory:#f1e3c5;--jade:#2f6b5a;--ox:#7b2428;position:absolute;left:0;top:0;width:var(--w,1920px);max-width:none;height:var(--h,1080px);margin:0;padding:0;transform-origin:0 0;overflow:hidden;background:repeating-linear-gradient(92deg,#2f1f14 0 74px,#24170f 75px 79px,#382519 80px 159px)}
 .hv-table[hidden],[hidden]{display:none!important}
 .hv-backdrop{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.8;transition:opacity 1.8s}
 .hv-light{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,#f2bc581b,transparent 60%),linear-gradient(90deg,#120b0588,transparent 60%,#08080766),linear-gradient(0deg,#080604ee,transparent 28%);pointer-events:none}
@@ -88,3 +88,53 @@ button:focus-visible{outline:3px solid #e9cb85;outline-offset:4px}
   -webkit-mask-image:linear-gradient(270deg,transparent 0,#0002 9%,#0007 20%,#000b 32%,#000e 42%,#000 54%),linear-gradient(0deg,transparent 0,#0004 9%,#000a 18%,#000 28%);
   mask-image:linear-gradient(270deg,transparent 0,#0002 9%,#0007 20%,#000b 32%,#000e 42%,#000 54%),linear-gradient(0deg,transparent 0,#0004 9%,#000a 18%,#000 28%)}
 .hv-table.is-duet .hv-story{left:auto;right:586px}
+
+/* ===================================================================== LIQUID LAYOUT ==
+   --w / --h are the stage size in reference pixels (set by fitStage() in table.js; 1920 x 1080 on a 16:9
+   screen). Everything below is sized from them, so the Table reshapes to any window. These rules replace
+   the fixed pixel positions above. Three shapes: wide/standard (side by side), ultrawide (centred
+   board), and stacked (chart on top, speaker below, anything 3:2 or squarer, so 4:3 screens and upright ones). */
+.hv-table{--bw:min(calc(var(--w,1920px) - 700px),calc((var(--h,1080px) - 330px)*5/3 + 38px))}
+.hv-table.is-resizing *{transition:none!important}
+
+/* the table scene: board left (centred in the space the speaker leaves), speaker right */
+.hv-board{left:max(42px,calc((var(--w,1920px) - 660px - var(--bw))/2));top:116px;width:var(--bw);height:auto}
+.hv-persona{right:0;top:0;width:min(calc(var(--w,1920px)*.4063),calc(var(--h,1080px)*.95));height:var(--h,1080px)}
+.hv-bulletin{max-width:var(--bw)}
+
+/* story scenes: speaker takes the right, a small chart and the story card sit left */
+.hv-table.is-story .hv-persona{left:auto;right:0;top:0;width:min(calc(var(--w,1920px)*.552),calc(var(--h,1080px)*1.3));height:var(--h,1080px)}
+.hv-table.is-story .hv-board{left:60px;top:104px;width:clamp(280px,calc(var(--w,1920px)*.193),460px);height:auto}
+.hv-table.is-story .hv-story{left:60px;right:auto;width:clamp(480px,calc(var(--w,1920px)*.396),860px);bottom:155px}
+
+/* two speakers: one each side, small chart and the story card in the middle */
+.hv-table.is-duet{--sw:clamp(480px,calc(var(--w,1920px)*.354),760px)}
+.hv-table.is-duet .hv-persona{left:0;right:auto;top:0;width:calc(var(--w,1920px)*.4167);height:var(--h,1080px)}
+.hv-table.is-duet .hv-counterpart{left:auto;right:0;top:0;width:calc(var(--w,1920px)*.4167);height:var(--h,1080px)}
+.hv-table.is-duet .hv-board{left:calc(50% - var(--dbw,160px));top:105px;width:calc(var(--dbw,160px)*2);height:auto;--dbw:clamp(120px,calc(var(--w,1920px)*.0833),200px)}
+.hv-table.is-duet .hv-story{left:calc(50% - var(--sw)/2);right:auto;width:var(--sw);bottom:155px}
+
+/* sound dialog sits in the top layer, so it is sized in real screen pixels */
+#hv-sound-dialog{width:min(850px,calc(100vw - 48px));max-height:calc(100vh - 80px)}
+
+/* stacked: 4:3, 5:4, square and upright windows */
+@media (max-aspect-ratio:3/2){
+  .hv-table{--bw:min(calc(var(--w,1080px) - 84px),calc((var(--h,1920px)*.62 - 38px)*5/3))}
+  .hv-board{left:42px;top:100px}
+  .hv-persona{top:auto;bottom:0;right:0;width:var(--w,1080px);height:calc(var(--h,1920px)*.55)}
+  .hv-bulletin{max-width:calc(var(--w,1080px) - 124px)}
+  .hv-table.is-story .hv-persona{top:0;bottom:auto;width:var(--w,1080px);height:var(--h,1920px)}
+  .hv-table.is-story .hv-board{left:42px;top:100px;width:clamp(240px,calc(var(--w,1080px)*.36),420px)}
+  .hv-table.is-story .hv-story,.hv-table.is-duet .hv-story{left:42px;right:42px;width:auto;bottom:155px}
+  .hv-table.is-duet .hv-persona,.hv-table.is-duet .hv-counterpart{top:auto;bottom:0;width:calc(var(--w,1080px)*.62);height:calc(var(--h,1920px)*.6)}
+  .hv-table.is-duet .hv-persona{left:0}.hv-table.is-duet .hv-counterpart{right:0}
+  .hv-table.is-duet .hv-board{left:calc(50% - 130px);top:100px;width:260px;--dbw:130px}
+  .hv-story h1{font-size:40px}.hv-table.is-story .hv-story h1{font-size:44px}
+  /* the speaker now sits below the chart, so fade the top edge instead of the side */
+  .hv-persona .figure,.hv-table.is-duet #hv-persona .figure{
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#0004 8%,#000a 16%,#000 26%),linear-gradient(0deg,transparent 0,#0004 9%,#000a 18%,#000 28%);
+    mask-image:linear-gradient(180deg,transparent 0,#0004 8%,#000a 16%,#000 26%),linear-gradient(0deg,transparent 0,#0004 9%,#000a 18%,#000 28%)}
+}
+@media (max-width:1100px) and (min-aspect-ratio:3/2){ /* small landscape windows: tighten the chrome */
+  .hv-context{font-size:19px}.hv-ledger{font-size:21px}.hv-controls button{padding:6px 11px}
+}

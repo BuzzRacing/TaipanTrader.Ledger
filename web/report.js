@@ -217,7 +217,8 @@
     return `<section class="card">
       <div class="row" style="margin-top:0"><select id="crgame" style="flex:1 1 22rem">${st.games.map(x => `<option value="${e(x.id)}" ${x.id === R.game ? "selected" : ""}>${e(gameLabel(x))}</option>`).join("")}</select>
         <a href="/api/admin/journal/download?as=txt&game=${encodeURIComponent(R.game)}"><button type="button">Download as text</button></a>
-        <a href="/api/admin/journal/download?game=${encodeURIComponent(R.game)}"><button type="button">Download raw journal</button></a></div>
+        <a href="/api/admin/journal/download?game=${encodeURIComponent(R.game)}"><button type="button">Download raw journal</button></a>
+        <button type="button" data-crcert="1" title="Open this game in the Certificate Studio">Make a certificate</button></div>
       <div class="row"><button type="button" data-crstep="-1" ${pos <= 0 ? "disabled" : ""} aria-label="Previous month">◀</button>
         <select id="crturn">${turns.map(t => `<option value="${t.turn}" ${t.turn === R.turn ? "selected" : ""}>Month ${t.turn}${t.date ? " · " + e(t.date) : ""} (${t.count} events${t.problems ? ", " + t.problems + " problems" : ""})</option>`).join("")}
           <option value="all" ${R.turn === "all" ? "selected" : ""}>Every month (${R.index ? R.index.total : 0} events)</option></select>
@@ -346,6 +347,7 @@
         : [{ result: "open", note: res.error }];
       return drawList();
     }
+    if (d.crcert) { window.CertStudioGame = st.rev.game; return go("certificate"); }
     if (d.crwhole) {
       st.rev.whole = "busy"; redraw();
       const res = await postj({ op: "replay", game: st.rev.game });

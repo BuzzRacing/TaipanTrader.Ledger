@@ -1,6 +1,6 @@
 /* THE DASHBOARD (dashboard.js, 21 Nov 2026): an 1860s Formula 1 pit box. A timing tower of houses on the left, a ledger
    book that turns its own pages in the middle, brass dials and a chalkboard of month times on the right, and a
-   telegraph tape along the bottom. Drawn on a fixed 1920 x 1080 stage that is scaled to fit any 16:9 screen.
+   telegraph tape along the bottom. Drawn on a 1920 x 1080 design stage; dashboard.js fit() scales it to the window and stretches it to fill any shape of screen.
    Never scrolls. Reduced motion stills everything but the tape. */
 body.dashboard { margin: 0; overflow: hidden; background: #0b0806; color: #f1e3c5; }
 #db-fit { position: fixed; inset: 0; overflow: hidden; background: #0b0806 radial-gradient(ellipse at 50% 20%, #2a1b14, #0b0806 78%); }
@@ -12,18 +12,21 @@ body.dashboard { margin: 0; overflow: hidden; background: #0b0806; color: #f1e3c
   --brass: #c9a34e; --brass-hi: #f0d48a; --mahogany: #3a2416; --night: #15100c; --chalk: #f4f1e6; --slate: #23372d;
   --purple: #b48cf0; --rule-blue: #6f8fa833; --rule-red: #b0302a80;
   --serif: var(--serif-face, Georgia, "Times New Roman", serif); --sans: var(--sans-face, system-ui, "Segoe UI", sans-serif);
-  position: absolute; left: 0; top: 0; width: 1920px; max-width: none; height: 1080px; margin: 0; transform-origin: 0 0;
-  display: grid; grid-template-columns: 380px minmax(0, 1fr) 440px; grid-template-rows: 150px minmax(0, 1fr) 84px;
+  position: absolute; left: 0; top: 0; width: 1920px; max-width: none; height: 1080px; /* fit() sets width and height to fill the window */ margin: 0; transform-origin: 0 0;
+  display: grid; grid-template-columns: 380px minmax(0, 1fr) 440px; grid-template-rows: 172px minmax(0, 1fr) 84px;
   gap: 14px; padding: 12px 18px 12px; box-sizing: border-box; font: 18px/1.35 var(--sans);
 }
 .pw[hidden] { display: none; }
 
 /* ---- the head ---- */
-.pw-head { grid-column: 1 / -1; position: relative; overflow: hidden; border-radius: 14px; padding: 0 24px; display: grid;
-  grid-template-columns: auto auto 1fr auto; align-items: center; gap: 28px;
-  background: linear-gradient(90deg, #0b0806f2 0%, #0b0806c0 40%, #0b080655 100%), #15100c url(/assets/sea-trader-header-triptych.webp) 50% 42% / cover no-repeat;
-  box-shadow: inset 0 0 0 2px #c9a34e66, inset 0 -40px 50px -30px #000c, 0 10px 30px #000a; }
-.pw-head > * { position: relative; z-index: 1; }
+.pw-head { grid-column: 1 / -1; position: relative; overflow: hidden; border-radius: 14px; padding: 0 28px; display: grid;
+  grid-template-columns: auto auto 1fr auto; align-items: center; gap: 28px; isolation: isolate;
+  background: #15100c url(/assets/sea-trader-header-triptych.webp) 50% 42% / cover no-repeat;
+  box-shadow: inset 0 0 0 2px #c9a34e66, 0 10px 30px #000a; }
+/* One scrim over the picture keeps the title readable on the left; the picture itself shows at full strength to the right. */
+.pw-head::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(90deg, #0b0806ee 0%, #0b0806b3 26%, #0b080626 52%, transparent 70%), linear-gradient(0deg, #0b0806cc 0, transparent 38%); }
+.pw-head > * { position: relative; z-index: 2; }
 /* The title: big, left, and no ornament rule under it. */
 .pw-brand { font-size: 104px; line-height: 1; } .pw-brand .logo { max-height: 128px; }
 .pw-brand .st-wordmark { text-align: left; }
@@ -34,11 +37,15 @@ body.dashboard { margin: 0; overflow: hidden; background: #0b0806; color: #f1e3c
 .pw-clock span { font: italic 19px/1.2 var(--sans); color: #e2d0a4; }
 .pw-tabs { display: flex; gap: 6px; align-items: end; align-self: end; grid-column: 4; }
 /* A persona lying back along the masthead, fading into the banner at both edges (dashboard.js picks her, tag "reclining"). */
-.pw-lounge { position: absolute !important; z-index: 0 !important; top: 0; bottom: 0; left: 930px; width: 640px; pointer-events: none; }
+.pw-lounge { position: absolute !important; z-index: 0 !important; top: 0; bottom: 0; left: 50%; margin-left: -30px; width: 640px; pointer-events: none; }
 .pw-lounge img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; display: block; animation: pw-lounge-in 1.6s ease both;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%), linear-gradient(180deg, #000 70%, transparent 100%);
   -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%), linear-gradient(180deg, #000 70%, transparent 100%);
   mask-composite: intersect; filter: saturate(1.05) contrast(1.04); }
+/* A 16:5 "masthead-banner" picture fills the whole head, fading out on the left so the title stays readable.
+   --banner-y moves the crop up or down (she is a low band, dead centre). */
+.pw-lounge.wide { left: 0; margin-left: 0; width: 100%; z-index: 0 !important; }
+.pw-lounge.wide img { object-position: 50% var(--banner-y, 55%); -webkit-mask-image: none; mask-image: none; }
 @keyframes pw-lounge-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .pw-lounge img { animation: none; } }
 .pw-tab { position: relative; padding: 9px 22px 11px; border-radius: 10px 10px 0 0; border: 1px solid #6b452d; border-bottom: 0;

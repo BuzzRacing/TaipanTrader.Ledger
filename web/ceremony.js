@@ -23,6 +23,7 @@ const Ceremony = (() => {
 
   function close() {
     clearTimeout(timer);
+    if (typeof Certificate !== "undefined") Certificate.close();
     if (behind) behind.inert = false;
     scene?.remove();
     scene = behind = sceneKey = null;
@@ -355,7 +356,15 @@ const Ceremony = (() => {
         <h2>${esc(winner.firm)}</h2>
         <p>${te("ceremony.winner_detail", { name: winner.name, worth: money(winner.worth) })}</p></div>`;
       drawWinnerExtras();
-      after(finaleLength, revealLedger);
+      after(finaleLength, revealCertificate);
+    }
+    /* The Voyage Certificate (web/certificate.js, 21 Nov 2026): each seated Captain's own wallpaper, between the
+       winner and the book. It waits for Continue. The book opened from the results screen skips it. */
+    function revealCertificate() {
+      const fromResults = sceneKey === state.game_id + ":ledger";
+      if (fromResults || !state.me || typeof Certificate === "undefined") return revealLedger();
+      frame.innerHTML = "";
+      Certificate.show({ state, data, onDone: () => { if (scene) revealLedger(); } });
     }
     function revealLedger() {
       scene.classList.add("has-results");

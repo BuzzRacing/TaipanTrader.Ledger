@@ -13,6 +13,12 @@
      Spread 3  Dues & Duties      left: housing (warehouses, the great house), the Mayor's bill if you sail now
                                   right: who got your silver, dues and Port Authority tax port by port
 
+   21 Nov 2026 redesign: every page is two layers. Underneath, a big faded persona "wall" (her wide wallpaper
+   picture, else her portrait) bleeds into the linen; on top, the page's own scroller, laid out in TWO columns
+   (CSS multicol, so a narrow window falls back to one) with the pictures made large: the bookkeeper stands
+   over the left page, the banker and lender sit behind their desks, every taker and warehouse has a big card.
+   The wall roles: Purse bookkeeper + banker, Counting House lender + shipwright, Dues comprador + Port Authority.
+
    Live figures come from the state (S.me). The month-by-month history, who got the silver and tax by port
    come from the Tally Book's own numbers (/api/stats), fetched when the Ledger opens and once a month.
    Every button is an action the game already has (bank, loan, sell_ship, lay_up, recall, repair,
@@ -48,10 +54,19 @@ const Ledger = (() => {
     return Media.html("persona", "bookkeeper", role, "pz", ((VS.cast || {}).bookkeeper || {}).portrait || "",
       Object.assign({ slot: "ldg-keeper" }, PIC));
   }
-  function personaHtml(key) {
-    return Media.html("persona", key, "portrait", "pz", ((VS.cast || {})[key] || {}).portrait || "",
-      Object.assign({ slot: "ldg-who:" + key }, PIC));
+  function personaHtml(key, slot) {
+    return Media.html("persona", key, "portrait", "ldg-ph", ((VS.cast || {})[key] || {}).portrait || "",
+      Object.assign({ slot: "ldg-who:" + key + (slot || "") }, PIC));
   }
+  // The big faded picture under a page: her wide "wallpaper" shot (the only place one is used), else her portrait.
+  // Masthead pictures are Dashboard-only and are never picked here.
+  const WALLS = { purse: ["bookkeeper", "banker"], house: ["lender", "shipwright"], dues: ["comprador", "taxlady"] };
+  function wallHtml(key, slot) {
+    const pic = Media.html("persona", key, "wallpaper", "ldg-wallimg", ((VS.cast || {})[key] || {}).portrait || "",
+      Object.assign({ slot: "ldg-wall:" + slot, scene: "wallpaper" }, PIC));
+    return pic ? `<div class="ldg-wall" aria-hidden="true">${pic}</div>` : "";
+  }
+  const boxArt = (key, slot) => { const p = personaHtml(key, slot); return p ? `<div class="ldg-boxart" aria-hidden="true">${p}</div>` : ""; };
 
   /* --------------------------------------------------- opening, history -- */
   function open(spread) {
@@ -136,8 +151,8 @@ const Ledger = (() => {
         </header>
         ${S.me.ready ? `<p class="ldg-locked">${te("acct.locked")}</p>` : ""}
         <article class="ldg-book${turn}" data-spread="${spread}">
-          <section class="ldg-page ldg-left">${pages[0]}</section>
-          <section class="ldg-page ldg-right">${pages[1]}</section>
+          <section class="ldg-page ldg-left">${wallHtml(WALLS[spread][0], spread + "L")}<div class="ldg-scroll">${pages[0]}</div></section>
+          <section class="ldg-page ldg-right">${wallHtml(WALLS[spread][1], spread + "R")}<div class="ldg-scroll">${pages[1]}</div></section>
         </article>
         <footer class="ldg-foot">
           <button type="button" class="ldg-flip" data-act="acct_step" data-d="-1"${i === 0 ? " disabled" : ""}>‹ ${te("acct.prev")}</button>
@@ -183,13 +198,15 @@ const Ledger = (() => {
     const bar = parts.filter(p => p[1] > 0).map(([k, v], n) =>
       `<i class="ldg-seg s-${k}" style="--w:${(100 * v / gross).toFixed(2)}%;--d:${n * 0.12}s" title="${esc(t("acct.chart." + (k === "other" ? "fleet" : k)))}: ${esc(money(v))}"></i>`).join("");
     const debtBar = b.debt > 0 ? `<i class="ldg-seg s-debt" style="--w:${Math.min(100, 100 * b.debt / gross).toFixed(2)}%"></i>` : "";
-    return `<h2>${te("acct.bs.title")}</h2>
-      <div class="ldg-worth ${toneOf(b.worth)}"><span>${te("acct.bs.worth")}</span>${fig(b.worth, "big")}${Ranks.label(m)}</div>
+    return `<div class="ldg-top"><h2>${te("acct.bs.title")}</h2>
+        <div class="ldg-worth ${toneOf(b.worth)}"><span>${te("acct.bs.worth")}</span>${fig(b.worth, "big")}${Ranks.label(m)}</div></div>
       <div class="ldg-parts" aria-hidden="true"><div class="ldg-bar">${bar}</div>${debtBar ? `<div class="ldg-bar debt">${debtBar}</div>` : ""}</div>
-      <h3>${te("acct.bs.owns")}</h3><ul class="ldg-sheet">${owns}</ul>
-      ${owes ? `<h3>${te("acct.bs.owes")}</h3><ul class="ldg-sheet">${owes}</ul>` : ""}
-      <ul class="ldg-sheet total"><li><span><b>${te("acct.bs.worth")}</b></span>${fig(b.worth, toneOf(b.worth))}</li></ul>
-      <h3>${te("acct.chart.title")}</h3>${worthChart()}`;
+      <div class="ldg-cols">
+        <section class="ldg-blk"><h3>${te("acct.bs.owns")}</h3><ul class="ldg-sheet">${owns}</ul></section>
+        <section class="ldg-blk">${owes ? `<h3>${te("acct.bs.owes")}</h3><ul class="ldg-sheet">${owes}</ul>` : `<h3>${te("acct.bs.worth")}</h3>`}
+          <ul class="ldg-sheet total"><li><span><b>${te("acct.bs.worth")}</b></span>${fig(b.worth, toneOf(b.worth))}</li></ul></section>
+        <section class="ldg-blk ldg-span"><h3>${te("acct.chart.title")}</h3>${worthChart()}</section>
+      </div>`;
   }
 
   function months() {
@@ -257,11 +274,11 @@ const Ledger = (() => {
       ? te(bk.last.sailed ? "port.pl.title_voyage" : "port.pl.title_month", { from: esc(portName(bk.last.from)), to: esc(portName(bk.last.to)), date: esc(bk.last.date) })
       : te("port.pl.title");
     if (!lines || !Object.keys(lines).length) {
-      return `<h2>${te("acct.pl.title")}</h2>${seg}<p class="ldg-muted">${te(range === "voyage" && !bk.last ? "port.pl.none_yet" : "port.pl.empty")}</p>`;
+      return `<div class="ldg-top"><h2>${te("acct.pl.title")}</h2>${seg}<p class="ldg-muted">${te(range === "voyage" && !bk.last ? "port.pl.none_yet" : "port.pl.empty")}</p></div>`;
     }
     const known = new Set(PL_GROUPS.flatMap(g => g[1]));
     const groups = PL_GROUPS.concat([["other", Object.keys(lines).filter(k => !known.has(k))]]);
-    let rows = "";
+    let blocks = "";
     const steps = [];
     groups.forEach(([grp, keys]) => {
       const here = keys.filter(k => Math.round(lines[k] || 0) !== 0);
@@ -269,15 +286,18 @@ const Ledger = (() => {
       const sub = here.reduce((n, k) => n + lines[k], 0);
       const name = grp === "other" ? te("acct.pl.grp_other") : te("port.pl.grp_" + grp);
       steps.push({ grp, name, sub, lines: here.map(k => [T["port.pl." + k] != null ? t("port.pl." + k) : k, lines[k]]) });
-      rows += `<tr class="ldg-grp g-${grp}"><td colspan="2">${name}</td></tr>` +
+      blocks += `<section class="ldg-blk"><table class="ldg-table ldg-pl"><tr class="ldg-grp g-${grp}"><td colspan="2">${name}</td></tr>` +
         here.map(k => `<tr><td>${T["port.pl." + k] != null ? te("port.pl." + k) : esc(k)}</td><td class="n ${toneOf(lines[k])}">${esc(signedMoney(lines[k]))}</td></tr>`).join("") +
-        `<tr class="ldg-sub"><td>${grp === "other" ? name : te("port.pl.sub_" + grp)}</td><td class="n ${toneOf(sub)}">${esc(signedMoney(sub))}</td></tr>`;
+        `<tr class="ldg-sub"><td>${grp === "other" ? name : te("port.pl.sub_" + grp)}</td><td class="n ${toneOf(sub)}">${esc(signedMoney(sub))}</td></tr></table></section>`;
     });
     const total = plTotal(lines);
-    return `<h2>${te("acct.pl.title")}</h2>${seg}<p class="ldg-caption">${title}</p>
-      <h3>${te("acct.pl.flow")}</h3>${waterfall(steps, total)}
-      <table class="ldg-table">${rows}<tr class="ldg-total"><td>${te("port.pl.total_" + range)}</td><td class="n ${toneOf(total)}">${fig(total, toneOf(total))}</td></tr></table>
-      ${portUnrealised()}${portIdle()}<p class="ldg-fine">${te("port.pl.note")}</p>`;
+    return `<div class="ldg-top"><h2>${te("acct.pl.title")}</h2>${seg}<p class="ldg-caption">${title}</p></div>
+      <div class="ldg-cols">
+        <section class="ldg-blk ldg-span"><h3>${te("acct.pl.flow")}</h3>${waterfall(steps, total)}</section>
+        ${blocks}
+        <section class="ldg-blk ldg-span"><table class="ldg-table"><tr class="ldg-total"><td>${te("port.pl.total_" + range)}</td><td class="n ${toneOf(total)}">${fig(total, toneOf(total))}</td></tr></table>
+          ${portUnrealised()}${portIdle()}<p class="ldg-fine">${te("port.pl.note")}</p></section>
+      </div>`;
   }
 
   /* The waterfall: each group of the profit and loss steps the running total up (jade) or down (oxblood),
@@ -313,21 +333,24 @@ const Ledger = (() => {
     const stat = (label, n, cls) => `<div class="ldg-stat ${cls || ""}"><span>${label}</span>${fig(n, cls)}</div>`;
     const stats = `<div class="ldg-stats">${stat(te("acct.money.cash"), m.cash)}${stat(te("acct.money.bank"), m.bank, "up")}${stat(te("acct.money.debt"), m.debt, m.debt > 0 ? "down" : "")}</div>`;
     const bank = bankHere
-      ? `<div class="ldg-desk">${deskHead("banker", te("bank.title"))}${serviceSlider("bank", t("bank.title"))}</div>`
-      : `<p class="ldg-away">${te("acct.away.bank", { home: esc(portName(myHome())), rate: pct(D.bank_rate, 2) })}</p>`;
+      ? desk("banker", te("bank.title"), serviceSlider("bank", t("bank.title")))
+      : `<p class="ldg-away ldg-blk">${te("acct.away.bank", { home: esc(portName(myHome())), rate: pct(D.bank_rate, 2) })}</p>`;
     const loan = home
-      ? `<div class="ldg-desk">${deskHead("lender", te("loan.title"))}${serviceSlider("loan", t("loan.title"))}
-          <p class="ldg-fine">${te("acct.money.room")} <b class="ldg-fig up">${money(m.loan_room)}</b></p></div>`
-      : `<p class="ldg-away">${te("acct.away.loan", { home: esc(portName(myHome())) })}</p>`;
+      ? desk("lender", te("loan.title"), `${serviceSlider("loan", t("loan.title"))}
+          <p class="ldg-fine">${te("acct.money.room")} <b class="ldg-fig up">${money(m.loan_room)}</b></p>`)
+      : `<p class="ldg-away ldg-blk">${te("acct.away.loan", { home: esc(portName(myHome())) })}</p>`;
     const rest = typeof bankRestHtml === "function" ? bankRestHtml("ldg-rest") : "";
-    return `<h2>${te("acct.money.title")}</h2>${stats}${rest}${bank}${loan}
+    return `<div class="ldg-top"><h2>${te("acct.money.title")}</h2>${stats}</div>
+      <div class="ldg-cols">${rest ? `<div class="ldg-blk ldg-span">${rest}</div>` : ""}${bank}${loan}</div>
       <h3>${te("acct.proj.title")}</h3><div class="ldg-proj" id="ldgProj">${projection()}</div>
       <p class="ldg-fine">${te("acct.proj.hint")}</p>`;
   }
 
-  function deskHead(who, title) {
-    const pic = personaHtml(who);
-    return `<header class="ldg-deskhead">${pic ? `<span class="ldg-face">${pic}</span>` : ""}<b>${title}</b></header>`;
+  /* A desk: a dark panel with the person behind it, large and faded in from the right. */
+  function desk(who, title, inner, cls) {
+    const pic = personaHtml(who, ":desk");
+    return `<div class="ldg-desk ldg-blk ${cls || ""}">${pic ? `<div class="ldg-deskart" aria-hidden="true">${pic}</div>` : ""}
+      <header class="ldg-deskhead"><b>${title}</b></header>${inner}</div>`;
   }
 
   /* Next month's figures for whatever the bank and loan sliders are set to right now. */
@@ -396,15 +419,17 @@ const Ledger = (() => {
         <span class="ldg-fig down">${money(s.wage)}</span>${home ? btn(te("acct.fleet.recall"), "recall", `data-i="${i}"`, "ldg-btn", locked) : ""}</li>`).join("");
     const repairAll = (m.ships || []).reduce((n, s) => n + (s.repair || 0), 0);
     const notes = [yard ? "" : te("acct.fleet.no_yard"), home ? "" : te("acct.fleet.home_only", { home: esc(portName(myHome())) })].filter(Boolean).join(" ");
-    return `<h2>${te("acct.fleet.title")}</h2>
+    return `<div class="ldg-top"><h2>${te("acct.fleet.title")}</h2></div>
       <table class="ldg-table ldg-fleet"><thead><tr><th>${te("acct.fleet.ship")}</th><th class="n">${te("acct.fleet.value")}</th>
         <th class="n">${te("acct.fleet.wage")}</th><th class="n">${te("acct.fleet.repair")}</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr class="ldg-total"><td>${te("acct.fleet.total")}</td><td></td><td class="n down">${fig(wage + laid.reduce((n, s) => n + (s.wage || 0), 0), "down")}</td>
         <td class="n">${repairAll ? btn(te("acct.fleet.repair_all", { cost: money(repairAll) }), "repair", 'data-i="all"', "ldg-btn primary", locked || repairAll > m.cash) : ""}</td></tr></tfoot></table>
       ${notes ? `<p class="ldg-fine">${notes}</p>` : ""}
-      ${laid.length ? `<h3>${te("acct.fleet.laid", { home: esc(portName(myHome())) })}</h3><ul class="ldg-laid">${laidRows}</ul>
-        <p class="ldg-fine">${te("acct.fleet.laid_note", { pct: layPct, home: esc(portName(myHome())) })}</p>` : ""}
-      <h3>${te("acct.fleet.chart")}</h3>${wageBars()}
+      <div class="ldg-cols">
+        ${laid.length ? `<section class="ldg-blk"><h3>${te("acct.fleet.laid", { home: esc(portName(myHome())) })}</h3><ul class="ldg-laid">${laidRows}</ul>
+          <p class="ldg-fine">${te("acct.fleet.laid_note", { pct: layPct, home: esc(portName(myHome())) })}</p></section>` : ""}
+        <section class="ldg-blk ${laid.length ? "" : "ldg-span"}"><h3>${te("acct.fleet.chart")}</h3>${wageBars()}</section>
+      </div>
       ${protection()}`;
   }
 
@@ -422,8 +447,8 @@ const Ledger = (() => {
     const left = m.protect > 0 ? te(m.protect === 1 && T["acct.prot.left_1"] != null ? "acct.prot.left_1" : "acct.prot.left", { n: m.protect }) : te("acct.prot.none");
     const pay = home && m.protect <= D.renew_at
       ? btn(te("acct.prot.pay", { cost: money(m.protect_cost) }), "protection", "", "ldg-btn primary", m.ready || m.protect_cost > m.cash) : "";
-    return `<div class="ldg-prot ${m.protect > D.renew_at ? "up" : "down"}">${deskHead("agent", te("acct.prot.title"))}
-      <p><b>${left}</b> ${home ? "" : `<small>${te("acct.prot.home", { home: esc(portName(myHome())) })}</small>`}</p>${pay}</div>`;
+    return desk("agent", te("acct.prot.title"), `<p><b>${left}</b> ${home ? "" : `<small>${te("acct.prot.home", { home: esc(portName(myHome())) })}</small>`}</p>${pay}`,
+      "ldg-prot " + (m.protect > D.renew_at ? "up" : "down"));
   }
 
   /* --------------------------------------------- spread 3: dues & duties -- */
@@ -443,9 +468,10 @@ const Ledger = (() => {
       const rentNote = rent
         ? `<small class="ldg-rent">${te("acct.house.rent_now", { rent: money(rent.rent), note: rent.empty ? te("acct.house.rent_half") : "" })}</small>`
         : (isHome && wr.home_free > 0 ? `<small class="ldg-rent">${te("acct.house.rent_free", { months: wr.home_free, s: wr.home_free === 1 ? "" : "s" })}</small>` : "");
-      return `<div class="ldg-store">
-        <div class="ldg-storeimg">${Media.html("port", st.port, "banner", "", (D.graphics.ports || {})[st.port], Object.assign({ slot: "ldg-wh:" + st.port }, PIC))}</div>
-        <div><b>${te("acct.house.wh", { port: esc(portName(st.port)) })}</b>
+      return `<div class="ldg-store ldg-blk">
+        <div class="ldg-storeimg">${Media.html("port", st.port, "banner", "", (D.graphics.ports || {})[st.port], Object.assign({ slot: "ldg-wh:" + st.port }, PIC))}
+          <b class="ldg-sname">${te("acct.house.wh", { port: esc(portName(st.port)) })}</b></div>
+        <div class="ldg-storebody">
         ${st.cap ? `<small>${te("acct.house.used", { used: used.toLocaleString(), cap: st.cap.toLocaleString() })}</small><div class="ldg-fill"><i style="--w:${fill.toFixed(1)}%"></i></div>` : ""}
         ${rentNote}
         <div class="ldg-chips">${goods || `<small>—</small>`}</div></div></div>`;
@@ -458,9 +484,11 @@ const Ledger = (() => {
     const costs = cost("year") + cost("game");
     const due = (m.wh_rent || {}).total > 0 ? `<p class="ldg-caption">${te("acct.house.rent_total", { total: money(m.wh_rent.total) })}</p>` : "";
     const estate = m.estate && m.estate.stage ? `<p class="ldg-caption">${te("acct.house.estate_now", { n: m.estate.stage })}</p>` : "";
-    return `<h2>${te("acct.house.title")}</h2>${estate}${due}<div class="ldg-stores">${cards}</div>
-      ${costs ? `<ul class="ldg-sheet">${costs}</ul>` : ""}
-      <h3>${te("acct.bill.title", { port: esc(portName(m.port)) })}</h3>${bill()}`;
+    return `<div class="ldg-top"><h2>${te("acct.house.title")}</h2>${estate}${due}</div>
+      <div class="ldg-cols">${cards}</div>
+      ${costs ? `<ul class="ldg-sheet ldg-two">${costs}</ul>` : ""}
+      <h3>${te("acct.bill.title", { port: esc(portName(m.port)) })}</h3>
+      <div class="ldg-artbox">${boxArt("mayor", ":bill")}${bill()}</div>`;
   }
 
   function bill() {
@@ -477,11 +505,11 @@ const Ledger = (() => {
                      agent: "agent", pirates: "pirate", thieves: "", warehouse: "comprador" };
   function duesRight() {
     const v = hist.data && hist.data.me;
-    if (!v) return `<h2>${te("acct.takers.title")}</h2><p class="ldg-muted">${te(hist.failed ? "acct.takers.none" : "acct.chart.loading")}</p>`;
+    if (!v) return `<div class="ldg-top"><h2>${te("acct.takers.title")}</h2></div><p class="ldg-muted">${te(hist.failed ? "acct.takers.none" : "acct.chart.loading")}</p>`;
     const takers = (v.takers || []).filter(r => Math.abs(r.amount) >= 1);
     const top = Math.max(1, ...takers.map(r => Math.abs(r.amount)));
     const cards = takers.length ? takers.slice(0, 9).map((r, i) => {
-      const pic = WHO_FACE[r.who] ? personaHtml(WHO_FACE[r.who]) : "";
+      const pic = WHO_FACE[r.who] ? personaHtml(WHO_FACE[r.who], ":taker") : "";
       const ports = Object.entries(r.ports || {}).slice(0, 3).map(([p, n]) => `${esc(portName(p))} ${esc(moneyShort(Math.abs(n)))}`).join(" · ");
       const label = T["acct.who." + r.who] != null ? te("acct.who." + r.who) : esc(r.who);
       const sub = T["acct.who." + r.who + "_sub"] != null ? te("acct.who." + r.who + "_sub") : "";
@@ -489,14 +517,15 @@ const Ledger = (() => {
       const inward = r.who === "banker";
       return `<li class="ldg-taker${inward ? " in" : ""}" style="--w:${(100 * Math.abs(r.amount) / top).toFixed(1)}%;--d:${0.1 + i * 0.08}s">
         ${pic ? `<span class="ldg-face big">${pic}</span>` : `<span class="ldg-face big none" aria-hidden="true">✦</span>`}
-        <div><b>${label}</b><small>${sub}</small><div class="ldg-meter"><i></i></div><small class="ldg-ports">${ports}</small></div>
-        <span class="ldg-fig ${inward ? "up" : "down"}">${money(Math.abs(r.amount))}</span></li>`;
+        <div class="ldg-tk"><b>${label}</b><small>${sub}</small>
+          <span class="ldg-fig ${inward ? "up" : "down"}">${money(Math.abs(r.amount))}</span>
+          <div class="ldg-meter"><i></i></div><small class="ldg-ports">${ports}</small></div></li>`;
     }).join("") : "";
-    const desk = v.desk || {}, dues = v.dues || {};
-    const taxRows = (desk.ports || []).filter(p => p.tax || p.fine).slice(0, 8).map(p => `<tr><td>${esc(portName(p.port))}</td><td class="n">${p.visits}</td>
+    const desk_ = v.desk || {}, dues = v.dues || {};
+    const taxRows = (desk_.ports || []).filter(p => p.tax || p.fine).slice(0, 8).map(p => `<tr><td>${esc(portName(p.port))}</td><td class="n">${p.visits}</td>
         <td class="n down">${money(p.tax)}</td><td class="n ${p.fine ? "down" : ""}">${p.fine ? money(p.fine) : "—"}</td></tr>`).join("");
     const wages = ((me().books || {}).game || {}).upkeep;
-    return `<h2>${te("acct.takers.title")}</h2>
+    return `<div class="ldg-top"><h2>${te("acct.takers.title")}</h2></div>
       ${cards ? `<ul class="ldg-takers">${cards}</ul>` : `<p class="ldg-muted">${te("acct.takers.none")}</p>`}
       <h3>${te("acct.tax.title")}</h3>
       ${taxRows ? `<table class="ldg-table"><thead><tr><th>${te("acct.tax.port")}</th><th class="n">${te("acct.tax.visits")}</th><th class="n">${te("acct.tax.tax")}</th><th class="n">${te("acct.tax.fine")}</th></tr></thead><tbody>${taxRows}</tbody></table>`

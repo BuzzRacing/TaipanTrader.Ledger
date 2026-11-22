@@ -41,6 +41,7 @@ from urllib.parse import parse_qs, urlparse
 import artbible
 import captains
 import cast
+import certificate
 import config
 import engine
 import finale
@@ -49,6 +50,7 @@ import dashboard_feed
 import harbor_view
 import imagegen
 import journal
+import manual_feed
 import media
 import recipes
 import stats
@@ -553,6 +555,9 @@ class Hub:
         # (the storyteller or the Legend's own character). web/legend.js plays them in order.
         if me.get("legend") and voice.PLAN.ready():
             v["voice"]["legend"] = [voice.PLAN._clip(b["text"], b["who"]) for b in me["legend"].get("beats") or []]
+        # The story of a share just earned (honour.py): the one line said by whoever hands it over.
+        if (me.get("honour") or {}).get("say") and me["honour"].get("who") and voice.PLAN.ready():
+            v["voice"]["honour"] = [voice.PLAN._clip(me["honour"]["say"], me["honour"]["who"])]
         promo = me.get("promotion") or {}
         if promo:
             me["promotion"] = dict(promo, achievements=stats.promotion_record(v["game_id"], pid, promo))
@@ -1000,6 +1005,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._file("table.html")
         if path == "/dashboard":
             return self._file("dashboard.html")
+        if path in ("/manual", "/Manual"):
+            return self._file("manual.html")      # the Captain's Manual (manual_feed.py, manual_text.py)
+        if path == "/api/manual":
+            with HUB.cond:
+                return self._send(200, manual_feed.view(HUB.game, query.get("token", [""])[0]))
+        if path == "/api/manual/say":
+            with HUB.cond:
+                return self._send(200, manual_feed.say(HUB.game, query.get("token", [""])[0], query.get("key", [""])[0],
+                                                       query.get("family", [""])[0] == "1"))
         if path == "/design/ceremony-preview.html":
             with open(os.path.join(ROOT, "design", "ceremony-preview.html"), "rb") as preview:
                 return self._send(200, preview.read(), "text/html; charset=utf-8")
@@ -1011,6 +1025,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._stats_get(query)
         if path == "/api/finale":
             return self._finale_get()
+        if path == "/api/certificate":
+            return self._certificate_get(query)
         if path == "/fonts.css":
             return self._send(200, config.fonts_css(engine.CFG, fonts.local_css()), "text/css; charset=utf-8")
         if path == "/theme.css":
@@ -1128,6 +1144,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "token": token})
             if path == "/api/options":
                 return self._options_post(body)
+            if path == "/api/certificate":
+                return self._certificate_post(body)
             if path == "/api/act":
                 with HUB.cond:
                     pid = HUB.game.pid_for_token(body.get("token"))
@@ -1327,6 +1345,98 @@ class Handler(BaseHTTPRequestHandler):
             data = None
         return self._send(200, data or {"ok": False})
 
+    def _certificate_seat(self, token):
+        """(game id, seat id, the seat) for the Captain asking about their Voyage Certificate, once the books
+        have closed (or in free play after); (game id, None, None) otherwise."""
+        with HUB.cond:
+            g = HUB.game
+            gid = g.s.get("game_id")
+            over = g.s["phase"] == "ended" or bool(g.s.get("free_play"))
+            pid = g.pid_for_token(token) if token else None
+            seat = dict(g.s["players"].get(pid) or {}) if pid else None
+        return (gid, pid, seat) if over and seat else (gid, None, None)
+
+    def _certificate_get(self, query):
+        """The Voyage Certificate (certificate.py, 21 Nov 2026): what is written on the asking Captain's
+        certificate, the women who can stand on its right, and each one's spoken line with its clip."""
+        gid, pid, seat = self._certificate_seat(query.get("token", [""])[0])
+        if not pid:
+            return self._send(200, {"ok": False})
+        try:
+            cap = captains.get(seat["captain"]) if seat.get("captain") else None
+            career = stats.career(seat.get("name") or "", links=captains.links(cap) if cap else None) or {}
+            data = certificate.facts(gid, pid, career_games=career.get("games"))
+            if data:
+                plan = voice.PLAN
+                clean = media.family(engine.CFG)              # a family-friendly table hears the clean wording
+                for w in data["women"]:
+                    w["name"] = cast.display_name(engine.CFG, w["who"])
+                    if clean:
+                        w["text"] = w["family"]
+                    if not (plan.ready() and w.get("text")):
+                        continue
+                    clip = plan._clip(w["text"], w["who"])
+                    if clip and w["family"] != w["text"]:
+                        twin = plan._clip(w["family"], w["who"])   # what a Family-friendly screen plays instead
+                        if twin:
+                            clip["f"] = twin["u"]
+                    w["clip"] = clip
+        except Exception:
+            crash("Working out the Voyage Certificate failed", game=gid)
+            data = None
+        return self._send(200, data or {"ok": False})
+
+    def _certificate_admin(self, what, query):
+        """The Certificate Studio (admin, 21 Nov 2026): any finished game's Captain as certificate facts, and the
+        pictures to choose from. Read only: the studio paints in the browser and saves the PNG there."""
+        arg = lambda k: (query.get(k) or [""])[0]
+        fam = arg("family") == "1"
+        try:
+            if what == "games":
+                cur = journal.current()
+                games = [{"id": g["id"], "started": g.get("started"), "updated": g.get("updated"),
+                          "current": g["id"] == cur} for g in journal.games()]
+                return self._send(200, {"ok": True, "games": games})
+            if what == "game":
+                book = finale.book(arg("game"))
+                if not book:
+                    return self._send(200, {"ok": False, "error": "That game has no closing standings yet."})
+                houses = [{"id": h["id"], "name": h["name"], "firm": h["firm"], "place": h.get("place"),
+                           "worth": h.get("final_worth", h.get("worth") or 0)} for h in book["houses"]]
+                houses.sort(key=lambda h: h["place"] or 99)
+                return self._send(200, {"ok": True, "game": arg("game"), "houses": houses})
+            if what == "facts":
+                gid, pid = arg("game"), arg("pid")
+                name = next((h["name"] for h in (finale.book(gid) or {}).get("houses", []) if h["id"] == pid), "")
+                career = stats.career(name) or {}
+                data = certificate.facts(gid, pid, career_games=career.get("games"))
+                if not data:
+                    return self._send(200, {"ok": False, "error": "That Captain is not in the closing books."})
+                for w in data["women"]:
+                    w["name"] = cast.display_name(engine.CFG, w["who"])
+                    if fam:
+                        w["text"] = w["family"]
+                have = {w["who"] for w in data["women"]}
+                data["others"] = [{"who": c, "name": cast.display_name(engine.CFG, c)}
+                                  for c in ("gamemaster", "taxlady", "bosun", "pirate", "agent", "lender") if c not in have]
+                data.pop("recipe", None)
+                return self._send(200, data)
+            if what == "library":
+                cfg = dict(engine.CFG)
+                cfg["content"] = dict(cfg.get("content") or {}, rating="family" if fam else "adult")
+                return self._send(200, {"ok": True, "media": media.public(cfg)})
+        except Exception:
+            crash("The Certificate Studio could not open its books", what=what)
+        return self._send(200, {"ok": False, "error": "The Certificate Studio could not do that."})
+
+    def _certificate_post(self, body):
+        """Keeps which pictures a Captain's certificate was drawn with, so it opens the same way next time."""
+        gid, pid, _seat = self._certificate_seat(body.get("token"))
+        if not pid:
+            return self._send(200, {"ok": False})
+        rec = certificate.recipe_set(gid, pid, body.get("recipe"))
+        return self._send(200, {"ok": bool(rec), "recipe": rec})
+
     def _stats_get(self, query):
         """A player's statistics (stats.py). The seat token says who is asking. Without a
         seat in the game in progress, a name gives that player's past games only, so
@@ -1470,6 +1580,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, v)
         if what == "media/jobs":
             return self._send(200, {"ok": True, "jobs": media.JOBS.list(), "queue": media.JOBS.summary()})
+        if what.startswith("certificate/"):
+            return self._certificate_admin(what[len("certificate/"):], query)
         if what.startswith("journal/"):
             return self._journal_get(what[len("journal/"):], query)
         if what == "export":

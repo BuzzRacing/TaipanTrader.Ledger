@@ -130,3 +130,84 @@ body.in-legend #app { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .lg-screen, .lg-who, .lg-line, .lg-road, .lg-hint { animation: none !important; transition: none; }
 }
+
+/* ---- The story of a share just earned (honour.py, 21 Nov 2026): Li Yue's Flag, or a Legend's share ----------
+   Page one (data-mode="share"): the deed in the middle, whoever hands it over on the left with one line, and one
+   button. Page two (data-mode="share2"): a result panel kept under half the screen, beside the key picture from
+   the story, large, to jog the memory. */
+.lg-deed { position: relative; display: grid; justify-items: center; gap: .2rem; padding: clamp(.6rem, 1.8vh, 1.1rem) clamp(1.4rem, 4vw, 3rem) clamp(.7rem, 2vh, 1.2rem);
+  border: 2px solid var(--lg-accent); outline: 1px solid color-mix(in srgb, var(--lg-accent) 40%, transparent); outline-offset: 6px; border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--deck-lacquer) 92%, transparent), color-mix(in srgb, var(--deck-night) 94%, transparent));
+  box-shadow: 0 0 3.5rem color-mix(in srgb, var(--lg-accent) 30%, transparent), 0 1rem 3rem rgba(0, 0, 0, .65); cursor: default; }
+.lg-deed[hidden] { display: none; }
+.lg-deed.in { animation: lgDeed 1.1s cubic-bezier(.16, 1.2, .3, 1) both; }
+@keyframes lgDeed { from { opacity: 0; transform: translateY(1rem) scale(.9); } to { opacity: 1; transform: none; } }
+.lg-deed::before, .lg-deed::after { content: ""; position: absolute; width: 1.2rem; height: 1.2rem; border: 2px solid var(--deck-brass); pointer-events: none; }
+.lg-deed::before { top: -9px; left: -9px; border-width: 2px 0 0 2px; }
+.lg-deed::after { bottom: -9px; right: -9px; border-width: 0 2px 2px 0; }
+.lg-deed small { font: .9rem var(--special); letter-spacing: .2em; text-transform: uppercase; color: var(--brass-hi); }
+.lg-deed b { font: 400 clamp(2rem, 5vw, 4rem)/1.05 var(--title, var(--serif));
+  background: linear-gradient(180deg, #fff3cf 0%, var(--lg-accent) 45%, var(--deck-brass) 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 2px #000) drop-shadow(0 0 1.2rem color-mix(in srgb, var(--lg-accent) 35%, transparent)); }
+.lg-deed em { font: italic clamp(1.05rem, 1.9vw, 1.5rem)/1.2 var(--serif); color: var(--deck-ivory); }
+.lg-deed i { margin-top: .25rem; font: normal .8rem var(--special); letter-spacing: .14em; text-transform: uppercase; color: var(--jade-hi); }
+.lg-screen[data-mode="share"] .lg-mid { cursor: default; gap: clamp(.5rem, 1.6vh, 1rem); }
+.lg-screen[data-mode="share"] .lg-line { max-width: 34ch; font-size: clamp(1.15rem, 2.3vw, 1.9rem); }
+.lg-screen[data-mode="share"] .lg-line.long { max-width: 40ch; font-size: clamp(1.05rem, 2vw, 1.6rem); }
+.lg-screen[data-mode="share"] .lg-roads { width: min(24rem, 100%); margin-top: .2rem; }
+.lg-screen[data-mode="share"] .lg-foot { display: none; }
+
+.lg-screen[data-mode="share2"] .lg-who, .lg-screen[data-mode="share2"] .lg-mid, .lg-screen[data-mode="share2"] .lg-top,
+.lg-screen[data-mode="share2"] .lg-foot { visibility: hidden; }
+.lg-share { position: absolute !important; inset: 0; z-index: 4 !important; box-sizing: border-box; display: grid; align-items: center;
+  grid-template-columns: minmax(0, 1fr) min(44%, 34rem); gap: clamp(1rem, 3vw, 2.4rem);
+  padding: max(clamp(.8rem, 3vw, 2.2rem), env(safe-area-inset-top)) max(clamp(.8rem, 3vw, 2.2rem), env(safe-area-inset-right))
+    max(clamp(.8rem, 3vw, 2.2rem), env(safe-area-inset-bottom)) max(clamp(.8rem, 3vw, 2.2rem), env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--deck-night) 78%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  animation: sfIn .5s ease-out both; }
+.lg-share[hidden] { display: none; }
+.lg-share.nopic { grid-template-columns: min(34rem, 100%); justify-content: center; }
+/* the key picture: big, framed like a painting, with its chapter underneath */
+.lg-sh-pic { position: relative; align-self: stretch; min-height: 0; margin: 0; overflow: hidden; border: 2px solid var(--deck-brass); border-radius: 3px;
+  outline: 1px solid color-mix(in srgb, var(--deck-brass) 30%, transparent); outline-offset: 6px;
+  box-shadow: 0 1.6rem 4.5rem rgba(0, 0, 0, .75); animation: sfLedgerArrive .8s cubic-bezier(.16, 1, .3, 1) both; }
+.lg-sh-pic > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; }
+.lg-sh-pic figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 2.4rem 1.2rem .9rem;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--deck-night) 90%, transparent) 70%); }
+.lg-sh-pic figcaption small { display: block; font: .85rem var(--special); letter-spacing: .16em; text-transform: uppercase; color: var(--brass-hi); text-shadow: 0 1px 3px #000; }
+.lg-sh-pic figcaption small:empty { display: none; }
+.lg-sh-pic figcaption b { display: block; font: 400 clamp(1.3rem, 2.6vw, 2.2rem)/1.1 var(--title, var(--serif)); color: var(--lg-accent); text-shadow: 0 2px 3px #000; }
+/* the result panel: small on purpose, there is not much to say */
+.sf-card.lg-card.lg-sh-card { grid-column: auto; --result-accent: var(--lg-accent); gap: .8rem; padding: clamp(.9rem, 2vw, 1.4rem) clamp(1rem, 2.2vw, 1.6rem); }
+.lg-sh-card .sf-rheading h2 { font-size: clamp(1.6rem, 3vw, 2.6rem); }
+.lg-sh-card .sf-remblem { flex-basis: 3.2rem; width: 3.2rem; height: 3.6rem; }
+.lg-sh-card .sf-rreason { margin-top: .4rem; font-style: italic; }
+.lg-sh-how h3 { margin: 0 0 .45rem; padding-bottom: .3rem; border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 35%, transparent);
+  font: 400 .95rem var(--special); color: var(--brass-hi); }
+.lg-sh-how { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.lg-sh-how ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.lg-sh-how.many ul { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1rem; }   /* a long game: many fleets */
+.lg-sh-card .sf-rcargo li { display: block; }
+.lg-sh-card .sf-rcargo li small { display: block; font: .78rem/1.2 var(--special); letter-spacing: .06em; color: var(--muted); }
+.lg-sh-card .sf-rcargo li span { display: block; font: 600 1.1rem/1.25 var(--serif); color: var(--deck-ivory); }
+.lg-sh-card .sf-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.lg-sh-card .sf-rows b { font-size: 1.3rem; }
+.lg-sh-note { margin: 0; font-size: .92rem; line-height: 1.4; color: var(--muted); }
+.lg-sh-card footer { padding-top: .7rem; }
+.lg-sh-card footer button { min-height: 3rem; padding: 0 1.3rem; font-size: 1.1rem; }
+
+/* upright screens: the picture above, the panel below, still under half the height */
+@media (orientation: portrait) {
+  .lg-share { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; align-items: stretch; }
+  .lg-share.nopic { grid-template-rows: auto; align-content: center; }
+  .sf-card.lg-sh-card { max-height: 48vh; overflow-y: auto; }
+}
+@media (max-height: 560px) {
+  .lg-deed b { font-size: clamp(1.5rem, 8vh, 2.4rem); }
+  .lg-deed em, .lg-deed i { display: none; }
+  .lg-screen[data-mode="share"] .lg-line { font-size: clamp(.95rem, 4.4vh, 1.4rem); }
+  .lg-sh-note { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-deed, .lg-share, .lg-sh-pic { animation: none !important; }
+}

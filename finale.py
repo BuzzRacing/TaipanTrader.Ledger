@@ -137,7 +137,21 @@ def _house(h, place):
         "curve": [[m["turn"], int(m["worth"])] for m in _thin(h["months"])],
         "chronicle": _chronicle(h),
         "biggest_sale": max((t.get("total", 0) for t in sells), default=0),
+        # The Voyage Certificate (certificate.py, 21 Nov 2026): home port, and what picks the woman on its right.
+        "home": h.get("home"),
+        "fights_war": sum(1 for b in h["battles"] if b.get("lord")),
+        "fights_pirate": sum(1 for b in h["battles"] if not b.get("lord")),
+        "seized_value": int(p.get("seized_value", 0)),
+        "tax_port": _tax_port(h),
     }
+
+
+def _tax_port(h):
+    """The port whose Port Authority took the most from this house in tax and fines, or None."""
+    rows = (h.get("desk") or {}).get("ports") or []
+    top = max(rows, key=lambda r: r.get("tax", 0) + r.get("fine", 0), default=None)
+    paid = int(top.get("tax", 0) + top.get("fine", 0)) if top else 0
+    return {"port": top["port"], "paid": paid} if paid > 0 else None
 
 
 # The honours of the voyage: (key, field, needs at least). Each goes to the house with the most.
@@ -181,12 +195,25 @@ def _work(gid):
         place = 1 + order.index(p["id"]) if p["id"] in order else None
         rows.append(_house(h, place))
     rows.sort(key=lambda r: (r["place"] or 99, -r["worth"]))
+    broke = {}
+    for e in events:
+        if e.get("type") == "bankrupt" and e.get("pid"):
+            broke[e["pid"]] = broke.get(e["pid"], 0) + 1
+    # The figures the books closed on. The month's last snapshot is journalled just after game_over, so the
+    # walk above stops one month short; the Voyage Certificate shows these, as the standings do.
+    closed = {q.get("id"): q for q in over.get("standings") or []}
     for i, r in enumerate(rows):
         r["place"] = r["place"] or i + 1
+        r["bankrupt"] = broke.get(r["id"], 0)
+        q = closed.get(r["id"]) or {}
+        r["final_worth"] = int(q.get("worth", r["worth"]))
+        r["final_rank"] = q.get("rank") or r["rank"]
+        r["final_rank_id"] = _rank_id(r["final_rank"])
     turns = [e.get("turn", 0) for e in events if e.get("cat") == "snapshot"]
     first, last = (min(turns), max(turns)) if turns else (0, 0)
     return {"ok": True, "game": gid, "first": stats._date(first), "last": stats._date(last),
-            "months": last - first, "houses": rows, "honours": _honours(rows)}
+            "months": last - first, "years": (stats._meta(gid) or {}).get("years"),
+            "houses": rows, "honours": _honours(rows)}
 
 
 def book(gid):

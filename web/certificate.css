@@ -1,0 +1,64 @@
+/* The Voyage Certificate screen (web/certificate.js, 21 Nov 2026). The certificate itself is painted on a canvas at
+   1920 x 1080; this file only lays out the screen round it: the picture as large as the screen allows, the line
+   of the woman on its right, and the buttons. Over the finale it lets the harbor scene show through; opened
+   from the end-of-game screen it darkens what is behind. */
+.cert {
+  --cert-ink: #120d0a; --cert-brass: #c9a25a; --cert-ivory: #f3e6c8; --cert-oxblood: #7b2428;
+  position: fixed; inset: 0; z-index: 10050; box-sizing: border-box;
+  display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; justify-items: center; align-content: center; gap: .55rem;
+  padding: max(.7rem, env(safe-area-inset-top)) max(.7rem, env(safe-area-inset-right)) max(.7rem, env(safe-area-inset-bottom)) max(.7rem, env(safe-area-inset-left));
+  background: rgba(13, 9, 7, .9); color: var(--cert-ivory);
+  font: 1rem/1.35 var(--sans, Alegreya, Georgia, serif);
+  animation: cert-in .5s ease-out both;
+}
+.cert.cert-finale { background: radial-gradient(ellipse at 50% 40%, rgba(13, 9, 7, .55), rgba(13, 9, 7, .9)); }
+
+/* the picture: 16:9, as large as fits above the line and the buttons */
+.cert-stage {
+  position: relative; align-self: center; aspect-ratio: 16 / 9;
+  width: min(100%, calc((100vh - 10.5rem) * 16 / 9)); width: min(100%, calc((100dvh - 10.5rem) * 16 / 9));
+  max-height: 100%; background: var(--cert-ink);
+  border: 1px solid var(--cert-brass); box-shadow: 0 1.2rem 3.2rem rgba(0, 0, 0, .75), 0 0 0 .3rem rgba(18, 13, 10, .8);
+}
+.cert-canvas, .cert-img { display: block; width: 100%; height: 100%; }
+.cert-canvas[hidden], .cert-img[hidden] { display: none; }
+.cert-img { -webkit-touch-callout: default; user-select: auto; }
+.cert-status { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; padding: 1rem; text-align: center;
+  font: 1.3rem var(--serif, Georgia, serif); color: var(--cert-ivory); }
+.cert-status[hidden] { display: none; }
+/* the seal lands */
+.cert.cert-thump .cert-stage { animation: cert-thump .42s cubic-bezier(.2, 1.4, .4, 1) both; }
+
+/* her line */
+.cert-line { margin: 0; max-width: min(64rem, 100%); display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: .2rem .6rem;
+  text-align: center; font-size: 1.08rem; text-wrap: balance; }
+.cert-line[hidden] { display: none; }
+.cert-line b { font: 1.08rem var(--special, "Alegreya SC", Georgia, serif); letter-spacing: .06em; color: #e7bf72; white-space: nowrap; }
+.cert-line span { font-style: italic; }
+.cert-again { flex: none; width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 1px solid var(--cert-brass); background: rgba(20, 12, 9, .7);
+  color: var(--cert-ivory); font-size: 1.2rem; line-height: 1; cursor: pointer; }
+.cert-again:hover { background: rgba(60, 36, 22, .9); }
+
+/* the buttons */
+.cert-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; }
+.cert-btn { min-height: 2.9rem; padding: .55rem 1.3rem; border-radius: .35rem; border: 1px solid var(--cert-brass); cursor: pointer;
+  background: linear-gradient(180deg, #3a2519, #24160f); color: var(--cert-ivory);
+  font: 1.08rem var(--serif, Georgia, serif); letter-spacing: .02em; box-shadow: 0 .25rem .8rem rgba(0, 0, 0, .5); }
+.cert-btn:hover:not(:disabled) { background: linear-gradient(180deg, #4a2f20, #2e1c13); }
+.cert-btn.primary { background: linear-gradient(180deg, #96302f, var(--cert-oxblood)); color: #fff4dc; }
+.cert-btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, #a93a37, #86282b); }
+.cert-btn:disabled { opacity: .45; cursor: default; }
+.cert-btn:focus-visible, .cert-again:focus-visible { outline: 2px solid #f6cf80; outline-offset: 2px; }
+.cert-hint { margin: 0; max-width: 46rem; text-align: center; font-size: .95rem; color: #e9dcc0; }
+.cert-hint[hidden] { display: none; }
+
+@keyframes cert-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cert-thump { from { transform: scale(1.014); } to { transform: none; } }
+
+@media (max-width: 40rem) {
+  .cert-btn { flex: 1 1 100%; }
+  .cert-stage { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cert, .cert.cert-thump .cert-stage { animation: none; }
+}

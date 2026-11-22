@@ -120,13 +120,13 @@ def test_a_legend_opens_on_the_landfall_and_takes_no_time():
     turn = g.s["turn"]
     v = g.view("p1", {"p1"})["me"]["legend"]
     assert v["tale"] == "palace" and v["n"] == 1 and v["of"] == 3 and v["teller"] == "teller_drowned"
-    assert len(v["beats"]) == 4 and all(b["text"] and b["side"] == "left" for b in v["beats"])
+    assert len(v["beats"]) == 2 and all(b["text"] and b["side"] == "left" for b in v["beats"])
     assert [c["key"] for c in v["choices"]] == ["free", "sell", "keep"] and not v["done"]
     assert any("Palace Beneath the Waves" in line for line in p["log"])
     cash = p["cash"]
     choose(g, "sell")
     v = g.view("p1", {"p1"})["me"]["legend"]
-    assert v["done"] and v["more"] and not v["choices"] and len(v["beats"]) == 2
+    assert v["done"] and v["more"] and not v["choices"] and len(v["beats"]) == 1
     stake = legend.stake(g, p)
     gained = p["cash"] - cash
     assert 0.6 * 0.70 * v["stake"] <= gained <= 0.6 * 1.30 * v["stake"], (gained, stake)
@@ -167,7 +167,7 @@ def test_the_choice_comes_back_in_the_next_chapter():
     v = g.view("p1", {"p1"})["me"]["legend"]
     assert v["scene"] == "deep" and [c["key"] for c in v["choices"]] == ["pay", "serve", "refuse"]
     assert {b["who"] for b in v["beats"]} == {"teller_drowned", "legend_otohime"}
-    assert [b["side"] for b in v["beats"] if b["who"] == "legend_otohime"] == ["right", "right"]
+    assert [b["side"] for b in v["beats"] if b["who"] == "legend_otohime"] == ["right"]
     hull = [sh["hull"] for sh in p["ships"]]
     tea = p["cargo"]["tea"]
     choose(g, "refuse")
@@ -300,3 +300,21 @@ def test_the_storyteller_follows_the_admin_setting():
     g, p = new_game()
     sail(g, p, "nagasaki")
     assert p["legend"]["teller"] in legend_cast.STORYTELLERS
+
+
+def test_every_road_is_told_quickly():
+    """Owner's decision, 21 Nov 2026: the Legends ran about half too long. An opening is at most 3 lines and no
+    road through a chapter, from the bell stopping to the Reckoning card, is more than 6."""
+    def longest(nodes, name):
+        node = nodes[name]
+        n = len(node.get("beats") or ())
+        nxt = [c[2] for c in node.get("choices") or ()] + ([node["goto"]] if node.get("goto") else [])
+        nxt += [t for _w, t in node.get("roll") or ()]
+        for opts in (node.get("roll_if") or {}).values():
+            nxt += [t for _w, t in opts]
+        return n + max([longest(nodes, t) for t in nxt] or [0])
+    for tid, tale in legend_tales.TALES.items():
+        for ch in tale["chapters"]:
+            for _flag, start in ch["start"]:
+                assert len(ch["nodes"][start]["beats"]) <= 3, (tid, ch["id"], start)
+                assert longest(ch["nodes"], start) <= 6, (tid, ch["id"], start)

@@ -53,3 +53,40 @@
 @media (orientation: portrait) {
   .uc-offers { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---- Under the Counter as a shop on Port > Newspaper (21 Nov 2026, player.js counterPanel)
+   The left column is the news with this beneath it. The tax lady's portrait fills the shop window, fading in from
+   the right behind the brass counter ledge. Until you pay for a tip she stands back, dim and sepia; once you
+   have, she leans in and the light comes up. The offers and reveals below are the same cards as ever. */
+.pt-col-news { display: flex; flex-direction: column; gap: var(--pt-gap); min-width: 0; align-self: start; }
+.pt-col-news > .card { margin: 0; min-width: 0; }
+.deck .pt .card.uc-shop { padding: 0; overflow: hidden; gap: 0; border-color: var(--edge-hi); }
+
+.uc-shop .uc-window { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: flex-end;
+  min-height: 12.5rem; padding: .9rem 1.1rem 1rem;
+  background: radial-gradient(ellipse at 85% 20%, color-mix(in srgb, var(--deck-brass) 20%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--deck-night) 88%, #000), color-mix(in srgb, var(--deck-oxblood) 40%, var(--deck-night))); }
+.uc-shop .uc-lady { position: absolute; z-index: -1; top: 0; right: 0; width: 64%; height: 100%; object-fit: cover; object-position: 50% 12%;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 42%); mask-image: linear-gradient(90deg, transparent 0, #000 42%);
+  filter: sepia(.4) saturate(.75) brightness(.6); transform: scale(1) translateX(0); transform-origin: 72% 28%;
+  transition: filter .9s ease, transform 1.1s cubic-bezier(.2, .7, .2, 1); }
+/* The window's lower edge sinks into the ledge, so she stands behind the counter. */
+.uc-shop .uc-window::after { content: ""; position: absolute; z-index: -1; inset: auto 0 0 0; height: 38%; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(8, 5, 3, .82)); }
+.uc-shop.leaning .uc-lady { filter: none; transform: scale(1.1) translateX(-4%); }
+
+.uc-shop .uc-head { max-width: min(100%, 24rem); padding: 0; }
+.uc-shop .uc-head > p { text-shadow: 0 1px 8px #000; }
+.uc-shop.nopic .uc-window { min-height: 0; }
+.uc-shop.nopic .uc-head { max-width: none; }
+
+/* The counter: a brass edge, then the polished top the offers sit on. */
+.uc-shop .uc-ledge { height: .6rem; border-top: 1px solid var(--brass-hi);
+  background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass) 45%, color-mix(in srgb, var(--deck-brass) 35%, #1b1008));
+  box-shadow: 0 7px 14px -6px #000; }
+.uc-shop .uc-bench { display: flex; flex-direction: column; gap: clamp(.55rem, 1.2vw, .85rem); padding: .85rem 1rem 1rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .34), transparent 45%); }
+.uc-shop .uc-card { background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--deck-brass) 12%, transparent), transparent 60%), color-mix(in srgb, var(--deck-night) 70%, var(--glass)); }
+
+@media (prefers-reduced-motion: reduce) { .uc-shop .uc-lady { transition: none; } }
+.pt-paper > .pt-col-news { grid-area: news; }

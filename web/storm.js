@@ -7,11 +7,12 @@
      the right (hulls with the lost hull hatched, guns, cargo overboard, where the fleet landed). "Make port"
      closes it (storm_ack) after a short pause so a stray tap cannot skip it. It sits above the sea battle,
      so a pirate fight that follows waits behind it.
-   - A rough storm is only a small banner with her line; it closes itself.
+   - A rough storm is a notice under the top edge with her picture and her line; it fades out by itself.
    Reads S.me.storm (the report) and is called from player.js render(). */
 const Storm = (() => {
   let screen = null, banner = null, shownKey = null, armTimer = null, bannerTimer = null;
   let stage = null, armedAt = 0, busy = false, bannerFor = null;
+  let pane = null, cardUp = false;           // the part of the screen that changes (story caption, then the card)
   const ARM_MS = 2500;                       // a beat before the button can be pressed
   const TAP_AFTER_MS = 900;                  // a tap cannot skip a story screen before it has had this long
   const MIN_BEAT_MS = 2500, VOICE_START_MS = 5000, MAX_BEAT_MS = 22000, AFTER_VOICE_MS = 900;
@@ -29,38 +30,33 @@ const Storm = (() => {
 
   /* Her pictures: the battered ones first (Personas > Roxana, role "storm"); a family-friendly screen never
      receives the sexy set, so it gets the clean one (tagged "clean", tools/queue_storm_clean_pictures.py). */
-  let picPick = { key: "", ids: [] };
-  function roxanaItem(cid, st, idx) {
+  function roxanaItem(cid) {
     const all = Media.items("persona", cid, "storm").filter(i => i.t === "image" && (i.r || []).includes("storm"));
     if (!all.length) return Media.choose("persona", cid, "angry", { strict: true, slot: "storm-who" })
       || Media.choose("persona", cid, "portrait", { slot: "storm-who" });
     const clean = i => (i.g || []).includes("clean");
     const pick = all.filter(i => !clean(i));
     const list = pick.length ? pick : all;
-    const key = cid + "|" + st.id;
-    if (picPick.key !== key || !picPick.ids.every(id => list.some(i => i.id === id))) {
-      // a shuffled order for this storm, so each story screen can show a different picture of her
-      const ids = list.map(i => i.id);
-      for (let k = ids.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [ids[k], ids[j]] = [ids[j], ids[k]]; }
-      picPick = { key, ids };
-    }
-    return list.find(i => i.id === picPick.ids[(idx || 0) % picPick.ids.length]);
+    return list[Math.floor(Math.random() * list.length)];
   }
 
-  let shipPick = { key: "", id: "" };
   function shipItem(st) {
     const hit = st.ships.slice().sort((x, y) => (y.hull0 - (y.lost ? 0 : y.hull1)) - (x.hull0 - (x.lost ? 0 : x.hull1)))[0];
     if (!hit) return null;
     const own = Media.items("ship", hit.type, "wrecked").filter(i => i.t === "image" && (i.r || []).includes("wrecked"));
-    if (own.length) {
-      const key = hit.type + "|" + st.id;
-      if (shipPick.key !== key || !own.some(i => i.id === shipPick.id)) {
-        shipPick = { key, id: own[Math.floor(Math.random() * own.length)].id };
-      }
-      return own.find(i => i.id === shipPick.id);
-    }
+    if (own.length) return own[Math.floor(Math.random() * own.length)];
     return Media.choose("scene", ["voyage", "storm"], "background", { strict: true, slot: "storm-bg" })
       || Media.choose("ship", hit.type, "battle", { strict: true, slot: "storm-bg" });
+  }
+
+  /* The two pictures of a storm (her, and the broken ship behind her) are picked ONCE, when the storm first comes
+     on screen, and kept until "Make port". They used to be asked for again on every redraw, and the Media Library
+     hands out a fresh random picture once the last one is 2.5 s old, which is exactly when the card was redrawn
+     to arm its button: the card blinked to another picture (21 Nov 2026). */
+  let pics = { id: null, who: null, bg: null };
+  function picsFor(st) {
+    if (pics.id !== st.id) pics = { id: st.id, who: roxanaItem("narrator") || null, bg: shipItem(st) || null };
+    return pics;
   }
 
   const line = (st, key, vars) => (st.lines && st.lines[key]) ? te(st.lines[key], vars) : "";
@@ -91,20 +87,19 @@ const Storm = (() => {
   }
   const tile = (label, value, cls) => `<div class="${cls || ""}"><small>${label}</small><b>${value}</b></div>`;
 
-  function whoFigure(st, o) {
-    o = o || {};
-    const cid = o.cid || "narrator", who = castOf(cid);
-    const item = o.item !== undefined ? o.item : roxanaItem(cid, st, o.idx || 0);
-    const url = item ? item.u : who.portrait || "";
-    const say = o.nocap ? "" : line(st, "open", varsOf(st));
-    const cap = say ? `<figcaption class="sf-rline st-line"><header><span class="sf-rsay">${SPEAKER}</span>
+  /* Built once per storm and never rebuilt: the broken ship, the shade over it, and Roxana with her line at her
+     feet (the line stays hidden while the story screen says it in the big caption). */
+  function frameHtml(st, beat) {
+    const who = castOf("narrator"), P = picsFor(st);
+    const url = P.who ? P.who.u : who.portrait || "";
+    const say = line(st, "open", varsOf(st));
+    const cap = say ? `<figcaption class="sf-rline st-line"${beat ? " hidden" : ""}><header><span class="sf-rsay">${SPEAKER}</span>
         <span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header><p>“${say}”</p></figcaption>` : "";
-    return `<figure class="sf-rwho st-who${url ? "" : " nopic"}">${url ? `<img src="${esc(url)}" alt="">` : ""}${cap}</figure>`;
-  }
-
-  function bgHtml(st) {
-    const item = shipItem(st);
-    return `<div class="st-bg"${item ? ` style="background-image:url('${esc(item.u)}')"` : ""}></div><div class="st-shade"></div>`;
+    return `<div class="st-bg"${P.bg ? ` style="background-image:url('${esc(P.bg.u)}')"` : ""}></div><div class="st-shade"></div>
+      <div class="sf-result st-result${beat ? " st-beat" : ""}">
+        <figure class="sf-rwho st-who${url ? "" : " nopic"}">${url ? `<img src="${esc(url)}" alt="">` : ""}${cap}</figure>
+        <div class="st-pane"></div>
+      </div>`;
   }
 
   function armed() { return Date.now() - armedAt >= ARM_MS; }
@@ -144,10 +139,7 @@ const Storm = (() => {
       ? `<p class="sf-note">${tl("storm.patch", "No shipyard: a ship here can only be patched to {pct}% of her hull", { pct: st.patch_pct || 50 })}</p>` : "";
     const reason = line(st, "land", V);
 
-    return `${bgHtml(st)}
-      <div class="sf-result st-result">
-        ${whoFigure(st, { idx: story ? story.beats.length : 0 })}
-        <section class="sf-card st-card o-${esc(st.band)}" role="dialog" aria-modal="true" aria-labelledby="st-title">
+    return `<section class="sf-card st-card o-${esc(st.band)}" role="dialog" aria-modal="true" aria-labelledby="st-title">
           <header><p class="eyebrow">${te("storm.eyebrow." + st.band)} · ${te("storm.severity", { score: st.score })}</p>
             <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${WAVES}</span><h2 id="st-title">${te("storm.title." + st.band)}</h2></div>
             ${reason ? `<p class="sf-rreason">${reason}</p>` : ""}</header>
@@ -165,15 +157,14 @@ const Storm = (() => {
             <p class="sf-net st-net"><span>${line(st, "close", V)}</span></p>
             <button type="button" class="primary st-go" data-go="storm_ack"${armed() ? "" : " disabled"}>${tl("storm.btn", "Make port")} <span aria-hidden="true">&rarr;</span></button>
           </footer>
-        </section>
-      </div>`;
+        </section>`;
   }
 
   /* ---- the story before the card (21 Nov 2026): Roxana tells it one screen at a time ----------------------
      The storm used to open straight on the ledger card. Now the opening, the cargo, the guns, the hull and the
-     landing each get one big screen (a different picture of her each time, her line as a large caption), moving
-     on by themselves after a reading time; a tap, Space or Enter moves them sooner. Then the card. Captions only,
-     not spoken (the sea battle behind it stays quiet: Storm.holding()). */
+     landing each get one big screen (her line as a large caption), moving on by themselves; a tap, Space or Enter
+     moves them sooner. Then the card. Since 21 Nov 2026 it is one screen (the opening), read aloud by Roxana, and
+     her closing line is read as the card comes up. The sea battle behind it stays quiet: Storm.holding(). */
   const readMs = txt => Math.max(2800, Math.min(5500, 1400 + String(txt).replace(/<[^>]*>/g, "").length * 40));
 
   function buildBeats(st) {
@@ -239,31 +230,32 @@ const Storm = (() => {
     if (story.i >= story.beats.length) {          // the card comes up; its button arms after a beat
       const close = clipOf("close"), L = line(S.me.storm || {}, "close", varsOf(S.me.storm || {}));
       if (close && canSpeak() && L) Voice.say([Object.assign({ tag: "storm:" + story.id + ":close", text: L.replace(/<[^>]*>/g, "") }, close)], { group: "storm", front: true });
-      armedAt = Date.now();
-      clearTimeout(armTimer);
-      armTimer = setTimeout(() => { shownKey = null; sync(); }, ARM_MS + 50);
+      arm();
     } else schedule();
-    shownKey = null;
     sync();
+  }
+  /* The button arms in place, a beat after the card comes up. Arming used to redraw the whole card, which replayed
+     its entrance and showed as a blink about 2.5 s in (21 Nov 2026). */
+  function arm() {
+    armedAt = Date.now();
+    clearTimeout(armTimer);
+    armTimer = setTimeout(() => {
+      const b = screen && screen.querySelector(".st-go");
+      if (b && !busy) b.disabled = false;
+    }, ARM_MS + 50);
   }
   const telling = () => !!(story && story.i < story.beats.length);
 
   function drawBeat(st, b, i) {
     const who = castOf(b.cid);
-    const item = b.cid === "narrator" ? roxanaItem("narrator", st, i)
-      : (Media.choose("persona", b.cid, "portrait", { slot: "storm-bosun" }) || roxanaItem("narrator", st, i));
-    const dots = story.beats.map((_, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}"></i>`).join("");
-    return `${bgHtml(st)}
-      <div class="sf-result st-result st-beat">
-        ${whoFigure(st, { cid: b.cid, item, nocap: true })}
-        <section class="st-cap o-${esc(st.band)}" role="status" aria-live="polite">
+    const dots = story.beats.length > 1 ? story.beats.map((_, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}"></i>`).join("") : "";
+    return `<section class="st-cap o-${esc(st.band)}" role="status" aria-live="polite">
           <p class="st-eyebrow">${b.eyebrow}</p>
           <p class="st-say">“${b.text}”</p>
           <p class="st-by">${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</p>
           ${b.sub ? `<p class="st-sub ${b.cls}">${b.sub}</p>` : ""}
           <footer><span class="st-dots" aria-hidden="true">${dots}</span><span class="st-hint">${tl("storm.tap", "Tap to go on")}</span></footer>
-        </section>
-      </div>`;
+        </section>`;
   }
 
   async function ack(btn) {
@@ -280,7 +272,7 @@ const Storm = (() => {
     document.body.classList.toggle("in-storm", on);
     if (!on) {
       endStory();
-      if (screen) { screen.remove(); screen = null; shownKey = null; stage = null; clearTimeout(armTimer); }
+      if (screen) { screen.remove(); screen = null; pane = null; cardUp = false; shownKey = null; stage = null; clearTimeout(armTimer); }
       return;
     }
     if (!screen) {
@@ -295,23 +287,32 @@ const Storm = (() => {
       document.body.appendChild(screen);
     }
     const nowKey = String(st.id);
-    if (nowKey !== stage) {
+    if (nowKey !== stage) {                       // a new storm: the frame is built here, once
       stage = nowKey;
       shownKey = null;
+      cardUp = false;
       startStory(st);
-      if (!telling()) {                           // no story lines to tell: straight to the card
-        armedAt = Date.now();
-        clearTimeout(armTimer);
-        armTimer = setTimeout(() => { shownKey = null; sync(); }, ARM_MS + 50);
-      }
+      screen.innerHTML = frameHtml(st, telling());
+      pane = screen.querySelector(".st-pane");
+      if (!telling()) arm();                      // no story lines to tell: straight to the card
     }
     if (telling()) {
       const key = "B" + st.id + ":" + story.i;
-      if (key !== shownKey) { shownKey = key; screen.innerHTML = drawBeat(st, story.beats[story.i], story.i); }
+      if (key !== shownKey) { shownKey = key; pane.innerHTML = drawBeat(st, story.beats[story.i], story.i); }
       return;
     }
-    const key = JSON.stringify([st, S.me.ships && S.me.ships.map(s => s.repair), armed()]);
-    if (key !== shownKey) { shownKey = key; screen.innerHTML = drawCard(st); }
+    /* The card. It is drawn once; only the pane changes, so the ship and Roxana stay exactly as they were. If the
+       figures on it change while it is up (the mending bill, say) the pane is redrawn without its entrance. */
+    const key = JSON.stringify([st, S.me.ships && S.me.ships.map(s => s.repair)]);
+    if (key === shownKey) return;
+    shownKey = key;
+    if (!cardUp) {
+      cardUp = true;
+      const res = screen.querySelector(".st-result"), cap = screen.querySelector(".st-line");
+      if (res) res.classList.remove("st-beat");
+      if (cap) cap.hidden = false;
+    } else pane.classList.add("st-still");
+    pane.innerHTML = drawCard(st);
   }
 
   document.addEventListener("keydown", e => {
@@ -321,7 +322,10 @@ const Storm = (() => {
     advance();
   });
 
-  /* The rough storm: a small banner with her line, closing itself. */
+  /* The rough storm: a notice under the top edge with Roxana's picture and her line (21 Nov 2026, Anthony: the
+     small banner was easy to miss). It stays BANNER_MS, with a thin bar running down the time left, then fades
+     out over BANNER_FADE_MS; resting the mouse on it holds it open, and the cross closes it at once. */
+  const BANNER_MS = 20000, BANNER_FADE_MS = 1400;
   function syncBanner(st) {
     const on = !!(st && !st.card);
     if (!on) {
@@ -336,17 +340,51 @@ const Storm = (() => {
     const who = castOf("narrator");
     const say = line(st, "open", varsOf(st));
     const hullPct = st.hull_full ? Math.round(100 * st.hull_lost / st.hull_full) : 0;
-    banner = document.createElement("div");
-    banner.className = "st-banner";
-    banner.setAttribute("role", "status");
-    banner.innerHTML = `<span class="st-bemblem" aria-hidden="true">${WAVES}</span>
-      <div><b>${tl("storm.banner.rough", "Squall")} · −${hullPct}%</b>
-      <p>${say ? "“" + say + "” " : ""}<small>${esc(who.name || "")}</small></p></div>
-      <button type="button" aria-label="OK">&times;</button>`;
-    banner.querySelector("button").addEventListener("click", () => ack(null));
-    document.body.appendChild(banner);
-    clearTimeout(bannerTimer);
-    bannerTimer = setTimeout(() => ack(null), 9000);
+    const repair = (S.me.ships || []).reduce((n, s) => n + (s.repair || 0), 0);
+    const item = picsFor(st).who;
+    const url = item ? item.u : who.portrait || "";
+    const el = banner = document.createElement("div");
+    el.className = "st-banner" + (url ? "" : " nopic");
+    el.setAttribute("role", "status");
+    el.style.setProperty("--st-stay", BANNER_MS + "ms");
+    el.style.setProperty("--st-fade", BANNER_FADE_MS + "ms");
+    el.innerHTML = `${url ? `<img class="st-bwho" src="${esc(url)}" alt="">` : ""}
+      <div class="st-bbody">
+        <b><span class="st-bemblem" aria-hidden="true">${WAVES}</span>${tl("storm.banner.rough", "Squall")}</b>
+        ${say ? `<p class="st-bsay">“${say}”</p>` : ""}
+        <p class="st-bby">${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</p>
+        <p class="st-bfacts"><span>${tl("storm.t.hull", "Hull lost")} <em>−${hullPct}%</em></span>${repair
+          ? `<span>${tl("storm.t.repair", "Mending")} <em>${money(repair)}</em></span>` : ""}</p>
+      </div>
+      <button type="button" aria-label="OK">&times;</button>
+      <i class="st-btime" aria-hidden="true"></i>`;
+    let left = BANNER_MS, since = 0, leaving = false;
+    const leave = async ms => {
+      if (leaving || banner !== el) return;
+      leaving = true;
+      clearTimeout(bannerTimer);
+      el.style.setProperty("--st-fade", ms + "ms");
+      el.classList.add("leaving");
+      await new Promise(r => setTimeout(r, ms));
+      if (banner !== el) return;
+      const ok = await act("storm_ack", {});
+      if (!ok && banner === el) { leaving = false; el.classList.remove("leaving"); }   // not taken: show it again
+    };
+    const run = () => { since = Date.now(); clearTimeout(bannerTimer); bannerTimer = setTimeout(() => leave(BANNER_FADE_MS), left); };
+    el.querySelector("button").addEventListener("click", () => leave(250));
+    el.addEventListener("pointerenter", e => {
+      if (e.pointerType !== "mouse" || leaving) return;
+      clearTimeout(bannerTimer);
+      left = Math.max(2500, left - (Date.now() - since));
+      el.classList.add("held");
+    });
+    el.addEventListener("pointerleave", e => {
+      if (e.pointerType !== "mouse" || leaving) return;
+      el.classList.remove("held");
+      run();
+    });
+    document.body.appendChild(el);
+    run();
   }
 
   function sync() {

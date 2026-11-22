@@ -121,11 +121,15 @@ function renderLounge() {
   if (!el || (loungeId && Date.now() - loungeAt < 60000)) return;
   const pool = [];
   for (const cid of ["gamemaster", "bookkeeper"]) {
-    try { for (const i of Media.items("persona", cid, "wallpaper", false)) if ((i.g || []).some(t => /reclin|lying|laying/i.test(t))) pool.push(i); } catch (e) { /* no library yet */ }
+    try { for (const i of Media.items("persona", cid, "wallpaper", false, "masthead")) if ((i.g || []).some(t => /reclin|lying|laying|masthead-banner/i.test(t))) pool.push(i); } catch (e) { /* no library yet */ }
   }
   if (!pool.length) { el.innerHTML = ""; return; }
-  const fresh = pool.filter(i => i.id !== loungeId), item = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))];
+  /* Very wide banners (tag "masthead-banner", from Queue_Masthead_Banners.bat) take the whole masthead; if any exist
+     they are preferred over the narrower reclining pictures, which keep their 640px spot. */
+  const isBanner = i => (i.g || []).some(t => /masthead-banner/i.test(t)), banners = pool.filter(isBanner), use = banners.length ? banners : pool;
+  const fresh = use.filter(i => i.id !== loungeId), item = (fresh.length ? fresh : use)[Math.floor(Math.random() * (fresh.length || use.length))];
   loungeId = item.id; loungeAt = Date.now();
+  el.classList.toggle("wide", isBanner(item)); /* not "banner": style.css paints .banner jade green */
   el.innerHTML = `<img src="${esc(item.u)}" alt="">`;
 }
 
@@ -591,7 +595,7 @@ function watchJumps() {
 /* ---------------------------------------------------------------- the women --
    Every moment of the race has a woman to go with it. One stands on the line all the time (the host card under the
    tower, who changes with the page) and when something big happens she steps forward: a spotlight takes the whole
-   book for ten seconds, her picture (wallpaper first, then portrait, a clip if she has one) full height, F1 style
+   book for ten seconds, her picture (portrait, a clip if she has one; never a wallpaper or masthead scene) full height, F1 style
    lower third, her line. All from public facts, so it is safe with rivals at the table. Pictures follow the game's
    Family-friendly switch because they come from the same Media Library. Lines are written in the house voice, with
    a clean twin for Family-friendly screens. */
@@ -744,7 +748,7 @@ function showSpot(s) {
   if (cid === "@officer") cid = CAST[s.vars.officer] ? s.vars.officer : "mayor";
   const w = who(cid), line = fill(lineOf(pick(def.lines)), s.vars);
   const h = house(s.pid), stripe = h ? hcol(h) : w.color;
-  const pic = art(cid, ["wallpaper", "portrait"], "sp-pic", "dash-spot");
+  const pic = art(cid, ["portrait", "speaking"], "sp-pic", "dash-spot");
   const el = document.getElementById("pw-spot");
   el.style.setProperty("--who", w.color); el.style.setProperty("--house", stripe);
   el.className = "pw-spot k-" + s.kind;
@@ -839,14 +843,18 @@ document.addEventListener("keydown", e => {
   else if (e.key === " ") { e.preventDefault(); held = !held; pageAt = Date.now(); labelButtons(); }
 });
 
-/* The stage is 1920 x 1080 and is scaled to fit whatever 16:9 (or other) screen it is on. */
+/* The page is liquid. It is designed on a 1920 x 1080 stage; fit() scales that stage to the window, then widens or heightens
+   it by the same factor so it fills the whole browser at any shape (no bars). The grid's flexible middle column and rows take up the slack. */
+let refitTimer = 0;
 function fit() {
-  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-  app.style.transform = `scale(${s})`;
-  app.style.left = ((window.innerWidth - 1920 * s) / 2) + "px";
-  app.style.top = ((window.innerHeight - 1080 * s) / 2) + "px";
+  const w = window.innerWidth, h = window.innerHeight, s = Math.min(w / 1920, h / 1080);
+  app.style.width = (w / s) + "px"; app.style.height = (h / s) + "px";
+  app.style.transform = `scale(${s})`; app.style.left = "0px"; app.style.top = "0px";
 }
-window.addEventListener("resize", fit);
+window.addEventListener("resize", () => {
+  fit();
+  clearTimeout(refitTimer); refitTimer = setTimeout(() => { if (D && S && F && !app.hidden) renderPage(false); }, 250);
+});
 
 Faces.onChange = () => renderAll();
 listen(null, state => {

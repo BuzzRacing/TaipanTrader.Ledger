@@ -504,3 +504,46 @@ img.pz, img.bl-img, img.rc-img, img.sh-img, img.pm-img { cursor: zoom-in; }
   .blist li.has-pic .bf-pic { display: block; width: 4.6rem; height: 6rem; }
   .bl-pic { width: 8rem; height: 5.4rem; }
 }
+
+/* Slim masthead (21 Nov 2026): just the crest, "Tally Book" and the House name. No captain picture, no line under
+   the name, no "Game" caption over the picker, so the numbers below start higher up the screen. */
+.tl { gap: clamp(.3rem, .6vw, .5rem); }
+.tl-top { padding: .3rem .6rem; }
+.tl-house .crest.tl-crest { width: 2.2rem; height: 2.2rem; }
+.tl-house .eyebrow { margin: 0; font-size: .68rem; line-height: 1.1; }
+.tl-house b { font-size: clamp(1.05rem, 1.7vw, 1.35rem); }
+.tl-game { flex-direction: row; align-items: center; }
+@media (orientation: portrait), (max-aspect-ratio: 1/1) { .tl-house .crest.tl-crest { width: 2rem; height: 2rem; } }
+
+/* Tighter Purse & Fleet (21 Nov 2026, night). The faces keep their size; the words beside them lose the empty room.
+   "Who got your silver" runs the full width so its cards sit three or four across, and Commissions are small print:
+   one picture of each Mayor with her ranks listed beside her, not a big card for every rank. */
+.pg-purse { grid-template-columns: 1.15fr 1fr 1fr; grid-template-rows: 19rem auto 17rem 20rem auto;
+  grid-template-areas: "parts parts desk" "takers takers takers" "fleetc deskports books" "ships ships tips" "promos promos promos"; }
+.pg-cpurse { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; grid-template-areas: "cptiles" "ctakers" "cpromos"; }
+.pg-purse .takers li, .pg-cpurse .takers li { gap: .6rem; align-items: start; }
+.tk-txt { padding-top: .1rem; }
+.tk-lines { margin: .15rem 0 .2rem; }
+.tk-lines > div { display: flex; justify-content: space-between; gap: .5rem; padding: .1rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 12%, transparent); }
+.tk-txt .tk-lines span { font: .72rem/1.25 var(--sans); letter-spacing: 0; color: var(--muted); }
+.tk-lines i { font: 700 .76rem/1.25 var(--sans); font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.promos { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .6rem; align-content: start; }
+.pm-grp { display: grid; grid-template-columns: 6.4rem minmax(0, 1fr); gap: .6rem; align-items: start; min-width: 0; }
+.pm-grp .pm-pic { width: 6.4rem; height: 8.2rem; border-radius: 6px; border: 1px solid var(--edge); }
+.pm-list { min-width: 0; }
+.pm-list h4 { margin: 0 0 .15rem; display: flex; justify-content: space-between; align-items: baseline; gap: .4rem;
+  font: .68rem var(--special); letter-spacing: .08em; color: var(--brass-hi); }
+.pm-list h4 i { font: 700 .72rem var(--sans); font-style: normal; color: var(--muted); }
+.pm-list ul { list-style: none; margin: 0; padding: 0; }
+.pm-list li { border: 0; border-radius: 0; background: none; overflow: visible; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 .4rem; padding: .08rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 12%, transparent); }
+.pm-list li:last-child { border-bottom: 0; }
+.pm-list .captain-rank { font-size: .7rem; margin: .08em 0; padding: .08em .4em .08em .15em; }
+.pm-list small { font-size: .68rem; white-space: nowrap; }
+/* This voyage: one Mayor, so her ranks run in columns across the strip. */
+.pg-purse .promos { grid-template-columns: 1fr; }
+.pg-cpurse .promos { grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr)); }
+.pg-purse .pm-list ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0 1rem; }
+.pg-purse .pm-list li:last-child { border-bottom: 1px solid color-mix(in srgb, var(--deck-brass) 12%, transparent); }

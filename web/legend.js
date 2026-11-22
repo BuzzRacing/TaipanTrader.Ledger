@@ -12,10 +12,20 @@
    - A chapter ends with THE RECKONING: what it brought, what it cost, and whether the Legend has more to say,
      on the Reckoning's own card. "Ring the bell" returns the Captain to the very month they left.
    The Captain's Log reading stays quiet while a Legend is on screen (player.js asks Legend.telling()).
-   Reads S.me.legend and S.voice.legend; called from player.js render(). */
+   Reads S.me.legend and S.voice.legend; called from player.js render().
+
+   THE STORY OF A SHARE (honour.py, 21 Nov 2026; project doc "SeaTrader Last Two Shares"). The last two port
+   shares are honours: Li Yue's Flag and a Legend's share. Earning one tells a quick story of its own on this
+   same stage, once the battle, the storm, the jail and any Legend have had the screen:
+   - PAGE ONE is the share: its deed in the middle, and whoever hands it over (Admiral Li Yue, or the Legend's
+     storyteller) standing on the left with one spoken line.
+   - PAGE TWO is the result: a small panel, under half the screen, listing what earned it (the right choices,
+     or the war fleets sunk) beside a key picture from the story to jog the memory.
+   Reads S.me.honour and S.voice.honour. Nothing about either share is shown before it is earned. */
 const Legend = (() => {
   let screen = null, busy = false;
   let story = null;                           // what is being told: {key, L, i, t0, timer, mode}
+  let gift = null;                            // the story of a share just earned: {key, H, page, pic}
   let armTimer = null;
 
   const ARM_MS = 1200;                        // a beat before a held screen's buttons can be pressed
@@ -96,15 +106,16 @@ const Legend = (() => {
       <div class="sf-bg" aria-hidden="true"><div class="sf-pic"></div><div class="sf-pic"></div><div class="sf-shade"></div></div>
       <div class="lg-who left" hidden></div><div class="lg-who right" hidden></div>
       <header class="lg-top"><div class="lg-where"><small></small><b></b><em></em></div><div class="lg-ticks"></div></header>
-      <div class="lg-mid"><p class="lg-name"></p><p class="lg-line" aria-live="polite"></p><div class="lg-roads" hidden></div></div>
+      <div class="lg-mid"><div class="lg-deed" hidden></div><p class="lg-name"></p><p class="lg-line" aria-live="polite"></p><div class="lg-roads" hidden></div></div>
       <footer class="lg-foot"><p class="lg-hint"></p><div class="lg-dots"></div></footer>
-      <div class="sf-result lg-result" hidden></div>`;
+      <div class="sf-result lg-result" hidden></div>
+      <div class="lg-share" hidden></div>`;
     pics = Array.from(screen.querySelectorAll(".sf-pic"));
     curPic = 0; picUrl = ""; seats.left = seats.right = "";
     screen.addEventListener("click", e => {
       const b = e.target.closest(".lg-go");
       if (b) { if (!b.disabled) press(b); return; }
-      if (e.target.closest(".sf-card")) return;
+      if (e.target.closest(".sf-card") || gift) return;
       tapOn();
     });
     document.body.appendChild(screen);
@@ -119,6 +130,7 @@ const Legend = (() => {
     if (story) { clearInterval(story.timer); if (typeof Voice !== "undefined") Voice.drop("legend"); }
     clearTimeout(armTimer);
     const key = keyOf(L);
+    if (gift) { gift = null; $(".lg-share").hidden = true; $(".lg-deed").hidden = true; }
     if (!story || story.L.id !== L.id) seat("right", "", "");      // a new chapter: its people have yet to arrive
     story = { key, L, i: 0, t0: 0, timer: null, started: false, lastEnd: 0, mode: "line", armedAt: 0 };
     drawTop(L);
@@ -297,9 +309,11 @@ const Legend = (() => {
 
   async function press(btn) {
     if (busy) return;
+    if (btn.dataset.share === "next") { if (gift) sharePageTwo(); return; }     // page one to page two: no call
     busy = true;
     screen.querySelectorAll(".lg-go").forEach(b => { b.disabled = true; });
-    const ok = await act("legend", btn.dataset.done ? { done: true } : { choice: btn.dataset.choice });
+    const ok = await act("legend", btn.dataset.share === "done" ? { share_done: gift ? gift.H.id : null }
+      : btn.dataset.done ? { done: true } : { choice: btn.dataset.choice });
     busy = false;
     if (!ok && screen) screen.querySelectorAll(".lg-go").forEach(b => { b.disabled = false; });
   }
@@ -308,6 +322,7 @@ const Legend = (() => {
     if (story) { clearInterval(story.timer); if (typeof Voice !== "undefined") Voice.drop("legend"); }
     clearTimeout(armTimer);
     story = null;
+    gift = null;
     if (screen) { screen.remove(); screen = null; }
     document.body.classList.remove("in-legend");
   }
@@ -318,19 +333,138 @@ const Legend = (() => {
       && !(typeof Jail !== "undefined" && Jail.busy());
   }
 
+  /* ---- the story of a share just earned (honour.py) -------------------------------------------------- */
+  const giftKey = H => [S.game_id || "", "share", H.id].join("|");
+  const SEAL = `<svg viewBox="0 0 48 52" aria-hidden="true"><path d="M10 6h28v30l-14 10-14-10z"/><path d="M17 17h14M17 24h14M20 31h8"/></svg>`;
+
+  /* The key picture, to jog the memory: for a Legend the scene of the first chapter answered rightly, then its
+     own character, then any Legend's scene, the port by night or the sea; for the flag the war fleet going
+     down. One draw, used behind page one and in the frame on page two. */
+  function sharePicture(H) {
+    if (typeof Media === "undefined") return "";
+    const pic = i => (i && i.t === "image" && i.u) || "";
+    const face = cid => (cid ? pic(Media.choose("persona", cid, "portrait", { slot: "share-" + cid })) || castOf(cid).portrait || "" : "");
+    if (H.kind === "flag") {
+      return pic(Media.choose("scene", "seafight_lord", "victory", { slot: "share-flag", strict: true }))
+        || pic(Media.choose("scene", "seafight_lord", "victory", { slot: "share-flag" }))
+        || pic(Media.choose("scene", "seafight_pirates", "victory", { slot: "share-flag", strict: true }))
+        || pic(Media.choose("scene", ["battle", "pirates"], "event", { slot: "share-flag" }))
+        || face(H.who) || pic(Media.choose("scene", "voyage", "background", { slot: "legend-sea" }));
+    }
+    const own = "legend_" + H.tale + "_" + H.chapter_id;
+    return pic(Media.choose("scene", own, "background", { slot: "share-own" }))
+      || face((H.cast || [])[0])
+      || pic(Media.choose("scene", "legend", "background", { slot: "legend-any" }))
+      || (H.port ? pic(Media.choose("port", H.port, "night", { slot: "legend-night" })) || pic(Media.choose("port", H.port, "banner", { slot: "legend-port" })) : "")
+      || pic(Media.choose("scene", "voyage", "background", { slot: "legend-sea" }));
+  }
+
+  function startShare(H) {
+    if (story) { clearInterval(story.timer); if (typeof Voice !== "undefined") Voice.drop("legend"); }
+    clearTimeout(armTimer);
+    story = null;
+    gift = { key: giftKey(H), H, page: 0, pic: sharePicture(H) };
+    seat("right", "", "");
+    $(".lg-result").hidden = true;
+    setBg(gift.pic);
+    // a page this screen has already shown (a reload) is not told twice
+    if (told.has(gift.key + "|1")) sharePageTwo(); else sharePageOne();
+  }
+
+  function armShare() {
+    const me = gift;
+    clearTimeout(armTimer);
+    armTimer = setTimeout(() => { if (gift === me && screen) screen.querySelectorAll(".lg-go").forEach(b => { b.disabled = false; }); }, ARM_MS);
+  }
+
+  /* Page one: the share, and one line from whoever hands it over. */
+  function sharePageOne() {
+    const me = gift, H = me.H, who = castOf(H.who);
+    me.page = 1;
+    screen.dataset.mode = "share";
+    screen.dataset.speaker = "left";
+    $(".lg-share").hidden = true;
+    $(".lg-where small").innerHTML = te("legend.share.eyebrow");
+    $(".lg-where b").textContent = H.title;
+    $(".lg-where em").textContent = H.sub || "";
+    $(".lg-ticks").innerHTML = "";
+    seat("left", H.who, me.key);
+    const deed = $(".lg-deed");
+    deed.innerHTML = `<small>${te("legend.share.deed.count", { earned: H.earned, cap: H.cap })}</small>
+      <b>${te("legend.share.deed.big")}</b><em>${esc(H.title)}</em>${H.safe ? `<i>${te("legend.share.deed.safe")}</i>` : ""}`;
+    deed.hidden = false;
+    deed.classList.remove("in"); void deed.offsetWidth; deed.classList.add("in");
+    const name = $(".lg-name");
+    name.textContent = H.say ? who.name || "" : "";
+    name.style.setProperty("--who", who.color || "var(--deck-brass)");
+    const line = $(".lg-line");
+    line.textContent = H.say || "";
+    line.classList.remove("asked");
+    line.classList.toggle("long", String(H.say || "").length > 150);
+    line.classList.remove("in"); void line.offsetWidth; line.classList.add("in");
+    $(".lg-hint").hidden = true;
+    $(".lg-dots").innerHTML = "";
+    const roads = $(".lg-roads");
+    roads.innerHTML = `<button type="button" class="lg-go lg-road" data-share="next" disabled>${te("legend.share.btn_next")} <span aria-hidden="true">&rarr;</span></button>`;
+    roads.hidden = false;
+    const clip = S && S.voice && S.voice.honour && S.voice.honour[0];
+    if (H.say && clip && typeof Voice !== "undefined" && Voice.enabled() && !Voice.muted()) {
+      Voice.say([Object.assign({ tag: "legend:" + me.key, text: H.say }, clip)], { group: "legend", front: true });
+    }
+    armShare();
+  }
+
+  /* Page two: what earned it, in a small panel beside the key picture. */
+  function sharePageTwo() {
+    const me = gift, H = me.H;
+    me.page = 2;
+    remember(me.key + "|1");
+    if (typeof Voice !== "undefined") Voice.drop("legend");
+    screen.dataset.mode = "share2";
+    $(".lg-deed").hidden = true;
+    $(".lg-roads").hidden = true;
+    const rows = (H.rows || []).map(r => `<li><small>${esc(r.head || "")}</small><span>${esc(r.text || "")}</span></li>`).join("");
+    const caption = H.kind === "flag" ? t("legend.share.picture.flag") : H.chapter || H.sub || "";
+    const tile = (label, value, c) => `<div class="${c || ""}"><small>${label}</small><b>${value}</b></div>`;
+    const box = $(".lg-share");
+    box.classList.toggle("nopic", !me.pic);
+    box.innerHTML = `${me.pic ? `<figure class="lg-sh-pic"><img src="${esc(me.pic)}" alt="">
+        <figcaption><small>${esc(H.sub || "")}</small><b>${esc(caption)}</b></figcaption></figure>` : ""}
+      <section class="sf-card lg-card lg-sh-card" role="dialog" aria-modal="true" aria-labelledby="lg-sh-title">
+        <header><p class="eyebrow">${te("legend.share.result.eyebrow")}</p>
+          <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${SEAL}</span><h2 id="lg-sh-title">${esc(H.title)}</h2></div>
+          <p class="sf-rreason">${te("legend.share.result.lead." + H.kind)}</p></header>
+        <div class="lg-sh-how${(H.rows || []).length > 4 ? " many" : ""}"><h3>${te("legend.share.result.how." + H.kind)}</h3><ul class="sf-rcargo">${rows}</ul></div>
+        <div class="sf-rows">${tile(te("legend.share.tile.earned"), H.earned + " / " + H.cap, "gold") + tile(te("legend.share.tile.free"), H.free, "up")}</div>
+        <p class="lg-sh-note">${te("legend.share.result.place")}${H.safe ? " " + te("legend.share.result.safe") : ""}</p>
+        <footer><button type="button" class="primary lg-go" data-share="done" disabled>${te("legend.share.btn_done")} <span aria-hidden="true">&rarr;</span></button></footer>
+      </section>`;
+    box.hidden = false;
+    armShare();
+  }
+
   function sync() {
     if (typeof S === "undefined" || typeof D === "undefined" || !S || !D) return;
     const L = S.me && S.phase === "port" && S.me.legend;
-    if (!L || (!screen && !clear())) { if (screen) teardown(); return; }
+    const H = !L && S.me && S.phase === "port" && S.me.honour;      // a share just earned waits for any Legend
+    if ((!L && !H) || (!screen && !clear())) { if (screen) teardown(); return; }
     if (!screen) build();
     document.body.classList.add("in-legend");
+    if (H) {
+      if (!gift || gift.key !== giftKey(H)) startShare(H);
+      else gift.H = H;
+      return;
+    }
     if (!story || story.key !== keyOf(L)) start(L);
     else story.L = L;
   }
 
   function busyNow() { return !!screen; }
-  /* True when a Legend is on the screen or about to be: it tells its own lines, so the log stays quiet. */
-  function telling() { return !!screen || !!(typeof S !== "undefined" && S && S.me && S.phase === "port" && S.me.legend); }
+  /* True when a Legend (or the story of a share) is on the screen or about to be: it tells its own lines, so
+     the log stays quiet. */
+  function telling() {
+    return !!screen || !!(typeof S !== "undefined" && S && S.me && S.phase === "port" && (S.me.legend || S.me.honour));
+  }
 
   return { sync, busy: busyNow, telling };
 })();

@@ -231,7 +231,10 @@ DEFAULTS = {
         # from a stake of stake_share of the house's net worth. enabled off = a game with no Legends.
         "legend": {"enabled": True, "per_game": 5, "first_month": 6, "max_running": 2, "gap_min": 6, "gap_max": 14,
                    "stake_share": 0.06, "stake_min": 2000, "swing": 0.25, "teller": "tale", "eager": False,
-                   "tale_palace": True},
+                   "tale_palace": True,
+                   # A Legend's share (21 Nov 2026): share_right right choices in one Legend earn the house
+                   # one port share, once a game (honour.py). Which choices are right is never shown.
+                   "share": True, "share_right": 2},
         "pirates": {"chance": 0.18, "fleet_min": 2, "fleet_base": 4, "fleet_per_hold": 40,
                     "fleet_max": 40, "hit": 0.30, "dmg_min": 4, "dmg_max": 14, "hp": 2,
                     "gun_hit": 0.4, "rounds": 6, "run_base": 0.35, "run_fast": 0.2,
@@ -376,6 +379,13 @@ DEFAULTS = {
                     # for each rank climbed above Clerk (shares_per_rank) and later from special awards; at
                     # most shares_per_house in all, placed in any port. shares_buy brings back the silver sale.
                     "shares_per_house": 10, "shares_per_rank": 1, "shares_buy": False,
+                    # The last two shares (owner's decisions, 21 Nov 2026; honour.py; project doc "SeaTrader
+                    # Last Two Shares"). LI YUE'S FLAG: one share for sinking the pirate queen's whole war
+                    # fleet flag_wins_N times in a game of N years (a game of another length takes the
+                    # nearest shorter one). The other comes from a Legend (rules.legend.share). Neither is
+                    # ever seized at bankruptcy (honours_safe).
+                    "flag_enabled": True, "flag_wins_5": 2, "flag_wins_10": 3, "flag_wins_20": 5, "flag_wins_50": 8,
+                    "honours_safe": True,
                     "house_enabled": True,
                     "house_cost_1": 500000, "house_cost_2": 2000000, "house_cost_3": 6000000,
                     "house_rep_1": 5, "house_rep_2": 8, "house_rep_3": 12,
@@ -1035,7 +1045,7 @@ SECTIONS = [
              F("rules.estates.shares_per_house", "Most shares one captain can hold, all ports together", "int",
                "Placed in one port or spread around. 10 lets a captain hold every share in one port.", min=0, max=100),
              F("rules.estates.shares_per_rank", "Free shares earned for each promotion above Clerk", "int",
-               "Trader to Hong Master is 8 promotions. Two more are planned as special awards.", min=0, max=10),
+               "Trader to Hong Master is 8 promotions. The last two are special awards: see the next group.", min=0, max=10),
              F("rules.estates.shares_buy", "Shares can also be bought with silver", "bool",
                "Off: shares only come from promotions and awards, which stops a rich house buying out a port. "
                "On: a captain may buy more at the price below, still within the limit above."),
@@ -1048,6 +1058,23 @@ SECTIONS = [
              F("rules.estates.share_price_min", "Cheapest share", "int", min=0, max=10**9),
              F("rules.estates.share_price_max", "Dearest share", "int", min=0, max=10**9),
              F("rules.estates.share_sell_back", "Shares can be taken back (a bought one for what was paid; an earned one to place again)", "bool")]},
+         {"title": "The last two shares (special awards)", "fields": [
+             F("rules.estates.flag_enabled", "Li Yue's Flag: a share for sinking the pirate queen's war fleet", "bool",
+               "Only a fight against Admiral Li Yue's war fleet that ends with every junk sunk counts. Paying her "
+               "tribute, running, breaking off and retreating do not. The count is never shown to the Captain."),
+             F("rules.estates.flag_wins_5", "War fleets to sink in a 5-year game", "int", min=1, max=100),
+             F("rules.estates.flag_wins_10", "...in a 10-year game", "int", min=1, max=100),
+             F("rules.estates.flag_wins_20", "...in a 20-year game", "int", min=1, max=100),
+             F("rules.estates.flag_wins_50", "...in a 50-year game", "int",
+               "A game of another length uses the nearest shorter one.", min=1, max=100),
+             F("rules.legend.share", "A Legend's share: a share for right choices in one Legend", "bool",
+               "Each chapter of a Legend has one right choice, never shown. The first Legend in which a Captain "
+               "makes enough of them pays one share, once a game."),
+             F("rules.legend.share_right", "Right choices in one Legend that earn it", "int",
+               "2 means two of a three-chapter Legend's choices.", min=1, max=10),
+             F("rules.estates.honours_safe", "These two shares are never seized at bankruptcy", "bool",
+               "On: the moneylender leaves that many of the house's shares where they are placed. Off: she "
+               "takes them with the rest.")]},
          {"title": "The great house at home (late game)", "fields": [
              F("rules.estates.house_enabled", "Houses can build a great house at home", "bool",
                "Three stages, bought in turn at the home port: Townhouse, Mansion, Palace. Counted in net worth at what was paid."),

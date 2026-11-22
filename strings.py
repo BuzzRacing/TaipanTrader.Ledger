@@ -738,7 +738,7 @@ EN = {
     "port.news.wx_warning": "Typhoon warning in force. Ships at sea should run for shelter.",
     "port.news.wx_wind": "Wind", "port.news.wx_sea": "Sea",
     "port.news.wx_wind.0": "Light airs, Force 1 to 2", "port.news.wx_wind.1": "Steady breeze, Force 4 to 5",
-    "port.news.wx_wind.2": "Gales in squalls, Force 7 to 8", "port.news.wx_wind.3": "Hurricane force 12",
+    "port.news.wx_wind.2": "Gales, Force 7 to 8", "port.news.wx_wind.3": "Hurricane force 12",
     "port.news.wx_sea.0": "Smooth", "port.news.wx_sea.1": "Moderate",
     "port.news.wx_sea.2": "Rough", "port.news.wx_sea.3": "Phenomenal",
     "port.news.wx_advice.0": "Fine sailing. No storms expected.",
@@ -1025,6 +1025,32 @@ EN = {
     "orders.pay_where": "Tribute is paid to her agent in {home}.",
     "orders.go_pay": "Pay tribute ({cost}) \u2192",
     "orders.sail_home": "Set course for {home} \u2192",
+    "helm.leaving": "Leaving port",
+    "helm.watch": "{port} harbour watch",
+    "helm.no_dues": "Nothing is owed to the Mayor this visit.",
+    "helm.slip_odds": "{pct}% caught",
+    "helm.share": "{pct} of silver aboard",
+    "helm.bill_share": "Bill: {pct} of silver aboard",
+    "helm.share_tip": "{cost} is {pct} of the {cash} you carry.",
+    "helm.ashore": "{cash} ashore",
+    "helm.thieves": "{odds}% chance thieves take {lo}–{hi}% in {port}",
+    "helm.thieves_nobank": "{odds}% chance thieves take {lo}–{hi}% in {port}. No bank here.",
+    "helm.checks": "Before you sail",
+    "helm.chk_hull": "Hull {hull}%",
+    "helm.chk_hull_tip": "Your worst ship is at {hull}% hull. Repairs come to {cost}.",
+    "helm.chk_yard": "{n} ships need a shipyard",
+    "helm.chk_yard_1": "1 ship needs a shipyard",
+    "helm.chk_hold": "Hold {pct}% full",
+    "helm.chk_hold_tip": "{used} of {cap} hold used. Empty hold still draws wages.",
+    "helm.chk_sell": "Unsold profit {gain}",
+    "helm.chk_sell_tip": "Cargo aboard would sell here for {gain} more than it cost.",
+    "helm.chk_rot": "{good} rots at month end",
+    "helm.chk_wx": "{weather} on this route",
+    "helm.chk_ban": "Banned in {port}: {goods}",
+    "helm.chk_collectors": "Collectors in {n} mo",
+    "helm.chk_collectors_1": "Collectors next month",
+    "helm.chk_bankrupt": "Bankruptcy in {n} mo",
+    "helm.chk_bankrupt_1": "Bankruptcy next month",
     "sail.home_port": "Home port",
     "sail.facility.shipyard": "Shipyard",
     "sail.facility.bank": "Bank",
@@ -2320,6 +2346,11 @@ import gm_text as _gm_text  # noqa: E402
 EN.update(_gm_text.EN)
 FAMILY.update(_gm_text.FAMILY)
 
+# The Captain's Manual's wording (manual_text.py, 21 Nov 2026): the book at /Manual, its persona lines and lessons.
+import manual_text as _manual_text  # noqa: E402
+EN.update(_manual_text.EN)
+FAMILY.update(_manual_text.FAMILY)
+
 # Selling an away warehouse back to the port for half of what it cost (21 Nov 2026).
 EN.update({
     "wh.rent": "Rent {rent} a month{note}.",
@@ -2342,6 +2373,11 @@ FAMILY.update({
 
 EN["l.table_underway"] = "Bound for {port}, Captain. The shore has let go of us. Keep your nerve; the sea can smell hesitation."
 FAMILY["l.table_underway"] = "Bound for {port}, Captain. We have left the harbour. Keep a steady course."
+
+# The Voyage Certificate's wording and its women's lines (cert_text.py, 21 Nov 2026).
+import cert_text as _cert_text  # noqa: E402
+EN.update(_cert_text.EN)
+FAMILY.update(_cert_text.FAMILY)
 
 # The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
 # wording it replaces becomes the family-friendly wording. Keep this after every other EN/FAMILY update.

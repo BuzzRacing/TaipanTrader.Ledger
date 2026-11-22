@@ -19,14 +19,20 @@ legend_text.py. All the dice here are the Legends' own (seeded from the game, mo
 no Legend rolls exactly as before.
 
 State on the house:
-  p["legends"] = {"runs": {tale: {"ch": next chapter, "due": turn, "flags": [...], "teller": cid}},
+  p["legends"] = {"runs": {tale: {"ch": next chapter, "due": turn, "flags": [...], "teller": cid,
+                                  "answers": [{ch, chapter, node, choice, right, port}, ...]}},
                   "done": [tale, ...], "started": n, "last": turn a Legend last began}
   p["legend"]  = the chapter on screen until it is closed: see _open() for its fields.
 Actions:  {"type": "legend", "choice": key}   answer the story's question
           {"type": "legend", "done": True}    close the reckoning (schedules the next chapter)
+          {"type": "legend", "share_done": id}  close the story of a share just earned (honour.py)
+
+A LEGEND'S SHARE (21 Nov 2026): each chapter marks its right answers (legend_tales.py, "right"). Every answer
+is kept on the run; when a chapter closes with enough chapters answered rightly, honour.py pays a port share.
 """
 import random
 
+import honour
 import legend_cast
 import legend_tales
 
@@ -40,6 +46,8 @@ DEFAULTS = {
     "swing": 0.25,            # each silver or cargo effect varies by this much either way
     "teller": "tale",         # "tale" (each Legend's own), "random", or one storyteller's cast key
     "tale_palace": True,      # each Legend on or off: tale_<key> (a Legend with no switch is on)
+    "share": True,            # a Legend's share (honour.py, 21 Nov 2026): share_right right answers in one
+    "share_right": 2,         # Legend earn the house a port share, once a game; never shown or hinted
     "eager": False,           # testing: a Legend begins at the first landfall that fits
 }
 TELLER_MODES = ("tale", "random") + tuple(legend_cast.STORYTELLERS)
@@ -335,6 +343,8 @@ def _apply(g, p, L, fx):
 # ------------------------------------------------------------- actions --
 def act(g, p, a):
     e = E()
+    if a.get("share_done") is not None:
+        return honour.act_done(g, p, a)               # the story of a share just earned is closed
     L = p.get("legend")
     if not isinstance(L, dict):
         raise e.GameError(e.tx("e.legend_none"))
@@ -349,9 +359,16 @@ def act(g, p, a):
     pick = next((c for c in node.get("choices") or () if c[0] == a.get("choice")), None)
     if pick is None:
         raise e.GameError(e.tx("e.legend_choice"))
-    g._ev("legend", "choice", "{}: in the Legend '{}' ({}), chose: {}".format(
-        p["name"], legend_tales.TALES[L["tale"]]["title"], ch["id"], pick[1]), p,
-        tale=L["tale"], chapter=ch["id"], node=L["node"], choice=pick[0])
+    # Was it the right answer (the chapter's "right" map)? Kept on the run for a Legend's share (honour.py);
+    # the Captain is never told.
+    right = pick[0] in ((ch.get("right") or {}).get(L["node"]) or ())
+    run = _state(p)["runs"].get(L["tale"])
+    if isinstance(run, dict):
+        run.setdefault("answers", []).append({"ch": L["ch"], "chapter": ch["id"], "node": L["node"],
+                                              "choice": pick[0], "right": right, "port": L.get("port")})
+    g._ev("legend", "choice", "{}: in the Legend '{}' ({}), chose: {}{}".format(
+        p["name"], legend_tales.TALES[L["tale"]]["title"], ch["id"], pick[1], " (the right answer)" if right else ""), p,
+        tale=L["tale"], chapter=ch["id"], node=L["node"], choice=pick[0], right=right)
     L["chose"] = (L.get("chose") or []) + [[L["node"], pick[0]]]
     _enter(g, p, L, pick[2])
     return e.tx("m.legend_choice")
@@ -382,6 +399,7 @@ def _close(g, p, L):
             p["name"], tale["title"], ", ".join(run.get("flags") or []) or "none"), p, tale=tid,
             flags=list(run.get("flags") or []), tally=L["tally"])
     p.pop("legend", None)
+    honour.on_legend_closed(g, p, L, run)             # enough right answers in this Legend: a port share
     return e.tx("m.legend_done")
 
 
@@ -392,7 +410,10 @@ def speakers(L):
     tid = L["tale"]
     out = []
     for name, i in L.get("beats") or ():
-        who = ch["nodes"][name]["beats"][i][0]
+        lines = (ch["nodes"].get(name) or {}).get("beats") or ()
+        if i >= len(lines):
+            continue        # a Legend open on screen while its wording was shortened: skip the lines now gone
+        who = lines[i][0]
         out.append((L["teller"] if who == legend_tales.T else who, legend_tales._key(tid, ch["id"], name, i)))
     return out
 

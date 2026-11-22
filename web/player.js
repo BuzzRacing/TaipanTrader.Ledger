@@ -20,7 +20,7 @@ const ui = { tab: "port", vals: {}, dest: null, orders: null, seenTurn: null, bu
              spokenTurn: null, newsSeen: null, feed: "log", paneTab: null, drag: false, meOpen: false,
              tally: false, tallyShown: false, tallyTurn: null,
              ledger: false, ledgerSpread: "purse",      // the Accounting Ledger (ledger.js)
-             portView: "arrival", portTurn: null, plRange: "voyage", paperOnly: false, paperOlder: false, paperOpen: {} };
+             portView: "arrival", portTurn: null, plRange: "voyage", paperOnly: true, paperOlder: false, paperOpen: {} };
 let VS = {};             // voice settings: who is in the cast, what this screen reads aloud
 const app = document.getElementById("app");
 
@@ -747,6 +747,7 @@ function endScreen() {
   return masthead(te("end.sub", { date: S.date })) + `<main class="narrow">
     <section class="card"><h2>${te("end.title", { name: top.name, firm: top.firm })}</h2>${standings()}</section>
     ${S.voyage_story ? `<section class="card">${Ceremony.story(S, D.ports)}</section>` : ""}
+    ${typeof Certificate !== "undefined" && S.me ? `<section class="card">${btn(te("end.certificate"), "certificate", "", "wide")}</section>` : ""}
     <section class="card">${btn(te("end.ledger"), "ledger", "", "wide")}</section>
     <section class="card">${btn(te("end.free_play"), "free_play", "", "primary wide")}
       <p class="muted">${te("end.free_play_note")}</p></section>
@@ -876,8 +877,9 @@ function gameScreen() {
   if (!fighting && ui.seenTurn !== S.turn && !me.log.length) ui.seenTurn = S.turn;
 
   const top = topHtml();
-  // Under the Counter shows only once the server has it (engine counter.py, rules.counter.enabled).
-  const nav = ["port", "market", "fleet", "chart"].concat(me.counter ? ["counter"] : []).map(k =>
+  // Under the Counter (21 Nov 2026) moved off the rail onto Port > Newspaper (counterPanel); it still shows only once the
+  // server has it (engine counter.py, rules.counter.enabled).
+  const nav = ["port", "market", "fleet", "chart"].map(k =>
     `<button type="button" class="${!ui.tally && ui.tab === k ? "on" : ""}${tabFaceUrl(k) ? " face" : ""} dk-t-${k}" data-act="tab" data-tab="${k}" aria-label="${te("tab." + k)}" title="${te("tab." + k)}">` +
     `${tabFace(k)}<span>${te("tab." + k)}</span></button>`).join("") +
     // The Accounting Ledger (ledger.js, 20 Nov 2026): the bookkeeper's face, or a quill until her pictures are filed.
@@ -1665,9 +1667,8 @@ function clearanceLedger() {
   const levelLine = `<span class="cl-rate ${level < 0.95 ? "credit" : level > 1.05 ? "surcharge" : ""}">${te(levelKey, { port: esc(portName(me.port)), level: +level.toFixed(2) })}</span>`;
   const total = bill.total, after = me.cash - total, owed = Math.max(0, -after);
   const slipping = me.ready ? !!me.slip : !!ui.slip;
-  const caughtCost = slipFine(me, bill);
   // Cargo is declared to the Port Authority on arrival (customs.js), not on leaving.
-  const status = slipping && bill.total ? te("clearance.slip", { caught: caughtCost }) : "";
+  const status = slipping && bill.total ? tfb("clearance.night", "Night departure selected") : "";  // no fine shown: the gamble is blind
   return `<section class="cl-card${slipping && bill.total ? " slipping" : ""}">
     <header class="cl-head"><span>${te("clearance.authority", { port: esc(portName(me.port)) })}</span><h3>${te("clearance.title")}</h3>
       <div class="cl-pay"><small>${te("clearance.total")}</small><b data-cl="total">${money(total)}</b></div></header>
@@ -1734,17 +1735,20 @@ function portBadge(v) {
 
 /* ---- Arrival */
 /* Two columns when the port has services (21 Nov 2026, At a Glance removed). Left, a narrow column: Port business,
-   or the Mayor's Parlour when open. Right, the wide column: the house's affairs here, with bank and moneylender
-   first, then protection, the warehouse, shares, the Mayor's commissions and the estate. One column on narrow
-   panes, in that order. A port with no services shows Port business alone (or with the Mayor's Parlour). */
+   the Mayor's Parlour when open, then the Mayor's favour and Month's End card (portMonth). Right, the wide column:
+   the house's affairs here, with bank and moneylender first, then protection, the warehouse, shares, the Mayor's
+   commissions and the estate. One column on narrow panes, in that order. A port with no services shows Port
+   business beside the card; with the Parlour open, Port business and the Parlour share the row and the card
+   (the chit alone) sits under Port business. */
 function portArrival() {
   // The "Welcome to (port)" banner lives in the header (portPlate); the month's result is under
   // Accounts and the full voyage log is under the Log sub-tab.
   const todo = `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>`;
   const mayor = mayorOpen() ? mayorParlour() : "";
-  if (!hasServices()) return todo + mayor;
-  return `<div class="pt-col pt-col-port">${todo}${mayor}</div>
-    <div class="pt-col pt-col-svc"><h3 class="pt-svc-head">${te("port.view.services_here", { port: esc(portName(S.me.port)) })}</h3>${portServiceCards()}</div>`;
+  const month = portMonth(!!mayor);
+  if (!hasServices()) return todo + mayor + month;
+  return `<div class="pt-col pt-col-port">${todo}${mayor}${month}</div>
+    <div class="pt-col pt-col-svc">${portServiceCards()}</div>`;
 }
 
 /* The live hot tip, pinned in brass across the top of the Port and Market screens from the month it
@@ -1893,6 +1897,179 @@ function mayorLive(range) {
   if (give) give.textContent = t("port.mayor.give", { amount: money(amount) });
 }
 
+/* ================================================================================================
+   THE MAYOR'S FAVOUR AND THE MONTH'S END (21 Nov 2026)
+   One card in the port column of Arrival, under Port business. Two parts:
+     The Mayor's favour   her plain portrait shown whole, the standing figure on the five bands, how far
+                          the next band is each way, what the standing does in this port now (me.band,
+                          sent since the reputation swings but never drawn), and the Call on the Mayor
+                          button (moved here from Port business). Hidden while her Parlour is open: the
+                          Parlour takes its place and the stage shows her.
+     Month's End          a chit of what leaving this month will cost: the harbour bill with this month's
+                          rate on profit (me.dues.profit_rate), crew wages (me.fleet_ledger.bill), rent for
+                          every warehouse (me.wh_rent.total), December's bill for the great house, then what
+                          goes on the books (the moneylender's interest, the bank's) and what to watch
+                          (cargo about to spoil, protection).
+   Every figure comes from the view the server already sends; nothing here needs a restart. The sums mirror
+   engine.py: _pay_running_costs (rent, wages, December), dues(), the interest step of the month's end, rot.month. */
+var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {}, {
+  "port.favour.title": "The Mayor's favour", "port.favour.standing": "Your standing",
+  "port.favour.to": "{n} to {tier}", "port.favour.top": "No higher to climb", "port.favour.bottom": "No lower to fall",
+  "port.favour.buys": "What {tier} means here",
+  "port.favour.tax": "Port Authority tax", "port.favour.tax_full": "full rate", "port.favour.tax_home": "none at home",
+  "port.favour.search": "Searches at the desk", "port.favour.margin": "Dealer's margin",
+  "port.favour.dues": "Harbour dues", "port.favour.dues_full": "full bill",
+  "port.favour.yard": "Ships and repairs",
+  "port.favour.pirates": "Pirates as you leave", "port.favour.pirates_strong": "fleets +{pct}%", "port.favour.pirates_weak": "fleets −{pct}%",
+  "port.favour.pirates_warn": "{pct}% warned off",
+  "port.favour.drift": "Left alone, a name settles back toward Neutral month by month.",
+  "port.favour.once": "Once per visit", "port.favour.called": "Called this visit",
+  "port.month.title": "Month's end",
+  "port.month.grp_sail": "As you leave {port}", "port.month.grp_stay": "At anchor in {port}", "port.month.grp_turn": "At the month's turn", "port.month.grp_books": "On the books",
+  "port.month.dues": "Harbour bill", "port.month.dues_stay": "staying at anchor, nothing due", "port.month.dues_slip": "slipping out at night",
+  "port.month.dues_rate": "her rate on profit made here this month: {pct}%",
+  "port.month.dues_cut": "{amount} of it her share of profit ({pct}% this month)",
+  "port.month.wages": "Crew wages", "port.month.wages_sub": "{n} ships", "port.month.wages_sub_1": "1 ship", "port.month.wages_laid": "{n} laid up",
+  "port.month.rent": "Warehouse rent", "port.month.rent_sub": "{n} warehouses", "port.month.rent_sub_1": "1 warehouse",
+  "port.month.house": "The great house", "port.month.house_sub": "December's bill", "port.month.house_patron": "the Patron's yearly upkeep is charged too, not counted here",
+  "port.month.out": "Out of your silver", "port.month.left": "Silver left", "port.month.left_sub": "of {cash} aboard",
+  "port.month.short": "Short by", "port.month.short_sub": "the bank pays wages and rent; the rest goes on the debt",
+  "port.month.interest": "{lender}'s interest", "port.month.interest_sub": "{rate}% on {debt}, added to the debt",
+  "port.month.interest_cap": "the debt is at its cap",
+  "port.month.bank": "Bank interest", "port.month.bank_sub": "{rate}% on {bank}, stays in the bank",
+  "port.month.net_cost": "The month costs you", "port.month.net_gain": "The month earns you", "port.month.nothing": "Nothing to pay this month.",
+  "port.month.rot": "{good} spoils at the month's turn ({n} months aboard)",
+  "port.month.protect": "{pirate}'s protection: {n} months left",
+  "port.month.protect_1": "{pirate}'s protection: 1 month left" });
+
+/* Her plain portrait for the card (never a mood picture): one pick per port per month, so she changes from visit
+   to visit and never flickers on a redraw. Stills only; the stage plays her clips. A port with no Mayor of its own
+   borrows one, as the stage does. */
+function favourPortrait(port) {
+  let list = plainWomen(port, "mayor", false);
+  if (!list.length) list = plainWomen(Object.keys(D.ports), "mayor", false);
+  if (!list.length) return "";
+  const key = "favour:" + port + ":" + S.turn;
+  let it = list.find(i => i.id === womanPick[key]);
+  if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
+  return it.u || "";
+}
+
+/* What the standing does in this port now: [label (safe for HTML), value (plain text), tone]. Tax, searches, the dealer's margin and the harbour
+   dues always; the shipyard and the pirates only while the band touches them. The same sums as engine.py
+   (tax_rate_for, customs odds "rep", spread, dues, yard_mult, the battle match and _warned_off). */
+function favourPerks(me) {
+  const port = me.port, rep = (me.rep || {})[port] ?? 50, b = me.band || {}, r = (me.gift || {}).rules || {};
+  const d = (50 - rep) / 50, rows = [], whole = x => pct(x, 0);
+  const atHome = port === myHome() && me.home_free;
+  rows.push([te("port.favour.tax"), atHome ? t("port.favour.tax_home") : b.tax_cut > 0 ? "−" + whole(b.tax_cut) + "%" : t("port.favour.tax_full"),
+    atHome || b.tax_cut > 0 ? "up" : ""]);
+  const search = Math.max(0.1, 1 + (r.rep_audit || 0) * d) * (b.audit || 1);
+  rows.push([te("port.favour.search"), "×" + search.toFixed(2), search > 1.02 ? "down" : search < 0.98 ? "up" : ""]);
+  if (me.spread != null) rows.push([te("port.favour.margin"), pct(me.spread, 1) + "%", b.margin > 0 ? "down" : rep > 50 ? "up" : ""]);
+  const off = (r.rep_discount || 0) * -d;      // + is a discount, - a surcharge
+  rows.push([te("port.favour.dues"), Math.abs(off) < 0.005 ? t("port.favour.dues_full") : (off > 0 ? "−" : "+") + whole(Math.abs(off)) + "%",
+    off >= 0.005 ? "up" : off <= -0.005 ? "down" : ""]);
+  if (b.yard > 0) rows.push([te("port.favour.yard"), "+" + whole(b.yard) + "%", "down"]);
+  const pirates = [b.match > 0 ? t("port.favour.pirates_strong", { pct: whole(b.match) }) : b.match < 0 ? t("port.favour.pirates_weak", { pct: whole(-b.match) }) : "",
+    b.avoid > 0 ? t("port.favour.pirates_warn", { pct: whole(b.avoid) }) : ""].filter(Boolean);
+  if (pirates.length) rows.push([te("port.favour.pirates"), pirates.join(" · "), b.match > 0 ? "down" : "up"]);
+  return rows;
+}
+
+function portFavour() {
+  const me = S.me, port = me.port;
+  const rep = Math.max(0, Math.min(100, Math.round((me.rep || {})[port] ?? 50))), tier = standingTier(rep);
+  const word = i => t("stat.standing_" + BAND_KEYS[i]);
+  const pic = favourPortrait(port), who = te("chart.mayor", { port: portName(port) });
+  // Points to the next band each way: bands turn at 20, 40, 60 and 80 (engine.py band_of).
+  const up = tier < 4 ? te("port.favour.to", { n: (tier + 1) * 20 - rep, tier: word(tier + 1) }) : te("port.favour.top");
+  const down = tier > 0 ? te("port.favour.to", { n: rep - tier * 20 + 1, tier: word(tier - 1) }) : te("port.favour.bottom");
+  const bars = STANDING_HEAT.map((_, i) => `<i class="${i === tier ? "on" : ""}" style="--c:${standingHeat(i)}"></i>`).join("");
+  const perks = favourPerks(me).map(([k, v, cls]) => `<tr><td>${k}</td><td class="n ${cls || ""}${/^[−+×]?\d/.test(v) ? "" : " txt"}">${esc(v)}</td></tr>`).join("");
+  const gv = me.gift;
+  const call = gv && gv.enabled && !me.ready
+    ? `<div class="pt-actions pm-call"><span class="pt-chip${gv.given ? " up" : ""}">${te(gv.given ? "port.favour.called" : "port.favour.once")}</span>
+        ${btn(te(gv.given ? "port.todo.mayor_back" : "port.todo.mayor_go") + ' <span aria-hidden="true">&rsaquo;</span>', "mayor_open", "", "pt-go" + (gv.given ? "" : " primary"))}</div>` : "";
+  return `<div class="pm-favour tier-${tier}" style="--heat:${standingHeat(tier)}">
+    ${pic ? `<figure class="pm-mayor"><img src="${esc(pic)}" alt="${who}"><figcaption>${who}</figcaption></figure>` : ""}
+    <div class="pm-standing">
+      <header class="pt-cardhead"><h2>${te("port.favour.title")}</h2></header>
+      <div class="pm-stand-head"><span class="mp-lbl">${te("port.favour.standing")}</span><strong class="pm-tier">${esc(word(tier))}</strong><b class="pm-rep">${rep}</b></div>
+      <div class="pm-band" role="img" aria-label="${te("stat.standing_tip", { port: portName(port), tier: word(tier) })}: ${rep}" style="--at:${rep}%">${bars}<em class="pm-pin"></em></div>
+      <div class="pm-steps"><span class="dn"><i aria-hidden="true">&#9660;</i> ${down}</span><span class="up"><i aria-hidden="true">&#9650;</i> ${up}</span></div>
+      <table class="pt-table pm-perks"><caption>${te("port.favour.buys", { tier: word(tier) })}</caption>${perks}</table>
+      ${me.band && me.band.on && rep !== 50 ? `<p class="pm-drift">${te("port.favour.drift")}</p>` : ""}
+      ${call}
+    </div></div>`;
+}
+
+/* The month's end in figures (no markup, so it can be checked on its own). */
+function monthEnd() {
+  const me = S.me, bill = me.dues || {}, lines = bill.lines || [];
+  const staying = !!(me.ready && !me.dest), slipping = !staying && !!(me.ready ? me.slip : ui.slip) && (bill.total || 0) > 0;
+  const dues = staying || slipping ? 0 : Math.max(0, Math.round(bill.total || 0));
+  const cut = lines.find(l => l.key === "profit");
+  const level = bill.level == null ? 1 : bill.level;
+  const fl = me.fleet_ledger || {}, wages = fl.on === false ? 0 : Math.max(0, fl.bill || 0);
+  const wr = me.wh_rent || {}, rent = Math.max(0, wr.total || 0), stores = Object.keys(wr.by_port || {}).length;
+  const december = Number(S.turn) % 12 === 11;
+  const house = december && me.estate ? Math.max(0, me.estate.upkeep || 0) : 0;
+  const patrons = december && me.shares ? (me.shares.patron_of || []).length : 0;
+  const out = dues + wages + rent + house;
+  const rate = D.loan_rate || 0, bankRate = D.bank_rate || 0;
+  let interest = me.debt > 0 ? me.debt * rate : 0, capped = false;
+  if (me.debt > 0 && me.debt_cap > 0 && me.debt + interest > me.debt_cap) { interest = Math.max(0, me.debt_cap - me.debt); capped = true; }
+  interest = Math.round(interest);
+  const earned = me.bank > 0 ? Math.round(me.bank * bankRate) : 0;
+  const rot = me.rot && me.rot.on && me.rot.age
+    ? Object.keys(me.rot.age).filter(g => (me.cargo || {})[g] > 0 && D.goods[g] && me.rot.age[g] + 1 > me.rot.grace).map(g => ({ g, age: me.rot.age[g] })) : [];
+  return { staying, slipping, dues, cut: cut && cut.amount > 0 ? cut : null, profitRate: (bill.profit_rate || 0) * level,
+    wages, ships: (me.ships || []).length, laid: (me.laid_up || []).length, rent, stores, house, patrons, out,
+    cash: me.cash, left: me.cash - out, interest, capped, earned, net: out + interest - earned, rot, protect: me.protect || 0 };
+}
+
+function portChit() {
+  const me = S.me, m = monthEnd();
+  const amt = (n, cls, sign) => `<span class="pt-amt ${cls || ""}">${sign || ""}${money(n)}</span>`;
+  const row = (label, value, note, cls) => `<tr class="${cls || ""}"><td>${label}${note ? `<small>${note}</small>` : ""}</td><td class="n">${value}</td></tr>`;
+  const group = (title, rows) => rows ? `<tr class="pt-grp"><td colspan="2">${title}</td></tr>${rows}` : "";
+  const dash = `<span class="pt-amt muted">—</span>`;
+  const duesNote = m.staying ? te("port.month.dues_stay") : m.slipping ? te("port.month.dues_slip")
+    : m.cut ? te("port.month.dues_cut", { amount: money(m.cut.amount), pct: pct(m.profitRate, 1) })
+    : m.profitRate > 0 ? te("port.month.dues_rate", { pct: pct(m.profitRate, 1) }) : "";
+  const sail = row(te("port.month.dues"), m.dues > 0 ? amt(m.dues) : dash, duesNote);
+  let turn = "";
+  if (m.wages > 0) turn += row(te("port.month.wages"), amt(m.wages),
+    [m.ships ? ten("port.month.wages_sub", m.ships) : "", m.laid ? te("port.month.wages_laid", { n: m.laid }) : ""].filter(Boolean).join(" · "));
+  if (m.rent > 0) turn += row(te("port.month.rent"), amt(m.rent), ten("port.month.rent_sub", m.stores));
+  if (m.house > 0 || m.patrons) turn += row(te("port.month.house"), m.house > 0 ? amt(m.house) : dash,
+    [te("port.month.house_sub"), m.patrons ? te("port.month.house_patron") : ""].filter(Boolean).join("; "));
+  const total = row(te("port.month.out"), amt(m.out), "", "pm-total")
+    + (m.left >= 0 ? row(te("port.month.left"), amt(m.left, "up"), te("port.month.left_sub", { cash: money(m.cash) }))
+      : row(te("port.month.short"), amt(-m.left, "down"), te("port.month.short_sub"), "warn"));
+  let books = "";
+  if (me.debt > 0) books += row(te("port.month.interest"), m.interest > 0 ? amt(m.interest, "down", "+") : dash,
+    m.capped ? te("port.month.interest_cap") : te("port.month.interest_sub", { rate: pct(D.loan_rate || 0, 2), debt: money(me.debt) }));
+  if (m.earned > 0) books += row(te("port.month.bank"), amt(m.earned, "up", "+"), te("port.month.bank_sub", { rate: pct(D.bank_rate || 0, 2), bank: money(me.bank) }));
+  const net = m.net === 0 && !m.out ? ""
+    : row(te(m.net >= 0 ? "port.month.net_cost" : "port.month.net_gain"), amt(Math.abs(m.net), m.net > 0 ? "down" : "up", m.net > 0 ? "−" : "+"), "", "pm-net");
+  const watch = m.rot.map(x => ["warn", te("port.month.rot", { good: D.goods[x.g].name, n: (+x.age).toFixed(1).replace(/\.0$/, "") })])
+    // Protection: only where nothing else on Arrival says it. At home the agent's card does; away, Port business warns once it runs low.
+    .concat(me.port !== myHome() && m.protect > D.renew_at ? [["", ten("port.month.protect", m.protect)]] : []);
+  return `<div class="pm-chit">
+    <header class="pt-cardhead"><h2>${te("port.month.title")}</h2><span class="pt-chip">${esc(S.date || "")}</span></header>
+    <table class="pt-table pm-table">${group(te(m.staying ? "port.month.grp_stay" : "port.month.grp_sail", { port: portName(me.port) }), sail)}${group(te("port.month.grp_turn"), turn)}
+      ${total}${group(te("port.month.grp_books"), books)}${net}</table>
+    ${watch.length ? `<ul class="pm-watch">${watch.map(([cls, text]) => `<li class="${cls || "plain"}">${text}</li>`).join("")}</ul>` : ""}
+  </div>`;
+}
+
+/* The card: her favour over the chit. While her Parlour is open it holds the chit alone. */
+function portMonth(parlour) {
+  return `<section class="card pt-month">${parlour ? "" : portFavour()}${portChit()}</section>`;
+}
+
 /* BANK THE REST (19 Nov 2026). Thieves work the port where the house is at the month's end (where it
    lands, if it sails), and only a purse over the threshold tempts them. While a bank is in port, one tap
    puts the silver in it, keeping back the Mayor's harbour bill. The bank can also pay pirates at sea. */
@@ -1957,16 +2134,13 @@ function portTodo() {
   // At home the protection agent and the moneylender are on this screen: their cards carry the warning
   // (brass or oxblood mark), so these two rows are only for other ports, where there is no card.
   if (!home && me.protect <= D.renew_at) items.push(["warn", ten(me.protect > 0 ? "port.todo.protect_low" : "port.todo.protect_none", me.protect), ""]);
-  if (!home && me.debt > 0) items.push(["down", te("port.todo.debt", { interest: money(me.debt * D.loan_rate) }), goLedger("house")]);
+  // (Away from home the debt's interest is on the Month's End chit just below, portChit(), 21 Nov 2026; the port.todo.debt row is gone.)
   const bkr = me.bankrupt;
   if (bkr) items.push([bkr.in <= 3 ? "down" : "warn", ten("port.todo.bankrupt", bkr.in, { amount: money(bkr.short) }), goLedger("house")]);
   const coll = me.collectors;
   if (coll && coll.calls_in) items.push([coll.calls_in === 1 ? "down" : "warn", ten("port.todo.collectors", coll.calls_in, { amount: money(coll.to_clear) }),
     goLedger("house")]);
-  const br = bankRest();
-  if (br) items.push(["warn", te("port.todo.bank_rest", { cash: money(me.cash), odds: (br.odds * 100).toFixed(1).replace(/\.0$/, ""),
-      port: esc(portName(br.where)), lo: Math.round(br.lo * 100), hi: Math.round(br.hi * 100) }),
-    btn(te("bank.rest", { amount: money(br.amount) }) + arrow, "bank_rest", "", "pt-go")]);
+  // (The heavy-purse warning and its Bank the rest button live on the Bank card, which always shows where bankRest() applies.)
   if (!me.used && !me.ready) items.push(["", te("port.todo.empty"), go("market", te("tab.market"))]);
   // Wages carried by empty hold last month (Game 4 review): fill the hold, or lay ships up at home.
   const idle = me.idle;
@@ -1976,14 +2150,8 @@ function portTodo() {
   const offers = me.commissions && home ? Object.values(me.commissions.offers || {}).filter(Boolean).length : 0;
   if (offers && !me.ready) items.push(["", te("port.todo.contract", { n: offers, s: offers === 1 ? "" : "s", home: esc(portName(myHome())) }),
     btn(te("port.view.services_here", { port: esc(portName(me.port)) }) + arrow, "port_jump", 'data-to="mayor_work"', "pt-go")]);
-  // The Mayor's Parlour: a brass "!" while she thinks little of the house (standing under 50).
-  const gv = me.gift;
-  if (gv && gv.enabled && !me.ready) {
-    const port = portName(me.port), low = gv.rep < 50 && !gv.given;
-    const call = mayorOpen() ? "" : btn(te(gv.given ? "port.todo.mayor_back" : "port.todo.mayor_go") + arrow, "mayor_open", "", "pt-go");
-    items.push([gv.given ? "ok" : low ? "warn" : "",
-      te(gv.given ? "port.todo.mayor_done" : low ? "port.todo.mayor_low" : "port.todo.mayor", { port, rep: Math.round(gv.rep) }), call]);
-  }
+  // (Call on the Mayor moved to the Mayor's favour card under Port business, portFavour(), 21 Nov 2026. A house that
+  // stands under 50 sees it on her band bar there. The port.todo.mayor* strings are still used by that card.)
   if (!items.length) return `<p class="muted">${te("port.todo.none")}</p>`;
   const icon = { up: "◆", warn: "!", down: "⚖", ok: "⚓", "": "·" };
   return `<ul class="pt-list">${items.map(([k, text, act]) =>
@@ -2105,16 +2273,17 @@ function portOwe() {
 /* Made from how the game is played: the news is 40 headlines, mostly price swings and bans in ports the house may
    never visit, so each one is tagged when it touches what the house holds, the port it is in, its home port or the
    port it is bound for, and "For me" shows only those. Headlines about the house's own deeds repeat the log, so they
-   are dimmed and never counted. Cooled headlines fold away. The weather is a strip of four small pills (one panel
-   per sea took a whole screen to say "squalls" four times), with advice only for the seas the house is in or bound
-   for; bans sit beside it, the ones for cargo in the hold picked out. Earlier voyages fold to one line each. */
+   are dimmed and never counted. Cooled headlines fold away. Earlier voyages fold to one line each.
+   THE WEATHER GLASS (21 Nov 2026) heads the right-hand column, above this voyage's log. It lives in its own files,
+   weather-glass.js and weather-glass.css: a television forecast made of 1860s parts, with the Gazette's weather
+   girl behind each sea. The bans row is gone from this tab: bans are shown on Arrival, the Market and Set sail. */
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {}, {
   "port.view.paper": "Newspaper", "port.paper.all": "All news", "port.paper.me": "For me",
   "port.paper.tag.hold": "In your hold", "port.paper.tag.here": "Here", "port.paper.tag.home": "Home port",
   "port.paper.tag.dest": "Your course", "port.paper.tag.you": "Your house",
   "port.paper.older": "Older news ({n})", "port.paper.older_hide": "Hide older news",
   "port.paper.none_me": "Nothing in the news touches your hold or your ports this month.",
-  "port.paper.voyages": "Earlier voyages", "port.paper.aboard": "You carry this" });
+  "port.paper.voyages": "Earlier voyages" });
 
 const reEsc = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /* The port the house is bound for: its standing orders once given, otherwise the one picked on Set sail. */
@@ -2170,34 +2339,9 @@ function portPaper() {
   const news = `<section class="card pt-newscard"><header class="pt-cardhead"><h2>${te("port.news.title")}</h2>${seg}</header>
     <ul class="pt-news-list">${shown.map(story).join("") || `<li class="muted">${te(only ? "port.paper.none_me" : "ledger.no_news")}</li>`}</ul>${foldOlder}</section>`;
 
-  // ---- the seas and the bans, one slim band
+  // ---- the weather glass (weather-glass.js): one column per sea, the house's own seas lit
   const regionOf = k => (D.ports[k] || {}).region;
-  const hereR = regionOf(me.port), destR = dest ? regionOf(dest) : null;
-  const level = r => Math.max(0, Math.min(3, (S.weather || {})[r] || 0));
-  const seas = Object.keys(D.regions || {});
-  const pills = seas.map(r => {
-    const lv = level(r), mark = r === hereR ? "here" : r === destR ? "dest" : "";
-    const tip = `${te("port.news.wx_wind")}: ${te("port.news.wx_wind." + lv)} · ${te("port.news.wx_sea")}: ${te("port.news.wx_sea." + lv)}`;
-    return `<span class="pt-seapill wx${lv}${mark ? " " + mark : ""}" title="${esc(tip)}">${sailIcon(["calm", "fair", "squalls", "typhoon"][lv])}<b>${esc(D.regions[r].name || r)}</b><span>${esc(D.weather[lv])}</span>${mark ? `<i>${te(mark === "here" ? "port.news.wx_here" : "port.paper.tag.dest")}</i>` : ""}</span>`;
-  }).join("");
-  const worst = Math.max(0, ...seas.map(level));
-  const warning = worst >= 3 ? `<p class="pt-wxwarning">${sailIcon("typhoon")}<span>${te("port.news.wx_warning")}</span></p>` : "";
-  const advice = [hereR, destR].filter((r, j, all) => r && all.indexOf(r) === j && D.regions[r] && level(r) >= 2)
-    .map(r => `<p class="pt-wxadvice"><b>${esc(D.regions[r].name || r)}:</b> ${te("port.news.wx_advice." + level(r))}</p>`).join("");
-  const banRank = k => k === me.port ? 0 : k === dest ? 1 : k === myHome() ? 2 : 3;
-  const bans = Object.keys(S.bans || {}).filter(k => (S.bans[k] || []).length).sort((a, b) => banRank(a) - banRank(b)).map(k => {
-    const mark = ["here", "dest", "home", ""][banRank(k)];
-    return `<span class="pt-ban${mark ? " " + mark : ""}"><b>${esc(portName(k))}</b>${S.bans[k].map(g => {
-      const aboard = (me.cargo[g] || 0) > 0;
-      return `<span class="pt-chip down${aboard ? " aboard" : ""}"${aboard ? ` title="${te("port.paper.aboard")}"` : ""}>${esc(D.goods[g] ? D.goods[g].name : g)}</span>`;
-    }).join("")}</span>`;
-  }).join("");
-  const notices = `<section class="card pt-notices${worst >= 3 ? " alert" : ""}">
-    <div class="pt-notice"><span class="pt-nlbl">${te("port.news.weather")}</span>
-      <div class="pt-seas" title="${esc(te("port.news.weather_note", { right: pct(D.forecast_accuracy, 0) }))}">${pills}</div></div>
-    ${warning}${advice}
-    <div class="pt-notice"><span class="pt-nlbl">${te("port.news.bans")}</span>
-      <div class="pt-banlist">${bans || `<span class="muted">${te("port.news.no_bans")}</span>`}</div></div></section>`;
+  const notices = typeof WeatherGlass !== "undefined" ? WeatherGlass.html({ here: regionOf(me.port), dest: dest ? regionOf(dest) : null }) : "";
 
   // ---- the log: this voyage, then earlier voyages folded to a line each
   const lines = list => `<ol class="pt-entries">${list.map(l => `<li${isHotLog(l) ? ' class="hot-line"' : ""}><span>${hotBadge(l)}${esc(l)}</span></li>`).join("")}</ol>`;
@@ -2211,7 +2355,8 @@ function portPaper() {
       <span>${te(e.from === e.to ? "port.log.at" : "port.log.route", { from: esc(portName(e.from)), to: esc(portName(e.to)) })}</span><em>${(e.lines || []).length}</em></button>${open[i] ? lines(e.lines || []) : ""}</li>`).join("")}</ul></section>` : "";
   const log = now + earlier || `<section class="card"><p class="muted">${te("ledger.no_log")}</p></section>`;
 
-  return `${notices}${news}<div class="pt-col pt-col-log">${log}</div>`;
+  // The left column is the news with Under the Counter beneath it, in the space the short news list leaves.
+  return `${notices}<div class="pt-col pt-col-news">${news}${counterPanel()}</div><div class="pt-col pt-col-log">${log}</div>`;
 }
 
 /* ---- Home port services
@@ -2310,19 +2455,19 @@ function serviceDrag(range) {
   button.disabled = S.me.ready || !tr.qty;
 }
 
-/* One service on Arrival (21 Nov 2026): name and flag across the top; then the picture, whole, with the figures
-   under it, and the controls beside them (stacked on a narrow card). `stats` is svcStats(); `info` is an
-   optional single line. `flag` ("warn" brass, "down" oxblood) marks a service that needs attention.
-   id "svc-<art>" lets other screens jump here. */
+/* One service on Arrival (21 Nov 2026, revised): the picture runs the full width of the card with the name (and
+   the one-line info) over it in white; under the picture, the controls on the left and the figures in the
+   second column (stacked on a narrow card). `stats` is svcStats(); `info` is an optional single line. `flag`
+   ("warn" brass, "down" oxblood) marks a service that needs attention. id "svc-<art>" lets other screens jump here. */
 function serviceCard(art, title, info, body, flag, stats) {
   const id = art.replace(/_\d+$/, "");
   const pic = Media.html("service", art, "background", "pt-service-image", "", { strict: true });
+  const head = `<header class="pt-service-head"><h2>${title}${flag ? `<i class="pt-service-flag" aria-hidden="true">${flag === "down" ? "⚖" : "!"}</i>` : ""}</h2>${info ? `<p>${info}</p>` : ""}</header>`;
   return `<section class="card pt-service${flag ? " attn " + flag : ""}${pic ? " has-pic" : ""}${stats ? " has-data" : ""}" id="svc-${id}">
     <div class="pt-service-in">
-      <header class="pt-service-head"><h2>${title}${flag ? `<i class="pt-service-flag" aria-hidden="true">${flag === "down" ? "⚖" : "!"}</i>` : ""}</h2>${info ? `<p>${info}</p>` : ""}</header>
-      ${pic ? `<div class="pt-service-pic">${pic}</div>` : ""}
-      ${stats ? `<div class="pt-service-data">${stats}</div>` : ""}
+      ${pic ? `<div class="pt-service-pic">${pic}${head}</div>` : head}
       <div class="pt-service-body">${body}</div>
+      ${stats ? `<div class="pt-service-data">${stats}</div>` : ""}
     </div>
   </section>`;
 }
@@ -2478,12 +2623,12 @@ function estateCard(me) {
   const plan = `<ol class="pt-estate-path">${es.stages.map(st =>
     `<li class="${st.stage <= es.stage ? "built" : ""}${st.stage === es.next ? " next" : ""}"><b>${esc(st.title)}</b> <span>${money(st.cost)}</span></li>`).join("")}</ol>`;
   const body = nxt
-    ? `<p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}</p>
-       <div class="pt-actions">${btn(te("estate.build", { stage: nxt.title, cost: money(nxt.cost) }), "estate", "", "primary", locked || nxt.cost > me.cash)}</div>`
+    ? `<div class="pt-estate-sell"><p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}</p>
+       <div class="pt-actions">${btn(te("estate.build", { stage: nxt.title, cost: money(nxt.cost) }), "estate", "", "primary", locked || nxt.cost > me.cash)}</div></div>`
     : `<p>${te("estate.done", { home })}</p>`;
   const sell = es.sell
-    ? `<p>${te(es.upkeep ? "estate.sell_info" : "estate.sell_info_none", { stage: es.title, cash: money(es.sell_price), share: Math.round(es.sell_share * 100), rep: Math.round(es.sell_rep), home, upkeep: money(es.upkeep), after: money(es.upkeep_after) })}</p>
-       <div class="pt-actions">${btn(te("estate.sell", { stage: es.title, cash: money(es.sell_price) }), "estate", 'data-op="sell"', "", locked)}</div>`
+    ? `<div class="pt-estate-sell"><p>${te(es.upkeep ? "estate.sell_info" : "estate.sell_info_none", { stage: es.title, cash: money(es.sell_price), share: Math.round(es.sell_share * 100), rep: Math.round(es.sell_rep), home, upkeep: money(es.upkeep), after: money(es.upkeep_after) })}</p>
+       <div class="pt-actions">${btn(te("estate.sell", { stage: es.title, cash: money(es.sell_price) }), "estate", 'data-op="sell"', "pt-go", locked)}</div></div>`
     : "";
   return serviceCard("estate_" + es.stage, te("estate.title", { home }), info, plan + body + sell);
 }
@@ -2730,6 +2875,34 @@ function counterTab() {
     <div class="uc-offers">${offers}</div>
     <p class="uc-note muted">${te("counter.note")}</p></section>`;
 }
+/* Under the Counter on the Newspaper (21 Nov 2026): the same offers and reveals as the old rail tab (counterOffer,
+   counterReveal), set as a shop. The tax lady's plain portrait stands behind the counter, dim and sepia until you
+   pay for a tip; when you have, she leans in and the light comes up (counter.css .leaning). One still per port per
+   month, so she never flickers on a redraw, and none at all when the Media Library has no picture of her. */
+function counterPortrait(port) {
+  let list = plainWomen(port, "taxlady", false);
+  if (!list.length) list = plainWomen(Object.keys(D.ports), "taxlady", false);
+  if (!list.length) return "";
+  const key = "uc:" + port + ":" + S.turn;
+  let it = list.find(i => i.id === womanPick[key]);
+  if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
+  return it.u || "";
+}
+function counterPanel() {
+  const me = S.me, c = me.counter;
+  if (!c) return "";
+  const bought = c.bought || {}, paid = COUNTER_TIPS.some(tip => bought[tip]);
+  const pic = counterPortrait(me.port);
+  const offers = COUNTER_TIPS.map(tip => counterOffer(tip, (c.offers || {})[tip] || {}, bought[tip])).join("");
+  return `<section class="card uc uc-shop${paid ? " leaning" : ""}${pic ? "" : " nopic"}">
+    <div class="uc-window">${pic ? `<img class="uc-lady" src="${esc(pic)}" alt="">` : ""}
+      <header class="uc-head"><small>${esc(c.name || "")}</small><h2>${te("counter.title")}</h2>
+        ${c.hello ? `<blockquote class="uc-say">${esc(c.hello)}</blockquote>` : ""}
+        <p class="muted">${te("counter.sub", { pct: Math.round((c.share || 0) * 100), rank: c.rank || me.rank || "" })}</p></header></div>
+    <div class="uc-ledge" aria-hidden="true"></div>
+    <div class="uc-bench"><div class="uc-offers">${offers}</div>
+      <p class="uc-note muted">${te("counter.note")}</p></div></section>`;
+}
 function counterOffer(tip, o, rv) {
   const head = `<header><h3>${te("counter." + tip)}</h3><p>${te("counter." + tip + "_sub")}</p></header>`;
   if (rv) return `<article class="uc-card bought">${head}${counterReveal(tip, rv)}</article>`;
@@ -2849,53 +3022,208 @@ function chartTab() {
         <span class="heat-key"><small>${te("sail.easiest")}</small><i></i><small>${te("sail.hardest")}</small></span></div>
       <div class="dests">${list}</div>
       ${SailIntel.html(dest)}</section>
-    <section class="card"><h2>${te("orders.title")}</h2>
-      <div class="seg">${btn(cannons() ? te("orders.fight_cannons", { guns: guns(), cannons: cannons() }) : te("orders.fight", { guns: guns() }), "orders", 'data-o="fight"', orders === "fight" ? "on" : "")}${btn(te("orders.run"), "orders", 'data-o="run"', orders === "run" ? "on" : "")}</div>
-      ${protectionNote()}
-      ${slipChoice()}
-      ${bankRestHtml("sail-bank")}
-      <div class="row">${btn(dest ? te("sail.go", { port: portName(dest) }) : te("sail.choose"), "sail", "", "primary wide", !dest || me.ready)}</div>
-      <div class="row">${btn(te("sail.stay", { port: portName(me.port) }), "stay", "", "wide", me.ready)}</div>
-      ${me.ready ? `<p class="muted">${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</p>
-      <div class="row">${btn(te("sail.cancel"), "unsail", "", "ghost wide")}</div>` : ""}</section>`;
+    ${helmCard(dest, orders)}`;
 }
 
-/* Protection under the standing orders. Comfortable cover is one quiet line; none (or nearly out) is a
-   warning panel with one button straight to where tribute is paid: the home port services when here,
-   otherwise it sets course for home. */
+/* ------------------------------------------------------------------ the helm -- */
+/* The orders card under the route cards (21 Nov 2026): standing orders on the left, leaving port on the
+   right, a row of things worth seeing to before sailing, then one bar with Stay and Set sail.
+   Three kinds of button, so they stop looking alike: choices sit in a sunken track (helm-seg), money
+   buttons are small (oxblood pays out, jade keeps silver safe), and Set sail is the one big button.
+   Heat runs green to red on the same scale as the route cards (hue 118 down to 4). */
+var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {}, {
+  "helm.leaving": "Leaving port", "helm.watch": "{port} harbour watch", "helm.no_dues": "Nothing is owed to the Mayor this visit.",
+  "helm.slip_odds": "{pct}% caught", "helm.share": "{pct} of silver aboard", "helm.bill_share": "Bill: {pct} of silver aboard",
+  "helm.share_tip": "{cost} is {pct} of the {cash} you carry.",
+  "helm.ashore": "{cash} ashore", "helm.thieves": "{odds}% chance thieves take {lo}–{hi}% in {port}",
+  "helm.thieves_nobank": "{odds}% chance thieves take {lo}–{hi}% in {port}. No bank here.",
+  "helm.checks": "Before you sail",
+  "helm.chk_hull": "Hull {hull}%", "helm.chk_hull_tip": "Your worst ship is at {hull}% hull. Repairs come to {cost}.",
+  "helm.chk_yard": "{n} ships need a shipyard", "helm.chk_yard_1": "1 ship needs a shipyard",
+  "helm.chk_hold": "Hold {pct}% full", "helm.chk_hold_tip": "{used} of {cap} hold used. Empty hold still draws wages.",
+  "helm.chk_sell": "Unsold profit {gain}", "helm.chk_sell_tip": "Cargo aboard would sell here for {gain} more than it cost.",
+  "helm.chk_rot": "{good} rots at month end",
+  "helm.chk_wx": "{weather} on this route",
+  "helm.chk_ban": "Banned in {port}: {goods}",
+  "helm.chk_collectors": "Collectors in {n} mo", "helm.chk_collectors_1": "Collectors next month",
+  "helm.chk_bankrupt": "Bankruptcy in {n} mo", "helm.chk_bankrupt_1": "Bankruptcy next month",
+});
+
+const heatHue = x => Math.round(118 - 114 * Math.max(0, Math.min(1, x || 0)));
+const pctText = x => { const p = Math.max(0, x) * 100; return (p >= 10 ? Math.round(p) : +p.toFixed(1)) + "%"; };
+
+function helmIcon(kind) {
+  const paths = {
+    fight: '<path d="M4 4l11.5 11.5M20 4 8.5 15.5M13 17l4-4M7 13l4 4M5.5 18.5l2-2M18.5 18.5l-2-2"/>',
+    run: '<path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
+    pay: '<circle cx="12" cy="12" r="8.5"/><rect x="9.5" y="9.5" width="5" height="5" rx=".6"/>',
+    slip: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/>',
+    stay: '<circle cx="12" cy="5" r="2"/><path d="M12 7v13M8 11h8M4.5 14c.5 3.5 3.5 6 7.5 6s7-2.5 7.5-6"/>',
+    sail: '<path d="M12 3v13M12 4c4 2 6 6 6.5 10H12M12 7c-2.5 1.5-4 4-4.5 7H12M4 17h16l-2 4H6l-2-4Z"/>',
+    bank: '<rect x="3.5" y="9" width="17" height="10.5" rx="1.5"/><path d="M3.5 13h17M7.5 9V7a4.5 4.5 0 0 1 9 0v2"/><circle cx="12" cy="16" r="1.2"/>',
+    shield: '<path d="M12 2.5 20 6v5.8c0 4.7-3.2 7.7-8 9.7-4.8-2-8-5-8-9.7V6l8-3.5Z"/><path d="m9 12 2 2 4-4"/>',
+    skull: '<path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.2 3 5.3V18h8v-2.7c1.8-1.1 3-2.9 3-5.3a7 7 0 0 0-7-7Z"/><circle cx="9.3" cy="10.5" r="1.4"/><circle cx="14.7" cy="10.5" r="1.4"/><path d="M10 18v3M14 18v3"/>',
+    glass: '<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',
+  };
+  return `<svg class="helm-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[kind] || paths.sail}</svg>`;
+}
+
+/* A button's face: its picture and its words, kept together when the button is squeezed. */
+const helmLab = (icon, label) => `<span class="helm-lab">${helmIcon(icon)}<span>${label}</span></span>`;
+
+/* A small heat-coloured tag. heat is 0 (fine, green) to 1 (bad, red). */
+const heatChip = (text, heat, tip, icon) =>
+  `<em class="heat-chip" style="--hue:${heatHue(heat)}"${tip ? ` title="${tip}"` : ""}>${icon || ""}${text}</em>`;
+
+/* What a payment takes out of the silver aboard, shown once it is 1% or more. Half the purse is full red. */
+function costChip(cost, cash, key) {
+  const share = cash > 0 ? cost / cash : 1;
+  if (!(cost > 0) || share < .01) return "";
+  return heatChip(te(key || "helm.share", { pct: pctText(share) }), share / .5,
+    te("helm.share_tip", { cost: money(cost), pct: pctText(share), cash: money(cash) }));
+}
+
+function helmCard(dest, orders) {
+  const me = S.me;
+  // Left heading: the pirate chance on the chosen route, where the fight-or-run choice is made.
+  let routeChip = "";
+  if (dest && dest !== me.port) {
+    const danger = pirateRisk(me.port, dest), pct = Math.round(danger * 100);
+    const tier = danger < .12 ? 0 : danger < .22 ? 1 : danger < .32 ? 2 : 3;
+    routeChip = heatChip(`${pct}% · ${te("sail.danger_" + tier)}`, danger / .4,
+      te("sail.danger_tip", { pct, port: esc(portName(dest)) }), helmIcon("skull"));
+  }
+  const opt = (icon, label, o) => btn(helmLab(icon, label), "orders", `data-o="${o}"`, orders === o ? "on" : "");
+  const fight = cannons() ? te("orders.fight_cannons", { guns: guns(), cannons: cannons() }) : te("orders.fight", { guns: guns() });
+  const go = me.ready
+    ? `<div class="helm-go ready">
+        <p class="helm-wait">${helmIcon(me.dest ? "sail" : "stay")}<span><b>${te(me.dest ? "port.todo.sailing" : "port.todo.staying", { port: esc(portName(me.dest || me.port)) })}</b>
+          <small>${S.waiting.length ? te("sail.waiting", { names: S.waiting.join(", ") }) : te("sail.weighing")}</small></span></p>
+        ${btn(te("sail.cancel"), "unsail", "", "helm-stay")}</div>`
+    : `<div class="helm-go">
+        ${btn(`${helmIcon("stay")}<span>${te("sail.stay", { port: portName(me.port) })}</span>`, "stay", `title="${te("dues.stay")}"`, "helm-stay")}
+        ${btn(`${helmIcon("sail")}<span>${dest ? te("sail.go", { port: portName(dest) }) : te("sail.choose")}</span>`, "sail", "", "primary helm-sail", !dest)}</div>`;
+  return `<section class="card helm">
+      <div class="helm-cols">
+        <div class="helm-col">
+          <h2><span>${te("orders.title")}</span>${routeChip}</h2>
+          <div class="helm-seg" role="group" aria-label="${te("orders.title")}">${opt("run", te("orders.run"), "run")}${opt("fight", fight, "fight")}</div>
+          ${protectionNote()}
+        </div>
+        <div class="helm-col">
+          <h2><span>${te("helm.leaving")}</span></h2>
+          ${slipChoice()}
+          ${purseNote()}
+        </div>
+      </div>
+      ${helmChecks(dest)}
+      ${go}</section>`;
+}
+
+/* Protection under the standing orders: a picture panel with Admiral Li Yue flush left and blended into the
+   panel, her state (protected, running out, none) and one button on the right. Green, amber or red.
+   Cover that is comfortable shows no button; otherwise it goes straight to where tribute is paid: the home
+   port services when here, otherwise it sets course for home. */
 function protectionNote() {
   const me = S.me, home = myHome();
-  if (me.protect > D.renew_at) return `<p class="muted">${te("orders.protected", { months: me.protect })}</p>`;
+  const face = helmFace("pirate", "helm-li");
+  if (me.protect > D.renew_at) return `<div class="helm-panel face-left ok" style="--hue:140">${face}
+      <div class="helm-panel-body"><b>${te("orders.protected", { months: me.protect })}</b></div></div>`;
   const low = me.protect > 0;
   const action = me.port === home
-    ? btn(te("orders.go_pay", { cost: money(me.protect_cost) }), "port_jump", 'data-to="agent"', "primary or-pay", me.ready)
-    : btn(te("orders.sail_home"), "dest", `data-port="${home}"`, "primary or-pay" + (ui.dest === home ? " on" : ""), me.ready);
-  return `<div class="or-protect${low ? " low" : ""}" role="alert">
-      <span class="or-protect-icon" aria-hidden="true">${low ? "\u23F3" : "\u2620"}</span>
-      <div class="or-protect-text"><b>${te(low ? "orders.protect_low_title" : "orders.unprotected_title")}</b>
-        <span>${low ? ten("orders.protect_low_body", me.protect) : te("orders.unprotected_body")}
-          ${me.port === home ? "" : te("orders.pay_where")}</span></div>
-      ${action}</div>`;
+    ? btn(te("orders.go_pay", { cost: moneyShort(me.protect_cost) }), "port_jump", `data-to="agent" title="${money(me.protect_cost)}"`, "primary helm-act or-pay", me.ready)
+    : btn(te("orders.sail_home"), "dest", `data-port="${home}"`, "primary helm-act or-pay" + (ui.dest === home ? " on" : ""), me.ready);
+  return `<div class="helm-panel face-left warn${low ? " low" : ""}" style="--hue:${low ? 42 : 4}" role="alert">${face}
+      <div class="helm-panel-body"><b>${te(low ? "orders.protect_low_title" : "orders.unprotected_title")}</b>
+        <div class="helm-panel-act right">${action}</div></div></div>`;
+}
+
+/* A persona's picture for a panel: random from the library as usual, filled to the panel, never an emotion picture. */
+function helmFace(cid, cls) {
+  // A plain portrait first; a persona with no portrait showing on this screen (her only one may be NSFW tagged while the
+  // screen is family-friendly) falls back to her plain speaking picture. Never an emotion picture.
+  const role = Media.has("persona", cid, "portrait", { strict: true }) ? "portrait" : "speaking";
+  return `<span class="helm-face ${cls}">${Media.html("persona", cid, role, "helm-img", "", { strict: true, slot: "helm:" + cid })}</span>`;
 }
 
 /* Leaving port: pay the Mayor's bill, or try to slip out at night (engine Game._depart). Only offered
    when there is a bill to dodge. While orders stand, the choice shows as given and cannot change. */
-/* The fine if caught slipping out (engine Game.slip_quote): at least slip_mult x the bill, or a share of net
-   worth set by the standing band, so it is shown as a range when the floor could be larger. */
-function slipFine(me, bill) {
-  const q = me.slip_quote;
-  if (!q) return money(Math.ceil(bill.total * ((D.dues_rules || {}).slip_mult || 2)));
-  return q.fine_max > q.fine_min ? `${money(q.fine_min)}–${money(q.fine_max)}` : money(q.fine_min);
+/* The slip button keeps its odds and the fine to itself: the gamble is taken blind. */
+function slipChoice() {
+  const me = S.me, bill = me.dues;
+  if (!bill || !bill.total) return `<p class="helm-quiet">${te("helm.no_dues")}</p>`;
+  const slip = me.ready ? !!me.slip : !!ui.slip;
+  return `<div class="helm-seg" role="group" aria-label="${te("helm.leaving")}">${btn(helmLab("pay", te("dues.pay", { total: money(bill.total) })),
+      "slip", 'data-s="0"', slip ? "" : "on", me.ready)}${btn(helmLab("slip", te("dues.slip")),
+      "slip", 'data-s="1"', slip ? "on bad" : "", me.ready)}</div>`;
 }
 
-function slipChoice() {
-  const me = S.me, bill = me.dues, q = me.slip_quote || {};
-  if (!bill || !bill.total) return "";
-  const slip = me.ready ? !!me.slip : !!ui.slip;
-  const caught = slipFine(me, bill);
-  return `<h2 class="du-choice-h">${te("dues.choice")}</h2>
-    <div class="seg">${btn(te("dues.pay", { total: money(bill.total) }), "slip", 'data-s="0"', slip ? "" : "on", me.ready)}${btn(te("dues.slip"), "slip", 'data-s="1"', slip ? "on bad" : "", me.ready)}</div>
-    ${slip ? `<p class="muted du-slipnote">${te("dues.slip_note", { pct: Math.round((q.caught == null ? .35 : q.caught) * 100), caught, port: esc(portName(me.port)) })}</p>` : ""}`;
+/* The right-hand panel: the jailer of the port you are leaving, flush right and blended left, with the silver
+   you have ashore and a Bank button (silver, left aligned) when there is a counting-house here. The jailer is the
+   warden of THIS port, since this is where the harbour watch would catch you slipping out. Heat is the thieves'
+   odds, leaning on how much of the house's silver is ashore. The panel shows whenever there is a bill to dodge
+   or silver ashore. */
+function purseNote() {
+  const me = S.me, m = D.mug || {};
+  const owes = !!(me.dues && me.dues.total);
+  const rich = !me.ready && me.cash > (m.mug_threshold || 0);
+  if (!owes && !rich) return "";
+  const br = rich ? bankRest() : null, where = ui.dest || me.port, odds = rich ? robberyOdds(where) : 0;
+  const total = me.cash + (me.bank || 0);
+  const heat = rich ? Math.min(1, odds / .08) * .6 + (total > 0 ? me.cash / total : 1) * .4 : 0;
+  const tip = rich ? te("bank.rest_note", { cash: money(me.cash), odds: (odds * 100).toFixed(1).replace(/\.0$/, ""), port: esc(portName(where)),
+    lo: Math.round((m.mug_min || 0) * 100), hi: Math.round((m.mug_max || 0) * 100) }) : "";
+  return `<div class="helm-panel face-right purse" style="--hue:${heatHue(heat)}"${tip ? ` title="${tip}"` : ""}>${helmFace("warden_" + me.port, "helm-jail")}
+      <div class="helm-panel-body"><b>${rich ? te("helm.ashore", { cash: moneyShort(me.cash) }) : te("helm.watch", { port: esc(portName(me.port)) })}</b>
+        ${br ? `<div class="helm-panel-act left">${btn(te("bank.rest", { amount: moneyShort(br.amount) }), "bank_rest", `title="${money(br.amount)}"`, "helm-act coin")}</div>` : ""}</div></div>`;
+}
+
+/* Before you sail: the few things worth a second look, each a heat tag, most pressing first. A tag with
+   somewhere to go is a button to the tab that fixes it. Nothing wrong, no row. */
+function helmChecks(dest) {
+  const me = S.me;
+  if (me.ready) return "";
+  const out = [];   // [heat, html]
+  const tag = (heat, text, tip, act) => out.push([heat, act
+    ? `<button type="button" class="helm-chk" style="--hue:${heatHue(heat)}" ${act}${tip ? ` title="${tip}"` : ""}><i></i>${text}</button>`
+    : `<span class="helm-chk" style="--hue:${heatHue(heat)}"${tip ? ` title="${tip}"` : ""}><i></i>${text}</span>`]);
+  const tab = k => `data-act="tab" data-tab="${k}"`;
+  const bkr = me.bankrupt;
+  if (bkr) tag(bkr.in <= 3 ? 1 : .75, ten("helm.chk_bankrupt", bkr.in), ten("port.todo.bankrupt", bkr.in, { amount: money(bkr.short) }), 'data-act="acct_open" data-v="house"');
+  const coll = me.collectors;
+  if (coll && coll.calls_in) tag(coll.calls_in === 1 ? 1 : .7, ten("helm.chk_collectors", coll.calls_in),
+    ten("port.todo.collectors", coll.calls_in, { amount: money(coll.to_clear) }), 'data-act="acct_open" data-v="house"');
+  const ships = me.ships || [];
+  const repair = ships.reduce((n, s) => n + (s.repair || 0), 0);
+  if (repair) {
+    const low = Math.min(...ships.map(s => Math.round(100 * s.hull / D.ships[s.type].hull)));
+    tag(1 - low / 100, te("helm.chk_hull", { hull: low }), te("helm.chk_hull_tip", { hull: low, cost: money(repair) }), tab("fleet"));
+  }
+  const yard = ships.filter(s => s.needs_yard).length;
+  if (yard) tag(.8, ten("helm.chk_yard", yard), te("port.shipyard_need"), tab("fleet"));
+  if (dest && dest !== me.port) {
+    const wx = Math.max(S.weather[D.ports[dest].region] || 0, S.weather[D.ports[me.port].region] || 0);
+    if (wx >= 2) tag(wx >= 3 ? 1 : .6, te("helm.chk_wx", { weather: D.weather[wx] }));
+    const banned = ((S.bans || {})[dest] || []).filter(g => me.cargo[g] > 0);
+    if (banned.length) tag(.95, te("helm.chk_ban", { port: portName(dest), goods: banned.map(g => D.goods[g].name).join(", ") }), "", tab("market"));
+  }
+  // Perishables that the month-end will rot (rotHtml's own test).
+  const rot = me.rot;
+  if (rot && rot.on && rot.age) Object.keys(rot.age).filter(g => me.cargo[g] > 0 && rot.age[g] + 1 > rot.grace).slice(0, 2).forEach(g =>
+    tag(.85, te("helm.chk_rot", { good: D.goods[g].name }), te("rot.tip_warn", { good: D.goods[g].name, n: rot.age[g].toFixed(1), grace: rot.grace }), tab("market")));
+  // Cargo that sells here for more than it cost: not a danger, so it stays green.
+  const gain = Object.keys(me.cargo || {}).reduce((n, g) => {
+    const q = me.cargo[g] - ((me.bond || {})[g] || 0), paid = paidFor(g);
+    return paid === null || q <= 0 ? n : n + Math.max(0, quote(g, q, "sell") - paid * q);
+  }, 0);
+  if (gain > 0) tag(0, te("helm.chk_sell", { gain: moneyShort(gain) }), te("helm.chk_sell_tip", { gain: money(gain) }), tab("market"));
+  // A hold under half full when leaving: amber at worst, since it is waste, not danger.
+  if (me.capacity > 0 && me.used / me.capacity < .5)
+    tag(.25 + .4 * (1 - me.used / me.capacity), te("helm.chk_hold", { pct: Math.round(100 * me.used / me.capacity) }),
+      te("helm.chk_hold_tip", { used: me.used.toLocaleString(), cap: me.capacity.toLocaleString() }), tab("market"));
+  if (!out.length) return "";
+  out.sort((a, b) => b[0] - a[0]);
+  return `<div class="helm-checks"><small>${te("helm.checks")}</small>${out.map(x => x[1]).join("")}</div>`;
 }
 
 /* ---------------------------------------------------------- price ages -- */
@@ -2995,7 +3323,7 @@ app.addEventListener("click", async e => {
     // Closing the log opens the Port Authority desk: her greeting starts with it, not at the next update.
     case "seen": ui.seenTurn = S.turn; Voice.drop("log"); render(); return Customs.speak();
     case "relog": ui.seenTurn = null; ui.spokenTurn = null; return render();
-    case "port_view": ui.portView = d.v; return render();
+    case "port_view": ui.portView = d.v; render(); if (d.v === "paper") counterHello(); return;
     case "paper_only": ui.paperOnly = d.v === "1"; return render();
     case "paper_older": ui.paperOlder = !ui.paperOlder; return render();
     case "paper_voyage": ui.paperOpen[d.i] = !ui.paperOpen[d.i]; return render();
@@ -3088,6 +3416,7 @@ app.addEventListener("click", async e => {
     case "newgame": ui.confirmNew = false; ui.meOpen = false; return act("new_game");
     case "free_play": return act("free_play");
     case "ledger": return Ceremony.openLedger(S, D, app);
+    case "certificate": return typeof Certificate !== "undefined" ? Certificate.open(S, D) : null;   // the Voyage Certificate, again
     default: if (d.act.startsWith("cx_")) return Customs.click(d);
   }
 });

@@ -17,6 +17,7 @@ HOW A LEGEND IS WRITTEN
     "where":  a port key, or None for any landfall,
     "scene":  "port" (the port by night), "sea" (open water) or "deep" (under the sea): the picture behind,
     "start":  [(flag, node), ..., (None, node)]: the first whose flag the Captain carries is where it opens,
+    "right":  {node: (choice key, ...)}: the RIGHT answer at each question in this chapter (see below),
     "nodes":  {name: node} }
   node = {
     "beats":   [(who, text) or (who, text, family_text), ...]   who is T (the storyteller) or a cast key,
@@ -35,9 +36,21 @@ EFFECTS (all sized from the house's STAKE: a share of its net worth, rules.legen
   ("flag", name)           remembered for the later chapters
   ("news", key)            a headline for the next month's news
 
+THE RIGHT CHOICE (owner's decision, 21 Nov 2026; project doc "SeaTrader Last Two Shares"): every chapter marks
+one right answer at each of its questions. A Captain who answers rules.legend.share_right chapters of one
+Legend rightly (2 of 3) earns a port share, once a game (honour.py). The right answer is the generous or
+honourable one, and it should cost the Captain the bigger prize. It is never shown or hinted on the screen,
+so do not write a button label or a line that gives it away. EVERY NEW LEGEND NEEDS ITS "right" MAP: check()
+complains about a question without one.
+
 WRITING: every spoken line follows the house voice (house_voice.HOUSE_STYLE): the fact plain, a wink riding on
 it, innuendo and never explicit. No amounts in a spoken line: figures belong on the Reckoning card. A third
 item in a beat is its family-friendly wording.
+
+LENGTH (owner's decision, 21 Nov 2026: the first telling ran about half too long). Keep a Legend quick: a
+chapter's opening is 2 or 3 lines, an answer's outcome 1 or 2, so a whole chapter is 3 to 6 lines from the bell
+stopping to the Reckoning card. One line carries the fact and its wink together. tests/legend_test.py holds
+every road to that budget.
 """
 
 T = "teller"
@@ -57,229 +70,199 @@ TALES = {
             # ---- Chapter 1 ---------------------------------------------------------------------------
             {"id": "turtle", "title": "The Turtle in the Net", "where": "nagasaki", "scene": "port",
              "start": [(None, "open")],
+             "right": {"open": ("free",)},                     # let her go, and take nothing for it
              "nodes": {
                  "open": {
                      "beats": [
-                         (T, "Hold still, Captain. The bell has stopped mid-swing, which means it's my turn to talk. "
-                             "Don't look so alarmed. I only bite sailors I'm fond of.",
-                             "Hold still, Captain. The bell has stopped mid-swing, which means it's my turn to talk. "
-                             "Don't look so alarmed. I only haunt sailors I'm fond of."),
-                         (T, "Off the Nagasaki roads your crew hauled up a net, and in it a sea turtle the size of a "
-                             "captain's table. Old as sin, with a shell like lacquer and gold."),
-                         (T, "The comb carvers of Nagasaki pay a fortune for a shell like hers. Your crew knows it. "
-                             "She knows it too. Look at her looking at you."),
-                         (T, "So. One knife, one turtle, one decision. I do love watching a captain handle "
-                             "something delicate.",
-                             "So. One knife, one turtle, one decision. I do love watching a captain make up her mind."),
+                         (T, "Hold still, Captain. The bell has stopped, so it's my turn to "
+                             "talk. Your crew has netted a sea turtle the size of a captain's "
+                             "table."),
+                         (T, "The comb carvers pay a fortune for a shell like hers, and she "
+                             "knows it. I do love watching a captain handle something "
+                             "delicate.",
+                             "The comb carvers pay a fortune for a shell like hers, and she "
+                             "knows it. I do love watching a captain make up her mind."),
                      ],
                      "choices": [("free", "Cut her free", "free"),
                                  ("sell", "Sell her to the comb carvers", "sell"),
                                  ("keep", "Keep her aboard for luck", "keep")]},
                  "free": {
                      "beats": [
-                         (T, "You cut the net yourself. She slid into the dark without a thank-you, which is how "
-                             "you know she's a lady."),
-                         (T, "Your crew sulked for a week. The sea keeps better books than they do, darling, and "
-                             "she has just opened an account in your name."),
+                         (T, "You cut the net yourself. She slid into the dark without a "
+                             "thank-you, which is how you know she's a lady."),
                      ],
                      "fx": [("flag", "freed")], "end": True},
                  "sell": {
                      "beats": [
-                         (T, "The carvers paid in silver and didn't haggle, which should have worried you. I'd have "
-                             "haggled. I'd have enjoyed it."),
-                         (T, "You sailed in richer. Somewhere below, a door opened and a name was written down. "
-                             "Yours has such pretty letters."),
+                         (T, "The carvers paid in silver and didn't haggle. That should have "
+                             "worried you. Somewhere below, your name was written down."),
                      ],
                      "fx": [("silver", 0.6), ("standing", "here", 1), ("flag", "sold")], "end": True},
                  "keep": {
                      "beats": [
-                         (T, "You gave her a tub on deck and a name the crew won't repeat in front of the Mayor. "
-                             "She eats better than your gunners."),
-                         (T, "She watches the water every night, Captain, like a girl waiting at a window. "
-                             "Somebody is coming for her."),
+                         (T, "You gave her a tub on deck. She watches the water every night, "
+                             "Captain, like a girl waiting at a window."),
                      ],
                      "fx": [("flag", "kept")], "end": True},
              }},
             # ---- Chapter 2 ---------------------------------------------------------------------------
             {"id": "palace", "title": "The Lady on the Anchor Chain", "where": None, "scene": "deep",
              "start": [("sold", "sold"), ("kept", "kept"), (None, "freed")],
+             # go home when asked; pay what is owed; hand her back and name no price
+             "right": {"freed": ("home",), "sold": ("pay",), "kept": ("give",)},
              "nodes": {
                  # She was set free: an invitation.
                  "freed": {
                      "beats": [
-                         (T, "Hush. Feel that? Dead calm, the bell stopped, every hand aboard frozen with her "
-                             "mouth open. Most unattractive. That's my cue, and hers."),
-                         (T, "A woman came up your anchor chain, hand over hand, dry as a ledger and wearing "
-                             "more pearls than modesty.",
-                             "A woman came up your anchor chain, hand over hand, dry as a ledger and wearing "
-                             "more pearls than a jeweller's window."),
-                         (O, "Captain. You untied one of my handmaids from a net. In my father's house that is "
-                             "practically a proposal.",
-                             "Captain. You untied one of my handmaids from a net. In my father's house that is "
-                             "a debt of honour."),
-                         (O, "I am Otohime, daughter of the Dragon King. Come below for three days. I promise to "
-                             "return you in the condition I found you. More or less."),
-                         (T, "You went, of course. Nobody says no to pearls. Three days of feasting in halls of "
-                             "coral, and she never once let your cup stand empty."),
-                         (T, "On the third night she asked what you wanted. Careful, darling. Down there they "
-                             "grant things."),
+                         (T, "Dead calm, Captain, and a woman is coming up your anchor chain, "
+                             "wearing more pearls than modesty.",
+                             "Dead calm, Captain, and a woman is coming up your anchor chain, "
+                             "wearing more pearls than a jeweller's window."),
+                         (O, "I am Otohime, daughter of the Dragon King. You freed my "
+                             "handmaid from a net. In my father's house that is practically a "
+                             "proposal. Come below.",
+                             "I am Otohime, daughter of the Dragon King. You freed my "
+                             "handmaid from a net. In my father's house that is a debt of "
+                             "honour. Come below."),
+                         (T, "You went, of course. Nobody says no to pearls. On the third "
+                             "night she asked what you wanted. Careful, darling."),
                      ],
                      "choices": [("stay", "Stay one more night", "stay"),
                                  ("home", "Ask to be taken home", "home"),
                                  ("trade", "Ask to open an account with the sea", "trade")]},
                  "stay": {
                      "beats": [
-                         (O, "One more night? Captain, I thought you'd never ask. I was beginning to doubt my "
-                             "own hospitality.",
-                             "One more night? Captain, I thought you'd never ask. The cooks have been hoping."),
-                         (T, "It was a long night. I shan't say more. I was only watching through the porthole.",
-                             "It was a long feast. Forty courses. I counted them through the porthole."),
-                         (O, "Take these pearls. A woman should pay for what she enjoys.",
-                             "Take these pearls. A good guest should never leave empty-handed."),
+                         (O, "One more night? Captain, I thought you'd never ask. Take these "
+                             "pearls. A woman should pay for what she enjoys.",
+                             "One more night? The cooks have been hoping. Take these pearls. "
+                             "A good guest should never leave empty-handed."),
                      ],
                      "fx": [("silver", 1.0), ("flag", "fond")], "goto": "box"},
                  "home": {
                      "beats": [
-                         (O, "Home. How refreshingly dull. Most captains have to be thrown out."),
-                         (O, "A guest who knows when to leave is rarer than black pearls. I shall remember you "
-                             "fondly, which is more dangerous than it sounds."),
+                         (O, "Home. How refreshingly dull. Most captains have to be thrown "
+                             "out."),
                      ],
                      "fx": [("standing", "home", 3), ("flag", "polite")], "goto": "box"},
                  "trade": {
                      "beats": [
-                         (O, "An account. With the sea. You would flirt with a typhoon if it carried cargo.",
-                             "An account. With the sea. You would bargain with a typhoon if it carried cargo."),
-                         (O, "Very well. My father's weavers will fill your hold with sea-silk. Sell it dear. I "
-                             "take my interest later, and I never forget a figure."),
+                         (O, "An account with the sea. You would flirt with a typhoon if it "
+                             "carried cargo. Very well. A hold of sea-silk now, and my "
+                             "interest later.",
+                             "An account with the sea. You would bargain with a typhoon if it "
+                             "carried cargo. Very well. A hold of sea-silk now, and my "
+                             "interest later."),
                      ],
                      "fx": [("cargo", "silk", 0.9), ("flag", "debtor")], "goto": "box"},
                  # She was sold: a bill.
                  "sold": {
                      "beats": [
-                         (T, "Dead calm, Captain. The bell has stopped. I'd offer you a drink, but you'll want "
-                             "both hands."),
-                         (T, "A woman came up your anchor chain dripping pearls and fury. Lovely shoulders. "
-                             "Dreadful mood.",
-                             "A woman came up your anchor chain dripping pearls and fury. Lovely manners. "
-                             "Dreadful mood."),
-                         (O, "You sold my handmaid to the comb carvers. She is a hair ornament now. I have seen "
-                             "it. It doesn't even suit the girl wearing it."),
-                         (O, "I am Otohime, daughter of the Dragon King, and you owe my house a life. I will take "
-                             "silver, service or satisfaction. Choose quickly. I am not patient above water.",
-                             "I am Otohime, daughter of the Dragon King, and you owe my house a life. I will take "
-                             "silver, service or a quarrel. Choose quickly. I am not patient above water."),
+                         (T, "Dead calm, Captain, and a woman is coming up your anchor chain "
+                             "dripping pearls and fury. Lovely shoulders. Dreadful mood.",
+                             "Dead calm, Captain, and a woman is coming up your anchor chain "
+                             "dripping pearls and fury. Lovely manners. Dreadful mood."),
+                         (O, "I am Otohime, daughter of the Dragon King. You sold my "
+                             "handmaid, and she is a hair ornament now. I will take silver, "
+                             "service or satisfaction.",
+                             "I am Otohime, daughter of the Dragon King. You sold my "
+                             "handmaid, and she is a hair ornament now. I will take silver, "
+                             "service or a quarrel."),
                      ],
                      "choices": [("pay", "Pay the blood-price", "pay"),
                                  ("serve", "Offer to serve her instead", "serve"),
                                  ("refuse", "Refuse. A turtle is a turtle.", "refuse")]},
                  "pay": {
                      "beats": [
-                         (T, "You paid. It hurt. I watched your face, and it was the most honest thing you've "
-                             "done all year."),
-                         (O, "Silver, and no argument. Perhaps there is a conscience under all that brass. Let "
-                             "us test it."),
+                         (O, "Silver, and no argument. Perhaps there is a conscience under "
+                             "all that brass."),
                      ],
                      "fx": [("silver", -1.0), ("flag", "paid")], "goto": "box"},
                  "serve": {
                      "beats": [
-                         (O, "Service. How promising. You will carry something for me, and you will not peek, "
+                         (O, "Service. How promising. Carry this box for me, and do not peek, "
                              "however prettily it begs."),
-                         (T, "She pressed a lacquer box into your hands and smiled like a moneylender. You've "
-                             "known a few. You know that smile."),
-                         (T, "Then she was gone, and the bell finished its swing. The box hums at night. I'd "
-                             "sleep on deck, darling."),
+                         (T, "She smiled like a moneylender and was gone. The box hums at "
+                             "night, darling. I'd sleep on deck."),
                      ],
                      "fx": [("flag", "box"), ("flag", "cursed")], "end": True},
                  "refuse": {
                      "beats": [
-                         (O, "A turtle is a turtle. And a ship is only timber. Let me show you how the sea feels "
-                             "about timber."),
-                         (T, "She went over the side without a splash, and the calm ended all at once. The sea "
-                             "took its price out of your hull and your hold, and left the receipt in splinters."),
-                         (T, "No box for you, Captain. Just a grudge. Those keep even better."),
+                         (O, "A turtle is a turtle, and a ship is only timber. Let me show "
+                             "you how the sea feels about timber."),
+                         (T, "The sea took its price out of your hull and your hold. No box "
+                             "for you, Captain. Just a grudge."),
                      ],
                      "fx": [("hull", 0.25), ("lose_cargo", 0.20), ("flag", "enemy")], "end": True},
                  # She was kept aboard: a reunion.
                  "kept": {
                      "beats": [
-                         (T, "Dead calm. The bell has stopped. And your turtle, Captain, is standing at the rail "
-                             "on her hind flippers like a wife at the dock."),
-                         (T, "A woman came up the anchor chain in pearls and very little patience.",
-                             "A woman came up the anchor chain in pearls and no patience at all."),
-                         (O, "There you are, you wicked girl. Weeks I have searched. And living in a washtub, "
-                             "with sailors."),
-                         (O, "I am Otohime, daughter of the Dragon King. You have kept my handmaid fed and "
-                             "unsold, Captain, which is better manners than most. What shall I do with you?"),
+                         (T, "Dead calm, and your turtle is at the rail like a wife at the "
+                             "dock. A woman is coming up the anchor chain in pearls and very "
+                             "little patience.",
+                             "Dead calm, and your turtle is at the rail like a wife at the "
+                             "dock. A woman is coming up the anchor chain in pearls and no "
+                             "patience at all."),
+                         (O, "There you are, you wicked girl. I am Otohime, daughter of the "
+                             "Dragon King. You kept my handmaid fed and unsold, Captain. What "
+                             "shall I do with you?"),
                      ],
                      "choices": [("give", "Hand her back with your compliments", "give"),
                                  ("ransom", "Name a price for her keep", "ransom")]},
                  "give": {
                      "beats": [
-                         (O, "No bill? No bargaining? I hardly know where to look. Come below, Captain. Let me "
-                             "feed you properly for once."),
-                         (T, "Three days in halls of coral. She is a generous hostess. I counted the courses "
-                             "through the porthole and lost my place twice."),
-                         (O, "Pearls, for your trouble. Don't be shy. Take a handful."),
+                         (O, "No bill? No bargaining? I hardly know where to look. Take a "
+                             "handful of pearls, Captain."),
                      ],
                      "fx": [("silver", 0.5), ("flag", "polite")], "goto": "box"},
                  "ransom": {
                      "beats": [
-                         (O, "You are charging me board for my own maid. I ought to drown you. Instead I find "
-                             "I am impressed."),
-                         (O, "Here. Pearls. Count them twice. I certainly shall."),
+                         (O, "You are charging me board for my own maid. I ought to drown "
+                             "you. Instead I am impressed. Here. Pearls."),
                      ],
                      "fx": [("silver", 0.9), ("flag", "greedy")], "goto": "box"},
                  # The box (every road but two leads here).
                  "box": {
                      "beats": [
-                         (O, "One thing more. This box is yours. It is lacquer, it is beautiful, and you are "
-                             "never to open it. I do mean never, Captain. I know how you people are with lids."),
-                         (T, "And up you came. Three days below, and above, the bell finished its swing as "
-                             "though you had only blinked. I keep the hours while you're away. It's my one talent."),
-                         (T, "The box sits in your cabin now. It hums a little at night. I'm sure that's nothing."),
+                         (O, "One thing more. This box is yours, and you are never to open "
+                             "it. I know how you people are with lids."),
+                         (T, "And up you came, and the bell finished its swing. The box hums "
+                             "a little at night. I'm sure that's nothing."),
                      ],
                      "fx": [("flag", "box")], "end": True},
              }},
             # ---- Chapter 3 ---------------------------------------------------------------------------
             {"id": "box", "title": "The Box", "where": None, "scene": "port",
              "start": [("box", "box"), (None, "grudge")],
+             "right": {"box": ("keep",), "grudge": ("offer",)},   # never open it; make the offering
              "nodes": {
                  "box": {
                      "beats": [
-                         (T, "Stop the bell, Captain. We need to talk about your box. It has been singing. The "
-                             "cook has resigned twice."),
-                         (T, "Word got about. A collector of curiosities in {port} has offered you a sum that "
-                             "made your bookkeeper sit down. Your crew, meanwhile, has a wager on what's inside."),
-                         (T, "Otohime said never. Ladies say a great many things. I only mention that I have "
-                             "seen what's in there, and I'm not telling."),
+                         (T, "Stop the bell, Captain. Your box has been singing, and a "
+                             "collector in {port} has offered a sum that made your bookkeeper "
+                             "sit down."),
+                         (T, "Otohime said never. Ladies say a great many things."),
                      ],
                      "choices": [("keep", "Keep it shut", "keep"),
                                  ("sell", "Sell it unopened to the collector", "sell"),
                                  ("open", "Open it", "open")]},
                  "keep": {
                      "beats": [
-                         (T, "You put it back on the shelf. The crew called you dull. I'd call you the first "
-                             "captain in a thousand years to do as a lady asked."),
-                         (O, "You kept my lid on. Do you know how rare that is, Captain? I had a wager with my "
-                             "father. He is furious."),
-                         (O, "The sea pays interest on trust. Hold out your hands. Both of them. You will "
-                             "need both."),
-                         (T, "And the box? She took it back. It was her heart in there, or her laundry. She "
-                             "wouldn't say, and she was blushing."),
+                         (O, "You kept my lid on. Do you know how rare that is, Captain? The "
+                             "sea pays interest on trust. Hold out both hands."),
+                         (T, "She took the box back. It was her heart in there, or her "
+                             "laundry. She was blushing."),
                      ],
                      "fx": [("silver", 1.6), ("standing", "home", 4), ("standing", "nagasaki", 4)], "end": True},
                  "sell": {
                      "beats": [
-                         (T, "You sold it. Very sensible. The collector paid in gold and carried it home like "
-                             "a bride."),
-                         (T, "She opened it that night. By morning she was three hundred years old and "
-                             "absolutely livid. People talk, darling. They are talking in Nagasaki."),
+                         (T, "You sold it. The collector opened it that night, and by morning "
+                             "she was three hundred years old and absolutely livid."),
                      ],
                      "fx": [("silver", 1.2), ("standing", "nagasaki", -8), ("standing", "here", -3),
                             ("news", "n.legend_palace_sold")], "end": True},
                  "open": {
                      "beats": [
-                         (T, "You lifted the lid. Of course you did. I'd have been disappointed otherwise."),
+                         (T, "You lifted the lid. Of course you did."),
                      ],
                      "roll": [(35, "open_bad"), (30, "open_good"), (35, "open_empty")],
                      "roll_if": {"cursed": [(60, "open_bad"), (15, "open_good"), (25, "open_empty")],
@@ -288,65 +271,55 @@ TALES = {
                                  "fond": [(20, "open_bad"), (45, "open_good"), (35, "open_empty")]}},
                  "open_bad": {
                      "beats": [
-                         (T, "Out it came, Captain: three days. The three days you spent below, with a few "
-                             "hundred years of interest."),
-                         (T, "It missed you, mercifully, and settled on your ships. Timbers greyed. Rope rotted. "
-                             "Your newest hull is now your oldest."),
-                         (O, "I did say never. I said it twice. I even made the face."),
+                         (T, "Out came your three days below, with a few hundred years of "
+                             "interest. Your newest hull is now your oldest."),
+                         (O, "I did say never. I even made the face."),
                      ],
                      "fx": [("hull", 0.35)], "end": True},
                  "open_good": {
                      "beats": [
-                         (T, "Inside, on a bed of sea-silk: one pearl the size of a plum, and a note in a very "
-                             "elegant hand."),
-                         (O, "I knew you would peek. I should be cross. Instead I find I packed for it. Don't "
-                             "make that face. Take the pearl."),
+                         (O, "I knew you would peek, Captain. I packed for it: one pearl, the "
+                             "size of a plum. Take it."),
                      ],
                      "fx": [("silver", 2.0)], "end": True},
                  "open_empty": {
                      "beats": [
-                         (T, "Empty. Lacquer, a smell of salt, and one slip of paper."),
-                         (O, "It says: made you look. I signed it with a kiss, Captain, and that is worth more "
-                             "than you will admit.",
-                             "It says: made you look. I signed it with a flourish, Captain, and that is worth "
-                             "more than you will admit."),
+                         (O, "Empty, Captain, but for my note. It says: made you look. I "
+                             "signed it with a kiss.",
+                             "Empty, Captain, but for my note. It says: made you look. I "
+                             "signed it with a flourish."),
                      ],
                      "fx": [("standing", "home", 1)], "end": True},
                  # No box: she is owed.
                  "grudge": {
                      "beats": [
-                         (T, "The bell has stopped, Captain. This one is a bill. The sea has been keeping it "
-                             "since the day you told a princess a turtle was only a turtle."),
-                         (T, "Every net you pass fouls your rudder. Every pilot crosses herself. A shrine keeper "
-                             "in {port} says a fat offering might settle the account. Might."),
+                         (T, "The bell has stopped, Captain, and this one is a bill. The sea "
+                             "holds a grudge, and a shrine keeper in {port} says a fat "
+                             "offering might settle it. Might."),
                      ],
                      "choices": [("offer", "Make the offering", "offer"),
                                  ("sail", "Sail on. A grudge is a grudge.", "sail")]},
                  "offer": {
                      "beats": [
-                         (T, "You paid the shrine and felt a fool. That night the water under your keel went "
-                             "smooth as a made bed.",
-                             "You paid the shrine and felt a fool. That night the water under your keel went "
-                             "smooth as glass."),
-                         (O, "Accepted. Late, graceless and in the wrong currency. But accepted. Do not sell any "
-                             "more of my staff."),
+                         (O, "Accepted. Late, graceless and in the wrong currency. Do not "
+                             "sell any more of my staff."),
                      ],
                      "fx": [("silver", -0.6), ("standing", "here", 2)], "end": True},
                  "sail": {
                      "beats": [
-                         (T, "You sailed. Brave. Or stubborn. On you they look much the same."),
+                         (T, "You sailed. Brave, or stubborn."),
                      ],
                      "roll": [(50, "sail_bad"), (50, "sail_ok")]},
                  "sail_bad": {
                      "beats": [
-                         (T, "She waited for deep water. Then the sea reached up, quite politely, and helped "
-                             "itself to your hold."),
+                         (T, "She waited for deep water. Then the sea reached up, quite "
+                             "politely, and helped itself to your hold."),
                      ],
                      "fx": [("lose_cargo", 0.30), ("hull", 0.15)], "end": True},
                  "sail_ok": {
                      "beats": [
-                         (T, "Nothing happened. Nothing kept happening. That's the worst of her, darling: she "
-                             "knows how to make a captain wait."),
+                         (T, "Nothing happened. Nothing kept happening. She does know how to "
+                             "make a captain wait."),
                      ],
                      "end": True},
              }},
@@ -394,7 +367,16 @@ def check():
                     bad.append("{}.{}: opens on flag {} that no earlier chapter sets".format(tid, ch["id"], flag))
             if ch["start"][-1][0] is not None:
                 bad.append("{}.{}: the last start must be the fallback (None)".format(tid, ch["id"]))
+            right = ch.get("right") or {}
+            for name, keys in right.items():
+                asked = [c[0] for c in (nodes.get(name) or {}).get("choices") or ()]
+                if not keys or any(k not in asked for k in keys):
+                    bad.append("{}.{}: the right answer at {} is not one of its choices".format(tid, ch["id"], name))
+                if asked and len(keys) >= len(asked):
+                    bad.append("{}.{}: every answer at {} is marked right".format(tid, ch["id"], name))
             for name, node in nodes.items():
+                if node.get("choices") and name not in right:
+                    bad.append("{}.{}.{}: a question with no right answer marked".format(tid, ch["id"], name))
                 ways = [k for k in ("choices", "goto", "roll", "end") if node.get(k)]
                 if len(ways) != 1:
                     bad.append("{}.{}.{}: needs exactly one of choices / goto / roll / end".format(tid, ch["id"], name))

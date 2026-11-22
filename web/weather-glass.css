@@ -1,0 +1,135 @@
+/* Crimson Ledger: the weather glass (weather-glass.js, 21 Nov 2026). Port > Newspaper, top of the right column.
+   A television forecast built from 1860s parts: an oxblood title strap, one column per sea, a lower-third band
+   for warnings, on a storm-blue chart with isobar rings. The card is its own container, so the columns tighten
+   and then fold two by two as it narrows. Where the Media Library has a weather picture of Tilly for a sea's
+   weather, she stands behind that column and the reading moves to the bottom left, clear of her face.
+   EVERY KIND OF WEATHER HAS ITS OWN COLOUR (blue calm, green fair, amber squalls, red typhoon): --wxw is the wash
+   and the column's edge, --wxc the bright tint of the glyph and the weather word. */
+.deck .pt .pt-wxboard { container-type: inline-size; position: relative; overflow: hidden; padding: 0; border-color: var(--edge-hi);
+  background:
+    repeating-radial-gradient(circle at 86% -35%, transparent 0 1.6rem, color-mix(in srgb, var(--deck-brass) 13%, transparent) 1.6rem calc(1.6rem + 1px)),
+    linear-gradient(180deg, color-mix(in srgb, var(--deck-storm) 72%, var(--deck-night)), color-mix(in srgb, var(--deck-storm) 30%, var(--deck-night)));
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--deck-night) 55%, transparent), inset 0 0 0 4px var(--edge), 0 12px 26px -18px #000; }
+.deck .pt .pt-wxboard.alert { border-color: var(--blood-hi); }
+.wxb-strap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .15rem .8rem; padding: .55rem .9rem .45rem;
+  background: linear-gradient(90deg, var(--deck-oxblood), color-mix(in srgb, var(--deck-oxblood) 60%, transparent) 58%, transparent);
+  border-bottom: 1px solid var(--edge-hi); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.deck .pt .pt-wxboard .wxb-strap h2 { margin: 0; padding: 0; border: 0; color: var(--deck-ivory); text-shadow: 0 1px 0 rgba(0, 0, 0, .65); }
+.wxb-strap > span { font: 400 .72rem/1.2 var(--special); letter-spacing: .1em; text-transform: uppercase; color: var(--brass-hi); white-space: nowrap; }
+.wxb-seas { list-style: none; margin: 0; padding: .6rem .55rem; display: grid; grid-template-columns: repeat(var(--wxb-n, 4), minmax(0, 1fr)); gap: .4rem; }
+
+/* ---- the four colours. Fair is the base; calm, squalls and typhoon override it. The wash is mixed from the
+   deck's own palette (Admin > Look & Style), so a restyled deck restyles the forecast. */
+.wxb-sea, .wxb-live { --wxw: var(--deck-jade); --wxc: var(--jade-hi); }
+.wxb-sea.wx0, .wxb-live.wx0 { --wxw: color-mix(in srgb, var(--deck-storm) 62%, #2a86d1); --wxc: color-mix(in srgb, var(--deck-storm) 16%, #d6eeff); }
+.wxb-sea.wx2, .wxb-live.wx2 { --wxw: color-mix(in srgb, var(--deck-brass) 46%, #b4560a); --wxc: color-mix(in srgb, var(--deck-brass) 38%, #ffe9b0); }
+.wxb-sea.wx3, .wxb-live.wx3 { --wxw: var(--deck-oxblood); --wxc: color-mix(in srgb, var(--blood-hi) 45%, #fff4ee); }
+
+/* ---- one sea, the plain look (no picture): everything centred under a big glyph */
+.wxb-sea { display: flex; flex-direction: column; align-items: center; gap: .14rem; min-width: 0; padding: .45rem .3rem .55rem; text-align: center;
+  border: 2px solid color-mix(in srgb, var(--wxw) 58%, var(--wxc)); border-radius: 7px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--wxw) 52%, transparent), color-mix(in srgb, var(--wxw) 24%, var(--deck-night))); }
+/* the house's own seas: a brass ring outside the weather-coloured edge, and a glow; no label */
+.wxb-sea.here, .wxb-sea.dest { box-shadow: 0 0 0 2px var(--brass-hi), 0 0 18px -2px var(--deck-brass); }
+.wxb-sea h3 { display: flex; align-items: center; justify-content: center; min-height: 2.1em; margin: 0; text-wrap: balance;
+  font: 400 clamp(.72rem, 3.1cqi, .86rem)/1.03 var(--special); letter-spacing: .04em; text-transform: uppercase; color: var(--deck-ivory); }
+.wxb-read, .wxb-now { display: flex; flex-direction: column; align-items: center; gap: .14rem; min-width: 0; }
+.wxb-glyph { flex: none; width: clamp(2.9rem, 16cqi, 4.4rem); height: auto; aspect-ratio: 1; margin: .1rem 0; overflow: visible;
+  fill: none; stroke: var(--wxc); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--wxc) 45%, transparent)); }
+.wxb-glyph .wxg-body { fill: color-mix(in srgb, var(--wxc) 18%, transparent); }
+.wxb-now > strong { font: 400 1.14rem/1.1 var(--serif); color: var(--wxc); }
+.wxb-force { display: flex; align-items: baseline; justify-content: center; gap: .3rem; margin: .12rem 0 .05rem; }
+.wxb-force b { white-space: nowrap; font: 700 clamp(1.45rem, 7.4cqi, 2.05rem)/1 var(--sans); font-variant-numeric: lining-nums; color: var(--deck-ivory); }
+.wxb-force small { font: 400 .62rem/1 var(--special); letter-spacing: .1em; text-transform: uppercase; color: var(--brass-hi); }
+.wxb-wind { font: 600 .8rem/1.2 var(--sans); color: color-mix(in srgb, var(--deck-ivory) 88%, transparent); }
+.wxb-swell { font: italic .78rem/1.2 var(--sans); color: var(--muted); }
+
+/* ---- one sea with Tilly behind it. Her face is in the upper middle of her picture, so that part is hers: the
+   name is across the top, and the reading is stacked bottom left (glyph, weather, force, wind, sea) over a wash
+   of the weather's colour. The glyph and the word are big and may cover her below the shoulders. The glyph sits
+   above the word, not beside it: "Typhoon" beside a glyph is wider than a column. Every line of the reading is
+   sized to the column and never wraps. */
+.wxb-sea.has-pic { position: relative; overflow: hidden; align-items: stretch; gap: 0; padding: 0; min-height: clamp(16.5rem, 62cqi, 19rem);
+  text-align: left; cursor: pointer; background: var(--deck-night); }
+.wxb-shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%;
+  filter: saturate(.96) contrast(1.04); -webkit-user-drag: none; user-select: none;
+  --wxz: 1.2; transform: scale(var(--wxz)); transform-origin: 50% 0; }
+.wxb-shot.flip { transform: scale(calc(var(--wxz) * -1), var(--wxz)); }
+.wxb-sea.has-pic::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(10, 7, 5, .9) 0, rgba(10, 7, 5, .6) 13%, transparent 27%, transparent 40%,
+    color-mix(in srgb, var(--wxw) 60%, transparent) 55%, color-mix(in srgb, var(--wxw) 86%, #0a0705) 74%, color-mix(in srgb, var(--wxw) 58%, #0a0705) 100%);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, .5); }
+.wxb-sea.has-pic > h3, .wxb-sea.has-pic > .wxb-read { position: relative; z-index: 2; }
+.wxb-sea.has-pic > h3 { justify-content: flex-start; min-height: 0; padding: .38rem .4rem 0; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
+.wxb-sea.has-pic > .wxb-read { align-items: flex-start; gap: .05rem; margin-top: auto; padding: 0 .4rem .45rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .95), 0 0 8px rgba(0, 0, 0, .8); }
+.wxb-sea.has-pic .wxb-now { align-items: flex-start; gap: 0; }
+.wxb-sea.has-pic .wxb-glyph { width: clamp(2.3rem, 10.6cqi, 3.1rem); margin: 0 0 .08rem -.12rem; stroke-width: 2.3;
+  filter: drop-shadow(0 1px 1px #000) drop-shadow(0 0 5px rgba(0, 0, 0, .85)); }
+.wxb-sea.has-pic .wxb-glyph .wxg-body { fill: color-mix(in srgb, var(--wxc) 30%, transparent); }
+.wxb-sea.has-pic .wxb-now > strong { font-size: clamp(1.08rem, 4.9cqi, 1.36rem); white-space: nowrap; }
+.wxb-sea.has-pic .wxb-force { flex-direction: row; align-items: baseline; justify-content: flex-start; gap: .3rem; margin: .1rem 0 .02rem; }
+.wxb-sea.has-pic .wxb-force b { font-size: clamp(1.2rem, 5.6cqi, 1.6rem); }
+.wxb-sea.has-pic .wxb-force small { font-size: clamp(.5rem, 2.2cqi, .6rem); color: var(--deck-ivory); }
+.wxb-sea.has-pic .wxb-wind { white-space: nowrap; font-size: clamp(.64rem, 3.05cqi, .8rem); color: var(--deck-ivory); }
+.wxb-sea.has-pic .wxb-swell { white-space: nowrap; font-size: clamp(.6rem, 2.85cqi, .76rem); color: color-mix(in srgb, var(--deck-ivory) 84%, transparent); }
+.wxb-sea.has-pic:hover .wxb-shot, .wxb-sea.has-pic:focus-visible .wxb-shot { filter: saturate(1.06) contrast(1.06) brightness(1.08); }
+.wxb-sea.has-pic:focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 3px; }
+
+/* a tight board (a two-column pane on a small screen): a plain column stacks the force under its figure; then the
+   seas fold two by two */
+@container (max-width: 27rem) {
+  .wxb-seas { gap: .3rem; padding-inline: .4rem; }
+  .wxb-sea:not(.has-pic) h3 { min-height: 3.2em; }
+  .wxb-sea:not(.has-pic) .wxb-force { flex-direction: column; align-items: center; gap: .12rem; }
+}
+@container (max-width: 22rem) {
+  .wxb-seas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; }
+  .wxb-sea:not(.has-pic) h3 { min-height: 0; }
+  .wxb-sea:not(.has-pic) .wxb-force { flex-direction: row; align-items: baseline; gap: .3rem; }
+}
+
+/* ---- the lower third: a brass name plate and the advice beside it; the typhoon warning is one oxblood band */
+.wxb-band { display: flex; align-items: stretch; margin: 0 .55rem .5rem; overflow: hidden; border: 1px solid var(--edge-hi); border-radius: 4px;
+  font: 600 .88rem/1.3 var(--sans); color: var(--deck-ivory); background: color-mix(in srgb, var(--deck-night) 80%, transparent); }
+.wxb-band > b { flex: none; display: flex; align-items: center; max-width: 42%; padding: .3rem .6rem; font: 400 .68rem/1.15 var(--special); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--deck-night); background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass)); }
+.wxb-band.wx3 > b { color: var(--deck-ivory); background: var(--deck-oxblood); }
+.wxb-band > span { min-width: 0; padding: .35rem .65rem; }
+.wxb-band.alarm { --wxc: var(--deck-ivory); align-items: center; gap: .55rem; padding: .4rem .65rem; border-color: var(--blood-hi); background: var(--deck-oxblood);
+  font-weight: 700; animation: wxb-pulse 2.4s ease-in-out infinite; }
+.wxb-band.alarm > span { padding: 0; }
+.wxb-band.alarm .wxb-glyph { width: 1.6rem; margin: 0; stroke-width: 2.6; filter: none; }
+.wxb-foot { margin: 0; padding: 0 .9rem .55rem; text-align: right; font: italic .76rem/1.3 var(--sans); color: var(--muted); }
+
+/* ---- her picture full size (tap a column): the forecast as a lower third. Hangs off <body>. */
+.wxb-live { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 2.5vmin; cursor: zoom-out;
+  background: rgba(10, 7, 5, .86); animation: wxb-in .22s ease-out; }
+.wxb-live figure { position: relative; margin: 0; height: min(95vh, 95dvh, 126vw); aspect-ratio: 3 / 4; max-width: 95vw; overflow: hidden; border-radius: 8px;
+  border: 1px solid var(--edge-hi, #c9a34e); background: var(--deck-night); box-shadow: 0 0 0 4px rgba(0, 0, 0, .5), 0 30px 80px -20px #000; }
+.wxb-live img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.wxb-third { position: absolute; left: 0; right: 0; bottom: 6%; display: flex; align-items: stretch; margin: 0 4%; overflow: hidden; border-radius: 5px;
+  border: 1px solid var(--edge-hi, #c9a34e); background: rgba(16, 11, 8, .88); box-shadow: 0 10px 30px -10px #000; color: var(--deck-ivory); }
+.wxb-third > b { flex: none; display: flex; align-items: center; max-width: 38%; padding: .6rem .9rem; font: 400 clamp(.8rem, 1.9vmin, 1.05rem)/1.15 var(--special);
+  letter-spacing: .09em; text-transform: uppercase; color: var(--deck-night); background: linear-gradient(180deg, var(--brass-hi), var(--deck-brass)); }
+.wxb-live .wxb-third { border-color: color-mix(in srgb, var(--wxw) 58%, var(--wxc)); }
+.wxb-live .wxb-third > b { color: var(--deck-ivory); background: var(--wxw); text-shadow: 0 1px 1px rgba(0, 0, 0, .6); }
+.wxb-third > span { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .7rem; min-width: 0; padding: .5rem .9rem; }
+.wxb-third .wxb-glyph { width: clamp(2rem, 5.5vmin, 3rem); margin: 0; }
+.wxb-third strong { font: 400 clamp(1.3rem, 3.6vmin, 2rem)/1.1 var(--serif); color: var(--wxc); }
+.wxb-third i { font: 700 clamp(1.05rem, 2.8vmin, 1.5rem)/1.1 var(--sans); font-style: normal; font-variant-numeric: lining-nums; }
+.wxb-third em { flex-basis: 100%; font: italic clamp(.86rem, 2vmin, 1.05rem)/1.25 var(--sans); color: var(--muted); }
+
+/* ---- moving glyphs: sun rays turn, a typhoon spins widdershins, rain falls, a calm sea drifts. On the board they
+   move only where it matters: the house's own seas, and any sea at squalls or worse. */
+.wxb-glyph .wxg-turn, .wxb-glyph .wxg-spin { transform-box: view-box; transform-origin: 50% 50%; }
+:is(.wxb-sea:is(.here, .dest, .wx2, .wx3), .wxb-third) .wxg-turn { animation: wxg-turn 50s linear infinite; }
+:is(.wxb-sea:is(.here, .dest, .wx2, .wx3), .wxb-third, .wxb-band) .wxg-spin { animation: wxg-turn 7s linear infinite reverse; }
+:is(.wxb-sea:is(.here, .dest, .wx2, .wx3), .wxb-third) .wxg-rain { animation: wxg-rain 1.5s linear infinite; }
+:is(.wxb-sea:is(.here, .dest, .wx2, .wx3), .wxb-third) .wxg-drift { animation: wxg-drift 5s ease-in-out infinite alternate; }
+@keyframes wxg-turn { to { transform: rotate(360deg); } }
+@keyframes wxg-rain { 0% { transform: translate(1.2px, -2.8px); opacity: 0; } 25%, 70% { opacity: 1; } 100% { transform: translate(-1.2px, 2.8px); opacity: 0; } }
+@keyframes wxg-drift { from { transform: translateX(-1.6px); } to { transform: translateX(1.6px); } }
+@keyframes wxb-pulse { 50% { box-shadow: 0 0 14px color-mix(in srgb, var(--deck-oxblood) 80%, transparent); } }
+@keyframes wxb-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wxb-band.alarm, .wxb-live, .wxb-glyph * { animation: none !important; } }

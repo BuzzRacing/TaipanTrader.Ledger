@@ -28,6 +28,7 @@ import config as _config
 import strings as _strings
 
 import counter
+import honour
 import jail
 import rot
 import legend
@@ -78,7 +79,7 @@ _NEWS_KEYS = {}
 NEWS_HEAT = {
     "n.crash": 3, "n.boom": 3, "n.wrecked": 3, "n.game_over": 3,
     "n.caught": 2, "n.customs_caught": 2, "n.slip_caught": 2, "n.wh_robbed": 2, "n.ban": 2,
-    "n.fight_plundered": 2, "n.fight_won": 2, "n.fight_retreated": 2,
+    "n.fight_plundered": 2, "n.fight_won": 2, "n.fight_retreated": 2, "n.honour_flag": 3,
     "n.fight_broke_off": 1, "n.fight_away": 1, "n.fight_paid": 1,
     "n.scarce": 1, "n.glut": 1, "n.ban_lifted": 1,
     "n.opening": 1, "n.start_one": 1, "n.start_many": 1,
@@ -1535,10 +1536,19 @@ class Game:
                   "depots": {k: dict((d or {}).get("goods") or {}) for k, d in (p.get("depots") or {}).items()},
                   "shares": {},
                   "estate": int(p.get("estate", 0) or 0)}
-        # Port shares go back to each port's pool; the Patron is worked out again.
+        # Port shares go back to each port's pool; the Patron is worked out again. The honour shares
+        # (honour.py: Li Yue's Flag, a Legend's share) are never seized (owner's decision, 21 Nov 2026):
+        # one placed share stays where it is for each honour the house holds.
+        safe = self._safe_shares(p)
         for port, held in list((s.get("shares") or {}).items()):
             if isinstance(held, dict) and held.get(p["id"]):
-                seized["shares"][port] = int(held.pop(p["id"]))
+                have, keep = int(held[p["id"]]), int(safe.get(port, 0))
+                if have > keep:
+                    seized["shares"][port] = have - keep
+                if keep > 0:
+                    held[p["id"]] = keep
+                else:
+                    held.pop(p["id"])
                 self.patron_of(port)
         # The moneylender keeps them: shares seized are lost for good, not handed back to place again.
         p["share_earned"] = max(0, self.shares_earned(p) - sum(seized["shares"].values()))
@@ -1590,6 +1600,10 @@ class Game:
         self._book(p, "bankrupt", stake + hid_cash + self._cost_of(p, hid) - worth0)
         p["log"].append(tx("l.bankrupt", home=PORTS[home]["name"], stake=money(stake),
                            ship=kind["name"].lower()))
+        if safe:
+            kept_n = sum(safe.values())
+            p["log"].append(tx("l.honour_kept", n=kept_n, s="" if kept_n == 1 else "s",
+                               ports=", ".join(PORTS[k]["name"] for k in PORTS if k in safe)))
         if hid_cash or hid:
             bits = ([tx("w.hid_silver", cash=money(hid_cash))] if hid_cash else []) + ([self._goods_text(hid)] if hid else [])
             p["log"].append(tx("l.hid_bankrupt", what=" and ".join(bits)))
@@ -3640,7 +3654,8 @@ class Game:
 
     # Captain's share allowance (19 Nov 2026, Anthony's playtest: buying out a port was too easy).
     # A house no longer buys shares with silver. It earns them: one free share for each rank climbed
-    # above Clerk (shares_per_rank), and later from special awards (award_shares). It holds at most
+    # above Clerk (shares_per_rank), and the last two from the honours in honour.py (Li Yue's Flag and a
+    # Legend's share, 21 Nov 2026; never seized at bankruptcy). It holds at most
     # shares_per_house in all, and places each one in any port it is in: all in one port, or spread
     # around. p["share_earned"] is the count earned (capped); the shares not yet placed are
     # earned - held. Taking one back from a port frees it to place again. rules.estates.shares_buy
@@ -3664,9 +3679,10 @@ class Game:
         """Earned shares not yet placed in a port."""
         return max(0, self.shares_earned(p) - self.shares_total(p))
 
-    def award_shares(self, p, n=1, why="award", **info):
-        """Give a house n free shares to place (a promotion now; special awards later). Kept within
-        shares_per_house. Returns how many were given."""
+    def award_shares(self, p, n=1, why="award", log="l.share_earned", **info):
+        """Give a house n free shares to place: a promotion, or one of the two honours (honour.py: Li Yue's
+        Flag and a Legend's share, each with a log line of its own). Kept within shares_per_house. Returns
+        how many were given."""
         if not R["estates"].get("shares_enabled", True):
             return 0
         have = self.shares_earned(p)
@@ -3674,12 +3690,25 @@ class Game:
         if n <= 0:
             return 0
         p["share_earned"] = have + n
-        p["log"].append(tx("l.share_earned", n=n, s="" if n == 1 else "s", free=self.shares_free(p),
+        p["log"].append(tx(log, n=n, s="" if n == 1 else "s", free=self.shares_free(p),
                            earned=p["share_earned"], cap=self.share_cap()))
         self._ev("finance", "shares_earned", "{} earned {} port share(s) ({}): {} of {} earned".format(
             p["name"], n, why, p["share_earned"], self.share_cap()), p, n=n, why=why,
                  earned=p["share_earned"], **info)
         return n
+
+    def _safe_shares(self, p):
+        """{port: n}: the placed shares the moneylender may not seize, one for each honour the house holds
+        (honour.kept), left in the ports where it holds the most so the best tax cut survives."""
+        left = {port: n for port, n in self._mine_shares(p).items()}
+        safe = {}
+        for _ in range(honour.kept(p)):
+            if not any(left.values()):
+                break
+            port = max((k for k in PORTS if left.get(k)), key=lambda k: left[k])
+            left[port] -= 1
+            safe[port] = safe.get(port, 0) + 1
+        return safe
 
     def _fit_shares(self, p):
         """Older saves: set the earned count from the rank, and hand back (at what was paid) any
@@ -6243,6 +6272,8 @@ class Game:
             if outcome == "broke_off" else 0.0
         if gain:
             p["fame"] = round(float(p.get("fame", 0) or 0) + gain, 3)
+        if outcome == "won" and b.get("kind") == "lord":
+            honour.on_lord_win(self, p, b)              # Li Yue's Flag: her whole war fleet sunk (honour.py)
         taken = b["hull0"] - sum(sh["hull"] for sh in p["ships"])
         if taken > 0 and p["ships"]:
             p["log"].append(tx("l.damage", points=taken))
@@ -6641,6 +6672,7 @@ class Game:
                 "jail": jail.view(self, p),
                 "storm": storm.view(self, p),
                 "legend": legend.view(self, p), "legends": legend.book(self, p),   # the Legend on screen; those met
+                "honour": honour.view(self, p),      # the story of a share just earned (honour.py), or None
                 "counter": counter.view(self, p),    # Under the Counter: the tax lady's paid tips
             }
         return out
