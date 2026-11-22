@@ -95,7 +95,7 @@ body.in-legend #app { visibility: hidden; }
 .lg-card .sf-rheading h2 { font-size: clamp(1.9rem, 4.4vw, 3.4rem); }
 .lg-card .sf-rcargo li { grid-template-columns: minmax(0, 1fr); }
 .lg-card footer button:disabled { opacity: .45; cursor: default; transform: none; }
-.lg-rwho.nopic > img { display: none; }
+.lg-rwho.nopic > img, .lg-rwho.nopic > video { display: none; }
 
 /* wide screens: the card keeps to the right third so the picture and the teller show; the shade is lighter on the left */
 @media (orientation: landscape) {

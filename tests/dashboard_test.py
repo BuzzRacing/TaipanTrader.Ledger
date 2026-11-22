@@ -22,7 +22,7 @@ import journal  # noqa: E402
 import sim_test  # noqa: E402  (the bots)
 from engine import Game  # noqa: E402
 
-PRIVATE_KEYS = {"cash", "bank", "debt", "cargo", "prices", "base", "deals", "lane_profit", "booms", "ports", "msg"}
+PRIVATE_KEYS = {"cash", "bank", "debt", "cargo", "prices", "base", "deals", "lane_profit", "booms", "market_effects", "ports", "msg"}
 
 
 def walk_keys(x, found):
@@ -69,6 +69,8 @@ def play(names, years, seed, months=None):
 def main():
     tmp = tempfile.mkdtemp(prefix="dash_test_")
     journal.DIR = os.path.join(tmp, "journal")
+    journal.GAMES = os.path.join(journal.DIR, "games")
+    journal.SERVER = os.path.join(journal.DIR, "server")
     os.makedirs(journal.DIR, exist_ok=True)
     try:
         # ---- rivals at the table: public
@@ -97,9 +99,18 @@ def main():
         assert last["level"] == "open" and not last["locked"]
         assert last["ghost"] and last["ghost"]["kind"] == "par", last["ghost"]
         assert last["ghost"]["curve"][0] > 0 and len(last["ghost"]["curve"]) >= 12
-        for k in ("ports", "booms", "deals", "lane_profit"):
+        for k in ("ports", "booms", "deals", "lane_profit", "market_effects"):
             assert k in last, k
         assert any(row["prices"] for row in last["ports"].values())
+        port, good = next(iter(engine.PORTS)), next(iter(engine.GOODS))
+        game.s["windfalls"] = [
+            {"port": port, "good": good, "kind": "boom", "mult": 3, "turns": 2},
+            {"port": port, "good": good, "kind": "crash", "mult": .4, "turns": 0},
+        ]
+        game.s["shocks"] = [{"port": port, "good": good, "mult": .7, "turns": 1}]
+        effects = dashboard_feed.view(game)["market_effects"]
+        assert len(effects) == 2 and [e["turns"] for e in effects] == [2, 1]
+        assert effects[0]["sort"] == "boom" and effects[1]["sort"] == "crash"
         assert last["tape"], "the tape has events"
         assert all(e["type"] in dashboard_feed.TAPE_PUBLIC or e["type"] == "deal" for e in last["tape"])
         journal.close_game("test over")

@@ -6,6 +6,7 @@ Run from the project folder:  python tests/config_test.py
 import copy
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -66,7 +67,9 @@ if __name__ == "__main__":
         c["content"]["rating"] = rating
         engine.configure(c)
         for key in strings.EN:
-            assert "{" not in engine.tx(key, **{k: 1 for k in (
+            # every {name} the wording uses gets a value, so new wording needs no edit here
+            named = {k: 1 for k in re.findall(r"\{(\w+)\}", engine.TEXT.get(key, ""))}
+            assert "{" not in engine.tx(key, **{**named, **{k: 1 for k in (
                 "n name firm list years free cost cash qty good what port ship price months amount rate value "
                 "lost origin dest weather enemy orders rounds s booty points debt worth good_lower fine gain "
                 "url date margin rep buy sell used cap balance room hold_used hold type hull max guns slots "
@@ -74,7 +77,7 @@ if __name__ == "__main__":
                 "total paid owed declared profit tax caught chance level from to after now cargo line goods value base "
                 "age distance gap net seas of right interest hits shots left round secs suggest junk old hold mark most tier Contraband bank contraband home lender pirate where winner "
                 "ships avg x posted sale have short odds saved lo hi "
-                "cut mine rob stage held kind reward due goal target").split()}), key
+                "cut mine rob stage held kind reward due goal target stake").split()}}), key
     # 3b. random starts: every house in a different port, a different draw each game,
     #     and "home" puts everyone back in the home port
     assert config.validate({"rules": {"start": {"where": "the moon"}}})[1]
@@ -113,9 +116,14 @@ if __name__ == "__main__":
             assert q["rep"][home] == engine.R["start"]["home_rep"]
             game.act(pid, {"type": "loan", "op": "repay", "amount": 100}, present=ids)
             game.act(pid, {"type": "bank", "op": "deposit", "amount": 100}, present=ids)
-            away = next(k for k in engine.PORTS if k != home)
+            # A port with no moneylender's office (a ticked office takes repayments by merchant: tests/remit_test.py).
+            away = next(k for k in engine.PORTS if k != home and not engine.PORTS[k].get("lender"))
             q["port"] = away
-            for action in ({"type": "loan", "op": "repay", "amount": 100}, {"type": "bank", "op": "deposit", "amount": 50}):
+            # Madam Wu lends at home only; a bank works wherever the port has one (and names home where it doesn't).
+            away_actions = [{"type": "loan", "op": "repay", "amount": 100}]
+            if not engine.port_has(q, away, "bank"):
+                away_actions.append({"type": "bank", "op": "deposit", "amount": 50})
+            for action in away_actions:
                 try:
                     game.act(pid, action, present=ids)
                     raise AssertionError("home service away from home")

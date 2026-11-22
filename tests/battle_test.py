@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 import engine
+import jail
 from engine import Game, GameError, GOODS, PORTS, R
 
 
@@ -31,6 +32,7 @@ def setup(level="normal", **rules):
     cfg["rules"]["battle"].update({"limit_min": 6, "limit_max": 6, "limit_hint": False})   # six rounds, no hint, unless a test says so
     cfg["rules"]["contraband"].update({"seize_chance": 0.0, "seize_banned": 0.0})
     cfg["rules"]["fleet"]["upkeep_enabled"] = False   # these tests count silver to the dollar (wages: review3_test)
+    cfg["rules"]["fleet"].update({"gun_hold": 0, "cannon_hold": 0})   # they mount far more guns than a junk has room for (weapons taking hold space: weapon_hold_test)
     cfg["rules"]["hide"]["enabled"] = False           # and cargo to the unit (the crew hiding a share: hide_test)
     for path, value in rules.items():
         group, key = path.split("__")
@@ -416,6 +418,18 @@ def test_what_the_captain_is_shown():
                 assert not any(ch.isdigit() for ch in line) and "{" not in line, "spoken lines carry no amounts: " + k
 
 
+def _in_a_cell(g, pid, rng, order):
+    """Answer a desk fine's plea; a jailed captain has one button, "Serve the month". True while in a cell."""
+    p = g.s["players"][pid]
+    if jail.pending(p):
+        g.act(pid, {"type": "plea", "months": rng.choice([0, 1, 3])}, present=order)
+    if jail.jailed(p):
+        if not p["ready"]:
+            g.act(pid, {"type": "jail_serve"}, present=order)
+        return True
+    return False
+
+
 def test_bot_games_keep_the_books():
     """Whole games with captains fighting by hand: the silver in hand always matches the books."""
     engine.configure(config.defaults())
@@ -431,11 +445,15 @@ def test_bot_games_keep_the_books():
         while g.s["phase"] == "port":
             for pid in order:
                 p = g.s["players"][pid]
+                if _in_a_cell(g, pid, r, order):
+                    continue
                 cu = p.get("customs")
                 if cu and cu.get("status") == "declare":
                     g.act(pid, {"type": "customs_declare", "values": {ln["good"]: ln["value"] for ln in cu["lines"]}}, present=order)
                 if p.get("customs"):
                     g.act(pid, {"type": "customs_done"}, present=order)
+                if _in_a_cell(g, pid, r, order):          # a desk fine can end in a plea and a cell
+                    continue
                 for _ in range(3):
                     try:
                         g.act(pid, {"type": r.choice(["buy", "sell"]), "good": r.choice(list(GOODS)), "qty": r.randint(1, 25)}, present=order)
@@ -457,7 +475,9 @@ def test_bot_games_keep_the_books():
                 for f in p.get("fights") or []:
                     fights += 1
                     kinds.add(f["outcome"])
-                    assert f["rounds"] <= R["pirates"]["rounds"] and f["sunk"] <= f["n"]
+                    # each fight rolls its own hidden limit (rules.battle.limit_min to limit_max); pirates.rounds is only the fallback
+                    most = max(int(R["battle"]["limit_min"]), int(R["battle"]["limit_max"]), int(R["pirates"]["rounds"]))
+                    assert f["rounds"] <= most and f["sunk"] <= f["n"], (f["rounds"], most, f["sunk"], f["n"])
                 assert g.used(p) <= g.capacity(p) and all(q > 0 for q in p["cargo"].values())
             g = Game(state=json.loads(json.dumps(g.s)), seed=seed * 100 + g.s["turn"])
         assert fights > 3, fights

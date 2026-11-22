@@ -44,7 +44,9 @@ def play(seed, years=2):
         bots[game.pid_for_token(game.join(name, "", via={"address": "test"}))] = bot
     order = game.s["order"]
     host = order[0]
-    game.act(host, {"type": "settings", "years": years, "token": "SECRET-SEAT-TOKEN"}, present=order)
+    game.act(host, {"type": "settings", "years": engine.R["game"]["default_years"], "token": "SECRET-SEAT-TOKEN"}, present=order)
+    # The lobby offers 5, 10, 20 and 50 years; the Admin can still set any length from 1 to 100.
+    game.admin("years", {"op": "years", "years": years})
     game.act(host, {"type": "start"}, present=order)
     while game.s["phase"] == "port":
         turn = game.s["turn"]

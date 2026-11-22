@@ -209,7 +209,11 @@ const Chart = (() => {
         const x = +rect.getAttribute("x"), y = +rect.getAttribute("y");
         const width = +rect.getAttribute("width"), height = +rect.getAttribute("height");
         let target = Math.max(4, Math.min(596 - height, y));
-        for (const shift of [0, -height - 6, height + 6, -2 * (height + 6), 2 * (height + 6)]) {
+        const shifts = [0];
+        for (let step = 1; step <= Math.ceil(600 / (height + 6)); step++) {
+          shifts.push(-step * (height + 6), step * (height + 6));
+        }
+        for (const shift of shifts) {
           const candidate = Math.max(4, Math.min(596 - height, y + shift));
           if (!placed.some(b => x < b.x + b.width + 4 && x + width + 4 > b.x && candidate < b.y + b.height + 4 && candidate + height + 4 > b.y)) {
             target = candidate;

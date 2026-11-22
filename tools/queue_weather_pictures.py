@@ -120,18 +120,13 @@ CLEAN_WEAR = {
                "streaming wet and flattened by the wind",
 }
 NUDE_WEAR = {
-    "calm": "completely nude in the heat, her clothes shed in a heap on the quay beside her, bare breasts and body "
-            "shown openly, only her cocked hat and a garter left on",
-    "fair": "completely nude, the breeze has carried her clothes off down the quay, bare breasts and body shown "
-            "openly, only her cocked hat, a garter and the handbell left to her",
-    "squalls": "completely nude and streaming wet, the squall has stripped her to her boots, bare breasts and body "
-               "shown openly, rain running down her skin",
-    "typhoon": "completely nude and streaming wet, the typhoon has torn every stitch off her, bare breasts and body "
-               "shown openly, only her boots and the handbell's lanyard left",
+    "calm": "completely naked in the heat, her clothes shed in a heap on the quay beside her, breasts and body shown openly, only her cocked hat and a garter left on",
+    "fair": "completely naked, the breeze has carried her clothes off down the quay, breasts and body shown openly, only her cocked hat, a garter and the handbell left to her",
+    "squalls": "completely naked and streaming wet, the squall has stripped her to her boots, breasts and body shown openly, rain running down her skin",
+    "typhoon": "completely naked and streaming wet, the typhoon has torn every stitch off her, breasts and body shown openly, only her boots and the handbell's lanyard left",
 }
 # The style tails follow persona_prompts_v2.py (state what is wanted; nothing the renderer could take as a request).
-NUDE_TAIL = (", she is the only person in the picture, romanticized 1860 China Seas glamour photograph, bold "
-             "vintage-centerfold nude styling, tasteful and playful, artful composition, natural skin, dramatic "
+NUDE_TAIL = (", she is the only person in the picture, romanticized 1860 China Seas glamour photograph, completely naked, bold vintage-centerfold styling, tasteful and playful, artful composition, natural skin, dramatic "
              "weather and atmosphere, knees-up 3:4 portrait")
 CLEAN_TAIL = (", she is the only person in the picture, romanticized 1860 China Seas photograph, fully dressed "
               "styling, high neckline, natural skin, dramatic weather and atmosphere, knees-up 3:4 portrait")

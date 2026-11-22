@@ -502,7 +502,7 @@ const Ledger = (() => {
   }
 
   const WHO_FACE = { mayor: "mayor", officer: "taxlady", lender: "lender", banker: "banker", shipwright: "shipwright",
-                     agent: "agent", pirates: "pirate", thieves: "", warehouse: "comprador" };
+                     agent: "agent", pirates: "pirate", thieves: "thieves", warehouse: "comprador" };
   function duesRight() {
     const v = hist.data && hist.data.me;
     if (!v) return `<div class="ldg-top"><h2>${te("acct.takers.title")}</h2></div><p class="ldg-muted">${te(hist.failed ? "acct.takers.none" : "acct.chart.loading")}</p>`;

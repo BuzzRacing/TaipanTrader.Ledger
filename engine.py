@@ -31,6 +31,7 @@ import counter
 import honour
 import jail
 import rot
+import robbery
 import legend
 import storm
 import trade_text
@@ -96,8 +97,9 @@ def home_of(p):
 
 
 def port_has(p, port, what):
-    """Is there a bank ("bank"), a warehouse ("warehouse") or a shipyard ("shipyard") for this house in
-    port? Its own home port always has all three; other ports only where Admin > Ports ticks the box."""
+    """Is there a bank ("bank"), a warehouse ("warehouse"), a shipyard ("shipyard") or a moneylender's office
+    ("lender") for this house in port? Its own home port always has all four; other ports only where Admin >
+    Ports ticks the box. An away lender's office only takes repayments (see _remit)."""
     return port in PORTS and (port == home_of(p) or bool(PORTS[port].get(what)))
 
 
@@ -240,6 +242,21 @@ def date_label(turn):
 def distance(a, b):
     pa, pb = PORTS[a], PORTS[b]
     return math.hypot(pa["x"] - pb["x"], pa["y"] - pb["y"])
+
+
+def bank_tier_list(years=None):
+    """Game 6 review (22 Nov 2026): the bank pays its full rate on the first slice of a deposit, then less.
+    Returns [(upper limit or None, monthly rate), ...]. The limits are set for a game of rules.bank.tier_years
+    years and scale with the game's length, like the late ranks. With tiers off it is one flat rate."""
+    b = R["bank"]
+    if not b.get("tiered", True):
+        return [(None, float(b["bank_rate"]))]
+    base = max(1, int(b.get("tier_years", 20) or 20))
+    k = float(years) / base if years else 1.0
+    t1 = max(0.0, float(b.get("tier1_to", 0))) * k
+    t2 = max(t1, float(b.get("tier2_to", 0)) * k)
+    return [(t1, float(b["bank_rate"])), (t2, float(b.get("tier2_rate", b["bank_rate"]))),
+            (None, float(b.get("tier3_rate", b["bank_rate"])))]
 
 
 def rank_thresholds(years=None):
@@ -1072,7 +1089,37 @@ class Game:
         if not m.get("purse_enabled", True):
             return None
         usual = GOODS[good]["base"] * PORTS[port]["mods"].get(good, 1.0)
-        return float(m.get("purse_depths", 0.75)) * GOODS[good]["depth"] * usual * float(PORTS[port].get("purse", 1.0) or 1.0)
+        return float(m.get("purse_depths", 0.75)) * GOODS[good]["depth"] * usual * float(PORTS[port].get("purse", 1.0) or 1.0) \
+            * self.purse_lift(port, good)
+
+    def purse_lift(self, port, good):
+        """How much bigger than usual this month's purse is, because the price is far above usual (22 Nov 2026).
+        A boom, shortage or big swing pays out at several times the usual price, so the dealers carry that much
+        more silver: a full hold sold into a 4x boom is paid in full, not a third of it. It is fixed once a
+        month, at the month turn (_snapshot_purse_lift), so selling into a boom (which shrinks it) or buying up
+        a market (which lifts the price) can't change the purse mid-month. rules.market.purse_boom is the share
+        of the price rise the purse follows (1 = all of it, 0 = off); purse_boom_cap is the biggest lift."""
+        m = R["market"]
+        share = float(m.get("purse_boom", 1.0) or 0.0)
+        if share <= 0:
+            return 1.0
+        row = (self.s.get("purse_lift") or {}).get(port)
+        ratio = row.get(good) if row else None
+        if ratio is None:                                # first month, or a saved game from before this rule
+            ratio = self._lift(port, good)
+        ratio = min(max(1.0, float(ratio)), max(1.0, float(m.get("purse_boom_cap", 10.0) or 1.0)))
+        return 1.0 + share * (ratio - 1.0)
+
+    def _snapshot_purse_lift(self):
+        """Month turn: note how far above its usual price each cargo opens the month in each port, or how
+        big its boom is if that is more. This is what purse_lift reads all month."""
+        s = self.s
+        s["purse_lift"] = {}
+        for port in PORTS:
+            row = s["purse_lift"][port] = {}
+            for g in GOODS:
+                base = GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)
+                row[g] = round(max(1.0, self._lift(port, g), s["prices"][port][g] / base if base else 1.0), 4)
 
     def purse_left(self, port, good):
         """Silver this port's dealers still have this month for this cargo (None with no purse rule)."""
@@ -1527,7 +1574,55 @@ class Game:
             self._ev("finance", "bankrupt_warn", "{}: worth {} is below zero ({} month(s) running); the books are "
                      "closed in {} month(s)".format(p["name"], money(self.worth(p)), p["under_water"], left), p)
 
-    def _bankrupt(self, p, news):
+    # ---- stuck for good (21 Nov 2026) -------------------------------------------------------------------
+    # A house can be worth something and still be unable to move: no silver, nothing aboard or stored, the
+    # lender will not lend, and no ship to sell or swap. Waiting for "worth below zero" for a year is no way
+    # to find that out (Game 5), so the books are closed after rules.bank.stuck_months month-ends of it
+    # and the captain starts again, with no cell. A house that still has a way out (a laid-up ship, a second
+    # ship, a junk swap, a loan within the limit) is only told what it is; it is never stuck.
+    def _goods_anywhere(self, p):
+        if self.used(p) > 0:
+            return True
+        if any(q > 0 for q in (p.get("wh") or {}).values()):
+            return True
+        return any(q > 0 for d in depots_of(p).values() for q in (d.get("goods") or {}).values())
+
+    def stuck_state(self, p):
+        """None when the house can trade; "exit" when it is broke but has a way out; "stuck" when it has none."""
+        b = R["bank"]
+        if not b.get("stuck_enabled", True) or not b.get("bankrupt_enabled", True) or not p["ships"]:
+            return None      # (no bankruptcy at all means no early one)
+        floor = float(b.get("stuck_silver", 500))
+        if float(p["cash"]) + float(p["bank"]) >= floor or self._goods_anywhere(p):
+            return None
+        if float(p["debt"]) + floor <= self.loan_limit(p):
+            return None                       # the lender would still lend (at home): not broke
+        if len(p["ships"]) > 1 or p.get("laid_up") or self.trade_down_offer(p) is not None:
+            return "exit"
+        return "stuck"
+
+    def _stuck_month(self, p, news):
+        b = R["bank"]
+        state = self.stuck_state(p)
+        if state != "stuck":
+            if p.pop("stuck", 0):
+                self._ev("finance", "unstuck", "{} is no longer stuck".format(p["name"]), p)
+            if state == "exit":
+                p["log"].append(tx("l.broke_home" if p["port"] == home_of(p) else "l.broke_away"))
+            return
+        need = max(1, int(b.get("stuck_months", 2)))
+        p["stuck"] = int(p.get("stuck", 0)) + 1
+        left = need - p["stuck"]
+        if left <= 0:
+            self._ev("finance", "stuck_bankrupt", "{}: no silver, nothing to sell, borrow or sail for {} month(s); "
+                     "the books are closed".format(p["name"], p["stuck"]), p, months=p["stuck"])
+            self._bankrupt(p, news, stuck=True)
+        else:
+            p["log"].append(tx("l.stuck_warn", months=left, s="" if left == 1 else "s"))
+            self._ev("finance", "stuck_warn", "{}: no silver, nothing to sell, borrow or sail; the books are "
+                     "closed in {} month(s) unless that changes".format(p["name"], left), p, left=left)
+
+    def _bankrupt(self, p, news, stuck=False):
         b, s = R["bank"], self.s
         home = home_of(p)
         worth0 = int(self.worth(p))
@@ -1573,6 +1668,7 @@ class Game:
         p.pop("debt_over", None)
         p.pop("debt_capped", None)
         p.pop("under_water", None)
+        p.pop("stuck", None)
         p["port"] = home
         p["customs"], p["bond"] = None, None
         p["tab"] = self._new_tab()
@@ -1598,6 +1694,8 @@ class Game:
             self._gain_rep(p, home, -float(b.get("bankrupt_rep", 10)))
         p["bankruptcies"] = int(p.get("bankruptcies", 0)) + 1
         self._book(p, "bankrupt", stake + hid_cash + self._cost_of(p, hid) - worth0)
+        if stuck:
+            p["log"].append(tx("l.stuck_bankrupt"))
         p["log"].append(tx("l.bankrupt", home=PORTS[home]["name"], stake=money(stake),
                            ship=kind["name"].lower()))
         if safe:
@@ -1611,9 +1709,10 @@ class Game:
         self._ev("finance", "bankrupt", "{} ({}) went bankrupt: worth {}; the moneylender took everything "
                  "and cleared the books; set up again in {} with a {} and {}".format(
                      p["name"], p["firm"], money(worth0), PORTS[home]["name"], kind["name"].lower(), money(stake)),
-                 p, worth=worth0, seized=seized, stake=int(stake), hid_cash=hid_cash, hid=dict(hid))
+                 p, worth=worth0, seized=seized, stake=int(stake), hid_cash=hid_cash, hid=dict(hid), stuck=bool(stuck))
         self._mayor_greeting(p)
-        jail.on_bankrupt(self, p, news)             # debtors' prison at home before the fresh start
+        if not stuck:                               # a house that was simply stuck is not locked up as well
+            jail.on_bankrupt(self, p, news)         # debtors' prison at home before the fresh start
 
     def repair_rate(self, p, sh):
         f = R["fleet"]
@@ -1759,6 +1858,9 @@ class Game:
             self._ev("finance", "wh_robbed", "{}: thieves took {} of the stock ({}) from the warehouse in {}".format(
                 p["name"], pct(share), what, PORTS[port]["name"]), p, port=port, lost=lost,
                 share=round(share, 4), value=round(cost, 2))
+            worth = cost if cost > 0 else sum(q * GOODS[g]["base"] for g, q in lost.items())     # no basis on file: base prices
+            robbery.note(self, p, "house", port, value=round(worth, 2), goods=dict(lost), qty=int(qty),
+                         pct=int(round(share * 100)))
 
     # ---------------------------------------------------- the crew hides --
     def _hide_share(self, g=None):
@@ -1877,7 +1979,15 @@ class Game:
         cut = self.profit_share(p, level, rep)
         if cut["amount"] > 0:
             lines.append(cut)
-        return {"lines": lines, "total": max(0, after + relief) + cut["amount"], "level": level, "rep": int(round(rep)),
+        total = max(0, after + relief) + cut["amount"]
+        # The great house (22 Nov 2026): a Mansion or Palace takes a share off the whole bill at home.
+        hcut = self.house_dues_cut(p)
+        if hcut > 0 and total > 0:
+            off = -int(round(total * hcut))
+            if off:
+                lines.append({"key": "house", "basis": self.house_stage(p), "rate": round(hcut, 4), "amount": off})
+                total += off
+        return {"lines": lines, "total": max(0, total), "level": level, "rep": int(round(rep)),
                 "profit_rate": cut["month"]}
 
     # The Mayor's share of profit (Harbour dues > Share of profit). Only profit made selling cargo in her port
@@ -1942,13 +2052,60 @@ class Game:
                    rep_f=round(rep_f, 4), share_cut=round(1.0 - share_f, 4))
         return out
 
-    def _collect(self, p, amount):
-        """Take money from silver; whatever is missing goes on the debt. Returns what went on the debt."""
+    def bank_tiers(self, years=None):
+        """See bank_tier_list: this game's slices."""
+        return bank_tier_list(years if years is not None else self.s.get("years"))
+
+    def bank_interest(self, p, extra=0.0):
+        """A month's interest on this house's deposit, by slices. `extra` is added to every slice's rate (the
+        great house's home-bank bonus)."""
+        left, low, total = max(0.0, float(p["bank"])), 0.0, 0.0
+        for top, rate in self.bank_tiers():
+            part = left if top is None else min(left, max(0.0, top - low))
+            total += part * max(0.0, rate + extra)
+            left -= part
+            if top is not None:
+                low = top
+            if left <= 0:
+                break
+        return total
+
+    def _storm_calm(self, v):
+        """Game 6 review (22 Nov 2026): a fleet a storm hit this month is found by pirates and the war fleet
+        less often (rules.storm.after_attack, a multiplier on the odds; 1 turns it off)."""
+        if not v.get("stormed"):
+            return 1.0
+        try:
+            return max(0.0, min(1.0, float(storm.rules().get("after_attack", 1.0))))
+        except (TypeError, ValueError):
+            return 1.0
+
+    def _bills_from_bank(self):
+        """Game 6 review (22 Nov 2026): a bill the silver cannot cover is paid from the bank before any of it
+        goes on the debt (rules.bank.bills_from_bank, on by default)."""
+        return bool(R["bank"].get("bills_from_bank", True))
+
+    def _settle_bill(self, p, amount):
+        """Take a bill from silver, then the bank (when the rule is on); only what is still missing goes on
+        the debt. Returns (paid from silver, drawn from the bank, put on the debt)."""
+        amount = max(0, int(amount))
         paid = int(min(amount, max(0.0, p["cash"])))
         p["cash"] -= paid
-        if amount - paid:
-            p["debt"] += amount - paid
-        return amount - paid
+        drawn = 0
+        if amount - paid and self._bills_from_bank():
+            drawn = int(min(amount - paid, max(0.0, p["bank"])))
+            p["bank"] -= drawn
+        owed = amount - paid - drawn
+        if owed:
+            p["debt"] += owed
+        return paid, drawn, owed
+
+    def _collect(self, p, amount):
+        """Take money from silver, then the bank; whatever is still missing goes on the debt. Returns what
+        went on the debt. What the bank paid is left in self._last_drawn for the caller's log."""
+        _paid, drawn, owed = self._settle_bill(p, amount)
+        self._last_drawn = drawn
+        return owed
 
     # ---------------------------------------------------- port authority --
     # Arriving in a port, a house declares what each line of its cargo is worth to the port's tax
@@ -1973,10 +2130,14 @@ class Game:
     def tax_rate_for(self, p, port):
         """The rate this house is charged in a port: nothing at home, the port's rate elsewhere,
         less share_cut for each share the house holds in that port."""
-        if self.home_free(p, port):
+        if self.home_free(p, port) or self.tax_holiday(p) > 0:
             return 0.0
         cut = self.band_effects(p, port)["tax_cut"]          # Warm and Favoured houses pay less (decision 10)
         return round(self.tax_rate(port) * max(0.0, 1.0 - self.share_cut(p, port)) * max(0.0, 1.0 - cut), 6)
+
+    def tax_holiday(self, p):
+        """Months of no Port Authority tax left (a yearly goal's reward, 22 Nov 2026)."""
+        return max(0, int(p.get("tax_holiday", 0) or 0))
 
     def _spot_check(self, p, port):
         """A house that would pay no tax here (its home port, or a port where its shares cut the tax
@@ -1985,7 +2146,7 @@ class Game:
         "shares" or None. Drawn from its own seed, never the game's dice, so the same landing
         always comes out the same."""
         c = R["customs"]
-        if self.tax_rate(port) <= 0 or self.tax_rate_for(p, port) > 0:
+        if self.tax_rate(port) <= 0 or self.tax_rate_for(p, port) > 0 or self.tax_holiday(p) > 0:
             return None                          # a free port has nothing to check; a taxed house is checked anyway
         kind = "home" if self.home_free(p, port) else "shares"
         chance = float(c.get("spot_home" if kind == "home" else "spot_shares", 0.0) or 0.0)
@@ -2004,7 +2165,9 @@ class Game:
                 rates[port] = 0.0
                 continue
             was = float(rates.get(port, base))
-            lo, hi = max(c["min_rate"], base - c["range"]), min(c["max_rate"], base + c["range"])
+            # A port that charges a rate never drifts to nothing: reconcile() lifts a 0 back to the base rate
+            # when a game is loaded, so a drift to 0 made a replay (which loads) disagree with the live game.
+            lo, hi = max(c["min_rate"], base - c["range"], 0.0025), min(c["max_rate"], base + c["range"])
             # Rounded to a quarter of a percent, so the officer quotes a rate a captain can remember.
             rates[port] = round(max(lo, min(hi, round((was + self.rng.uniform(-c["drift"], c["drift"])) * 400) / 400.0)), 4)
         self._ev("market", "tax_rates", "Port Authority rates this month: " + ", ".join(
@@ -2495,12 +2658,13 @@ class Game:
         # The jail: a big fine may be swapped for time; it is charged when the plea is answered.
         plea = bool(fine_total) and jail.offer_plea(self, p, fine_total, "desk", port, "pa_fine", arrival=True)
         owed = self._collect(p, tax_total + (0 if plea else fine_total))
+        drawn = int(getattr(self, "_last_drawn", 0) or 0)       # what the bank paid when silver was short
         self._book(p, "pa_tax", -tax_total, arrival=True)
         self._book(p, "pa_fine", -(0 if plea else fine_total), arrival=True)
         cu["box"] = box
         cu["status"] = "verdict"
         cu["result"] = {"lines": out, "declared": total_declared, "value": value_total, "tax": tax_total,
-                        "fine": fine_total, "paid": paid_in, "owed": owed, "caught": caught, "bribe": bribe,
+                        "fine": fine_total, "paid": paid_in, "owed": owed, "drawn": drawn, "caught": caught, "bribe": bribe,
                         "rep": round(rep_change, 2), "choice": choice}
         bought = [r for r in out if r["units"]]
         if caught:
@@ -2514,17 +2678,20 @@ class Game:
         if not caught and open_lines:
             p["log"].append(tx("l.customs_paid", port=name, declared=money(total_declared), value=money(value_total),
                                tax=money(tax_total)))
+        if drawn:
+            p["log"].append(tx("l.bank_drawn", port=name, drawn=money(drawn)))
         self._detail = {"port": port, "rate": rate, "declared": declared, "value": value_total, "tax": tax_total,
-                        "fine": fine_total, "paid": paid_in, "owed": owed, "bribe": bribe, "rep": round(rep_change, 2),
+                        "fine": fine_total, "plea": bool(plea), "paid": paid_in, "owed": owed, "drawn": drawn, "bribe": bribe, "rep": round(rep_change, 2),
                         "lines": out, "choice": choice,
                         "sealed": sorted(seal),
-                        "note": "declared {} of {} at {}: tax {}{}{}{}{}".format(
+                        "note": "declared {} of {} at {}: tax {}{}{}{}{}{}".format(
                             money(total_declared), money(value_total), pct(rate), money(tax_total),
                             ", {} kept sealed in bond (worth {})".format(
                                 names_of(sorted(seal)), money(sum(ln["value"] for ln in cu["lines"] if ln["good"] in seal)))
                             if seal else "",
                             ", fine {}".format(money(fine_total)) if fine_total else "",
                             ", bought out for {}".format(money(paid_in)) if paid_in else "",
+                            ", {} drawn from the bank".format(money(drawn)) if drawn else "",
                             ", {} short, added to the debt".format(money(owed)) if owed else "")}
         self._detail["table_report"] = copy.deepcopy(self.customs_view(p))
         self._detail["table_focus"] = copy.deepcopy({k: p.get(k) for k in ("id", "name", "firm", "port", "ships", "cash", "bank", "debt")})
@@ -2640,20 +2807,28 @@ class Game:
         if not cu:
             return
         if cu.get("status") == "declare" and cu.get("port") == p["port"]:
+            # This can run inside Game.act (the host's "force" resolves the month), where act is collecting
+            # its own queued events in self._hold and its detail in self._detail. Keep those, and hand the
+            # declaration's events to the outer queue; never leave _hold as None under a running act.
+            outer_hold, outer_detail = self._hold, self._detail
             self._hold, self._detail = [], None
             cash0 = p["cash"]
+            held = []
             try:
                 self._act_customs_declare(p, {"values": {ln["good"]: ln["value"] for ln in cu["lines"]}})
                 detail = {k: v for k, v in (self._detail or {}).items() if k != "note"}
                 detail["cash"] = [int(cash0), int(p["cash"])]
-                held, self._hold = self._hold or [], None
+                held, self._hold = self._hold or [], outer_hold
                 self._ev("finance", "customs_auto", "{} made no declaration in {}; it was filed honestly: {}".format(
                     p["name"], PORTS[p["port"]]["name"], (self._detail or {}).get("note", "")), p, **detail)
             finally:
-                if self._hold is not None:
-                    held, self._hold = self._hold, None
+                if self._hold is not outer_hold:          # the declaration raised: take back what it queued
+                    held, self._hold = self._hold or [], outer_hold
+                self._detail = outer_detail
                 for e in held:
-                    if self.on_event is not None:
+                    if outer_hold is not None:
+                        outer_hold.append(e)
+                    elif self.on_event is not None:
                         self.on_event(e)
         self._close_customs(p)
 
@@ -2822,22 +2997,22 @@ class Game:
         total = int(math.ceil(bill["total"] * mult)) if total is None else int(math.ceil(total))
         if total <= 0:
             return
-        paid = int(min(total, max(0.0, p["cash"])))
-        owed = total - paid
-        p["cash"] -= paid
+        paid, drawn, owed = self._settle_bill(p, total)
         self._book(p, "dues", -total)
         if owed:
-            p["debt"] += owed
-            p["log"].append(tx("l.dues_short", port=PORTS[p["port"]]["name"], paid=money(paid), owed=money(owed)))
+            p["log"].append(tx("l.dues_short", port=PORTS[p["port"]]["name"], paid=money(paid + drawn), owed=money(owed)))
             if self.standing_on():
                 self._standing(p, p["port"], -float(R["standing"].get("dues_short", 0)), "dues_short")
+        elif drawn:
+            p["log"].append(tx("l.dues_bank", port=PORTS[p["port"]]["name"], total=money(total), drawn=money(drawn)))
         else:
             p["log"].append(tx("l.dues", port=PORTS[p["port"]]["name"], total=money(total)))
-        self._ev("finance", "dues", "{}: paid the mayor of {} {} in harbour dues ({}){}".format(
+        self._ev("finance", "dues", "{}: paid the mayor of {} {} in harbour dues ({}){}{}".format(
             p["name"], PORTS[p["port"]]["name"], money(total),
             ", ".join("{} {}".format(ln["key"], ln["amount"]) for ln in bill["lines"]),
+            "; {} drawn from the bank".format(money(drawn)) if drawn else "",
             "; {} short, added to the debt".format(money(owed)) if owed else ""),
-            p, port=p["port"], total=total, paid=paid, owed=owed, lines=bill["lines"])
+            p, port=p["port"], total=total, paid=paid, drawn=drawn, owed=owed, lines=bill["lines"])
 
     def _gain_rep(self, p, port, amount, why=""):
         before = float(p["rep"][port])
@@ -3238,6 +3413,8 @@ class Game:
             if type(ack) is int and queue and queue[0]["id"] == ack:
                 queue.pop(0)
             return tx("m.promotion_ack")
+        if kind == "robbery_ack":
+            return robbery.act_ack(self, p, a)          # the Robbery Story's "Back to the game" (no game time)
         if kind == "storm_ack":
             return storm.act_ack(self, p, a)            # the storm screen's "Make port" (any phase; a fight may follow)
         if kind == "legend":
@@ -3875,6 +4052,23 @@ class Game:
     def house_stage(self, p):
         return max(0, min(self.HOUSE_STAGES, int(p.get("estate", 0) or 0)))
 
+    def house_bank_bonus(self, p):
+        """Game 6 review (22 Nov 2026): a Mansion or Palace earns extra bank interest each month (added to every
+        slice's rate). With rules.estates.house_bank_anywhere off it is only paid when the month ends at home."""
+        e, st = R["estates"], self.house_stage(p)
+        if not st or not e.get("house_enabled", True):
+            return 0.0
+        if not e.get("house_bank_anywhere", True) and p.get("port") != home_of(p):
+            return 0.0
+        return max(0.0, float(e.get("house_bank_{}".format(st), 0.0) or 0.0))
+
+    def house_dues_cut(self, p, port=None):
+        """The share taken off harbour dues at home by a Mansion (house_dues_2) or Palace (house_dues_3)."""
+        e, st = R["estates"], self.house_stage(p)
+        if not st or not e.get("house_enabled", True) or (port or p.get("port")) != home_of(p):
+            return 0.0
+        return max(0.0, min(1.0, float(e.get("house_dues_{}".format(st), 0.0) or 0.0)))
+
     def house_rob_cut(self, p):
         st = self.house_stage(p)
         return float(R["estates"].get("house_rob_{}".format(st), 0.0)) if st else 0.0
@@ -3988,6 +4182,9 @@ class Game:
         nxt = st + 1 if st < self.HOUSE_STAGES else None
         return {"stage": st, "title": tx("estate.stage.{}".format(st)) if st else "",
                 "paid": int(p.get("estate_paid", 0) or 0), "rob_cut": self.house_rob_cut(p),
+                "bank_bonus": float(e.get("house_bank_{}".format(st), 0.0) or 0.0) if st else 0.0,
+                "dues_cut": float(e.get("house_dues_{}".format(st), 0.0) or 0.0) if st else 0.0,
+                "bank_anywhere": bool(e.get("house_bank_anywhere", True)),
                 "sell": bool(e.get("house_sell", True)) and st > 0,
                 "sell_price": self.house_sale_price(p) if st else 0,
                 "sell_rep": round(self._estate_reps(p)[-1], 1) if st else 0,
@@ -3996,7 +4193,9 @@ class Game:
                 "upkeep_after": int(round(sum(self._estate_costs(p)[:-1]) * float(e.get("house_upkeep", 0) or 0))) if st else 0,
                 "wealth_mult": self.wealth_mult(p),
                 "stages": [{"stage": i, "title": tx("estate.stage.{}".format(i)), "cost": self.house_cost(p, i),
-                            "rep": float(e["house_rep_{}".format(i)]), "rob": float(e["house_rob_{}".format(i)])}
+                            "rep": float(e["house_rep_{}".format(i)]), "rob": float(e["house_rob_{}".format(i)]),
+                            "bank": float(e.get("house_bank_{}".format(i), 0.0) or 0.0),
+                            "dues": float(e.get("house_dues_{}".format(i), 0.0) or 0.0)}
                            for i in range(1, self.HOUSE_STAGES + 1)],
                 "next": nxt}
 
@@ -4009,6 +4208,48 @@ class Game:
     def _contract_rules(self):
         c = R.get("contracts") or {}
         return c if c.get("enabled", True) else None
+
+    def job_grow(self, p, base_share, cap_share):
+        """Game 6 review (22 Nov 2026): how much bigger the Mayor's cargo jobs are for a rich house. The square
+        root of (net worth / job_ref), at least 1 and at most job_max, so a $200M house is not offered the
+        same few units as a young one. job_ref is set for a game of tier_years years and scales with the game's
+        length. The job never grows past cap_share of the hold (and never shrinks below its usual size)."""
+        c = R["contracts"]
+        if not c.get("job_scale", True) or base_share <= 0:
+            return 1.0
+        years = self.s.get("years") or int(R["bank"].get("tier_years", 20) or 20)
+        ref = max(1.0, float(c.get("job_ref", 5_000_000)) * float(years) / max(1, int(R["bank"].get("tier_years", 20) or 20)))
+        grow = max(1.0, min(float(c.get("job_max", 10.0)), (max(0.0, self.worth(p)) / ref) ** float(c.get("job_exp", 0.5))))
+        return max(1.0, min(grow, max(base_share, float(cap_share)) / base_share))
+
+    def _offer_perk(self, p, rng):
+        """The extra reward a yearly goal carries besides silver and standing: a tax holiday, the pirate lord's
+        protection, or a free port share (only while the house can still hold one)."""
+        c = R["contracts"]
+        if not c.get("perks", True):
+            return None
+        pool = []
+        if int(c.get("perk_tax_months", 0)) > 0:
+            pool.append("tax_holiday")
+        if int(c.get("perk_protect_months", 0)) > 0:
+            pool.append("protection")
+        if c.get("perk_share", True) and R["estates"].get("shares_enabled", True) and self.shares_earned(p) < self.share_cap():
+            pool.append("share")
+        return rng.choice(pool) if pool else None
+
+    def _grant_perk(self, p, perk):
+        c = R["contracts"]
+        if perk == "share" and self.award_shares(p, 1, "yearly goal", log="l.share_goal"):
+            return
+        if perk == "protection":
+            months = int(c.get("perk_protect_months", 0))
+            p["protect"] = max(int(p["protect"]), months)
+            p["log"].append(tx("l.goal_protect", months=p["protect"]))
+            return
+        months = int(c.get("perk_tax_months", 6)) if perk in ("tax_holiday", "share") else 0
+        if months > 0:                                   # a share that could not be held becomes a tax holiday
+            p["tax_holiday"] = max(self.tax_holiday(p), months)
+            p["log"].append(tx("l.goal_tax_holiday", months=p["tax_holiday"]))
 
     def _new_offer(self, p, slot):
         c, turn = R["contracts"], self.s["turn"]
@@ -4036,7 +4277,9 @@ class Game:
                      if self.s["prices"][k].get(g, 0) >= float(c["shortage_at"]) * normal_price(g)]
             if short:
                 port, good = rng.choice(sorted(short))
-                qty = max(int(c["min_qty"]), int(round(hold * float(c["hold_share_short"]) * 0.7 / 10.0)) * 10)
+                base = float(c["hold_share_short"]) * 0.7
+                grow = self.job_grow(p, base, float(c.get("job_cap_year" if year else "job_cap_short", 1.0)))
+                qty = max(int(c["min_qty"]), int(round(hold * base * grow / 10.0)) * 10)
                 if not year:
                     due = turn + int(c["supply_months"]) - 1
                 fee = float(c["fee_share_year" if year else "fee_share"]) * float(c["supply_mult"]) * qty * normal_price(good)
@@ -4046,6 +4289,7 @@ class Game:
         if kind == "delivery":
             port, good = rng.choice(others), rng.choice(legal)
             share = float(c["hold_share_year" if year else "hold_share_short"])
+            share *= self.job_grow(p, share, float(c.get("job_cap_year" if year else "job_cap_short", 1.0)))
             qty = max(int(c["min_qty"]), int(round(hold * share / 10.0)) * 10)
             fee = float(c["fee_share_year" if year else "fee_share"]) * qty * normal_price(good)
             offer.update(port=port, good=good, qty=qty, due=due, fee=int(round(fee, -2)))
@@ -4062,6 +4306,10 @@ class Game:
         if c.get("fee_wealth", True) and kind != "standing":    # standing goals already pay by net worth
             offer["fee"] = int(round(float(offer.get("fee", 0)) * self.wealth_mult(p), -2))
         offer["fee"] = max(100, int(offer.get("fee", 0)))
+        if year:
+            perk = self._offer_perk(p, rng)
+            if perk:
+                offer["perk"] = perk
         return offer
 
     def _contracts_month(self, p):
@@ -4131,6 +4379,8 @@ class Game:
             p["cash"] += int(k["fee"])
             self._book(p, "contracts", int(k["fee"]))
             self._gain_rep(p, home, float(k.get("rep", 0.0)))
+            if k.get("perk"):
+                self._grant_perk(p, k["perk"])
             p["log"].append(tx("l.contract_done", what=self._contract_text(k), fee=money(k["fee"]),
                                rep=int(round(float(k.get("rep", 0.0)))), home=PORTS[home]["name"]))
             p.setdefault("contract_tally", {}).setdefault("done", 0)
@@ -4169,8 +4419,14 @@ class Game:
     def contracts_view(self, p):
         if self._contract_rules() is None:
             return None
+        c = R["contracts"]
+
+        def perk(k):
+            months = c.get("perk_tax_months" if k.get("perk") == "tax_holiday" else "perk_protect_months", 0)
+            return tx("contract.perk." + k["perk"], months=int(months)) if k.get("perk") else ""
+
         def one(k):
-            return dict(k, text=self._contract_text(k), due_date=date_label(int(k["due"])),
+            return dict(k, text=self._contract_text(k), perk_text=perk(k), due_date=date_label(int(k["due"])),
                         months=max(0, int(k["due"]) - self.s["turn"] + 1),
                         now=int(round(p["rep"].get(k["port"], 0))) if k["kind"] == "standing" else int(k.get("got", 0)))
         offers = p.get("offers") or {}
@@ -4203,6 +4459,14 @@ class Game:
         return tx("m.withdrew", amount=money(q))
 
     def _act_loan(self, p, a):
+        if p["port"] != home_of(p):
+            # An away moneylender's office (Admin > Ports > Moneylender) takes repayments only, sent home by a
+            # merchant who charges a fee and may be robbed or skim some (23 Nov 2026, Anthony).
+            if not port_has(p, p["port"], "lender"):
+                self._home_only(p, tx("w.the_lender"))
+            if a.get("op") == "borrow":
+                raise GameError(tx("e.lender_repay_only", port=PORTS[p["port"]]["name"], home=PORTS[home_of(p)]["name"]))
+            return self._remit(p, a)
         self._home_only(p, tx("w.the_lender"))
         q = self._qty(a, "amount", MONEY_CAP)
         if a.get("op") == "borrow":
@@ -4229,12 +4493,7 @@ class Game:
         p["cash"] -= q
         if p["debt"] < 1:
             p["debt"] = 0.0
-            # Debt cleared (rules.standing): the home port thinks better of a house that pays in full. Not for
-            # a loan taken out this same month (no borrowing and paying back for standing).
-            st = R.get("standing") or {}
-            if self.standing_on() and owed0 >= float(st.get("debt_cleared_min", 0)) \
-                    and int(p.get("borrowed_turn", -1)) < self.s["turn"]:
-                self._standing(p, home_of(p), float(st.get("debt_cleared", 0)), "debt_cleared")
+            self._debt_cleared(p, owed0)
         self._tally(p, "loan", q)
         after = self.collectors(p)
         if p["debt"] <= 0:
@@ -4247,6 +4506,82 @@ class Game:
             tier = "part"
         return self._wu(p, "m.repaid", tier, amount=money(q),
                         suggest=money(after["to_clear"]) if after and after["calls_in"] else "")
+
+    def _debt_cleared(self, p, owed0):
+        """Debt cleared (rules.standing): the home port thinks better of a house that pays in full. Not for
+        a loan taken out this same month (no borrowing and paying back for standing)."""
+        st = R.get("standing") or {}
+        if self.standing_on() and owed0 >= float(st.get("debt_cleared_min", 0)) \
+                and int(p.get("borrowed_turn", -1)) < self.s["turn"]:
+            self._standing(p, home_of(p), float(st.get("debt_cleared", 0)), "debt_cleared")
+
+    # ------------------------------------------------ repaying from afar --
+    REMIT_KEEP = 40          # sent-home entries kept on the house for the report
+
+    def remit_rules(self):
+        """The merchant's terms (Admin > Economy > Bank and moneylender, rules.bank.remit_*)."""
+        b = R["bank"]
+        f = lambda k, d: float(b.get(k, d))
+        lo, hi = sorted((f("remit_rob_min", 0.3), f("remit_rob_max", 0.8)))
+        slo, shi = sorted((f("remit_skim_min", 0.02), f("remit_skim_max", 0.10)))
+        return {"fee": max(0.0, min(0.9, f("remit_fee", 0.05))),
+                "rob": max(0.0, min(1.0, f("remit_rob_chance", 0.05))), "rob_lo": lo, "rob_hi": hi,
+                "skim": max(0.0, min(1.0, f("remit_skim_chance", 0.15))), "skim_lo": slo, "skim_hi": shi}
+
+    def _remit(self, p, a):
+        """Repaying the home moneylender from a port that has her office. The silver goes by a merchant: he takes
+        his fee off the top, and then he may be robbed on the road (a big share gone) or help himself to a little.
+        Only what arrives lowers the debt. Every sending is kept in p["remits"] for the report. The draws always
+        use the game's dice three times, so replays stay in step."""
+        r = self.remit_rules()
+        debt = float(p["debt"])
+        if debt <= 0:
+            raise GameError(tx("e.nothing_to_repay"))
+        need = int(math.ceil(debt / (1.0 - r["fee"])))            # enough to clear it if nothing goes wrong
+        q = min(self._qty(a, "amount", MONEY_CAP), need, int(p["cash"]))
+        if q <= 0:
+            raise GameError(tx("e.nothing_to_repay"))
+        roll_rob, roll_skim, roll_share = self.rng.random(), self.rng.random(), self.rng.random()
+        fee = round(q * r["fee"], 2)
+        left = q - fee
+        how, lost = "safe", 0.0
+        if roll_rob < r["rob"]:
+            how, lost = "robbed", left * (r["rob_lo"] + (r["rob_hi"] - r["rob_lo"]) * roll_share)
+        elif roll_skim < r["skim"]:
+            how, lost = "skimmed", left * (r["skim_lo"] + (r["skim_hi"] - r["skim_lo"]) * roll_share)
+        lost = round(lost, 2)
+        arrived = round(left - lost, 2)
+        owed0 = debt
+        p["cash"] -= q
+        p["debt"] = max(0.0, debt - arrived)
+        if p["debt"] < 1:
+            p["debt"] = 0.0
+            self._debt_cleared(p, owed0)
+        self._tally(p, "loan", q)
+        self._book(p, "remit_fee", -fee)
+        self._book(p, "remit_lost", -lost)
+        rec = {"turn": int(self.s["turn"]), "port": p["port"], "sent": int(q), "fee": fee, "lost": lost,
+               "arrived": arrived, "how": how}
+        p["remits"] = (list(p.get("remits") or []) + [rec])[-self.REMIT_KEEP:]
+        tot = p.setdefault("remit_tot", {"n": 0, "sent": 0.0, "fee": 0.0, "lost": 0.0, "arrived": 0.0, "robbed": 0, "skimmed": 0})
+        tot["n"] += 1
+        for k, v in (("sent", q), ("fee", fee), ("lost", lost), ("arrived", arrived)):
+            tot[k] = round(tot.get(k, 0.0) + v, 2)
+        if how != "safe":
+            tot[how] = tot.get(how, 0) + 1
+        self._ev("finance", "remit", "{}: sent {} home from {} to repay the debt; the merchant kept {}, {} lost on the road "
+                 "({}); {} arrived".format(p["name"], money(q), PORTS[p["port"]]["name"], money(fee), money(lost), how,
+                                           money(arrived)), p, port=p["port"], sent=int(q), fee=fee, lost=lost, arrived=arrived, how=how)
+        return tx("m.remit." + how, sent=money(q), fee=money(fee), lost=money(lost), arrived=money(arrived),
+                  owed=money(p["debt"]), port=PORTS[p["port"]]["name"], home=PORTS[home_of(p)]["name"])
+
+    def remit_view(self, p):
+        """What the player screen shows about repaying from afar: the terms and the report of what got home."""
+        r = self.remit_rules()
+        tot = dict(p.get("remit_tot") or {})
+        return {"fee": r["fee"], "rob": r["rob"], "skim": r["skim"],
+                "tot": {k: tot.get(k, 0) for k in ("n", "sent", "fee", "lost", "arrived", "robbed", "skimmed")},
+                "last": list(reversed(p.get("remits") or []))[:12]}
 
     def _wu(self, p, key, tier, **kw):
         """Madam Wu's word on a loan or a repayment: the receipt and her advice for how close the debt is
@@ -4850,7 +5185,7 @@ class Game:
             rot.month(self, p, news, skip=was_in or bool(inside))   # perishables age a month; old ones rot (rot.py)
             bank0, debt0 = p["bank"], p["debt"]
             if p["bank"] > 0:
-                p["bank"] *= 1 + b["bank_rate"]
+                p["bank"] += self.bank_interest(p, extra=self.house_bank_bonus(p))
             if p["debt"] > 0:
                 # The debt cap (19 Nov 2026): interest stops adding once the debt reaches debt_cap_mult x the
                 # collectors' line, so a house that falls behind in a long game can't owe trillions.
@@ -4887,7 +5222,7 @@ class Game:
             self._book(p, "bank_interest", p["bank"] - bank0)
             self._book(p, "interest", -(p["debt"] - debt0))
             if bank0 > 0 or debt0 > 0:
-                self._ev("finance", "interest", "{}: bank interest +{} at {}, loan interest +{} at {}".format(
+                self._ev("finance", "interest", "{}: bank interest +{} (first slice at {}), loan interest +{} at {}".format(
                     p["name"], money(p["bank"] - bank0), pct(b["bank_rate"]), money(p["debt"] - debt0), pct(loan_rate())),
                     p, bank=[round(bank0, 2), round(p["bank"], 2)], debt=[round(debt0, 2), round(p["debt"], 2)])
             if p.get("fame"):
@@ -4896,6 +5231,10 @@ class Game:
                     p["fame"] = 0.0
             if self.standing_on():
                 self._drift_standing(p)
+            if self.tax_holiday(p) > 0:
+                p["tax_holiday"] = self.tax_holiday(p) - 1
+                if p["tax_holiday"] == 0:
+                    p["log"].append(tx("l.tax_holiday_over"))
             if p["protect"] > 0:
                 p["protect"] -= 1
                 if p["protect"] == 0:
@@ -4919,9 +5258,11 @@ class Game:
                 self._book(p, "robbed", -lost)
                 p["log"].append(tx("l.robbed", lost=money(lost)))
                 self._ev("finance", "robbed", "{} was robbed of {}".format(p["name"], money(lost)), p, lost=lost)
+                robbery.note(self, p, "street", p["port"], value=lost, silver=int(lost), left=int(p["cash"]))
             self._rob_warehouses(p, news, b, rng)
             self._pay_running_costs(p)
             self._bankruptcy_month(p, news)
+            self._stuck_month(p, news)
 
         self._move_markets(news)
         for p in players:
@@ -4933,6 +5274,7 @@ class Game:
         for p in players:
             self._note_prices(p)
             self._promote(p)
+            robbery.settle(self, p)         # the Robbery Story, only if nothing else has this month's story (robbery.py)
             self._contracts_month(p)
         for n in news:
             self._ev("news", "news", "News: " + n, turn=s["turn"] - 1)
@@ -5067,6 +5409,7 @@ class Game:
                 else:
                     floor, ceiling = price_limits(g)
                     s["prices"][port][g] = max(floor * base, min(ceiling * base, price))
+        self._snapshot_purse_lift()                       # the dealers' purses follow this month's prices (22 Nov 2026)
         moves = sorted(((s["prices"][port][g] / before[port][g] - 1, port, g) for port in PORTS for g in GOODS
                         if before[port].get(g)), key=lambda t: -abs(t[0]))[:6]
         self._ev("market", "prices", "Markets moved. Biggest changes: " + "; ".join(
@@ -5154,10 +5497,15 @@ class Game:
                              ", protected for {} more months".format(p["protect"]) if p["protect"] > 0 else ", no protection"),
                          p, origin=origin, dest=dest, sea=level, risk=round(risk, 4), orders=p["orders"], protect=p["protect"],
                          cargo=dict(p["cargo"]), cash=int(p["cash"]),
+                         table_weather=dict(actual),
+                         table_manifest={"ships": len(p["ships"]), "used": self.used(p), "capacity": self.capacity(p),
+                                         "guns": self.guns(p), "cannons": self.cannons(p), "cargo": dict(p["cargo"]),
+                                         "hull": min((round(100 * sh["hull"] / max(1, SHIPS[sh["type"]]["hull"])) for sh in p["ships"]), default=0)},
                          ships=[{"type": sh["type"], "name": sh["name"], "hull": sh["hull"], "guns": sh["guns"]} for sh in p["ships"]])
 
                 storm_p = w["storm_chance"][level] * min(risk, 1.4) * MULT["storms"]
                 if self._chance(storm_p, "storm", "{}: caught in a {}".format(who, "typhoon" if level == 3 else "storm"), p):
+                  v["stormed"] = True           # Game 6 review: a battered fleet is harder to find this month
                   if storm.on():
                     storm.hit(self, p, v, level, risk, news)
                     dest = v["dest"]
@@ -5185,11 +5533,14 @@ class Game:
                 risk = v["risk"]
                 allure = self._allure(p) if R["battle"].get("match") else 1.0
                 deter = self.flag_deter(p)
-                if p["ships"] and self._chance(pi["chance"] * risk * MULT["pirates"] * allure * deter, "pirates",
-                                               "{}: pirate attack{}{}".format(who, " (their appetite x{:.2f})".format(allure)
-                                                                              if allure != 1.0 else "",
-                                                                              " (the flagship deters x{:.2f})".format(deter)
-                                                                              if deter != 1.0 else ""), p):
+                battered = self._storm_calm(v)
+                if p["ships"] and self._chance(pi["chance"] * risk * MULT["pirates"] * allure * deter * battered, "pirates",
+                                               "{}: pirate attack{}{}{}".format(who, " (their appetite x{:.2f})".format(allure)
+                                                                                if allure != 1.0 else "",
+                                                                                " (the flagship deters x{:.2f})".format(deter)
+                                                                                if deter != 1.0 else "",
+                                                                                " (storm-battered, found less often x{:.2f})".format(battered)
+                                                                                if battered != 1.0 else ""), p):
                     muster = None
                     if R["battle"].get("match"):
                         muster = self._muster(p, "pirates", dest)
@@ -5209,10 +5560,13 @@ class Game:
                 v["stage"] = 3
                 risk = v["risk"]
                 pull = self.lord_pull(p) if R["battle"].get("match") else 1.0
-                if p["ships"] and p["protect"] <= 0 and self._chance(ly["chance"] * risk * MULT["pirates"] * self.flag_deter(p) * pull, "pirate_lord",
-                                                                      "{}: found by {}'s fleet (no protection){}".format(
+                battered = self._storm_calm(v)
+                if p["ships"] and p["protect"] <= 0 and self._chance(ly["chance"] * risk * MULT["pirates"] * self.flag_deter(p) * pull * battered, "pirate_lord",
+                                                                      "{}: found by {}'s fleet (no protection){}{}".format(
                                                                           who, TOKENS["pirate"], " (a rich house x{:.2f})".format(pull)
-                                                                          if pull != 1.0 else ""), p):
+                                                                          if pull != 1.0 else "",
+                                                                          " (storm-battered, found less often x{:.2f})".format(battered)
+                                                                          if battered != 1.0 else ""), p):
                     if self._warned_off(p, origin):
                         log.append(tx("l.band_warned", port=PORTS[origin]["name"]))
                     else:
@@ -5619,6 +5973,7 @@ class Game:
     def _battle_round(self, p, b, choice):
         rng, log, pi, bt = self.rng, p["log"], R["pirates"], R["battle"]
         who, n, pirates, hit, dmg = p["name"], b["n"], b["hp"], b["hit"], b["dmg"]
+        timed_out = choice == "auto"             # the round timer ran out: standing orders, never a payment
         frames = []
         self._say_from, self._said = (b["seed"] or 0) % 9973 + b["step"] * 5, 0
         self._foe_start(b)
@@ -5670,8 +6025,16 @@ class Game:
                 b["beat"] = {"id": b["step"] + 1, "frames": frames}
                 return
             b["stage"] = "fight"
-            self._ev("battle", "parley_refused", "{} {} {}".format(
-                who, "could not pay" if p["cash"] + p["bank"] < b["price"] else "refused to pay", money(b["price"])), p, price=b["price"])
+            plan = self.toll_plan(p, b["price"])
+            if plan["can_pay"]:
+                how_not = "refused to pay"
+            elif plan["can_cargo"] or plan["can_wu"]:
+                how_not = "did not pay (the rest in cargo or on Madam Wu's books was open to them)"
+            else:
+                how_not = "could not pay"
+            self._ev("battle", "parley_refused", "{} {} {}{}".format(
+                who, how_not, money(b["price"]), " when the round timer ran out" if timed_out else ""), p,
+                price=b["price"], could_cargo=bool(plan["can_cargo"]), could_wu=bool(plan["can_wu"]), timer=timed_out)
             if lord and b.get("seed") is None:
                 # nobody at a screen and no tribute paid: the log line the fight would have opened with
                 if b["orders"] != p["orders"]:
@@ -6251,9 +6614,12 @@ class Game:
         chance = self.band_effects(p, origin)["avoid"] if origin in PORTS else 0.0
         if chance <= 0:
             return False
-        hit = self._band_rng(p, "avoid").random() < chance
+        roll = self._band_rng(p, "avoid").random()
+        hit = roll < chance
+        # Every dice event keeps its roll beside its odds, so the journal can show how the dice fell.
         self._ev("dice", "band_avoid", "{}: Favoured in {}, friends' warning ({}): {}".format(
-            p["name"], PORTS[origin]["name"], pct(chance), "slipped past" if hit else "no luck"), p, odds=chance, hit=hit)
+            p["name"], PORTS[origin]["name"], pct(chance), "slipped past" if hit else "no luck"), p,
+            odds=chance, roll=roll, hit=hit)
         return hit
 
     def _battle_close(self, p, b, outcome, frames):
@@ -6643,6 +7009,7 @@ class Game:
                 "rep": {k: int(round(v)) for k, v in p["rep"].items()},
                 "protect": p["protect"], "protect_cost": self.protection_cost(p),
                 "loan_room": max(0, int(self.loan_limit(p) - p["debt"])),
+                "lender_here": port_has(p, port, "lender"), "remit": self.remit_view(p),
                 "collectors": self.collectors(p),
                 "bankrupt": self.bankruptcy(p), "debt_cap": int(self.debt_cap(p) or 0),
                 "ready": p["ready"], "dest": p["dest"], "orders": p["orders"],
@@ -6671,6 +7038,7 @@ class Game:
                 "lot": self.lot_view(p),
                 "jail": jail.view(self, p),
                 "storm": storm.view(self, p),
+                "robbery": robbery.view(self, p),     # the Robbery Story on screen (robbery.py), or None
                 "legend": legend.view(self, p), "legends": legend.book(self, p),   # the Legend on screen; those met
                 "honour": honour.view(self, p),      # the story of a share just earned (honour.py), or None
                 "counter": counter.view(self, p),    # Under the Counter: the tax lady's paid tips
@@ -6717,7 +7085,15 @@ def static_data():
                        "hot_min": float((R.get("registrar") or {}).get("hot_min", 3.0)),
                        "avg_amber": float(R["market"].get("avg_amber", 1.5)),
                        "avg_red": float(R["market"].get("avg_red", 2.5)),
-                       "purse_over": float(R["market"].get("purse_over", 0.35)) if R["market"].get("purse_enabled", True) else None},
+                       "purse_over": float(R["market"].get("purse_over", 0.35)) if R["market"].get("purse_enabled", True) else None,
+                       # Phase 2 (Game 5 review, 21 Nov 2026): a buy of this many depths or more shows its sell-back
+                       # price; a sale past the dealers' purse asks "Sell anyway?" first.
+                       "sellback_depths": float(R["market"].get("sellback_depths", 0.25)),
+                       "purse_confirm": bool(R["market"].get("purse_confirm", True)),
+                       # Game 6 review (22 Nov 2026): a big buy that would sell straight back for this share
+                       # of its cost or less asks "Buy anyway?" first.
+                       "buy_confirm": bool(R["market"].get("buy_confirm", True)),
+                       "buy_confirm_share": float(R["market"].get("buy_confirm_share", 0.67))},
             "gun_price": f["gun_price"], "max_fleet": f["max_fleet"],
             "fleet_rules": {r: {"max": role_limit(r), "unlock": role_unlock(r)} for r in ROLES},
             "keep_trader": bool(f.get("keep_trader", True)),
@@ -6727,6 +7103,7 @@ def static_data():
             "gun_hold": gun_hold(), "cannon_hold": cannon_hold(),
             "cannon_slots": cannon_slots(),
             "loan_rate": loan_rate(), "bank_rate": R["bank"]["bank_rate"], "home": HOME,
+            "bank_tiers": [{"to": t, "rate": r} for t, r in bank_tier_list(R["game"]["default_years"])],
             "mug": {k: R["bank"].get(k, 0) for k in ("mug_threshold", "mug_chance", "mug_rep", "mug_min", "mug_max")},
             "impact": R["market"]["impact"], "lengths": R["game"]["lengths"],
             "start_year": R["game"]["start_year"], "renew_at": R["liyuen"]["renew_at"],

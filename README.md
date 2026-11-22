@@ -30,6 +30,16 @@ Promotions open a House commission with the Mayor on the right, a large House cr
 
 Certificate palettes live in `web/assets/promotion-styles.json`. In **Media Library > Ports**, each port has **Mayor Clerk**, **Mayor Trader**, **Mayor Merchant**, **Mayor Senior Merchant**, **Mayor Merchant Prince** and **Mayor Taipan** portrait roles, with generation prompts for each audience. Missing dedicated art uses that port's existing Mayor. Foochow's Taipan portrait is installed; the remaining audiences await their own paintings. When moving artwork between machines, retain the role directory, for example `web/media/port/foochow/mayor_taipan/`, so a Media Library scan identifies it correctly without replacing the destination's library.
 
+## Captain, new-voyage and finish screens
+
+The three screens share the approved brass-and-lacquer frame, inherit Admin colours and fonts, and use the Registrar, Anahit and Céleste as their hosts. Captain selection replaces the portrait grid with PIN and House details. Host setup places voyage length beside the connected Houses; guests wait for the host. The finish screen shows your final worth, journal-backed highlights and honours beside tied-aware standings, with compact certificate, ledger, Tally Book, free-play and confirmed new-game actions.
+
+Public captain portraits and House crests are always clean, even at an adult table. These screens also use the clean-only persona/background catalog and initials when clean art is missing. The trading deck keeps its existing content setting.
+
+Implementation: `web/thresholds.js`, `web/thresholds.css`, the screen delegates in `web/player.js`, and the public catalog in `captains.py`. Run `python tools/preview_threshold_screens.py` for an isolated preview at port 18886; `?screen=join`, `lobby`, `guest`, `end`, `solo`, `tie`, `negative`, `missing`, `empty` and `nohouse` use disposable fixtures and never open saves. The gallery defaults to the live server; override it with `--gallery URL`. Checks: `node tests/thresholds_test.cjs`, `python tests/public_art_test.py`, `python tests/captains_test.py` and `python tests/house_voice_test.py`.
+
+Session continuity (21 November 2026): Study B approved and implemented locally. Browser QA covers captain selection/PIN detail, setup host/guest controls, new-game confirmation, phone layout, and tied/missing-record/no-House/empty states; focused checks cover clean imagery, host permissions, tied/negative standings, stale summaries and retry handling. Local implementation has not been deployed to the Pi.
+
 ## Admin
 
 **Launch_Admin.bat** opens the command center at `http://localhost:8765/admin`. Nothing changes until you press **Save & apply**; then every open player screen and harbor board updates at once, mid-game included.

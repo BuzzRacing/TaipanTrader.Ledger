@@ -85,7 +85,9 @@ function speak() {
     // The Promotion Story (promotion.js) reads the Mayor's congratulations itself, so the log stays quiet over it too.
     if (!(typeof Jail !== "undefined" && Jail.telling()) && !(typeof Legend !== "undefined" && Legend.telling())
       && !(typeof Promotion !== "undefined" && Promotion.telling())) {
-      Voice.say(S.voice.log.map((x, i) => x && Object.assign({ tag: "log:" + S.turn + ":" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
+      // The Robbery Story (robbery.js) says Magpie's line itself, so the log skips it while that story is waiting or open.
+      const robLine = typeof Robbery !== "undefined" && Robbery.pending() && S.voice.robbery ? S.voice.robbery.text : "";
+      Voice.say(S.voice.log.map((x, i) => x && !(robLine && S.me.log[i] === robLine) && Object.assign({ tag: "log:" + S.turn + ":" + i, text: S.me.log[i] }, x)), { group: "log", replace: "log" });
     }
   }
   const news = S.news || [], plans = S.voice.news || [];
@@ -147,6 +149,91 @@ function purseCut(good, total) {
   const left = purseLeft(good);
   if (left == null || total <= left) return total;
   return Math.floor(left + (total - left) * D.market.purse_over);
+}
+/* SELL-BACK PRICE (Game 5 review, Phase 2, 21 Nov 2026). What a buy would fetch if it were sold straight
+   back here. The buy lifts the price from mid to mid * (1 + k); selling the same units brings it back
+   down, so the dealers pay the average of the two less their margin, and the purse cuts it like any other
+   sale (a buy never uses the purse up). It is quote(buy) then quote(sell) of engine.Game, run on the
+   state before the buy. A buy of rules.market.sellback_depths x the cargo's depth or more is "big". */
+function fullSellBack(good, qty) {
+  const mid = S.me.prices[good], k = D.impact * qty / D.goods[good].depth;
+  return Math.floor(qty * (mid * (1 + k) + mid) / 2 * (1 - S.me.spread));
+}
+function sellBackOf(good, qty) { return purseCut(good, fullSellBack(good, qty)); }
+function bigBuy(good, qty) {
+  const depths = D.market && D.market.sellback_depths;
+  return qty > 0 && depths != null && qty >= depths * D.goods[good].depth;
+}
+/* "ok", "amber" or "red": how little of the cost comes back, on the same lines as the trade bar's average
+   (rules.market.avg_amber and avg_red, upside down). */
+function backHeat(cost, back) {
+  const mk = D.market || {}, share = cost > 0 ? back / cost : 1;
+  return share <= 1 / (mk.avg_red || 2.5) ? "red" : share <= 1 / (mk.avg_amber || 1.5) ? "amber" : "ok";
+}
+/* The chip beside a big Buy button: the price it would sell back for, with the whole story in its tooltip. */
+function sellBackChip(g, qty) {
+  if (!bigBuy(g, qty)) return "";
+  const cost = quote(g, qty, "buy"), back = sellBackOf(g, qty), share = cost > 0 ? back / cost : 1;
+  const name = D.goods[g].name, left = purseLeft(g);
+  const tip = te("market.back_tip", { n: qty.toLocaleString(), good: name, back: money(back), pct: Math.round(share * 100), cost: money(cost) })
+    + (back < fullSellBack(g, qty) ? te("market.back_tip_purse", { left: money(left), good: name, over: Math.round(D.market.purse_over * 100) }) : "");
+  return `<em class="mk-pl back ${backHeat(cost, back)}" title="${tip}"><small>${te("market.back")}</small><b>${moneyShort(back)}</b></em>`;
+}
+/* THE PURSE CONFIRM (Game 5 review, Phase 2, 21 Nov 2026). A sale that would run past the dealers' purse (the
+   red warning, fullSale > purseLeft) waits for "Sell anyway" or "Keep it" before it is made. It covers the
+   Sell button, Trade all and Trade all cargo, and can be switched off in Admin (rules.market.purse_confirm).
+   The server still takes any sale: this is only the player's second look. */
+function pursePast(good, qty) {
+  const left = purseLeft(good);
+  return left != null && fullSale(good, qty) > left;
+}
+/* THE BIG-BUY CONFIRM (Game 6 review, 22 Nov 2026). A big buy (bigBuy) that would sell straight back for
+   rules.market.buy_confirm_share of its cost or less waits for "Buy anyway" or "Keep it" too, on the same
+   modal. Switched off by rules.market.buy_confirm. The server still takes any buy. */
+function buyPast(good, qty) {
+  const mk = D.market || {};
+  if (mk.buy_confirm === false || !S.me || !S.me.prices || !bigBuy(good, qty)) return false;
+  const cost = quote(good, qty, "buy");
+  return cost > 0 && sellBackOf(good, qty) / cost <= (mk.buy_confirm_share != null ? mk.buy_confirm_share : 0.67);
+}
+function sellPast(good, qty) {
+  return !(D.market && D.market.purse_confirm === false) && pursePast(good, qty);
+}
+function needsAsk(x) { return x.side === "buy" ? buyPast(x.g, x.qty) : x.side === "sell" && sellPast(x.g, x.qty); }
+function askPurse(list, run) {
+  if (!list.some(needsAsk)) return false;
+  ui.purseAsk = { list, run, turn: S.turn };
+  render();
+  return true;
+}
+function purseAskHtml() {
+  const a = ui.purseAsk;
+  if (!a) return "";
+  const past = S.me && !S.me.ready && a.turn === S.turn ? a.list.filter(needsAsk) : [];
+  if (!past.length) { ui.purseAsk = null; return ""; }         // a new month, or the purse is no longer short
+  const over = D.market.purse_over != null ? Math.round(D.market.purse_over * 100) : 0, more = a.list.length - past.length;
+  const buys = past.filter(x => x.side === "buy").length, sells = past.length - buys;
+  const lines = past.map(x => {
+    if (x.side === "buy") {
+      const cost = quote(x.g, x.qty, "buy"), back = sellBackOf(x.g, x.qty);
+      return `<li>${te("market.buy_confirm_line", { qty: x.qty.toLocaleString(), good: D.goods[x.g].name, cost: money(cost),
+        back: money(back), pct: Math.round(back / cost * 100) })}</li>`;
+    }
+    const full = fullSale(x.g, x.qty), total = purseCut(x.g, full);
+    return `<li>${te("market.confirm_line", { qty: x.qty.toLocaleString(), good: D.goods[x.g].name, full: money(full),
+      left: money(purseLeft(x.g)), over, total: money(total), lost: money(full - total) })}</li>`;
+  }).join("");
+  const only = buys && !sells ? "buy" : sells && !buys ? "sell" : "mixed";
+  const eyebrow = only === "buy" ? "market.buy_confirm_eyebrow" : "market.confirm_eyebrow";
+  const title = only === "buy" ? "market.buy_confirm_title" : "market.confirm_title";
+  const tip = only === "buy" ? "market.buy_confirm_tip" : "market.confirm_tip";
+  const yes = only === "buy" ? "market.buy_confirm_yes" : only === "sell" ? "market.confirm_yes" : "market.confirm_both";
+  return `<div class="veil pg-veil"><section class="modal purse-ask" role="alertdialog" aria-labelledby="pg-title">
+    <header><p class="eyebrow">${te(eyebrow)}</p><h2 id="pg-title">${te(title)}</h2></header>
+    <ul>${lines}</ul>${more > 0 ? `<p>${te("market.confirm_more", { n: more })}</p>` : ""}
+    <p class="muted">${te(tip)}</p>
+    <footer>${btn(te("market.confirm_no"), "purse_no", "", "primary")}${btn(te(yes), "purse_yes", "", "ghost")}</footer>
+  </section></div>`;
 }
 function fullSale(good, qty) {
   const mid = S.me.prices[good], k = D.impact * qty / D.goods[good].depth;
@@ -304,11 +391,11 @@ function standingHeatSvg(rep, label, cls) {
   return `<svg class="${cls || "plq-heat"}" viewBox="0 0 50 18" role="img" aria-label="${label}" focusable="false" style="--heat:${standingHeat(tier)}">${bars}</svg>`;
 }
 
-function newGameControl() {
+function newGameControl(label) {
   if (!S.me.host) return "";
   return ui.confirmNew
     ? `<div class="row"><b>${te("host.new_confirm")}</b>${btn(te("host.new_yes"), "newgame", "", "primary")}${btn(te("host.new_no"), "newgame_no")}</div>`
-    : `<div class="row">${btn(te("host.new_ask"), "newgame_ask", "", "ghost")}</div>`;
+    : `<div class="row">${btn(label || te("host.new_ask"), "newgame_ask", "", "ghost")}</div>`;
 }
 
 /* -------------------------------------------------------------- screens -- */
@@ -321,7 +408,7 @@ function region(name, html) {
   if (el && drawn[name] !== html) {
     // An overlay that is only changing its contents does not fade in again.
     const veil = name === "over" && el.querySelector(".veil");
-    const kind = veil && ["cl-veil", "cx-veil"].find(c => veil.classList.contains(c));
+    const kind = veil && ["cl-veil", "cx-veil", "pg-veil"].find(c => veil.classList.contains(c));
     el.innerHTML = html; drawn[name] = html; Chart.fit(el);
     const next = kind && el.querySelector(".veil." + kind);
     if (next) next.classList.add("no-fade");
@@ -362,6 +449,7 @@ function render() {
   const inGame = S.me && S.phase !== "lobby" && S.phase !== "ended";
   let portOverlay = false;
   document.body.classList.toggle("ingame", !!inGame);
+  document.body.classList.toggle("threshold-screen", !inGame);
   if (inGame) {
     const deck = deckFrame(), parts = gameScreen();
     portOverlay = !!parts.over;
@@ -375,7 +463,8 @@ function render() {
     });
     if (ui.paneTab !== ui.tab) { ui.paneTab = ui.tab; app.querySelector(".dk-pane").scrollTop = 0; }
     const busy = (typeof Battle !== "undefined" && Battle.busy()) || (typeof Jail !== "undefined" && Jail.busy()) || (typeof Storm !== "undefined" && Storm.busy())
-      || (typeof Legend !== "undefined" && Legend.busy());
+      || (typeof Legend !== "undefined" && Legend.busy()) || (typeof Standing !== "undefined" && Standing.busy())
+      || (typeof Robbery !== "undefined" && Robbery.busy());
     if (!(ui.drag && drawn.ledger)) region("ledger", ui.ledger && !portOverlay && !busy ? Ledger.html() : "");
     Ledger.after(app);
   } else {
@@ -388,8 +477,11 @@ function render() {
   syncPromotion(inGame, S.phase === "ended" || (inGame && S.phase === "port" && !portOverlay
     && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Jail !== "undefined" && Jail.busy())
     && !(typeof Storm !== "undefined" && Storm.busy()) && !(typeof Legend !== "undefined" && Legend.telling())));
-  syncBands(inGame && S.phase === "port" && !portOverlay && !S.me.promotion
-    && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Legend !== "undefined" && Legend.telling()));
+  // The Standing Story (standing.js) is queued behind everything else: it checks again for dialogs, the desk, the log,
+  // a voice and the Captain's own taps before it opens.
+  Standing.sync(inGame, inGame && S.phase === "port" && !portOverlay && !S.me.promotion
+    && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Jail !== "undefined" && Jail.busy())
+    && !(typeof Storm !== "undefined" && Storm.busy()) && !(typeof Legend !== "undefined" && Legend.busy()));
 
   if (focusId) {
     const el = document.getElementById(focusId);
@@ -403,24 +495,27 @@ function render() {
   if (typeof Jail !== "undefined") Jail.sync();
   if (typeof Storm !== "undefined") Storm.sync();
   if (typeof Legend !== "undefined") Legend.sync();      // a Legend waits for the battle, the storm and the jail
+  // The Robbery Story (robbery.js): one screen, only when the server found no other story this month; it waits for the
+  // battle, jail, storm, Legend and the Port Authority desk to be gone.
+  if (typeof Robbery !== "undefined") Robbery.sync(inGame, inGame && S.phase === "port" && !portOverlay
+    && !(typeof Battle !== "undefined" && Battle.busy()) && !(typeof Jail !== "undefined" && Jail.busy())
+    && !(typeof Storm !== "undefined" && Storm.busy()) && !(typeof Legend !== "undefined" && Legend.busy()));
   if (typeof Soundscape !== "undefined") Soundscape.sync(S, { bell: true, battle: typeof Battle !== "undefined" && !!Battle.busy() && !(typeof Storm !== "undefined" && Storm.holding && Storm.holding()),
     jail: typeof Jail !== "undefined" && !!Jail.busy(), storm: typeof Storm !== "undefined" && !!Storm.busy() });
-  TownCrier.sync(S, D, inGame && !portOverlay && !S.me.promotion && !Battle.busy()
+  TownCrier.sync(S, D, inGame && !portOverlay && !S.me.promotion && !Battle.busy() && !(typeof Standing !== "undefined" && Standing.busy())
     && !(typeof Storm !== "undefined" && Storm.busy()) && !document.querySelector(".ceremony") && !document.querySelector("dialog[open]"));
 }
 
 /* The living background and the stage's picture between lines. */
 function deckArt(inGame) {
+  if (!inGame) { Ambient.set([]); return; }
   const g = D.graphics || {}, me = S.me;
-  let list = inGame
-    ? Media.items("scene", ["market", "voyage"], "background", true).concat(Media.items("port", me.port, "night", true))
-    : Media.items("scene", ["title", "loading"], "background", true);
+  let list = Media.items("scene", ["market", "voyage"], "background", true).concat(Media.items("port", me.port, "night", true));
   if (!list.length) {
-    list = [g.page_bg, g.masthead_bg].concat(inGame && g.ports ? [g.ports[me.port]] : []).filter(Boolean)
+    list = [g.page_bg, g.masthead_bg].concat(g.ports ? [g.ports[me.port]] : []).filter(Boolean)
       .map(u => ({ id: u, u, t: "image", w: 1 }));
   }
   Ambient.set(list);
-  if (!inGame) return;
   Stage.mount(document.getElementById("stageSlot"));
   // At the Port Authority's desk the stage shows the officer too, in a different picture from the
   // popup's (customs.js Customs.stage); with no second picture of her, it shows the port.
@@ -462,6 +557,13 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "deck.speech_off": "Voices are off", "deck.speech_none": "Voices are turned off for this game",
     "deck.options": "Options", "deck.options_soon": "Options: the voyage clock, your Captain and House, and this screen.",
     "host.end_short": "End month", "host.new_short": "New game", "host.new_yes_short": "Yes, new game", "host.new_no_short": "Keep playing",
+    "market.back": "sells back", "market.back_tip": "Sold straight back here, these {n} {good} would fetch about {back}: {pct}% of the {cost} you pay now. The dealers' margin and the price moving under the sale take the rest.",
+    "market.back_tip_purse": " The dealers have only {left} left this month for {good}; past that they pay {over}%.",
+    "dealer.back": "Sold straight back", "dealer.back_sub": "{pct}% of what you pay",
+    "market.confirm_eyebrow": "The dealers' purse", "market.confirm_title": "The dealers are short of silver",
+    "market.confirm_line": "{qty} {good}: worth {full} at their prices, but they have only {left} left this month. Past that they pay {over}%, so you would get {total}: {lost} less.",
+    "market.confirm_more": "And {n} more in the same order.", "market.confirm_tip": "Sell the rest in another port, or next month when the purse is full again.",
+    "market.confirm_yes": "Sell anyway", "market.confirm_no": "Keep it",
     "market.avg": "avg {avg} · {x}× posted", "market.avg_tip_buy": "Your buying pushes the price up as you go: on average {avg} a unit, {x} times the posted {posted}.",
     "market.avg_tip_sell": "Your selling pushes the price down as you go: on average {avg} a unit, {x} times the posted {posted}.",
     "market.all_buy_even_tip": "Buy {n} {good} for {total}: as many as pay their way. Past that, the next unit would cost more here than it fetches in {port} (about {sale} a unit).",
@@ -520,12 +622,19 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "dues.standing_off": "Mayor's courtesy", "dues.standing_off_sub": "standing {n}: {rate} off",
     "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra",
     "dues.debt": "Debtor's relief", "dues.debt_sub": "{rate} off for a house in debt",
+    "dues.house": "Great house", "dues.house_sub": "Mansion or Palace at home: {rate} off",
     "dues.profit": "Share of profit", "dues.profit_sub": "{month} this month on {n} profit past the first {free}; {rate} after margin, standing and shares",
     "stat.bankrupt_in": "bankrupt in {n} months", "stat.bankrupt_in_1": "bankrupt this month",
     "port.todo.bankrupt": "Your house is worth less than nothing. {lender} declares you bankrupt in {n} months unless your worth climbs {amount}",
     "port.todo.bankrupt_1": "{lender} declares you bankrupt at the end of this month unless your worth climbs {amount}",
     "port.owe.bankrupt": "Bankruptcy", "port.owe.bankrupt_in": "in {n} months", "port.owe.bankrupt_in_1": "end of this month",
     "port.owe.bankrupt_note": "Worth below zero {m} of {need} months. Climb {amount} to stop it; she takes everything and starts you again in {home}",
+    "port.remit.office": "Her office in {port}: repayments only", "port.remit.title": "Sent home", "port.remit.sent": "Sent",
+    "port.remit.fees": "Merchants' fees", "port.remit.lost": "Lost on the road", "port.remit.arrived": "Reached {home}", "port.remit.trips": "Sendings",
+    "port.remit.robbed": "Robbed", "port.remit.skimmed": "Skimmed", "port.remit.fee_stat": "Merchant's fee",
+    "port.remit.how.skimmed": "Skimmed", "port.remit.how.robbed": "Robbed", "port.remit.trips_note": "{n} sendings", "port.remit.trips_note_1": "1 sending",
+    "port.remit.terms": "A merchant carries it home. He keeps {fee} of what you send; each trip there is a {rob} chance he is robbed and a {skim} chance he helps himself. Only what arrives lowers the debt.",
+    "port.pl.remit_fee": "Merchants' fees on repayments", "port.pl.remit_lost": "Lost on the road home",
     "port.owe.grp_lender": "Moneylender", "port.owe.grp_collect": "Debt collectors", "port.owe.grp_port": "Leaving port", "port.owe.grp_bank": "Counting-house",
     "voy.left": "{n} months left", "voy.left_1": "Final month", "voy.closed": "The books are closed",
     "voy.close": "Books close {date}", "voy.seal": "終", "voy.aria": "Voyage: {date}. {left}. Books close {end}." });
@@ -623,91 +732,51 @@ function stageWomanHtml(port, role) {
     : `<img class="${cls}" src="${u}" alt="">`;
 }
 
-function masthead(sub) {
-  return `<header class="masthead"><h1>${brandHtml(D)}</h1><p>${sub}</p></header>`;
-}
-
-function roster() {
-  if (!S.players.length) return `<p class="muted">${te("join.none")}</p>`;
-  return '<ul class="roster">' + S.players.map(p =>
-    `<li>${houseMark(p)}<b>${esc(p.firm)}</b> ` +
-    `<span class="muted">${esc(p.name)}${p.host ? " · " + te("w.host") : ""}${p.present ? "" : " · " + te("w.away")}</span></li>`).join("") + "</ul>";
-}
-
-const joinUrl = () => `<p class="muted center">${th("join.url", { url: "<b>" + esc(S.join_url) + "</b>" })}</p>`;
-
 /* Saved Captains (Admin > Captains): pick yours, type the PIN, choose the House. */
-let CAPS = null, capsAt = 0, capsLoading = false;
+let CAPS = null, capsAt = 0, capsLoading = false, capsFailed = false;
 async function loadCaptains() {
   capsLoading = true;
-  try { const r = await (await fetch("/api/captains")).json(); if (r.ok) CAPS = r; }
-  catch (err) { if (!CAPS) CAPS = { captains: [], typed: true }; }
+  try { const response = await fetch("/api/captains"); if (!response.ok) throw new Error("Captain catalog request failed"); const r = await response.json(); if (!r.ok) throw new Error("Captain catalog unavailable"); CAPS = r; capsFailed = false; }
+  catch (err) { capsFailed = true; console.error("Captain selection:", err); toast(t("threshold.captains_failed"), true); }
   capsLoading = false; capsAt = Date.now();
   if (S && !S.me) render();
 }
 const capInitials = n => String(n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 function capFace(c, big) {
-  return `<span class="cap-face${big ? " big" : ""}">${c.portrait ? `<img src="${esc(c.portrait)}" alt="">` : `<b>${esc(capInitials(c.name))}</b>`}</span>`;
+  return `<span class="cap-face${big ? " big" : ""}">${Thresholds.clean(c.portrait) ? `<img src="${esc(Thresholds.clean(c.portrait))}" alt="">` : `<b>${esc(capInitials(c.name))}</b>`}</span>`;
 }
 function capCrest(h) {
-  return `<span class="cap-crest" style="--hc:${esc(h.color)}">${h.image ? `<img src="${esc(h.image)}" alt="">` : esc(capInitials(h.name))}</span>`;
+  return `<span class="cap-crest" style="--hc:${esc(h.color)}">${Thresholds.clean(h.image) ? `<img src="${esc(Thresholds.clean(h.image))}" alt="">` : esc(capInitials(h.name))}</span>`;
 }
 function captainPicker() {
-  if (!CAPS) return `<p class="muted">…</p>`;
+  if (capsFailed) return `<p class="note" role="status">${te("threshold.captains_failed")} ${btn(te("threshold.retry"), "captains_retry")}</p>`;
+  if (!CAPS) return `<p class="muted" role="status">${te("threshold.loading")}</p>`;
   const list = CAPS.captains || [];
   if (!list.length) return `<p class="muted">${te("join.captain_none")}</p>`;
   const c = list.find(x => x.cid === ui.capSel);
   if (!c) {
-    return `<p class="muted">${te("join.captain_help")}</p><div class="cap-grid">${list.map(x =>
-      `<button type="button" class="cap-tile${x.guest ? " guest" : ""}" data-act="cap_pick" data-cid="${esc(x.cid)}">${capFace(x)}
-        <b>${esc(x.name)}</b><small>${esc(x.guest ? t("join.guest") : x.title || "")}</small></button>`).join("")}</div>`;
+    return `<p class="muted">${te("join.captain_help")}</p><div class="cap-grid captains">${list.map(x =>
+      `<button type="button" class="cap-tile captain${x.guest ? " guest" : ""}" data-act="cap_pick" data-cid="${esc(x.cid)}" style="--house:${esc(x.houses?.[0]?.color || "var(--deck-brass)")}">${capFace(x)}
+        <span class="cap-label"><b>${esc(x.name)}</b><small>${esc(x.guest ? t("join.guest") : x.title || "")}</small></span></button>`).join("")}</div>`;
   }
   const houses = c.houses || [];
   if (!houses.some(h => h.hid === ui.capHouse)) ui.capHouse = houses[0] ? houses[0].hid : "";
   const pin = c.guest ? `<p class="muted">${te("join.guest")}</p>`
     : `<label>${te("join.pin")} <input id="in_pin" data-k="pin" type="password" inputmode="numeric" autocomplete="off"
         maxlength="8" placeholder="${esc(t("join.pin_ph"))}" value="${esc(val("pin"))}"></label>`;
-  return `<div class="cap-chosen">${capFace(c, true)}<div><h3>${esc(c.name)}</h3><p class="muted">${esc(c.title || "")}
-      ${c.games ? " · " + te("join.games", { n: c.games }) : ""}</p>${pin}</div></div>
-    ${houses.length ? `<p class="cap-label">${te("join.house")}</p><div class="cap-houses">${houses.map(h =>
-      `<button type="button" class="cap-house${h.hid === ui.capHouse ? " on" : ""}" data-act="cap_house" data-hid="${esc(h.hid)}"
-        style="--hc:${esc(h.color)}">${capCrest(h)}<span><b>${esc(h.name)}</b>${h.motto ? `<small>${esc(h.motto)}</small>` : ""}</span></button>`).join("")}</div>` : ""}
-    ${btn(te("join.captain_button"), "cap_join", "", "primary wide")}
-    ${btn(te("join.change"), "cap_back", "", "link wide")}`;
+  return `<div class="details"><div>${capFace(c, true)}<p class="caption">${te("join.games", {n:c.games || 0})}</p></div><div><h2>${esc(c.name)}</h2><p class="sub">${esc(c.title || "")}</p>${pin}
+    ${houses.length ? `<p class="caption">${te("join.house")}</p><div class="cap-houses">${houses.map(h =>
+      `<button type="button" class="cap-house house-select${h.hid === ui.capHouse ? " on" : ""}" data-act="cap_house" data-hid="${esc(h.hid)}" aria-pressed="${h.hid === ui.capHouse}"
+        style="--hc:${esc(h.color)}">${capCrest(h)}<span><b>${esc(h.name)}</b>${h.motto ? `<small>${esc(h.motto)}</small>` : ""}</span></button>`).join("")}</div>` : `<p class="note">${te("threshold.no_house")}</p>`}</div></div>
+    <div class="actionbar">${btn(te("join.change"), "cap_back", "", "ghost")}${btn(te("join.captain_button"), "cap_join", "", "primary", !houses.length)}</div>`;
 }
 
 function joinScreen() {
-  const late = S.phase === "port" ? `<p class="note">${te("join.late")}</p>` : "";
-  const over = S.phase === "ended" ? `<p class="note">${te("join.over")}</p>` : "";
-  if (!capsLoading && (!CAPS || Date.now() - capsAt > 20000)) loadCaptains();
-  const typed = !CAPS || CAPS.typed ? `<details class="card cap-typed"${CAPS && !(CAPS.captains || []).length ? " open" : ""}>
-      <summary>${te("join.typed")}</summary>
-      <label>${te("join.name")} ${input("name", t("join.name_ph"), 'inputmode="text" maxlength="20"')}</label>
-      <label>${te("join.firm")} ${input("firm", t("join.firm_ph"), 'inputmode="text" maxlength="28"')}</label>
-      ${btn(te("join.button"), "join", "", "primary wide")}</details>` : "";
-  return masthead(esc(D.brand.tagline)) + `<main class="narrow cap-join">
-    <section class="card"><h2>${te("join.captain_title")}</h2>${late}${over}${captainPicker()}</section>
-    ${typed}
-    <section class="card"><h2>${te("join.houses")}</h2>${roster()}</section>
-    ${joinUrl()}</main>`;
+  if (!capsLoading && !capsFailed && (!CAPS || Date.now() - capsAt > 20000)) loadCaptains();
+  return Thresholds.join();
 }
 
-function lobbyScreen() {
-  const me = S.me;
-  const years = D.lengths.map(y =>
-    btn(te(y === 1 ? "lobby.year" : "lobby.years", { n: y }), "years", `data-y="${y}"`, S.years === y ? "on" : "")).join("");
-  const level = D.difficulty ? `<p class="muted">${te("lobby.difficulty", { name: D.difficulty })}</p>` : "";
-  const host = me.host
-    ? `<h2>${te("lobby.host_title")}</h2><p>${te("lobby.length")}</p><div class="seg">${years}</div>
-       <p class="muted">${te("lobby.turns", { years: S.years, turns: S.years * 12 })}</p>${level}
-       ${btn(te("ceremony.cue"), "start", "", "primary wide", !!S.start_at)}`
-    : `<h2>${te("lobby.wait_title")}</h2><p class="muted">${te("lobby.wait", { years: S.years })}</p>${level}`;
-  return masthead(esc(D.brand.tagline)) + `<main class="narrow">
-    <section class="card">${host}</section>
-    <section class="card"><h2>${te("join.houses")}</h2>${roster()}${btn(te("st.open_hint"), "tally", "", "ghost wide")}</section>
-    <p class="muted center">${th("join.url", { url: "<b>" + esc(S.join_url) + "</b>" })}<br>
-    ${th("join.board_url", { url: "<b>" + esc(S.join_url) + "/board</b>" })}</p></main>`;
-}
+function lobbyScreen() { return Thresholds.lobby(); }
 
 /* The race: one ledger line per House, richest first. The top three wear gold, silver and bronze
    medals; everyone below gets a plain engraved ring. Equal fortunes share a place. Each line shows the
@@ -742,19 +811,7 @@ function standings() {
   return `<ol class="race">${rows}</ol>`;
 }
 
-function endScreen() {
-  const top = Ceremony.ranked(S)[0];
-  return masthead(te("end.sub", { date: S.date })) + `<main class="narrow">
-    <section class="card"><h2>${te("end.title", { name: top.name, firm: top.firm })}</h2>${standings()}</section>
-    ${S.voyage_story ? `<section class="card">${Ceremony.story(S, D.ports)}</section>` : ""}
-    ${typeof Certificate !== "undefined" && S.me ? `<section class="card">${btn(te("end.certificate"), "certificate", "", "wide")}</section>` : ""}
-    <section class="card">${btn(te("end.ledger"), "ledger", "", "wide")}</section>
-    <section class="card">${btn(te("end.free_play"), "free_play", "", "primary wide")}
-      <p class="muted">${te("end.free_play_note")}</p></section>
-    <section class="card">${btn(te("st.open_end"), "tally", "", "ghost wide")}</section>
-    <section class="card">${newGameControl() || `<p class="muted">${te("end.host_can")}</p>`}
-      <p class="muted">${te("end.kept")}</p></section></main>`;
-}
+function endScreen() { return Thresholds.end(); }
 
 /* The header plaques. While trades are lined up on the market bars, silver and hold show where they
    will land if every lined-up trade goes through, tinted by which way they move. */
@@ -896,7 +953,7 @@ function gameScreen() {
     : ui.tab === "fleet" ? captainCommission(me)
     : ui.tab === "port" ? `<section class="card pt-race pt-race-side"><h2>${te("port.race.title")}</h2>${portRace()}</section>` : "";
   // The Port Authority's desk comes first in a new port (after the month's log is read).
-  return { top, nav, pane, side, over: fighting ? "" : report || Customs.html() };
+  return { top, nav, pane, side, over: fighting ? "" : purseAskHtml() || report || Customs.html() };
 }
 
 function rankSeal(rankId) {
@@ -933,87 +990,10 @@ function syncPromotion(inGame, canShow) {
   if (typeof Promotion !== "undefined") Promotion.sync(inGame, canShow);
 }
 
-/* Reputation swings (19 Nov 2026): when standing in a port crosses into another band, a big card with
-   that port's Mayor (her whole picture, large), the new band's heat bars and name, why it moved and what
-   the band now means. One card at a time; other moves since are listed under it. Seen moves are
-   remembered per screen (browser storage when it works, memory otherwise). The Mayor reads a fall into
-   Hostile or a rise into Favoured aloud from the Captain's Log (l.band_hostile / l.band_favoured). */
+/* Reputation swings (19 Nov 2026): the band-change popup is the Standing Story (standing.js, redone Nov 2026 as a
+   full-screen Mayor story that waits for a quiet moment; the small card and its syncBands lived here). The five
+   band names, used by the standing figures further down. */
 const BAND_KEYS = ["hostile", "cool", "neutral", "warm", "favoured"];
-const bandSeen = (() => {
-  let mem = {};
-  const key = () => "ct.bands." + ((S && S.game_id) || "") + "." + ((S && S.me && S.me.id) || "");
-  const load = () => { try { return JSON.parse(localStorage.getItem(key()) || "{}") || {}; } catch (e) { return mem; } };
-  return {
-    has: id => !!load()[id],
-    add: ids => {
-      const all = load();
-      ids.forEach(id => { all[id] = 1; });
-      mem = all;
-      try { localStorage.setItem(key(), JSON.stringify(all)); } catch (e) { /* memory only */ }
-    }
-  };
-})();
-function bandArt(port, rose, to) {
-  const tagged = role => Media.items("port", port, role, false).filter(i => i.r.includes(role));
-  const anyOf = list => list.length ? list[Math.floor(Math.random() * list.length)] : null;
-  const mayor = (rose && to >= 3 ? anyOf(tagged("mayor_congrats")) : null)
-    || Media.choose("port", port, "mayor", { strict: true, slot: "band" });
-  return mayor && mayor.t === "image" ? mayor.u : "";
-}
-function syncBands(canShow) {
-  let dialog = app.querySelector(".band-move");
-  const moves = ((S.me && S.me.bands) || []).filter(e => !bandSeen.has(e.id));
-  if (!canShow || !moves.length) {
-    if (dialog && !moves.length) dialog.remove();
-    return;
-  }
-  // The headline: a move in the port the house is in, the biggest band jump first, then the newest.
-  const here = moves.filter(e => e.port === S.me.port);
-  const pool = here.length ? here : moves;
-  const top = pool.slice().sort((a, b) => Math.abs(b.to - b.from) - Math.abs(a.to - a.from) || b.id - a.id)[0];
-  const key = moves.map(e => e.id).join(",");
-  if (dialog && dialog.dataset.key === key) return;
-  if (dialog) dialog.remove();
-  const rose = top.to > top.from, port = portName(top.port), band = BAND_KEYS[top.to];
-  const word = te("stat.standing_" + band);
-  const why = T["band.why." + top.why] != null ? te("band.why." + top.why)
-    : T["band.why." + String(top.why).replace(/_word$/, "")] != null ? te("band.why." + String(top.why).replace(/_word$/, "")) : te("band.why.other");
-  const art = bandArt(top.port, rose, top.to);
-  const others = moves.filter(e => e !== top);
-  const mayorLabel = te("fleet.promotion_mayor", { port });
-  dialog = document.createElement("dialog");
-  dialog.className = "band-move " + (rose ? "rose" : "fell") + " to-" + band;
-  dialog.dataset.key = key;
-  dialog.style.setProperty("--heat", standingHeat(top.to));
-  dialog.setAttribute("aria-labelledby", "band-move-title");
-  dialog.innerHTML = `
-    <div class="bm-card">
-      <figure class="bm-mayor${art ? "" : " nopic"}">${art ? `<img src="${esc(art)}" alt="${mayorLabel}">` : ""}
-        <figcaption>${mayorLabel}</figcaption></figure>
-      <section class="bm-body">
-        <p class="bm-eyebrow">${te("band.title", { port: esc(port) })}</p>
-        <h2 id="band-move-title">${te(rose ? "band.rose" : "band.fell")}</h2>
-        <p class="bm-now">${te("band.now", { port: esc(port) })}</p>
-        <div class="bm-band"><span class="bm-from">${te("stat.standing_" + BAND_KEYS[top.from])}</span>
-          <span class="bm-arrow" aria-hidden="true">${rose ? "&uarr;" : "&darr;"}</span>
-          ${standingHeatSvg(top.rep, word, "bm-heat")}<strong>${word}</strong><em>${top.rep}</em></div>
-        <p class="bm-why">${why}</p>
-        <p class="bm-effect">${te("band.effect." + top.to)}</p>
-        ${others.length ? `<ul class="bm-others">${others.map(e => `<li style="--heat:${standingHeat(e.to)}"><b>${esc(portName(e.port))}</b> ${te("stat.standing_" + BAND_KEYS[e.from])} <span aria-hidden="true">${e.to > e.from ? "&uarr;" : "&darr;"}</span> ${te("stat.standing_" + BAND_KEYS[e.to])}</li>`).join("")}</ul>` : ""}
-        <button type="button" class="primary" data-bm="ok">${te("band.ok")}</button>
-      </section>
-    </div>`;
-  dialog.addEventListener("cancel", e => { e.preventDefault(); close(); });
-  function close() {
-    bandSeen.add(moves.map(e => e.id));
-    if (dialog.open) dialog.close();
-    dialog.remove();
-    render();
-  }
-  dialog.querySelector("[data-bm=ok]").addEventListener("click", close);
-  app.appendChild(dialog);
-  dialog.showModal();
-}
 
 /* The heat bars on the masthead flash and show the change for a few seconds when standing in this
    port moves (ui.repMove), up in green, down in red. */
@@ -1205,8 +1185,9 @@ function tradeButton(g, tr) {
     <b>${tr.max ? te("market.drag") : te("market.no_room")}</b></button><span class="mk-pl-slot"></span></div>`;
   const total = quote(g, tr.qty, tr.side), pl = tr.side === "sell" ? profitOf(g, tr.qty, total) : null;
   const tip = pl === null ? "" : ` title="${te(pl >= 0 ? "market.pl_tip_up" : "market.pl_tip_down", { profit: money(Math.abs(pl)), paid: money(paidFor(g)) })}"`;
-  const plTag = pl === null ? "" : `<em class="mk-pl ${pl >= 0 ? "up" : "down"}"${tip}>${te(pl >= 0 ? "market.pl_up" : "market.pl_down", { profit: money(Math.abs(pl)) })}</em>`;
-  return `<div class="mk-act${pl === null ? "" : " has-pl"}"><button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}"${tip}>
+  // A sale shows its profit or loss here; a big buy shows what it would sell back for (sellBackChip).
+  const plTag = pl === null ? (tr.side === "buy" ? sellBackChip(g, tr.qty) : "") : `<em class="mk-pl ${pl >= 0 ? "up" : "down"}"${tip}>${te(pl >= 0 ? "market.pl_up" : "market.pl_down", { profit: money(Math.abs(pl)) })}</em>`;
+  return `<div class="mk-act${plTag ? " has-pl" : ""}"><button type="button" class="mk-go ${tr.side}" data-act="trade" data-good="${g}"${tip}>
     <b>${te(tr.side === "buy" ? "btn.buy" : "btn.sell")} ${tr.qty.toLocaleString()}</b>
     <small>${money(total)}</small>${costTag(g, tr.qty, tr.side)}</button><span class="mk-pl-slot">${plTag}</span></div>`;
 }
@@ -1605,7 +1586,7 @@ function dealerCut(g, qty, side) {
 function dealerCard() {
   const me = S.me;
   if (!me || !D.goods) return "";
-  let pay = 0, get = 0, cut = 0, move = 0, short = 0, nBuy = 0, nSell = 0;
+  let pay = 0, get = 0, cut = 0, move = 0, short = 0, nBuy = 0, nSell = 0, bigPay = 0, back = 0;
   if (!me.ready) Object.keys(D.goods).forEach(g => {
     if (ui.vals["t_" + g] == null) return;
     const tr = tradeOf(g);
@@ -1614,13 +1595,17 @@ function dealerCard() {
     cut += q.cut;
     move += q.move;
     short += q.short;
-    if (tr.side === "buy") { pay += q.total; nBuy += tr.qty; } else { get += q.total; nSell += tr.qty; }
+    if (tr.side === "buy") {
+      pay += q.total; nBuy += tr.qty;
+      if (bigBuy(g, tr.qty)) { bigPay += q.total; back += sellBackOf(g, tr.qty); }     // the big ones' sell-back price
+    } else { get += q.total; nSell += tr.qty; }
   });
   const margin = pct(me.spread);
   const line = (label, v, cls, sub) => `<div class="dl-row ${cls}"><span>${label}${sub ? `<small>${sub}</small>` : ""}</span><b>${v}</b></div>`;
   const rows = (nBuy || nSell)
     ? (nBuy ? line(te("dealer.pay"), money(pay), "pay", te("dealer.units", { n: nBuy.toLocaleString() })) : "") +
       (nSell ? line(te("dealer.get"), money(get), "get", te("dealer.units", { n: nSell.toLocaleString() })) : "") +
+      (bigPay ? line(te("dealer.back"), money(back), "back " + backHeat(bigPay, back), te("dealer.back_sub", { pct: Math.round(back / bigPay * 100) })) : "") +
       line(te("dealer.cut"), money(cut), "cut", te("dealer.cut_sub", { margin })) +
       (move ? line(te("dealer.move"), money(move), "cut move", te("dealer.move_sub")) : "") +
       (short ? line(te("dealer.short"), money(short), "cut move", te("dealer.short_sub")) : "")
@@ -1656,11 +1641,12 @@ function clearanceLedger() {
     wh: ln => te("dues.wh_sub", { n: ln.basis.toLocaleString(), rate: per(ln.rate) }),
     standing: ln => te(ln.amount < 0 ? "dues.standing_off_sub" : "dues.standing_on_sub", { n: ln.basis, rate: share(ln.rate) }),
     debt: ln => te("dues.debt_sub", { n: money(ln.basis), rate: share(ln.rate) }),
+    house: ln => te("dues.house_sub", { rate: share(ln.rate) }),
     profit: ln => te("dues.profit_sub", { n: money(ln.basis), rate: share(ln.rate), month: share(ln.month || 0), free: money(ln.free || 0) }),
   };
   const label = ln => ln.key === "standing" ? te(ln.amount < 0 ? "dues.standing_off" : "dues.standing_on") : te("dues." + ln.key);
   const amt = ln => ln.amount < 0 ? "−" + money(-ln.amount) : money(ln.amount);
-  const cls = ln => ln.key === "standing" ? (ln.amount < 0 ? " credit" : " surcharge") : ln.key === "debt" ? " credit" : "";
+  const cls = ln => ln.key === "standing" ? (ln.amount < 0 ? " credit" : " surcharge") : ln.key === "debt" || ln.key === "house" ? " credit" : "";
   const rows = bill.lines.map(ln => `<div class="cl-row${cls(ln)}"><span><b>${label(ln)}</b><small>${subs[ln.key] ? subs[ln.key](ln) : ""}</small></span><strong>${amt(ln)}</strong></div>`).join("");
   const level = bill.level == null ? 1 : bill.level;
   const levelKey = level < 0.95 ? "dues.level_lo" : level > 1.05 ? "dues.level_hi" : "dues.level";
@@ -1694,7 +1680,7 @@ function clearanceLedger() {
 const PL_GROUPS = [
   ["trade", ["sales", "pa_sold", "cost"]],
   ["port", ["dues", "gift", "depot", "wh_rent", "repairs", "protection", "upkeep", "estate_upkeep", "pa_tax", "pa_fine", "pa_bribe", "pa_premium", "tips"]],
-  ["money", ["interest", "bank_interest", "contracts"]],
+  ["money", ["interest", "bank_interest", "contracts", "remit_fee", "remit_lost"]],
   ["perils", ["booty", "parley", "plundered", "seized", "fines", "overboard", "ships_lost", "wreck", "wreck_cargo", "robbed", "wh_robbed"]],
 ];
 const plTotal = lines => Object.values(lines || {}).reduce((a, b) => a + b, 0);
@@ -1706,7 +1692,7 @@ const ten = (key, n, vars) => te(n === 1 && T[key + "_1"] != null ? key + "_1" :
 /* Services sit on Arrival: the full set at home; elsewhere only where the port has a bank counter or warehouses to let. */
 function hasServices() {
   const me = S.me;
-  return me.port === myHome() || !!me.bank_here || !!(me.wh_here && me.wh_here !== "none") || !!me.shares;
+  return me.port === myHome() || !!me.bank_here || !!me.lender_here || !!(me.wh_here && me.wh_here !== "none") || !!me.shares;
 }
 const portViews = () => ["arrival", "paper"];      // Accounts moved to the Accounting Ledger (ledger.js, 20 Nov 2026)
 
@@ -2237,7 +2223,7 @@ function portOwe() {
       paid > 0.5 ? `<div class="pt-owe-stat"><span class="pt-owe-lbl">${te("port.owe.paid")}</span>${amt(paid, "down")}</div>` : "",
     ].join("");
     hero = `<div class="pt-owe-hero debt">
-        <div class="pt-owe-main"><span class="pt-owe-lbl">${te("port.owe.lender")}</span><b>${money(me.debt)}</b><small>${te("port.owe.lender_note", { rate: pct(r, 2) })} · ${te(home ? "port.owe.repay_here" : "port.owe.repay_home")}</small></div>
+        <div class="pt-owe-main"><span class="pt-owe-lbl">${te("port.owe.lender")}</span><b>${money(me.debt)}</b><small>${te("port.owe.lender_note", { rate: pct(r, 2) })} · ${te(home ? "port.owe.repay_here" : me.lender_here ? "port.remit.office" : "port.owe.repay_home", { port: esc(portName(me.port)) })}</small></div>
         <div class="pt-owe-stats">${stats}</div></div>`;
   } else {
     hero = `<div class="pt-owe-hero clear">
@@ -2263,9 +2249,13 @@ function portOwe() {
   let port = row(te("port.owe.dues", { port: esc(portName(me.port)) }), bill > 0 ? amt(bill) : state(te("port.owe.nothing"), "up"), te("port.owe.dues_note"));
   port += row(te("port.owe.protect"), me.protect > 0 ? count(ten("port.owe.months", me.protect), me.protect <= D.renew_at ? "down" : "up")
     : state(te("port.owe.no_protect"), "down"));
+  const rt = (me.remit || {}).tot;
+  const remit = rt && rt.n ? row(te("port.remit.sent"), amt(rt.sent), ten("port.remit.trips_note", rt.n))
+    + row(te("port.remit.fees"), amt(rt.fee, "down")) + row(te("port.remit.lost"), amt(rt.lost, rt.lost > 0 ? "down" : ""))
+    + row(`<b>${te("port.remit.arrived", { home: esc(portName(myHome())) })}</b>`, amt(rt.arrived, "up")) : "";
   const bank = me.bank > 0 ? row(te("port.owe.bank"), amt(me.bank, "up"), te("port.owe.bank_note", { rate: pct(D.bank_rate, 2), interest: money(me.bank * D.bank_rate) })) : "";
 
-  return `${hero}<table class="pt-table pt-owetable">${group(te("port.owe.grp_lender"), lender)}${group(te("port.owe.grp_collect"), collect)}${group(te("port.owe.grp_port"), port)}${group(te("port.owe.grp_bank"), bank)}</table>
+  return `${hero}<table class="pt-table pt-owetable">${group(te("port.owe.grp_lender"), lender)}${group(te("port.remit.title"), remit)}${group(te("port.owe.grp_collect"), collect)}${group(te("port.owe.grp_port"), port)}${group(te("port.owe.grp_bank"), bank)}</table>
     ${home ? `<div class="pt-actions">${btn(te("port.owe.to_services") + ' <span aria-hidden="true">&rsaquo;</span>', "port_jump", 'data-to="lender"', "pt-go")}</div>` : ""}`;
 }
 
@@ -2367,13 +2357,19 @@ function portPaper() {
    nothing to move gets no half at all). The bar's value is a position, SVC_STEPS a side; ui.vals still
    holds the amount moved (- left, + right). */
 const SVC_STEPS = 1000;
+/* What it takes to clear the debt: at home the debt itself; from another port's office, enough that the debt is
+   still cleared after the merchant's fee (a robbery on the road can still leave some). */
+function repayNeed() {
+  const me = S.me, fee = me.port === myHome() ? 0 : Math.min(.9, ((me.remit || {}).fee) || 0);
+  return Math.ceil(me.debt / (1 - fee));
+}
 function serviceTransfer(k, g) {
   const me = S.me;
   let left, right, out, into;
   if (k === "bank") {
     [left, right, out, into] = ["withdraw", "deposit", me.bank, me.cash];
   } else if (k === "loan") {
-    [left, right, out, into] = ["repay", "borrow", Math.min(Math.ceil(me.debt), me.cash), me.loan_room];
+    [left, right, out, into] = ["repay", "borrow", Math.min(repayNeed(), me.cash), me.port === myHome() ? me.loan_room : 0];
   } else {
     const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
     [left, right, out, into] = ["load", "store", Math.min(me.wh[g] || 0, me.capacity - me.used),
@@ -2418,7 +2414,7 @@ function svcStats(list) {
 function serviceSlider(k, title, g) {
   const tr = serviceTransfer(k, g), locked = S.me.ready;
   // Madam Wu's desk: one tap clears the debt (or as much of it as the silver ashore covers).
-  const whole = k === "loan" && tr.have >= Math.ceil(S.me.debt);
+  const whole = k === "loan" && tr.have >= repayNeed();
   const quick = k === "loan" && tr.have > 0
     ? `<div class="pt-actions pt-transfer-quick">${btn(
         te("btn.repay") + " " + (whole ? te("btn.whole_debt") + " · " : "") + esc(money(tr.have)),
@@ -2486,6 +2482,23 @@ function jumpToService(id) {
   });
 }
 
+/* The report of money sent home to the moneylender from other ports (23 Nov 2026): what was sent, what the
+   merchants kept, what was lost on the road, and what really reached the home port. */
+function remitReport() {
+  const rm = S.me.remit, t = rm && rm.tot;
+  if (!t || !t.n) return "";
+  const hm = esc(portName(myHome()));
+  const rows = (rm.last || []).slice(0, 5).map(r => `<tr class="${r.how === "safe" ? "" : "warn"}"><td>${esc(portName(r.port))}</td><td>${money(r.sent)}</td>
+      <td class="pt-val">${money(r.arrived)}${r.how === "safe" ? "" : ` <small>${te("port.remit.how." + r.how)}</small>`}</td></tr>`).join("");
+  return `<div class="pt-remit"><h4>${te("port.remit.title")}</h4>
+    <dl class="pt-stats">
+      <div class="pt-stat"><dt>${te("port.remit.sent")}</dt><dd>${money(t.sent)}</dd></div>
+      <div class="pt-stat warn"><dt>${te("port.remit.fees")}</dt><dd>${money(t.fee)}</dd></div>
+      <div class="pt-stat ${t.lost > 0 ? "down" : ""}"><dt>${te("port.remit.lost")}</dt><dd>${money(t.lost)}</dd><small>${t.robbed || 0} ${te("port.remit.robbed").toLowerCase()} · ${t.skimmed || 0} ${te("port.remit.skimmed").toLowerCase()}</small></div>
+      <div class="pt-stat up"><dt>${te("port.remit.arrived", { home: hm })}</dt><dd>${money(t.arrived)}</dd><small>${t.n} ${te("port.remit.trips").toLowerCase()}</small></div>
+    </dl>${rows ? `<table class="pt-table pt-remit-rows"><tbody>${rows}</tbody></table>` : ""}</div>`;
+}
+
 function portServiceCards() {
   const me = S.me, home = me.port === myHome(), port = esc(portName(me.port));
   const locked = me.ready, dr = me.depot_rules || {}, wr = me.wh_rent || {};
@@ -2502,14 +2515,17 @@ function portServiceCards() {
     const rest = br ? `<div class="pt-actions pt-bank-rest">${btn(te("bank.rest", { amount: money(br.amount) }), "bank_rest", "", "pt-go primary")}</div>` : "";
     out += serviceCard("bank", te("bank.title"), home ? "" : te("bank.one_account"), serviceSlider("bank", te("bank.title")) + rest, "", stats);
   }
-  if (home) {
+  if (home || me.lender_here) {
+    const rm = me.remit || {};
     const stats = svcStats([
       [SVC.owe, money(me.debt), me.debt > 0 ? "down" : "up"],
       [SVC.rate, pct(D.loan_rate, 2) + "%"],
       [SVC.next, me.debt > 0 ? "+" + money(me.debt * D.loan_rate) : "—", me.debt > 0 ? "down" : ""],
-      [SVC.room, money(me.loan_room)],
+      home ? [SVC.room, money(me.loan_room)] : [te("port.remit.fee_stat"), pct(rm.fee || 0, 2) + "%", "warn"],
     ]);
-    out += serviceCard("lender", te("loan.title"), "", serviceSlider("loan", te("loan.title")), me.debt > 0 ? "down" : "", stats);
+    const away = home ? "" : `<p class="pt-remit-terms">${te("port.remit.terms", { fee: pct(rm.fee || 0, 2) + "%", rob: pct(rm.rob || 0, 2) + "%", skim: pct(rm.skim || 0, 2) + "%" })}</p>`;
+    out += serviceCard("lender", te("loan.title"), home ? "" : te("port.remit.office", { port }),
+      serviceSlider("loan", te("loan.title")) + away + remitReport(), me.debt > 0 ? "down" : "", stats);
   }
   if (home) {
     const low = me.protect <= D.renew_at;
@@ -2605,6 +2621,7 @@ function commissionsCard(me) {
       <p class="pt-commission-what">${esc(k.text)}</p>
       ${offer ? "" : `<div class="pt-commission-bar"><i style="width:${Math.round(100 * share)}%"></i></div><small>${prog}</small>`}
       <small>${te("contract.due", { date: k.due_date, months: k.months })} · ${te("contract.reward", { fee: money(k.fee), rep: Math.round(k.rep), home })}</small>
+      ${k.perk_text ? `<small class="pt-commission-perk"><b>${esc(k.perk_text)}</b></small>` : ""}
       ${acts}</div>`;
   };
   const active = cm.active.map(k => one(k, false)).join("");
@@ -2619,11 +2636,13 @@ function commissionsCard(me) {
 function estateCard(me) {
   const es = me.estate, home = portName(myHome()), locked = me.ready;
   const nxt = es.next ? es.stages[es.next - 1] : null;
-  const info = es.stage ? te("estate.have", { stage: es.title, home, rob: pct(es.rob_cut, 0) }) : te("estate.none", { home });
+  const perk = es.stage && (es.bank_bonus || es.dues_cut)
+    ? te("estate.perk_have", { bank: pct(es.bank_bonus, 2), home, dues: pct(es.dues_cut, 0), where: es.bank_anywhere ? "" : te("estate.perk_where_home") }) : "";
+  const info = es.stage ? te("estate.have", { stage: es.title, home, rob: pct(es.rob_cut, 0) }) + perk : te("estate.none", { home });
   const plan = `<ol class="pt-estate-path">${es.stages.map(st =>
     `<li class="${st.stage <= es.stage ? "built" : ""}${st.stage === es.next ? " next" : ""}"><b>${esc(st.title)}</b> <span>${money(st.cost)}</span></li>`).join("")}</ol>`;
   const body = nxt
-    ? `<div class="pt-estate-sell"><p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}</p>
+    ? `<div class="pt-estate-sell"><p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}${nxt.bank || nxt.dues ? te("estate.perk_next", { bank: pct(nxt.bank, 2), dues: pct(nxt.dues, 0), home }) : ""}</p>
        <div class="pt-actions">${btn(te("estate.build", { stage: nxt.title, cost: money(nxt.cost) }), "estate", "", "primary", locked || nxt.cost > me.cash)}</div></div>`
     : `<p>${te("estate.done", { home })}</p>`;
   const sell = es.sell
@@ -2945,7 +2964,7 @@ function counterReveal(tip, rv) {
   }
   return `${say}<dl class="uc-dl">${rows}</dl><div class="uc-act">${acts}</div>`;
 }
-/* Her greeting is read aloud once a visit, the first time the tab opens (by the port's officer). */
+/* Her greeting is read aloud once a visit, but only when you press one of her buttons (21 Nov 2026): never when the tab or the Newspaper loads. */
 function counterHello() {
   const c = S.me && S.me.counter, plan = S.voice && S.voice.counter;
   if (!c || !c.hello || !plan || !plan[0]) return;
@@ -3299,6 +3318,9 @@ app.addEventListener("click", async e => {
   if (!el || el.disabled) return;
   const d = el.dataset;
   switch (d.act) {
+    case "captains_retry": capsFailed = false; return loadCaptains();
+    case "threshold_retry": return Thresholds.retry();
+    case "threshold_book_retry": return Thresholds.retryBook();
     case "join": return doJoin();
     case "cap_pick": ui.capSel = d.cid; ui.capHouse = ""; ui.vals.pin = ""; render();
       { const f = document.getElementById("in_pin"); if (f) f.focus(); } return;
@@ -3309,9 +3331,9 @@ app.addEventListener("click", async e => {
     case "acct_close": return Ledger.close();
     case "acct_spread": return Ledger.turnTo(d.v);
     case "acct_step": return Ledger.step(+d.d);
-    case "tab": ui.tab = d.tab; ui.tally = false; ui.ledger = false; render(); if (d.tab === "counter") counterHello(); return;
+    case "tab": ui.tab = d.tab; ui.tally = false; ui.ledger = false; render(); return;
     // Under the Counter: pay her and hear the tip; then go to the Market or set the course she named.
-    case "counter_pay": await act("counter", { tip: d.tip }); return render();
+    case "counter_pay": await act("counter", { tip: d.tip }); render(); counterHello(); return;
     case "counter_market": ui.tab = "market"; ui.tally = false; Pulse.pin(d.good); return render();
     case "counter_sail": ui.tab = "chart"; ui.tally = false; if (!S.me.ready && D.ports[d.port]) ui.dest = d.port; return render();
     case "pulse_pin": Pulse.pin(d.good); return render();
@@ -3323,7 +3345,7 @@ app.addEventListener("click", async e => {
     // Closing the log opens the Port Authority desk: her greeting starts with it, not at the next update.
     case "seen": ui.seenTurn = S.turn; Voice.drop("log"); render(); return Customs.speak();
     case "relog": ui.seenTurn = null; ui.spokenTurn = null; return render();
-    case "port_view": ui.portView = d.v; render(); if (d.v === "paper") counterHello(); return;
+    case "port_view": ui.portView = d.v; render(); return;
     case "paper_only": ui.paperOnly = d.v === "1"; return render();
     case "paper_older": ui.paperOlder = !ui.paperOlder; return render();
     case "paper_voyage": ui.paperOpen[d.i] = !ui.paperOpen[d.i]; return render();
@@ -3342,18 +3364,34 @@ app.addEventListener("click", async e => {
     case "trade": {
       const tr = tradeOf(d.good);
       if (!tr.side) return toast(t("e.qty_first"), true);
+      if (askPurse([{ g: d.good, side: tr.side, qty: tr.qty }], false)) return;     // a sale past the purse, or a big buy that would sell back cheap, asks first
       if (await act(tr.side, { good: d.good, qty: tr.qty })) { delete ui.vals["t_" + d.good]; render(); }
       return;
     }
     case "trade_all": {
       const a = allOf(d.good);
       if (!a.side) return;
-      return runTrades([{ g: d.good, side: a.side, qty: a.qty }]);
+      const list = [{ g: d.good, side: a.side, qty: a.qty }];
+      if (askPurse(list, true)) return;
+      return runTrades(list);
     }
     case "trade_all_cargo": {
-      const lined = linedUp();
-      return runTrades(lined.length ? lined : sellAllList());
+      const lined = linedUp(), list = lined.length ? lined : sellAllList();
+      if (askPurse(list, true)) return;
+      return runTrades(list);
     }
+    // The purse and big-buy confirm (askPurse): "Sell anyway" / "Buy anyway" makes the trades that were waiting, "Keep it" drops them.
+    case "purse_yes": {
+      const a = ui.purseAsk;
+      ui.purseAsk = null;
+      render();
+      if (!a || a.turn !== S.turn || S.me.ready) return;
+      if (a.run) return runTrades(a.list);
+      const x = a.list[0];
+      if (await act(x.side, { good: x.g, qty: x.qty })) { delete ui.vals["t_" + x.g]; render(); }
+      return;
+    }
+    case "purse_no": ui.purseAsk = null; return render();
     case "service_transfer": {
       const tr = serviceTransfer(d.service, d.good);
       if (!tr.qty || S.me.ready) return;

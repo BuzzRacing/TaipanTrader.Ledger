@@ -47,6 +47,7 @@ import engine
 import finale
 import fonts
 import dashboard_feed
+import dashboard_brief
 import harbor_view
 import imagegen
 import journal
@@ -58,6 +59,7 @@ import strings
 import voice
 import voicefloor
 import voiceclips
+import banks
 import voicelib
 from engine import Game, GameError, static_data
 
@@ -434,6 +436,27 @@ class Hub:
                "free": pick(["l.jail_release"]) if jv.get("freed") and not j else None}
         return out if any(out.values()) else {"caught": None, "warden": None, "free": None}
 
+    def _robbery_story(self, me):
+        """What the Robbery Story (web/robbery.js, 22 Nov 2026) says aloud: Magpie's own line for this robbery, found on
+        the month's log by its wording (l.robbed for the street, l.wh_robbed for the warehouse) so the Captain's Log
+        reading limit cannot drop it. {text, clip} (clip is None with voices off); None when no story is on screen.
+        The screen plays it itself and the log reading stays quiet over it (player.js)."""
+        rv = me.get("robbery")
+        if not rv:
+            return None
+        plan, port = voice.PLAN, me.get("port")
+        matcher = getattr(plan, "matcher", None)
+        want = "l.wh_robbed" if rv.get("kind") == "house" else "l.robbed"
+        for text in me.get("log") or []:
+            try:
+                key = matcher.match(text)[0] if matcher else None
+            except Exception:
+                key = None
+            if key == want:
+                clip = plan.line(text, "log", port) if plan.ready() else None
+                return {"text": text, "clip": clip}
+        return {"text": "", "clip": None}
+
     STORM_VOICE_ORDER = ("open", "cargo", "guns", "hull", "land", "close")
 
     def _storm_voice(self, st):
@@ -546,6 +569,9 @@ class Hub:
         jstory = self._jail_story(me)
         if jstory:
             v["voice"]["jail"] = jstory
+        rstory = self._robbery_story(me)           # the Robbery Story (web/robbery.js): Magpie's line for this robbery
+        if rstory:
+            v["voice"]["robbery"] = rstory
         # The storm story (web/storm.js): one clip per line of the report while its card is open.
         if (me.get("storm") or {}).get("card"):
             sv = self._storm_voice(me["storm"])
@@ -1035,9 +1061,27 @@ class Handler(BaseHTTPRequestHandler):
             cfg = engine.CFG
             return self._send(200, {"ok": True, "captains": captains.public_list(cfg),
                                     "typed": bool(engine.R.get("captains", {}).get("typed"))})
-        if path == "/api/dashboard":
+        if path in ("/api/dashboard", "/api/dashboard/brief"):
             with HUB.cond:
                 feed = dashboard_feed.view(HUB.game, HUB.present())
+                state = HUB.game.s
+                snapshot = {"phase": state["phase"], "weather": dict(state["weather"]),
+                            "bans": {k: HUB.game.banned(k) for k in state["crackdown"]}}
+                text, goods = engine.TEXT, engine.GOODS
+                clean = query.get("family", [""])[0] == "1"
+                if clean and not media.family(engine.CFG):
+                    _, data = family_screen(engine.CFG, {"goods": engine.GOODS, "text": text})
+                    text, goods = data["text"], data["goods"]
+                brief = dashboard_brief.build(feed, snapshot, text, goods)
+                if clean:
+                    brief = family_view(brief)
+                if path.endswith("/brief"):
+                    persona = query.get("persona", ["gamemaster"])[0]
+                    part = query.get("part", ["detail"])[0]
+                    if persona not in dashboard_brief.PERSONAS or part not in ("teaser", "detail"):
+                        return self._send(400, {"ok": False, "error": "Unknown dashboard speech request"})
+                    return self._send(200, dashboard_brief.voice_reply(brief, persona, part, voice.PLAN, text))
+                feed["brief"] = brief
                 feed["version"] = HUB.version
             return self._send(200, feed)
         if path == "/api/table":
@@ -1563,6 +1607,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "voices": voice.list_voices(force=bool(query.get("force")))})
             except voice.VoiceError as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if what == "banks":
+            # Dialogue Banks (banks.py): the read-only catalogue of every bank of lines, by persona or story.
+            return self._send(200, banks.view(engine.CFG, config.load_lang("en")))
         if what == "voice/library":
             return self._send(200, dict(voicelib.public(), ok=True))
         if what == "voice/clips":
@@ -1986,6 +2033,44 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "job": job["id"], "msg": (
                 "Regenerating with the same seed. It lands next to the original." if mode == "same"
                 else "Rerolling on a new seed. It lands next to the original.")})
+        if what == "ab":
+            # Anthony, 22 Nov 2026: A/B test a phrase. Each variant prompt is painted on the picture's own saved seed,
+            # so the wording is the only thing that differs from the original. Results are tagged "ab-test" and
+            # filed beside the original for review.
+            iid = str(body.get("id") or "")
+            it = next((i for i in media.load(cfg)["items"] if i.get("id") == iid), None)
+            if not it or it.get("type") == "video":
+                return self._send(200, {"ok": False, "error": "That picture is no longer in the library."})
+            seed = it.get("seed")
+            if not isinstance(seed, int):
+                return self._send(200, {"ok": False, "error": "No seed was saved with this picture, so the test would not be fair. Reroll it once, then test the new one."})
+            base = str(it.get("prompt") or "").strip()
+            prompts = []
+            for p in (body.get("prompts") or [])[:6]:
+                p = str(p or "").strip()
+                if len(p) >= 20 and p != base and p not in prompts:
+                    prompts.append(p[:6000])
+            if not prompts:
+                return self._send(200, {"ok": False, "error": "Nothing to test. Each variant needs different wording from the original."})
+            w0, h0 = int(it.get("width") or 0), int(it.get("height") or 0)
+            if (w0, h0) in imagegen.ASPECTS.values():
+                aspect = next(a for a, wh in imagegen.ASPECTS.items() if wh == (w0, h0))
+            elif w0 and h0:
+                aspect = min(imagegen.ASPECTS, key=lambda a: abs(imagegen.ASPECTS[a][0] / imagegen.ASPECTS[a][1] - w0 / h0))
+            else:
+                aspect = "3:4"
+            w, h = imagegen.ASPECTS[aspect]
+            kind = it["kind"] if it.get("kind") in media.KINDS else "other"
+            nsfw = "yes" if it.get("nsfw") else "no"
+            tags = media._tags(["ab-test"] + [t for t in (it.get("tags") or []) if t != "ab-test"])
+            for p in prompts:
+                media.JOBS.add(kind, it.get("subject") or "", it.get("roles") or [], p, w, h, 1, nsfw,
+                               tags=tags, aspect=aspect, replaces=iid, seed=seed)
+            journal.log("INFO", "admin", "Media library: A/B test of {} variant(s) on {} (seed {}, {}/{})".format(
+                len(prompts), it.get("url"), seed, kind, it.get("subject") or "-"), **self._via())
+            return self._send(200, {"ok": True, "queued": len(prompts), "msg": (
+                "Painting {} variant{} on seed {}. They land beside the original, tagged ab-test.".format(
+                    len(prompts), "" if len(prompts) == 1 else "s", seed))})
         if what == "video":
             # Anthony, 20 Nov 2026: make 10-second looping clips from library pictures (Wan 2.2 on the farm).
             # One picture ("id"), or a pair: "nsfw_id" + "clean_id". In a pair the pair button decides the

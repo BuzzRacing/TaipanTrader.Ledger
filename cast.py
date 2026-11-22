@@ -310,6 +310,27 @@ CHARACTERS = {
                            "and silver dollars, a smouldering heavy-lidded gaze over her spectacles as if she has found "
                            "something deliciously wrong in your accounts, {style}",
     },
+    # The Thieves (21 Nov 2026): the face of the Accounting Ledger's "Thieves" tile (robbed ashore and from store).
+    # She reads the mugging and warehouse-robbery lines (LINE_DEFAULTS below). Voice is provisional: cast her in
+    # Admin > Identity > Voice Library (casting lives on the Pi).
+    "thieves": {
+        "name": "Kamala \u201cMagpie\u201d Pillai", "title": "Pickpocket Queen of the Waterfront & Keeper of Other People's Purses",
+        "brand_link": "",
+        "age": 31, "origin": "Madras", "home_port": "singapore", "color": "#1f8a8a", "portrait": "",
+        "voice_id": "Saanvi", "speaking_rate": 1.08,
+        "delivery": "quick, merry and unhurried, a woman who is already holding your purse and is delighted to see you",
+        "catchphrase": "Mind your pockets, darling. Well, mine now.",
+        "bio": "Kamala learned the trade in the Madras bazaar at seven. By twenty she could lift a wedding ring in a "
+               "handshake. She now runs the waterfront crowd from Singapore to Hong Kong, and she returns hats, "
+               "because a gentleman should always go home decent.",
+        "quirk": "Leaves a single peacock feather where your purse used to be.",
+        "vice": "Silk stockings, sweet chai, and watching a captain pat his empty pocket.",
+        "secret": "She has never kept a purse from a sailor with a family aboard. She leaves them the price of a meal and tells nobody.",
+        "stats": {"cunning": 9, "nerve": 8, "charm": 9, "greed": 6},
+        "portrait_prompt": "An {adult} Tamil woman (age 31), the pickpocket queen of a crowded Singapore quay market, "
+                           "long dark braid with jasmine and a small brass nose-stud, one hand lifting a purse from a "
+                           "captain's coat while the other holds a peacock feather and a teacup, a mischievous grin, {style}",
+    },
     # The Table's Game Master (21 Nov 2026): she opens the month on the Harbor View, says whose turn it is and
     # puts each decision and action item to the Captain. Speaks aloud on the Table only (gm_text.py).
     # Voice is a provisional shared one: cast her in Admin > Identity > Voice Library (casting lives on the Pi).
@@ -509,7 +530,7 @@ for _cid, _o in _OFFICERS.items():
     _o["portrait_prompt"] = _o.pop("prompt")
     CHARACTERS[_cid] = _o
 # Added after games were already saved: config.validate adds these to a saved cast once.
-SEEDED = list(_OFFICERS) + ["bookkeeper", "gamemaster"]
+SEEDED = list(_OFFICERS) + ["bookkeeper", "gamemaster", "thieves"]
 for _c in CHARACTERS.values():
     _c["portrait_prompt"] = _c["portrait_prompt"].format(adult=_ADULT, style=_STYLE)
 
@@ -535,7 +556,7 @@ def tier_prompt(cid, tier, mood=None):
 
 LINE_DEFAULTS = {}
 for _who, _keys in {
-    "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.robbed", "l.sailed", "l.anchored",
+    "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.sailed", "l.anchored",
                  "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.unsail", "m.forced", "m.years"],
     # Silent (owner's decision, 17 Nov 2026): giving orders can turn the month at once, so "Orders given:
     # sail for ..." was heard after the voyage had already begun, over the sea battle or the captain's log.
@@ -582,6 +603,8 @@ for _who, _keys in {
                + [k for k in strings.EN if k.startswith("l.officer_hot.")]
                # Under the Counter (counter.py): her paid tips, read by the officer of the port the house is in.
                + [k for k in strings.EN if k.startswith("l.counter_")] + ["e.counter_cost", "e.counter_off"],
+    # The Thieves (21 Nov 2026): Magpie reads the mugging and the warehouse robbery herself.
+    "thieves": ["l.robbed", "l.wh_robbed"],
     "crier": ["n.opening", "n.start_one", "n.start_many", "n.game_over", "n.scarce", "n.glut", "n.wrecked",
               "m.begin", "m.new_game"],
 }.items():

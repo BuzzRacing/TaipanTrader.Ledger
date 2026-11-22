@@ -31,13 +31,13 @@ const Storm = (() => {
   /* Her pictures: the battered ones first (Personas > Roxana, role "storm"); a family-friendly screen never
      receives the sexy set, so it gets the clean one (tagged "clean", tools/queue_storm_clean_pictures.py). */
   function roxanaItem(cid) {
-    const all = Media.items("persona", cid, "storm").filter(i => i.t === "image" && (i.r || []).includes("storm"));
-    if (!all.length) return Media.choose("persona", cid, "angry", { strict: true, slot: "storm-who" })
-      || Media.choose("persona", cid, "portrait", { slot: "storm-who" });
+    // clips too (22 Nov 2026): Media.pickFace chooses one as often as the persona rule's video chance allows
+    const all = Media.items("persona", cid, "storm", true).filter(i => (i.r || []).includes("storm"));
+    if (!all.length) return Media.choose("persona", cid, "angry", { video: true, strict: true, slot: "storm-who" })
+      || Media.choose("persona", cid, "portrait", { video: true, slot: "storm-who" });
     const clean = i => (i.g || []).includes("clean");
     const pick = all.filter(i => !clean(i));
-    const list = pick.length ? pick : all;
-    return list[Math.floor(Math.random() * list.length)];
+    return Media.pickFace(pick.length ? pick : all, cid);
   }
 
   function shipItem(st) {
@@ -91,13 +91,13 @@ const Storm = (() => {
      feet (the line stays hidden while the story screen says it in the big caption). */
   function frameHtml(st, beat) {
     const who = castOf("narrator"), P = picsFor(st);
-    const url = P.who ? P.who.u : who.portrait || "";
+    const face = P.who ? Media.faceMarkup(P.who, "") : who.portrait ? `<img src="${esc(who.portrait)}" alt="">` : "";
     const say = line(st, "open", varsOf(st));
     const cap = say ? `<figcaption class="sf-rline st-line"${beat ? " hidden" : ""}><header><span class="sf-rsay">${SPEAKER}</span>
         <span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header><p>“${say}”</p></figcaption>` : "";
     return `<div class="st-bg"${P.bg ? ` style="background-image:url('${esc(P.bg.u)}')"` : ""}></div><div class="st-shade"></div>
       <div class="sf-result st-result${beat ? " st-beat" : ""}">
-        <figure class="sf-rwho st-who${url ? "" : " nopic"}">${url ? `<img src="${esc(url)}" alt="">` : ""}${cap}</figure>
+        <figure class="sf-rwho st-who${face ? "" : " nopic"}">${face}${cap}</figure>
         <div class="st-pane"></div>
       </div>`;
   }
@@ -190,8 +190,20 @@ const Storm = (() => {
     if (typeof Voice !== "undefined") Voice.drop("storm");
   }
 
+  /* Sounds (web/audio.js plays them; the storm bed is the scene, see soundscape.js): the hull groans and then
+     creaks as the card opens, and a ship that foundered gets its own cue when the card comes up. Keyed by storm
+     so a redraw never replays one. */
+  function sfx(st, part) {
+    const A = typeof SeaAudio !== "undefined" ? SeaAudio : null;
+    if (!A || !st) return;
+    const key = "sm:" + st.id, laterOnce = (ms, id) => setTimeout(() => { if (screen) A.playOnce(key + ":" + id, id); }, ms);
+    if (part === "open") { A.playOnce(key + ":ship.groan", "ship.groan"); laterOnce(1100, "ship.creak"); }
+    else if (part === "card" && (st.ships || []).some(s => s.lost)) A.playOnce(key + ":ship.lost", "ship.lost");
+  }
+
   function startStory(st) {
     endStory();
+    sfx(st, "open");
     const beats = buildBeats(st);
     story = { id: st.id, beats, i: 0, t0: Date.now(), timer: null };
     if (!beats.length) return;
@@ -230,6 +242,7 @@ const Storm = (() => {
     if (story.i >= story.beats.length) {          // the card comes up; its button arms after a beat
       const close = clipOf("close"), L = line(S.me.storm || {}, "close", varsOf(S.me.storm || {}));
       if (close && canSpeak() && L) Voice.say([Object.assign({ tag: "storm:" + story.id + ":close", text: L.replace(/<[^>]*>/g, "") }, close)], { group: "storm", front: true });
+      sfx(S.me.storm, "card");
       arm();
     } else schedule();
     sync();
@@ -294,7 +307,7 @@ const Storm = (() => {
       startStory(st);
       screen.innerHTML = frameHtml(st, telling());
       pane = screen.querySelector(".st-pane");
-      if (!telling()) arm();                      // no story lines to tell: straight to the card
+      if (!telling()) { sfx(st, "card"); arm(); }   // no story lines to tell: straight to the card
     }
     if (telling()) {
       const key = "B" + st.id + ":" + story.i;
@@ -325,7 +338,7 @@ const Storm = (() => {
   /* The rough storm: a notice under the top edge with Roxana's picture and her line (21 Nov 2026, Anthony: the
      small banner was easy to miss). It stays BANNER_MS, with a thin bar running down the time left, then fades
      out over BANNER_FADE_MS; resting the mouse on it holds it open, and the cross closes it at once. */
-  const BANNER_MS = 20000, BANNER_FADE_MS = 1400;
+  const BANNER_MS = 10000, BANNER_FADE_MS = 1400;
   function syncBanner(st) {
     const on = !!(st && !st.card);
     if (!on) {
@@ -343,12 +356,13 @@ const Storm = (() => {
     const repair = (S.me.ships || []).reduce((n, s) => n + (s.repair || 0), 0);
     const item = picsFor(st).who;
     const url = item ? item.u : who.portrait || "";
+    const faceHtml = item ? Media.faceMarkup(item, "st-bwho") : who.portrait ? `<img class="st-bwho" src="${esc(who.portrait)}" alt="">` : "";
     const el = banner = document.createElement("div");
     el.className = "st-banner" + (url ? "" : " nopic");
     el.setAttribute("role", "status");
     el.style.setProperty("--st-stay", BANNER_MS + "ms");
     el.style.setProperty("--st-fade", BANNER_FADE_MS + "ms");
-    el.innerHTML = `${url ? `<img class="st-bwho" src="${esc(url)}" alt="">` : ""}
+    el.innerHTML = `${faceHtml}
       <div class="st-bbody">
         <b><span class="st-bemblem" aria-hidden="true">${WAVES}</span>${tl("storm.banner.rough", "Squall")}</b>
         ${say ? `<p class="st-bsay">“${say}”</p>` : ""}

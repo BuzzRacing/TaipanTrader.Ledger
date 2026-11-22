@@ -137,7 +137,7 @@ def build(base, role, kind, take, clean_base=""):
     extra = ", ".join(x for x in (mood, TAKES[take % len(TAKES)]) if x)
     desc, tail = split(base)
     if kind == "nsfw":
-        body = ", ".join(x for x in (desc, extra, "" if "nude" in desc.lower() else pairs.NUDE) if x)
+        body = ", ".join(x for x in (desc, extra, "" if re.search(r"nude|naked", desc.lower()) else pairs.NUDE) if x)
         return (body + (", " + tail if tail else ""))[:6000]
     body = split(clean_base)[0] if clean_base else dressed(desc)
     return ", ".join(x for x in (body, extra, pairs.CLEAN_STYLE) if x)[:6000]

@@ -45,6 +45,8 @@ const Customs = (() => {
 
   const cu = () => (S && S.me && S.me.customs) || null;
   const key = c => c.port + ":" + S.turn + ":" + c.officer;
+  /* The coin on her desk when tax is paid: once per visit, whether the ruling shows or the receipt flashes. */
+  const coin = k => { if (typeof SeaAudio !== "undefined") SeaAudio.playOnce("cx:" + k + ":coin", "desk.coin"); };
 
   /* The four buttons and the face each one puts on her (no odds: the button chosen is the tell). */
   const PAYS = ["nothing", "less", "correct", "more"];
@@ -363,6 +365,8 @@ const Customs = (() => {
         const choice = payOf();
         if (!choice && sealed.length < c.lines.length) return true;          // pick a button first
         await act("customs_declare", { choice: choice || "correct", sealed });
+        const after = cu();
+        if (after && after.result && Math.round((after.result.tax || 0) + (after.result.fine || 0)) > 0) coin(key(after));
         return true;
       }
       case "cx_back": await act("customs_buyback", { good: d.good }); return true;
@@ -495,6 +499,7 @@ const Customs = (() => {
 
   function showReceipt(r) {
     hideReceipt();
+    if (r.paid) coin(r.key);
     const tl = (k, fb, v) => (T[k] == null ? esc(t(fb, v)) : te(k, v));
     const chips = [];
     if (r.rep) chips.push(`<span class="${r.rep > 0 ? "up" : "dn"}">${te("customs.standing", { port: esc(portName(r.port)) })} <b>${r.rep > 0 ? "+" : ""}${Math.round(r.rep * 10) / 10}</b></span>`);

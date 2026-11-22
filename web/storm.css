@@ -18,7 +18,7 @@ body.in-storm #app { visibility: hidden; }
   radial-gradient(90% 70% at 20% 40%, transparent, color-mix(in srgb, var(--deck-storm) 35%, transparent)); }
 
 /* Roxana, battered: the same place the Reckoning puts the reader of the fight */
-.st-who img { filter: drop-shadow(0 0 2.5rem rgba(0, 0, 0, .6)); }
+.st-who img, .st-who video { filter: drop-shadow(0 0 2.5rem rgba(0, 0, 0, .6)); }
 .st-line .sf-rsay svg { width: 1.15rem; height: 1.15rem; }
 
 /* the accent of each band */

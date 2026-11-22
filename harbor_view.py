@@ -11,6 +11,7 @@ Visibility (Harbor View decision 1):
           name, cash, cargo or prices)
 Later slices (port prices, share rings, trades for the zoom popup) are held back at "public" until the finale.
 """
+import copy
 import engine
 import journal
 
@@ -83,7 +84,7 @@ def story_events(game, lvl):
                "good": e.get("good") or a.get("good"), "qty": e.get("qty") or a.get("qty") or 0}
         for k in ("cash", "bank", "debt", "total"):
             if k in e:
-                row[k] = e[k]
+                row[k] = copy.deepcopy(e[k])
         for k in ("origin", "sea", "ships", "welcome"):
             if k in e:
                 row[k] = e[k]
@@ -91,7 +92,13 @@ def story_events(game, lvl):
         if e.get("table_report"):
             row["report"] = e["table_report"]
         if e.get("table_focus"):
-            row["focus"] = e["table_focus"]
+            row["focus"] = copy.deepcopy(e["table_focus"])
+        if e["type"] == "sailed" and len(game.s["order"]) == 1:
+            row["passage"] = {k: copy.deepcopy(e[k]) for k in ("sea", "orders", "protect") if k in e}
+            if e.get("table_manifest"):
+                row["passage"]["manifest"] = copy.deepcopy(e["table_manifest"])
+            if e.get("table_weather"):
+                row["passage"]["weather"] = copy.deepcopy(e["table_weather"])
         rows.append(row)
     return rows[-80:]
 

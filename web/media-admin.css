@@ -164,8 +164,8 @@ body.ml-active.ml-navmin .ml-navtab { top: calc(var(--top-height) + .6rem); }
 
 .ml-shell2 { display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: .9rem; align-items: start; }
 .ml-shell2.norail { grid-template-columns: minmax(0, 1fr); }
-.ml-shell2.withdrawer { grid-template-columns: 13.5rem minmax(0, 1fr) 26rem; }
-.ml-shell2.withdrawer.norail { grid-template-columns: minmax(0, 1fr) 26rem; }
+.ml-shell2.withdrawer { grid-template-columns: 13.5rem minmax(0, 1fr) var(--dw, 26rem); }
+.ml-shell2.withdrawer.norail { grid-template-columns: minmax(0, 1fr) var(--dw, 26rem); }
 .ml-main { min-width: 0; }
 .ml-rail { position: sticky; top: calc(var(--top-height) + .5rem); max-height: calc(100vh - var(--top-height) - 1rem); overflow: auto; padding: .6rem; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; scrollbar-width: thin; }
 .ml-rail-sec { margin-bottom: .8rem; } .ml-rail-sec h3 { margin: 0 0 .3rem; font: 600 .68rem var(--sans, inherit); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -276,3 +276,42 @@ body.ml-active.ml-navmin .ml-navtab { top: calc(var(--top-height) + .6rem); }
 .ml-jobs li.waiting { border-color: var(--line); } .ml-jobs li.cancelling { border-color: var(--red); opacity: .7; }
 .ml-jobbtns { font-style: normal; display: inline-flex; gap: .15rem; align-items: center; }
 .ml-jobbtns .link { padding: 0 .25rem; }
+
+/* ===== Generator room (Anthony, 22 Nov 2026): drawer is Side / Wide / full Popup, two columns when wide ===== */
+.ml-shell2.dz-side { --dw: 26rem; }
+.ml-shell2.dz-wide { --dw: clamp(34rem, 54vw, 72rem); }
+.ml-dsize { margin-left: auto; } .ml-dsize button { padding: .25rem .55rem; font-size: .76rem; white-space: nowrap; }
+.ml-dhead .ml-dsize + .link { margin-left: .2rem; }
+.ml-dcols { display: block; }
+.ml-d-wide .ml-dcols, .ml-d-full .ml-dcols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1rem; align-items: start; }
+.ml-d-wide .ml-dright, .ml-d-full .ml-dright { position: sticky; top: 3.4rem; }
+.ml-d-wide .ml-prompt-box { min-height: 22rem; }
+.ml-d-wide .ml-dbody .ml-vid-pic img, .ml-d-full .ml-dbody .ml-vid-pic img { max-height: 24rem; }
+.ml-dback { position: fixed; inset: 0; z-index: 59; width: auto; padding: 0; border: 0; border-radius: 0; background: rgba(8, 5, 3, .72); cursor: default; }
+.ml-d-full { position: fixed; inset: 2.5vh 0; margin: 0 auto; width: min(84rem, 96vw); max-height: none; z-index: 60; box-shadow: 0 18px 60px rgba(0, 0, 0, .8); }
+.ml-d-full .ml-dbody { padding: 1rem 1.2rem; }
+.ml-d-full .ml-dgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ml-d-full .ml-prompt-box { min-height: 55vh; font-size: .95rem; }
+.ml-d-full .ml-src img { width: 7rem; height: 9.3rem; }
+@media (max-width: 1150px) { .ml-d-wide { width: min(48rem, 100vw); } .ml-d-full { position: fixed; } }
+@media (max-width: 900px) { .ml-d-wide .ml-dcols, .ml-d-full .ml-dcols { grid-template-columns: 1fr; } .ml-d-wide .ml-dright, .ml-d-full .ml-dright { position: static; } }
+
+/* A/B test a phrase (Anthony, 22 Nov 2026) */
+.ml-abbox { margin: .5rem 0 .6rem; border: 1px solid var(--line); border-radius: 6px; padding: .45rem .6rem; background: rgba(255,255,255,.02); }
+.ml-abbox summary { cursor: pointer; font-size: .84rem; color: var(--brass); } .ml-abbox summary small { color: var(--muted); margin-left: .4rem; }
+.ml-abbox label { display: flex; flex-direction: column; gap: .2rem; font-size: .74rem; color: var(--muted); margin-bottom: .5rem; } .ml-abbox label small { font-weight: 400; }
+.ml-abbox textarea { width: 100%; resize: vertical; }
+.ml-ab { margin-bottom: .8rem; } .ml-ab h2 small { font-size: .72rem; color: var(--muted); font-weight: 400; margin-left: .4rem; }
+.ml-ab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: .8rem; margin: .6rem 0; }
+.ml-ab-card { margin: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); display: flex; flex-direction: column; }
+.ml-ab-card:first-child { border-color: var(--brass); }
+.ml-ab-pic { position: relative; background: #0b0806; } .ml-ab-pic img { display: block; width: 100%; max-height: 28rem; object-fit: contain; }
+.ml-ab-pic b { position: absolute; top: .4rem; left: .4rem; padding: .1rem .5rem; border-radius: 999px; background: #1f1812; border: 1px solid var(--brass); color: var(--brass); font-size: .78rem; }
+.ml-ab-card figcaption { padding: .5rem .6rem; display: grid; gap: .35rem; }
+.ml-ab-what { font-weight: 600; font-size: .86rem; } .ml-ab-card small { color: var(--muted); }
+.ml-ab-card details summary { cursor: pointer; font-size: .74rem; color: var(--muted); }
+.ml-ab-diff { font-size: .76rem; line-height: 1.45; max-height: 11rem; overflow: auto; margin: .3rem 0 0; }
+.ml-ab-diff ins { background: rgba(120, 190, 110, .28); text-decoration: none; border-radius: 2px; padding: 0 .12rem; }
+.ml-ab-diff del { background: rgba(200, 90, 80, .25); border-radius: 2px; padding: 0 .12rem; }
+
+.ml-cleantwin { display: flex; flex-direction: column; gap: .2rem; font-size: .74rem; color: var(--muted); margin-top: .5rem; } .ml-cleantwin small { font-weight: 400; } .ml-cleantwin textarea { width: 100%; resize: vertical; }

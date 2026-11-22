@@ -291,6 +291,7 @@ def faces(players, gid=None, cfg=None):
 
 def public_list(cfg=None):
     """What the join screen shows: no PINs, no retired Captains or Houses."""
+    cfg = dict(cfg or {}, content=dict((cfg or {}).get("content") or {}, rating="family"))
     out = []
     for c in load()["captains"].values():
         if c["retired"]:

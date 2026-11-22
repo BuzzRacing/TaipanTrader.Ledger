@@ -138,3 +138,57 @@ button:focus-visible{outline:3px solid #e9cb85;outline-offset:4px}
 @media (max-width:1100px) and (min-aspect-ratio:3/2){ /* small landscape windows: tighten the chrome */
   .hv-context{font-size:19px}.hv-ledger{font-size:21px}.hv-controls button{padding:6px 11px}
 }
+
+.hv-persona .figure{position:absolute;inset:0}
+.hv-board{transition:width 1.8s cubic-bezier(.22,1,.36,1),left 1.8s cubic-bezier(.22,1,.36,1),top 1.8s cubic-bezier(.22,1,.36,1)}
+.hv-chart::after{content:'';position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 45px #0b160d88,inset 0 0 0 1px #f4d89555;z-index:5}
+.hv-story{background:linear-gradient(120deg,#30251ae8,#15130eeb);border-color:#c9a34eaa;box-shadow:0 18px 50px #0008,inset 0 1px #ffe7b51a;border-radius:2px}
+.hv-story::before{content:'';position:absolute;left:27px;right:27px;top:0;height:1px;background:linear-gradient(90deg,transparent,#ffe5a9,transparent)}
+.hv-story .eyebrow{line-height:1.5;letter-spacing:.1em;color:#d7bb7d}
+.hv-story blockquote{color:#f5e8cc;text-shadow:0 2px 6px #0005}
+.hv-story .facts{gap:18px 30px}.hv-story .facts small{letter-spacing:.04em}.hv-story .facts b{margin-top:5px;font-variant-numeric:tabular-nums}
+.hv-beats i{border-radius:2px;transition:background .6s}
+.hv-controls{opacity:.16;transition:opacity .35s}.hv-table:hover .hv-controls{opacity:.65}.hv-controls:hover,.hv-controls:focus-within{opacity:1}
+.hv-controls button{min-height:40px}.hv-controls button:hover{background:#463722;border-color:#e0c17c}
+.hv-context{border-bottom:1px solid #d2b46a30;padding-bottom:12px}
+.hv-map-note{width:fit-content;max-width:100%;margin:24px auto 0;padding:12px 28px;border-top:1px solid #c9a34e66;border-bottom:1px solid #c9a34e33;background:linear-gradient(90deg,transparent,#151b16cc,transparent);color:#f0dba8;font:22px var(--special,Georgia,serif);letter-spacing:.08em}
+#hv-route .course{stroke:#f5df9c;stroke-width:1.5;stroke-dasharray:3 7;opacity:.5}
+#hv-route .course-travelled{fill:none;stroke:#ffe5a1;stroke-width:3;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 3px #edc26e80)}
+#hv-route .route-destination circle{fill:none;stroke:#ffe5a1;stroke-width:1.5;opacity:.7}
+#hv-route .route-destination circle:first-child{stroke-dasharray:2 5}
+#hv-route .wake{fill:none;stroke:#eee7ce;stroke-width:1.5;stroke-linecap:round}
+#hv-route .sailing-ship{filter:drop-shadow(0 4px 3px #0008)}
+.hv-table.is-paused *,.hv-table.is-paused *::before,.hv-table.is-paused *::after{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){#hv-route .wake{display:none}}
+@media(max-aspect-ratio:3/2){.hv-story{left:42px;right:42px;width:auto}}
+.hv-table[data-scene=arrival] .hv-story{background:linear-gradient(120deg,#172e27ed,#151b16ed);border-color:#d5bd80}
+.hv-table[data-scene=arrival] .hv-story h1{font-size:64px;letter-spacing:.025em}
+.hv-table[data-scene=arrival] .hv-light{background:linear-gradient(90deg,#06150b40,transparent 70%),linear-gradient(0deg,#080705ee,transparent 48%)}
+@media(max-aspect-ratio:3/2){.hv-table[data-scene=arrival] .hv-story h1{font-size:48px}}
+.hv-cargo-panel{display:flex;align-items:center;gap:18px;margin-top:20px;padding-top:18px;border-top:1px solid #c9a34e55}
+.hv-cargo-panel img{width:108px;height:84px;object-fit:cover;border:1px solid #c9a34e80;border-radius:3px}
+.hv-cargo-panel>div{min-width:0;flex:1}.hv-cargo-panel small{display:block;font-size:16px;letter-spacing:.09em;text-transform:uppercase;color:#d7bb7d}
+.hv-cargo-panel strong{display:block;margin-top:5px;font:24px/1.35 var(--serif,Georgia,serif);overflow-wrap:anywhere}
+.hv-cash-move{display:inline-block;margin-top:7px;padding:4px 10px;border:1px solid #c9a34e66;font-size:20px;font-variant-numeric:tabular-nums;animation:hv-receipt-in .8s ease-out both}
+.hv-cash-move.credit{color:#a7dfba;background:#20433366}.hv-cash-move.debit{color:#f1d89f;background:#68512444}
+@keyframes hv-receipt-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.hv-table[data-scene=voyage][data-sea="2"] .hv-weather-fx,.hv-table[data-scene=voyage][data-sea="3"] .hv-weather-fx{display:block;background:repeating-linear-gradient(112deg,transparent 0 36px,#c9e1e433 37px,transparent 39px 95px);animation:rain 1s linear infinite;opacity:.24}
+.hv-table[data-scene=voyage][data-sea="3"] .hv-weather-fx{opacity:.4;animation-duration:.6s}
+@media(max-aspect-ratio:3/2){
+  .hv-table.has-details .hv-board{left:42px;top:100px;width:320px;height:auto}
+  .hv-table.has-details .hv-persona{top:0;bottom:auto;width:var(--w,1080px);height:var(--h,1920px)}
+  .hv-table.has-details .hv-persona .figure{-webkit-mask-image:linear-gradient(0deg,transparent,#000 28%);mask-image:linear-gradient(0deg,transparent,#000 28%)}
+  .hv-table.has-details .hv-bulletin{display:none}
+}
+
+.hv-table .hv-story{padding:32px 18px 14px;border:0;outline:0;border-radius:0;box-shadow:none;backdrop-filter:none;background:linear-gradient(0deg,#080705b8,#08070545 75%,transparent);color:#fff;text-shadow:0 2px 7px #000,0 1px 2px #000}
+.hv-story::before{display:none}
+.hv-table .hv-story h1,.hv-table.is-story .hv-story h1,.hv-table.is-duet .hv-story h1,.hv-table[data-scene=arrival] .hv-story h1{margin:0 0 7px;font:400 28px/1.18 var(--serif,Georgia,serif);letter-spacing:0;color:#fff}
+.hv-table .hv-story blockquote,.hv-table.is-story .hv-story blockquote,.hv-table.is-duet .hv-story blockquote{margin:0;font:400 24px/1.35 var(--sans,Georgia,serif);color:#fff;text-shadow:inherit}
+.hv-story .byline{margin:7px 0 0;font:17px/1.3 var(--sans,Georgia,serif);color:#fff}
+.hv-story .facts{gap:12px 24px;margin-top:14px;padding-top:12px;border-top:1px solid #ffffff30;font-size:21px}
+.hv-story .facts b{margin-top:4px;font-size:26px;color:#fff}.hv-story .facts small{font-size:17px;letter-spacing:0;color:#fff}
+.hv-cargo-panel{gap:14px;margin-top:12px;padding-top:12px;border-top-color:#ffffff30}.hv-cargo-panel img{width:88px;height:66px}
+.hv-cargo-panel small{font-size:15px;letter-spacing:.06em;color:#fff}.hv-cargo-panel strong{font-size:22px;color:#fff}
+.hv-cash-move{margin-top:5px;padding:2px 8px;font-size:18px;color:#fff}.hv-cash-move.credit,.hv-cash-move.debit{color:#fff}
+.hv-beats{margin-top:12px}.hv-beats i{height:2px}

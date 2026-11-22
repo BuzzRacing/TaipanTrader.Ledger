@@ -244,9 +244,14 @@ def test_prices_grow_with_the_house(house):
 def test_contract_fees_grow_with_the_house(house):
     g, p = house
     p["cash"], p["bank"], p["debt"] = 0.0, 0.0, 0.0
-    poor = [g._new_offer(p, "short") for _ in range(1)][0]
-    p["bank"] = 16 * R["estates"]["wealth_ref"]
-    rich = g._new_offer(p, "short")          # same month, same slot: the same dice
+    scale = R["contracts"]["job_scale"]
+    R["contracts"]["job_scale"] = False      # this is about the fee multiplier alone; bigger jobs are in game6_test.py
+    try:
+        poor = [g._new_offer(p, "short") for _ in range(1)][0]
+        p["bank"] = 16 * R["estates"]["wealth_ref"]
+        rich = g._new_offer(p, "short")          # same month, same slot: the same dice
+    finally:
+        R["contracts"]["job_scale"] = scale
     if poor["kind"] != "standing":
         assert rich["fee"] == pytest.approx(poor["fee"] * g.wealth_mult(p), rel=0.05)
 

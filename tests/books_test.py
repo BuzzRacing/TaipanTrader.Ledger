@@ -16,7 +16,8 @@ import engine  # noqa: E402
 from engine import Game  # noqa: E402
 import sim_test  # noqa: E402
 
-NOT_CASH = {"cost", "seized", "plundered", "overboard", "ships_lost", "wreck_cargo"}
+NOT_CASH = {"cost", "seized", "plundered", "overboard", "ships_lost", "wreck_cargo",
+            "rot", "jail_spoil"}   # cargo that spoiled: a loss of goods, not of silver
 WORST = [0.0]
 CAPITAL = {"buy", "buy_ship", "buy_gun", "sell_ship"}
 
@@ -37,7 +38,8 @@ def play(seed, years=2):
     for name, bot in (("Ada", sim_test.trader_bot), ("Bao", sim_test.trader_bot), ("Cy", sim_test.random_bot)):
         bots[g.pid_for_token(g.join(name, ""))] = bot
     host = g.s["order"][0]
-    g.act(host, {"type": "settings", "years": years}, present=g.s["order"])
+    # The lobby offers 5, 10, 20 and 50 years; the Admin can still set any length from 1 to 100.
+    g.admin("years", {"op": "years", "years": years})
     g.act(host, {"type": "start"}, present=g.s["order"])
     start = {pid: money(p) for pid, p in g.s["players"].items()}
     rng = random.Random(seed)
@@ -111,6 +113,7 @@ def arrival_tax_on_last():
 
 if __name__ == "__main__":
     engine.configure(config.defaults())
+    engine.R["bank"]["bankrupt_enabled"] = False   # bankruptcy has its own test (bankrupt_test.py)
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     old_save()
     arrival_tax_on_last()

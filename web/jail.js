@@ -17,6 +17,11 @@
    - A big fine may be swapped for time: the plea popup (unchanged in what it offers).
    While a story is on screen the Captain's Log reading stays quiet (player.js asks Jail.telling()) because
    this file plays the lines itself, in order, from S.voice.jail (server.py _jail_story).
+   - THE PERSONAS CHANGE FACE (owner's request, 22 Nov 2026: "I need to see more persona image swapping in the jail
+     story"). Every speaker (the Mayor, Inspector Vane, Madam Wu, the warden) has a deck of every picture and clip she
+     has in the Media Library, dealt round-robin across her moods (angry, sly, happy, speaking, idle...), the first
+     mood chosen by the screen (caught = angry, the irons = sly, the door = happy). A new pick comes on every
+     screen, and again every SWAP_MS while a screen is held, crossfading, never the same twice in a row.
    Reads S.me.jail and S.voice.jail; called from player.js render(). */
 const Jail = (() => {
   let screen = null, dialog = null, dialogId = null, busy = false;
@@ -58,35 +63,77 @@ const Jail = (() => {
 
   /* ---- pictures ----------------------------------------------------------------------------------- */
   const clean = i => (i.g || []).includes("clean");
-  /* Her photo: the nude one first; a family-friendly screen never receives it, so it gets her clean photo
-     (tools/queue_jail_clean_pictures.py). One photo each: the newest of its kind. The Mayor of a port is
-     shown as that port's own Mayor (Ports > Mayor), as on the Parlour and the standing moves. */
-  function portraitItem(cid, port) {
-    if (cid === "mayor" && port) {
-      const m = Media.choose("port", port, "mayor", { mode: "fixed", slot: "jail-mayor", strict: true });
-      if (m && m.t === "image") return m;
+  /* Her faces (22 Nov 2026): not one photo or clip but a DECK of everything she has in the library, so the screen
+     can swap between them. Pictures are grouped by mood (a picture's roles: angry, sly, happy, speaking, idle,
+     portrait) and dealt round-robin across the moods the screen asks for, so two faces in a row are never the same
+     mood or the same picture. The first mood is the screen's (the Mayor catches you angry, the warden shuts the
+     irons sly, the door opens happy); `shift` turns the order so each month starts on a different mood.
+     The Mayor of a port also deals that port's own Mayor pictures (Ports > Mayor), as on the Parlour. Clips and
+     stills are dealt together; "Images only" (Options) leaves the clips out (Media.items does that). */
+  const SWAP_MS = 3500;                       // a held screen changes its speaker's face this often
+  const MOODS = {
+    caught: ["angry", "sly", "speaking", "idle", "happy"],
+    irons:  ["sly", "happy", "angry", "speaking", "idle"],
+    hold:   ["speaking", "sly", "angry", "idle", "happy"],
+    month:  ["idle", "sly", "happy", "angry", "speaking"],
+    door:   ["happy", "sly", "speaking", "idle", "angry"],
+    costs:  ["happy", "sly", "idle", "speaking", "angry"],
+    plea:   ["sly", "speaking", "angry", "idle", "happy"]
+  };
+  const shuffle = a => { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; };
+  const hasRole = (i, r) => (i.r || []).includes(r);
+  function faceDeck(cid, port, kind, shift, avoidId) {
+    const roles = MOODS[kind] || MOODS.month, n = roles.length;
+    const order = roles.map((_, k) => roles[(k + (shift || 0)) % n]);
+    const all = Media.items("persona", cid, "", true);
+    const lists = order.map(m => shuffle(all.filter(i => hasRole(i, m))));
+    if (cid === "mayor" && port) lists.unshift(shuffle(Media.items("port", port, "mayor", true).filter(i => hasRole(i, "mayor"))));
+    const seen = new Set(), deck = [];
+    const add = i => { if (i && !seen.has(i.id)) { seen.add(i.id); deck.push(i); } };
+    for (let k = 0, more = true; more; k++) {
+      more = false;
+      lists.forEach(l => { if (k < l.length) { more = true; add(l[k]); } });
     }
-    const all = Media.items("persona", cid, "portrait").filter(i => i.t === "image");
-    const pick = all.filter(i => !clean(i));
-    const list = pick.length ? pick : all;
-    return list.length ? list[list.length - 1] : null;
+    shuffle(all.filter(i => hasRole(i, "portrait") || !(i.r || []).length)).forEach(add);
+    // the clean copy of a nude photo is for family-friendly screens; leave it out only when plenty of others remain
+    const bare = deck.filter(i => !clean(i));
+    const out = bare.length >= 3 ? bare : deck;
+    if (out.length > 1 && avoidId && out[0].id === avoidId) out.push(out.shift());
+    return out;
   }
-  /* Her clip (owner's decision, 20 Nov 2026: video on the jail screen, "always the clip"): when she has a clip
-     this screen may show, it plays instead of her photo, muted and looping, with the picture it was made
-     from as its poster. A fresh pick for each card. */
-  let clipPick = { key: "", id: "" };
-  function portraitClip(cid, seed) {
-    const all = Media.items("persona", cid, "portrait", true).filter(i => i.t === "video");
-    if (!all.length) return null;
-    const pick = all.filter(i => !clean(i));
-    const list = pick.length ? pick : all;
-    const key = cid + "|" + seed;
-    if (clipPick.key !== key || !list.some(i => i.id === clipPick.id)) {
-      const others = list.length > 1 ? list.filter(i => i.id !== clipPick.id) : list;
-      clipPick = { key, id: others[Math.floor(Math.random() * others.length)].id };
+  /* One face as markup: a clip (muted, looping, its still as the poster) or a picture. */
+  function faceMarkup(item, cls) {
+    if (!item) return "";
+    if (item.t === "video") {
+      return `<video class="${cls} jl-clip" data-jlclip="${esc(item.id)}" src="${esc(item.u)}"${item.po ? ` poster="${esc(item.po)}"` : ""} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
     }
-    return list.find(i => i.id === clipPick.id);
+    return `<img class="${cls}" src="${esc(item.u)}" alt="">`;
   }
+  /* A speaker whose face is swapped on screen: {sel: where her face lives, cls, deck, i}. */
+  const faceOf = (el) => el && Array.from(el.children).find(c => c.matches(".sf-face, .jl-face"));
+  function showFace(f, i) {
+    if (!f || !f.deck.length) return;
+    f.i = ((i % f.deck.length) + f.deck.length) % f.deck.length;
+    const host = document.querySelector(f.sel);
+    if (!host) return;
+    const old = faceOf(host);
+    const html = faceMarkup(f.deck[f.i], f.cls);
+    if (old) old.insertAdjacentHTML("afterend", html); else host.insertAdjacentHTML("afterbegin", html);
+    const fresh = old ? old.nextElementSibling : host.firstElementChild;
+    if (fresh) fresh.classList.add("jl-in");
+    if (old) setTimeout(() => old.remove(), 900);
+  }
+  const stepFace = f => { if (f && f.deck.length > 1) showFace(f, f.i + 1); };
+  let whoFace = null;                          // the speaker on the left of a story screen
+  const wardFaces = {};                        // the warden on the costs overlay and the plea: "costs", "plea"
+  let swapTimer = null;
+  function tickFaces() {
+    if (document.hidden) return;
+    if (screen && screen.dataset.kind !== "costs") stepFace(whoFace);
+    Object.keys(wardFaces).forEach(k => stepFace(wardFaces[k]));
+  }
+  function startSwap() { if (!swapTimer) swapTimer = setInterval(tickFaces, SWAP_MS); }
+  function stopSwap() { if (swapTimer && !screen && !dialog) { clearInterval(swapTimer); swapTimer = null; } }
   function cellUrl(port) {
     const item = Media.choose("port", port, "jail_cell", { mode: "fixed", slot: "jail-cell", strict: true })
       || Media.choose("port", port, "night", { slot: "jail-cell-night" });
@@ -115,31 +162,29 @@ const Jail = (() => {
   }
 
   /* ---- the speaker: a tall portrait on the left with her name plate, as the Sea Battle's -------------- */
-  function figureHtml(cid, port, seed) {
+  function figureHtml(cid, port, kind, shift) {
     const who = castOf(cid);
-    const clip = portraitClip(cid, seed);
-    const item = portraitItem(cid, port) || Media.choose("persona", cid, "portrait", { mode: "fixed", slot: "jail-who" });
-    const url = item ? item.u : who.portrait;
-    let face = "";
-    if (clip) {
-      const poster = clip.po || url || "";
-      face = `<video class="sf-face on jl-clip" data-jlclip="${esc(clip.id)}" src="${esc(clip.u)}"${poster ? ` poster="${esc(poster)}"` : ""} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
-    } else if (url) {
-      face = `<img class="sf-face on" src="${esc(url)}" alt="">`;
-    }
+    const deck = faceDeck(cid, port, kind, shift, whoFace && whoFace.cid === cid ? (whoFace.deck[whoFace.i] || {}).id : "");
+    whoFace = { cid, port, deck, i: 0, sel: ".jl-who .sf-frame", cls: "sf-face on" };
+    const item = deck[0] || null;
+    const face = item ? faceMarkup(item, "sf-face on jl-in")
+      : who.portrait ? `<img class="sf-face on" src="${esc(who.portrait)}" alt="">` : "";
     return `<div class="sf-who jl-who${face ? "" : " nopic"}" style="--who:${esc(who.color || "var(--deck-brass)")}">${face ? `<div class="sf-frame">${face}</div>` : ""}
       <div class="sf-plate"><b>${esc(who.name || "")}</b><span>${esc(who.title || "")}</span></div></div>`;
   }
 
-  /* The speaker's picture changes only when the speaker does; a playing clip is not restarted. */
-  let whoKey = "";
-  function setWho(mid, cid, port, seed) {
-    const key = cid + "|" + port + "|" + seed;
-    if (key === whoKey && mid.querySelector(".jl-who")) return;
-    whoKey = key;
+  /* Each screen shows its speaker in a new face; when the speaker is the same as the screen before (the warden
+     through the irons, the sentence and the months) the picture swaps in place, so she is never the same twice. */
+  function setWho(mid, cid, port, kind, shift) {
     const old = mid.querySelector(".jl-who");
+    if (old && whoFace && whoFace.cid === cid && whoFace.port === port && whoFace.deck.length) {
+      const cur = (whoFace.deck[whoFace.i] || {}).id;
+      whoFace.deck = faceDeck(cid, port, kind, shift, cur);
+      showFace(whoFace, 0);
+      return;
+    }
     if (old) old.remove();
-    mid.insertAdjacentHTML("afterbegin", figureHtml(cid, port, seed));
+    mid.insertAdjacentHTML("afterbegin", figureHtml(cid, port, kind, shift));
   }
 
   /* ---- the Reckoning look, for the costs overlay and the plea ----------------------------------------- */
@@ -152,18 +197,13 @@ const Jail = (() => {
     const cell = cellUrl(port);
     return `<div class="jl-bg"${cell ? ` style="background-image:url('${esc(cell)}')"` : ""}></div><div class="jl-shade"></div>`;
   }
-  function wardenFigure(cid) {
+  function wardenFigure(cid, kind, reg) {
     const who = castOf(cid);
-    const clip = portraitClip(cid, "card");
-    const item = portraitItem(cid) || Media.choose("persona", cid, "portrait", { mode: "fixed", slot: "jail-warden" });
-    const url = item ? item.u : who.portrait;
-    let face = "";
-    if (clip) {
-      const poster = clip.po || url || "";
-      face = `<video class="jl-face jl-clip" data-jlclip="${esc(clip.id)}" src="${esc(clip.u)}"${poster ? ` poster="${esc(poster)}"` : ""} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
-    } else if (url) {
-      face = `<img class="jl-face" src="${esc(url)}" alt="">`;
-    }
+    const deck = faceDeck(cid, "", kind || "costs", 0, "");
+    wardFaces[reg || "costs"] = { cid, deck, i: 0, cls: "jl-face", sel: reg === "plea" ? ".jl-dialog .jl-warden" : ".jl-screen .jl-warden" };
+    const item = deck[0] || null;
+    const face = item ? faceMarkup(item, "jl-face jl-in")
+      : who.portrait ? `<img class="jl-face" src="${esc(who.portrait)}" alt="">` : "";
     const line = who.catchphrase ? `<figcaption class="sf-rline jl-line"><header><span class="sf-rsay">${KEY_ICON}</span>
         <span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header>
         <p>“${esc(who.catchphrase)}”</p></figcaption>`
@@ -188,7 +228,7 @@ const Jail = (() => {
       + tile(tl("jail.tile.spoiled", "Cargo spoiled"), spoiled ? spoiled.toLocaleString("en-US") : "0", spoiled ? "dn" : "up")
       + (f.fine ? tile(tl("jail.tile.paid", "Paid instead"), "−" + money(f.paid || 0), "dn")
         : tile(tl("jail.tile.standing", "Standing"), tl("jail.tile.eased", "Eased"), "up"));
-    return `${wardenFigure(f.warden)}
+    return `${wardenFigure(f.warden, "costs", "costs")}
         <section class="sf-card jl-card o-freed" role="dialog" aria-modal="true" aria-labelledby="jl-title">
           <header><p class="eyebrow">${te("freed.eyebrow", { port })}</p>
             <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${OPEN}</span><h2 id="jl-title">${te("freed.title")}</h2></div>
@@ -218,7 +258,7 @@ const Jail = (() => {
       <footer class="jl-foot"><p class="jl-hint"></p><div class="jl-act"></div></footer>
       <div class="sf-result jl-result" hidden></div>`;
     pics = Array.from(screen.querySelectorAll(".sf-pic"));
-    curPic = 0; picUrl = ""; whoKey = "";
+    curPic = 0; picUrl = ""; whoFace = null; delete wardFaces.costs;
     screen.addEventListener("click", e => {
       const b = e.target.closest(".jl-go");
       if (b) { if (!b.disabled) press(b); return; }
@@ -226,6 +266,7 @@ const Jail = (() => {
       tapOn();
     });
     document.body.appendChild(screen);
+    startSwap();
   }
   const $ = sel => screen.querySelector(sel);
 
@@ -304,12 +345,26 @@ const Jail = (() => {
     enter();
   }
 
+  /* Sounds (web/audio.js plays them): the door and the irons when the sentence begins, the lock and the door
+     when she walks out. Keyed by card and beat so a redraw never replays one; a late cue is dropped if the
+     story has moved on. */
+  function sfx(me, b) {
+    const A = typeof SeaAudio !== "undefined" ? SeaAudio : null;
+    if (!A) return;
+    const i = me.i, key = "jl:" + me.key + ":" + i;
+    const now = id => A.playOnce(key + ":" + id, id);
+    const later = (ms, id) => setTimeout(() => { if (story === me && me.i === i) A.playOnce(key + ":" + id + ms, id); }, ms);
+    if (b.kind === "irons") { now("jail.door"); later(650, "jail.irons"); }
+    else if (b.kind === "door") { now("jail.unlock"); later(700, "jail.door"); }
+  }
+
   function enter() {
     const me = story, b = me.beats[me.i];
     me.t0 = Date.now();
     me.started = false; me.lastEnd = 0;
     me.armedAt = b.last ? Date.now() : 0;
     drawBeat(b);
+    sfx(me, b);
     if (b.last) {
       told.add("C|" + me.key);
       try { sessionStorage.setItem(TOLD_KEY, JSON.stringify(Array.from(told).slice(-40))); } catch (e) { /* memory only */ }
@@ -381,7 +436,7 @@ const Jail = (() => {
         `<span class="jl-tick${i < b.ticks.served ? " done" : ""}${b.kind === "month" && i === b.ticks.served ? " now" : ""}"></span>`).join("")
       : "";
     const mid = $(".jl-mid");
-    setWho(mid, b.who, b.port, story.key);
+    setWho(mid, b.who, b.port, b.kind, b.kind === "month" && b.ticks ? b.ticks.served : 0);
     const cap = $(".sf-cap");
     cap.innerHTML = b.cap || "";
     cap.classList.remove("in"); void cap.offsetWidth; cap.classList.add("in");
@@ -439,6 +494,8 @@ const Jail = (() => {
     clearTimeout(armTimer);
     story = null;
     if (screen) { screen.remove(); screen = null; }
+    whoFace = null; delete wardFaces.costs;
+    stopSwap();
   }
 
   function syncScreen() {
@@ -457,6 +514,8 @@ const Jail = (() => {
   function closePlea() {
     if (dialog) { try { dialog.close(); } catch (e) { /* closed */ } dialog.remove(); }
     dialog = dialogId = null;
+    delete wardFaces.plea;
+    stopSwap();
   }
 
   function drawPlea(pl) {
@@ -472,7 +531,7 @@ const Jail = (() => {
     };
     return `${bgHtml(pl.port)}
       <div class="sf-result jl-result">
-        ${wardenFigure(pl.warden)}
+        ${wardenFigure(pl.warden, "plea", "plea")}
         <section class="sf-card jl-card o-plea" aria-labelledby="jl-plea-title">
           <header><p class="eyebrow">${te("plea.eyebrow", { port })}</p>
             <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${SCALES}</span><h2 id="jl-plea-title">${te("plea.title", { fine: money(pl.amount) })}</h2></div>
@@ -505,6 +564,7 @@ const Jail = (() => {
       if (!ok && dialog) dialog.querySelectorAll(".jl-opt").forEach(x => { x.disabled = false; });
     }));
     document.body.appendChild(dialog);
+    startSwap();
     try { dialog.showModal(); } catch (e) { dialog.setAttribute("open", ""); }
   }
 

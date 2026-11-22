@@ -1,6 +1,8 @@
 "use strict";
 const T_FALLBACK = { "table.title": "Harbor View", "table.home": "Home" };
 let D = null, S = null, TV = null, VS = {}, scene = null, infoAt = 0, hostSpoken = false;
+let tableArt = { personas: {} };
+let seaRoutes = null, currentCourse = null, courseScene = null, courseData = null;
 const app = document.getElementById("app"), previous = new Map(), SVGNS = "http://www.w3.org/2000/svg";
 const portName = key => D?.ports[key]?.name || key || "";
 const colorOf = p => COLORS[(p.color || 0) % COLORS.length];
@@ -301,10 +303,11 @@ const director = new TableDirector(next => {
 });
 director.canAdvance = s => {
   const now = Date.now(), age = now - s.startedAt;
-  const reading = Math.max(s.kind === 'voyage' ? 6500 : 3400, Math.min(16000, 1600 + (s.presentationText || '').length * 40), s.duration);
+  const minimum = s.kind === 'voyage' ? s.travelDuration || 6500 : Math.max(3400,s.detailHold || 0);
+  const reading = Math.max(minimum, Math.min(16000, 1600 + (s.presentationText || '').length * 40), s.duration);
   if (age >= 28000) return true;
   if (!s.voiceExpected || Voice.muted()) return age >= reading;
-  if (s.voiceEndedAt) return age >= 3400 && now >= s.voiceEndedAt + 900;
+  if (s.voiceEndedAt) return age >= minimum && now >= s.voiceEndedAt + 900;
   if (s.voiceStarted) return false;
   return age >= Math.max(5000, reading);
 };
@@ -325,13 +328,19 @@ function chooseArt(who, mood, key, port, story) {
   if (port && who === 'mayor') {
     const portraits = Media.items('port', port);
     const role = story?.kind === 'promotion' ? 'mayor_congrats' : 'mayor';
-    const image = portraits.find(i => (i.r || []).includes(role));
+    const dedicated = portraits.find(i => (i.g || []).includes('table-arrival'));
+    const matching = portraits.filter(i => i.t === 'image' && (i.r || []).includes(role));
+    const image = story?.kind === 'arrival' && dedicated ? dedicated : matching.find(i => i.p) || matching[0];
     if (image) return image;
   }
   // The persona spot is a figure standing in the scene. Wallpaper master shots (Accounting Ledger backdrops) and the
   // Dashboard's masthead pictures and banners are wide scenes used elsewhere, so they never appear here.
-  const list = Media.items('persona', who).filter(i => !notFigure(i));
-  const dedicated = list.filter(i => (i.g || []).includes('table-' + mood));
+  const catalog = [...Media.items('persona', who), ...Media.items('persona', who, null, false, 'wallpaper').filter(i => (i.g || []).includes('table-' + mood))];
+  const list = catalog.filter(i => !notFigure(i));
+  // Explicit Table compositions take precedence even when shared with a wallpaper role.
+  const dedicated = catalog.filter(i => i.t === 'image' && (i.g || []).includes('table-' + mood));
+  const bundled = tableArt.personas[who]?.[mood];
+  if (!dedicated.length && bundled) return { u: '/assets/table/' + bundled, t: 'image' };
   const pick = dedicated.length ? dedicated : list.filter(i => (i.r || []).includes(mood));
   if (pick.length) {
     let hash = 0;
@@ -367,10 +376,21 @@ function lineText(key, report = {}) {
 }
 const words = (key, fallback) => T[key] == null ? fallback : t(key);
 
+function cargoPanel(entries, label, movement = null) {
+  const cargo = entries.filter(([good]) => D.goods[good]);
+  if (!cargo.length) return '';
+  const lead = cargo.slice().sort((a,b) => b[1]-a[1])[0][0];
+  const art = Media.choose('cargo', [lead], 'card', {mode:'fixed',strict:true});
+  const picture = art?.t === 'image' ? art.u : D.graphics?.goods?.[lead];
+  const change = movement === null ? '' : `<span class="hv-cash-move ${movement > 0 ? 'credit' : movement < 0 ? 'debit' : ''}">${esc((movement > 0 ? '+' : '') + money(movement))} silver</span>`;
+  return `<div class="hv-cargo-panel">${picture ? `<img src="${esc(picture)}" alt="${esc(D.goods[lead].name)}">` : ''}<div><small>${esc(label)}</small><strong>${esc(cargo.map(([good,qty]) => `${qty.toLocaleString()} ${D.goods[good].name}`).join(' · '))}</strong>${change}</div></div>`;
+}
+
 function stageData() {
   const s = scene, p = s?.focus || TV.focus, who = characterOf(s), r = s?.report || {};
   let title = '', text = s?.text || '', facts = '', location = portName(s?.port || p?.port), mood = s?.mood || 'speaking';
-  let clips = (s?.clips || []).filter(Boolean), backdrop = null, full = false;
+  let clips = (s?.clips || []).filter(Boolean), backdrop = null, full = false, cargo = '';
+  const passage = TableDetails.passage(s), receipt = TableDetails.receipt(s);
   const voice = s?.voice || {};
   if (!s || ['host','departure','landfall','return'].includes(s.kind)) {
     const key = s?.hostKey || (S.phase === 'lobby' ? 'gm.welcome' : S.phase === 'ended' ? 'gm.finale' : p?.storm ? 'gm.storm' : p?.battle ? 'gm.ask_battle' : 'gm.ask_sail');
@@ -381,10 +401,18 @@ function stageData() {
     mood = s?.mood || (S.phase === 'ended' || S.phase === 'lobby' ? 'happy' : p?.ready ? 'sly' : 'host');
   } else if (s.kind === 'voyage') {
     title = `${portName(s.from)} → ${portName(s.port)}`; location = title;
-    backdrop = Media.choose('scene', ['voyage'], 'background', { mode: 'fixed' });
+    const rough = passage?.sea >= 2;
+    mood = rough ? 'storm' : 'underway';
+    backdrop = Media.choose('scene', [rough ? passage.sea === 3 ? 'typhoon' : 'storm' : 'voyage'], 'background', { mode: 'fixed', strict: true });
+    if (passage) {
+      if (passage.sea !== null) facts += fact('Recorded sea', D.weather[passage.sea]);
+      if (passage.orders) facts += fact('If attacked', passage.orders === 'fight' ? 'Fight' : 'Run');
+      if (passage.protect !== null) facts += fact('Protection', passage.protect ? `${passage.protect} ${passage.protect === 1 ? 'month' : 'months'}` : 'Unprotected');
+    }
   } else if (s.kind === 'arrival') {
     full = true; title = portName(s.port);
-    backdrop = Media.choose('port', [s.port], 'arrival', { mode: 'fixed' });
+    backdrop = Media.choose('port', [s.port], 'arrival', { mode: 'fixed', strict: true })
+      || Media.choose('port', [s.port], 'banner', { mode: 'fixed', strict: true });
   } else if (s.kind === 'storm' || (s.kind === 'reckoning' && s.source === 'storm')) {
     full = true;
     title = words('storm.title.' + r.band, 'Storm at sea');
@@ -436,17 +464,29 @@ function stageData() {
       seized:'The hold is opened', ship_lost:'A ship lost', shipwreck:'The cost of the sea' })[s.type] || 'At the table';
     backdrop = Media.choose('port', [s.port], 'banner', { mode: 'fixed' });
   }
+  if (s?.kind === 'departure' && passage?.manifest) {
+    const m = passage.manifest;
+    facts = fact(`Fleet · ${m.guns} guns · ${m.cannons} cannons`, `${m.ships} ${m.ships === 1 ? 'ship' : 'ships'}`)
+      + fact('Hold used', `${m.used} / ${m.capacity}`) + fact('Lowest hull', `${m.hull}%`);
+    cargo = cargoPanel(m.cargo, 'Departure manifest');
+  }
+  if (receipt && D.goods[receipt.good]) {
+    facts = fact(receipt.buying ? 'Units bought' : 'Units sold', receipt.quantity.toLocaleString())
+      + fact(receipt.buying ? 'Total paid' : 'Sale proceeds', money(receipt.total))
+      + (receipt.cashAfter === null ? '' : fact('Silver aboard', money(receipt.cashAfter)));
+    cargo = cargoPanel([[receipt.good,receipt.quantity]], receipt.buying ? 'Purchase recorded' : 'Sale recorded', receipt.delta);
+  }
+  if (s) s.detailHold = facts && (s.kind === 'departure' || receipt) ? 6500 : 0;
   const art = chooseArt(who, mood, s?.key || 'host:' + S.turn, s?.port, s);
   const peerArt = s?.peer ? chooseArt(s.peer, 'speaking', s.sequence + ':peer', s.port, s) : null;
-  return { who, title, text, facts, location, mood, clips, backdrop, full, art, peerArt, focus:p, state:s?.state || S };
+  return { who, title, text, facts, cargo, passage, receipt, location, mood, clips, backdrop, full, art, peerArt, focus:p, state:s?.state || S };
 }
 
 function camera(port, from) {
   const world = document.getElementById('hv-world'), p = D.ports[port], a = D.ports[from];
   let zoom = 1, cx = 500, cy = 300;
-  if (p && a) {
-    const w = Math.max(260, Math.abs(p.x - a.x) + 200), h = Math.max(180, Math.abs(p.y - a.y) + 130);
-    zoom = Math.min(2, 1000 / w, 600 / h); cx = (p.x + a.x) / 2; cy = (p.y + a.y) / 2;
+  if (p && a && currentCourse) {
+    ({zoom,cx,cy} = TableMotion.frame(currentCourse));
   } else if (p && scene && !['host','return','storm','battle','reckoning','legend','jail','promotion','customs'].includes(scene.kind)) {
     zoom = 1.75; cx = p.x; cy = p.y;
   }
@@ -456,13 +496,68 @@ function camera(port, from) {
 }
 
 function route() {
-  if (scene?.kind !== 'voyage') return update('hv-route', '');
+  if (scene?.kind !== 'voyage') { currentCourse = null; courseScene = null; return update('hv-route', ''); }
   const a = D.ports[scene.from], b = D.ports[scene.port];
-  if (!a || !b) return;
-  const id = 'hv-course', path = `M${a.x} ${a.y} Q${(a.x+b.x)/2+28} ${(a.y+b.y)/2-28} ${b.x} ${b.y}`;
+  if (courseScene !== scene || courseData !== D) {
+    courseScene = scene; courseData = D;
+    currentCourse = TableMotion.plan(seaRoutes, D.ports, scene.from, scene.port);
+    if (currentCourse) scene.travelDuration = reduced() ? scene.duration : TableMotion.duration(currentCourse.length);
+    if (!currentCourse) console.warn('Table has no sea route configured', scene.from, scene.port);
+  }
+  if (!a || !b || !currentCourse) return update('hv-route', '');
+  const path = currentCourse.path;
   const art = shipArt(scene.focus?.ships?.[0]?.type);
   const ship = art ? `<image href="${art}" x="-36" y="-36" width="72" height="72"/>` : '<path d="M0 -14L7 9L0 5L-7 9Z"/>';
-  update('hv-route', `<path id="${id}" class="course" d="${path}"/><g class="traveller"${reduced() ? ` transform="translate(${b.x} ${b.y})"` : ''}><g transform="rotate(90)">${ship}</g>${reduced() ? '' : `<animateMotion dur="5s" fill="freeze" rotate="auto"><mpath href="#${id}"/></animateMotion>`}</g>`);
+  update('hv-route', `<path class="course" d="${path}"/><path class="course-travelled" pathLength="1" d="${path}"/><g class="route-destination" transform="translate(${b.x} ${b.y})"><circle r="13"/><circle r="5"/></g><g class="traveller"><g class="wake"><path d="M-4 15 Q-9 28 -13 38 M4 15 Q9 28 13 38 M0 20 V43"/></g><g class="sailing-ship">${ship}</g></g>`);
+  animateRoute();
+}
+
+function animateRoute() {
+  if (scene?.kind !== 'voyage' || director.paused) return;
+  const ship = document.querySelector('#hv-route .traveller');
+  if (!currentCourse || !ship) return;
+  const progress = TableMotion.progress(Date.now() - scene.startedAt, Math.max(5000, (scene.travelDuration || scene.duration) - 900), reduced());
+  const point = TableMotion.sample(currentCourse, progress);
+  ship.setAttribute('transform', `translate(${point.x} ${point.y}) rotate(${point.angle})`);
+  ship.querySelector('.wake').style.opacity = reduced() ? 0 : Math.sin(progress * Math.PI);
+  document.querySelector('#hv-route .course-travelled').style.strokeDashoffset = 1 - progress;
+}
+
+function motionFrame() {
+  if (!closed) { animateRoute(); requestAnimationFrame(motionFrame); }
+}
+
+const figureStates = new Map();
+function setFigure(id, art, who) {
+  const pane = document.getElementById(id), url = art?.u || whoOf(who).portrait || '';
+  const name = whoOf(who).name || who;
+  const last = figureStates.get(id);
+  if (last?.url === url) return;
+  const state = { url }; figureStates.set(id, state);
+  if (!url) {
+    pane.innerHTML = who ? `<div class="missing"><b>${esc(name)}</b><p>Her portrait is being prepared.</p></div>` : '';
+    return;
+  }
+  const image = new Image();
+  image.className = 'figure'; image.alt = name; image.decoding = 'async';
+  image.onload = () => {
+    if (figureStates.get(id) !== state) return;
+    pane.querySelector('.missing')?.remove();
+    const old = [...pane.querySelectorAll('.figure')];
+    old.forEach(el => { el.alt = ''; el.setAttribute('aria-hidden', 'true'); });
+    pane.appendChild(image);
+    if (!reduced()) {
+      image.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1100, easing: 'ease-out' });
+      old.forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1100, fill: 'forwards' }));
+    }
+    setTimeout(() => old.forEach(el => el.remove()), reduced() ? 0 : 1150);
+  };
+  image.onerror = () => {
+    if (figureStates.get(id) !== state) return;
+    console.warn('Table portrait could not load', url);
+    if (!pane.querySelector('.figure')) pane.innerHTML = `<div class="missing"><b>${esc(name)}</b><p>Her portrait could not be loaded.</p></div>`;
+  };
+  image.src = url;
 }
 
 let backdropUrl = '', backdropToken = 0, backdropSide = 0;
@@ -484,30 +579,29 @@ function setBackdrop(url) {
 function render() {
   if (!D || !S || director.paused) return;
   const view = stageData(), shown = { ...view.state };
+  if (scene?.kind === 'voyage' && view.passage?.weather) shown.weather = view.passage.weather;
   const focus = view.focus;
   shown.players = (shown.players || []).map(p => p.id === focus?.id ? { ...p, port: focus.port, ships: focus.ships?.length ?? p.ships, worth: focus.worth } : p);
   app.classList.toggle('is-duet', Boolean(scene?.peer && view.peerArt));
   app.classList.toggle('speaker-right', scene?.side === 'right');
   app.dataset.scene = scene?.kind || 'host'; app.classList.toggle('is-story', view.full);
+  app.dataset.sea = view.passage?.sea ?? '';
+  app.classList.toggle('has-details', Boolean(view.cargo));
   update('hv-date', esc(shown.date)); update('hv-location', esc(view.location));
   update('hv-phase', esc(scene?.kind === 'voyage' ? 'Under sail' : shown.phase === 'ended' ? 'Voyage complete' : shown.phase === 'sea' ? 'At sea' : shown.phase === 'lobby' ? 'The table is gathering' : 'In port'));
   const changed = update('hv-chart-base', Chart.svg({ data: D, players: [], crackdown: shown.crackdown, hideWeather: true, hideRose: false }));
   drawSky(shown); drawPieces(shown.sea || [], shown); drawPorts(shown); route(); camera(scene?.port, scene?.from);
   if (changed) { requestAnimationFrame(() => Chart.fit(changed)); setTimeout(() => Chart.fit(changed), 900); }
-  const figure = (art, who) => {
-    const picture = art?.u || whoOf(who).portrait;
-    return picture ? `<img class="figure" src="${esc(picture)}" alt="${esc(whoOf(who).name || who)}">`
-      : `<div class="missing"><b>${esc(whoOf(who).name || who)}</b><p>Her portrait is being prepared.</p></div>`;
-  };
   const right = scene?.side === 'right';
-  update('hv-persona', figure(right && view.peerArt ? view.peerArt : view.art, right && view.peerArt ? scene.peer : view.who));
-  update('hv-counterpart', scene?.peer && view.peerArt ? figure(right ? view.art : view.peerArt, right ? view.who : scene.peer) : '');
-  const background = view.backdrop?.u || Media.items('scene', 'loading').find(x => (x.g || []).includes('table-cabin'))?.u;
+  setFigure('hv-persona', right && view.peerArt ? view.peerArt : view.art, right && view.peerArt ? scene.peer : view.who);
+  setFigure('hv-counterpart', scene?.peer && view.peerArt ? right ? view.art : view.peerArt : null, scene?.peer && view.peerArt ? right ? view.who : scene.peer : '');
+  const background = view.backdrop?.u || Media.items('scene', 'loading').find(x => (x.g || []).includes('table-cabin'))?.u || (tableArt.cabin ? '/assets/table/' + tableArt.cabin : '');
   setBackdrop(background);
-  update('hv-story', `<p class="eyebrow">${esc(scene?.kind === 'reckoning' ? 'The Reckoning · ' + view.location : view.full ? view.location : whoOf(view.who).title || '')}</p><h1>${esc(view.title)}</h1>`
+  const story = update('hv-story', `<div class="hv-caption"><h1>${esc(view.title)}</h1>`
     + (view.text ? `<blockquote>${esc(view.text)}</blockquote>` : '')
     + (view.full || scene?.kind === 'trade' ? `<p class="byline">${esc(whoOf(view.who).name || '')}</p>` : '')
-    + (view.facts ? `<div class="facts">${view.facts}</div>` : '') + (scene?.beatCount > 1 ? `<p class="hv-beats" aria-label="Story beat ${scene.beatIndex+1} of ${scene.beatCount}">${Array.from({length:scene.beatCount}, (_,i) => `<i class="${i===scene.beatIndex?'active':''}"></i>`).join('')}</p>` : ''));
+    + `</div><div class="hv-details">` + (view.facts ? `<div class="facts">${view.facts}</div>` : '') + view.cargo + `</div>` + (scene?.beatCount > 1 ? `<p class="hv-beats" aria-label="Story beat ${scene.beatIndex+1} of ${scene.beatCount}">${Array.from({length:scene.beatCount}, (_,i) => `<i class="${i===scene.beatIndex?'active':''}"></i>`).join('')}</p>` : ''));
+  if (story && !reduced()) story.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 700, easing: 'cubic-bezier(.22,1,.36,1)' });
   const p = focus || shown.players[0], crest = p && Faces.of(p).crest;
   const shipCount = Array.isArray(p?.ships) ? p.ships.length : p?.ships || 0;
   update('hv-ledger', p ? `${crest ? `<img class="crest" src="${esc(crest)}" alt="">` : ''}<span class="house">${esc(p.firm)}</span><span>${esc(portName(p.port))}</span><span>${shipCount} ${shipCount === 1 ? 'ship' : 'ships'}</span><span class="worth">Net worth ${esc(money(p.worth))}</span>` : '<span>The table awaits its Captain.</span>');
@@ -548,6 +642,7 @@ async function poll() {
     }
     TV = feed; S = feed.state;
     director.ingest(feed);
+    app.classList.toggle('is-paused', director.paused);
     const pause = document.getElementById('hv-pause');
     pause.setAttribute('aria-pressed', String(director.paused)); pause.textContent = director.paused ? 'Resume' : 'Pause';
     document.getElementById('hv-paused').hidden = !director.paused;
@@ -572,6 +667,10 @@ document.getElementById('hv-controls').addEventListener('click', e => {
   const id = e.target.closest('button')?.id;
   if (id === 'hv-pause') {
     const paused = director.pause(); e.target.setAttribute('aria-pressed', String(paused)); e.target.textContent = paused ? 'Resume' : 'Pause';
+    app.classList.toggle('is-paused', paused);
+    if (paused) app.getAnimations({ subtree: true }).forEach(animation => {
+      if (animation.effect?.getTiming().iterations !== Infinity) animation.finish();
+    });
     document.getElementById('hv-paused').hidden = !paused; Voice.lead(!paused); if (paused) Voice.drop('table'); else render();
   } else if (id === 'hv-skip') director.skip();
   else if (id === 'hv-board') director.board();
@@ -598,4 +697,19 @@ Faces.onChange = () => render();
 window.addEventListener('pagehide', () => { closed = true; Voice.stop(); });
 setInterval(() => { if (D && S) director.tick(); }, 200);
 if (document.fonts?.ready) document.fonts.ready.then(() => Chart.fit(document.getElementById('hv-chart-base')));
-poll();
+async function startTable() {
+  const [art, routes] = await Promise.allSettled(['/assets/table/art.json', '/assets/table/routes.json'].map(async url => {
+    const response = await fetch(url, {cache:'no-cache'});
+    if (!response.ok) throw new Error(url + ' HTTP ' + response.status);
+    return response.json();
+  }));
+  if (art.status === 'fulfilled' && art.value?.personas && typeof art.value.personas === 'object') tableArt = art.value;
+  else console.warn('Dedicated Table artwork could not load; using the Media Library', art.reason || 'Missing personas');
+  try {
+    if (routes.status === 'rejected') throw routes.reason;
+    seaRoutes = TableMotion.validate(routes.value);
+  } catch (error) { console.warn('Table sea routes could not load; voyage paths are unavailable', error); }
+  poll();
+}
+startTable();
+requestAnimationFrame(motionFrame);

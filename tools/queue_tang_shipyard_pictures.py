@@ -21,8 +21,8 @@ SERVER = (ARGS[0] if ARGS else "http://192.168.1.69:8765").rstrip("/")
 HEAD = ("An unmistakably adult Cantonese woman (age 56), Tang Wai-lin, muscular master shipwright and dockyard "
         "pirate queen, silver-streaked hair tied back, strong forearms and weathered hands, sawdust on "
         "sun-warmed skin")
-NUDE = ("completely nude but for a fitted leather waist cincher and a linen shirt hanging wide open off her "
-        "shoulders, her bare breasts and body shown openly, a leather tool belt slung low on her naked hips")
+NUDE = ("completely naked except for a fitted leather waist cincher and a linen shirt hanging wide open off her "
+        "shoulders, her breasts and body shown openly, a leather tool belt slung low on her naked hips")
 TAIL = (", every shipwright and sailor in the scene is a woman, no men, romanticized cinematic historical realism, "
         "China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, "
         "antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, "

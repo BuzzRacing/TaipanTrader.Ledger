@@ -396,7 +396,10 @@ def _walk(events, ps, extra=None):
                     h.line("sales", paid)
             if "tax" in e:
                 # Newer journals give the bill itself (a shortfall goes on the debt, so silver alone misses it).
-                h.line("customs", -(int(e.get("tax") or 0) + int(e.get("fine") or 0)
+                # A big fine offered as a plea is not charged here: what is paid (in full, or less for jail time)
+                # follows in the plea's own event below.
+                fine = 0 if e.get("plea") else int(e.get("fine") or 0)
+                h.line("customs", -(int(e.get("tax") or 0) + fine
                                     + (int(bribe.get("cost") or 0) if bribe.get("taken") else 0)), port)
             elif e.get("cash"):
                 was, now = e["cash"]
@@ -410,6 +413,13 @@ def _walk(events, ps, extra=None):
             c["bought_qty"] += q
             c["bought_cost"] += cost
             h.line("purchases", -cost)
+            continue
+        # The Port Authority's fine, once the plea is answered (or paid in full when the month turned unanswered).
+        if typ == "plea" and cat == "finance" and isinstance(e.get("plea"), dict) and e["plea"].get("book") == "pa_fine":
+            h.line("customs", -int(e.get("paid") or 0), e["plea"].get("port"))
+            continue
+        if typ == "plea_auto" and cat == "jail" and e.get("book") == "pa_fine":
+            h.line("customs", -int(e.get("amount") or 0), e.get("port"))
             continue
 
         if cat == "orders" and typ == "sea":

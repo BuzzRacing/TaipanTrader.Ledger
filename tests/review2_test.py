@@ -124,7 +124,9 @@ def test_pay_from_silver_and_bank():
     before = bt.books(p)
     g.act("p1", {"type": "sea", "choice": "pay"}, present=["p1"])
     # the bank paid it (the month's bank interest is added on top once the voyage ends)
-    assert abs(p["bank"] - (10 ** 6 - price) * (1 + R["bank"]["bank_rate"])) < 1.0, p["bank"]
+    # (harbour dues left at the start port with no silver now come out of the bank too: Game 6 review)
+    dues = 12                                                     # Saigon, in this seed
+    assert abs(p["bank"] - (10 ** 6 - price - dues) * (1 + R["bank"]["bank_rate"])) < 1.0, p["bank"]
     assert p["cash"] == 0 and p["fights"][0]["outcome"] == "paid"
     assert bt.books(p).get("parley", 0) - before.get("parley", 0) == -price
 
@@ -162,6 +164,9 @@ def test_pay_the_rest_on_madam_wu():
 
 def test_pirate_fleets_vary():
     fresh()
+    # Whether a fleet is a small band (at most band_ships_max junks) or a raiding fleet is settled by the game's id,
+    # which is new every game: a band would cap every size below at four. This test is about raiding fleets.
+    R["battle"]["band_share"] = 0.0
     g, pid, p = one_house()
     p["ships"] = [g._new_ship("indiaman", guns=0) for _ in range(5)]
     for sh in p["ships"]:

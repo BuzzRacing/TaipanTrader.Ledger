@@ -93,6 +93,7 @@ class TableDirector {
       if (type === 'sailed') {
         this.travel = e;
         shot.focus = { ...shot.focus, port: e.origin };
+        shot.passage = e.passage;
         this.enqueue('voyage:' + e.n, [
           { ...this.host('gm.departure', shot, e.bridge, 'sly'), kind: 'departure', port: e.origin, dest: e.dest },
           { ...shot, kind: 'voyage', from: e.origin, port: e.dest, who: 'narrator', mood: 'voyage', sea: e.sea,

@@ -47,9 +47,11 @@ def main():
     p["port"] = noyard
     assert refused(g, pid, {"type": "trade_down"}), "no shipyard here"
     p["port"] = yard
-    p["cargo"] = {"rice": SHIPS[junk]["hold"] + 1}
+    # The junk's guns take room in her hold (rules.fleet.gun_hold), so the cargo must fit what is left.
+    assert offer["hold"] == SHIPS[junk]["hold"] - offer["guns"] * engine.gun_hold(), offer
+    p["cargo"] = {"rice": offer["hold"] + 1}
     assert refused(g, pid, {"type": "trade_down"}), "cargo must fit the junk"
-    p["cargo"] = {"rice": SHIPS[junk]["hold"]}
+    p["cargo"] = {"rice": offer["hold"]}
     name = p["ships"][0]["name"]
     g.act(pid, {"type": "trade_down"}, present=[pid])
     assert p["cash"] == offer["value"]

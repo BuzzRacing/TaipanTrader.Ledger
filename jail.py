@@ -310,7 +310,8 @@ def settle_plea(g, p):
         return
     owed = _pay(g, p, pl["amount"], pl["book"], pl["arrival"])
     g._ev("jail", "plea_auto", "{} gave no answer to the plea in {}: the fine of {} was paid in full".format(
-        p["name"], _port_name(pl["port"]), E().money(pl["amount"])), p, amount=pl["amount"], owed=owed)
+        p["name"], _port_name(pl["port"]), E().money(pl["amount"])), p, amount=pl["amount"], owed=owed,
+          book=pl["book"], port=pl["port"])
 
 
 # ---------------------------------------------------------- the month --

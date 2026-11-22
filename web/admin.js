@@ -28,7 +28,14 @@ const NAV = [
 const NAV_MARKS = ["I", "II", "III", "IV"];
 /* Voices is one nav entry with three tabs. Each tab is still its own section (clips, voices, cast). */
 const VOICE_TABS = [["clips", "Clips"], ["voices", "Voice Library"], ["cast", "Cast & Voices"]];
-const navOn = id => id === section || (id === "clips" && VOICE_TABS.some(([t]) => t === section));
+const navOn = id => id === section || (id === "clips" && VOICE_TABS.some(([t]) => t === section)) || (id === "language" && section === "banks");
+/* Language & Text has two tabs: the wording table and the Dialogue Banks (web/banks-admin.js). */
+const LANG_TABS = [["language", "Wording"], ["banks", "Dialogue Banks"]];
+function langTabs(active) {
+  return `<nav class="vtabs" aria-label="Language and Text">${LANG_TABS.map(([id, label]) =>
+    `<button type="button" class="vtab${id === active ? " on" : ""}" data-vtab="${id}"${id === active ? ' aria-current="page"' : ""}>${label}${
+      CFG && id === "language" && sectionChanged(id) ? '<i aria-label="Unsaved changes"></i>' : ""}</button>`).join("")}</nav>`;
+}
 function voiceTabs(active) {
   return `<nav class="vtabs" aria-label="Voices">${VOICE_TABS.map(([id, label]) =>
     `<button type="button" class="vtab${id === active ? " on" : ""}" data-vtab="${id}"${id === active ? ' aria-current="page"' : ""}>${label}${
@@ -184,6 +191,8 @@ function go(id) {
   if (section === "voices" && id !== "voices") SeaTraderVoices.leave();
   if (section === "clips" && id !== "clips") SeaTraderClips.leave();
   if (VOICE_TABS.some(([t]) => t === id)) openNavGroups.add("Identity");
+  if (section === "banks" && id !== "banks") SeaTraderBanks.leave();
+  if (id === "banks") openNavGroups.add("Identity");
   if (section === "captains" && id !== "captains") SeaTraderCaptains.leave();
   if (section === "report" && id !== "report") SeaTraderReport.leave();
   if (section === "certificate" && id !== "certificate") SeaTraderCertStudio.leave();
@@ -396,6 +405,7 @@ function draw() {
   else if (section === "media") { main.innerHTML = SeaTraderMedia.render(); SeaTraderMedia.enter(); }
   else if (section === "report") { main.innerHTML = SeaTraderReport.render(); SeaTraderReport.enter(); }
   else if (section === "certificate") { main.innerHTML = SeaTraderCertStudio.render(); SeaTraderCertStudio.enter(); }
+  else if (section === "banks") { main.innerHTML = SeaTraderBanks.render(); SeaTraderBanks.enter(); }
   else if (section === "language") main.innerHTML = languageSection();
   else if (section === "backup") main.innerHTML = backupSection();
   else { section = "live"; main.innerHTML = liveSection(); }
@@ -441,7 +451,7 @@ function languageSection() {
   const langOpts = sel => Object.keys(LANGS).map(c => `<option value="${c}" ${c === sel ? "selected" : ""}>${esc(LANGS[c].name)} (${c})</option>`).join("");
   return head("Language & Text", "Every line the game shows. Reword English to taste, or add a whole new language. " +
       "Leave a box empty to keep the wording shown beside it. The game runs in one language for everyone.") +
-    `<section class="card"><h2>Languages</h2><div class="fields">
+    langTabs("language") + `<section class="card"><h2>Languages</h2><div class="fields">
         <div class="f"><label><span>Language the game uses</span></label><select data-langactive="1">${langOpts(CFG.language.active)}</select></div>
         <div class="f"><label><span>Language you are editing</span></label><select data-langedit="1">${langOpts(lv.code)}</select></div>
         <div class="f"><label><span>Its name</span></label><input type="text" data-langname="1" value="${esc(L.name)}" maxlength="40"></div>

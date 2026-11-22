@@ -50,6 +50,8 @@ const Certificate = (() => {
   const COL = 1076;                       // the words keep to the middle 56% (desktop icons only ever cover the women)
   const INK = "#120d0a", IVORY = "#f3e6c8", CREAM = "#fff1cf", BRASS = "#c9a25a", GOLD = "#e7bf72", PALE = "#e9dcc0";
   const HARBOR = "/assets/ceremony-harbor.png";
+  const SIDE_SLIDE = 260;                 // how far a picture made for its side is slid toward the edge (px of 1920)
+  const PLAIN_SLIDE = 420;                // the same for an ordinary wide picture, which has her nearer the middle
   const STAGE_MS = 430;                   // between the layers as the certificate arrives
 
   let el = null, facts = null, factsFor = null, D = null, S = null, opts = {};
@@ -84,7 +86,8 @@ const Certificate = (() => {
     if (tag) {
       const by = scene => Media.items(kind, subject, "", false, scene).filter(i => tagged(i, tag));
       const mine = by("certificate");
-      return mine.length ? mine : by("wallpaper");     // a media.js from before the certificate files them there
+      // pictures made by the batch for a side carry `side`: the woman already stands at that edge of her frame
+      return (mine.length ? mine : by("wallpaper")).map(i => Object.assign({}, i, { side: true }));   // a media.js from before the certificate files them there
     }
     return Media.items(kind, subject, role, false);
   }
@@ -116,6 +119,8 @@ const Certificate = (() => {
       library("persona", woman.who, ""), plain(castOf(woman.who).portrait)), recipe && recipe.persona, last.persona);
     last = { bg: (pick.bg || {}).id || "", mayor: (pick.mayor || {}).id || "", persona: (pick.persona || {}).id || "" };
   }
+
+  const mark = (im, item) => { if (im) im.sideMade = !!(item && item.side); return im; };
 
   function load(url) {
     return new Promise(done => {
@@ -182,13 +187,13 @@ const Certificate = (() => {
     c.fillRect(0, 0, W, H);
     if (im) {
       cover(c, im, 0, 0, W, H, .5, .4);
-      c.fillStyle = "rgba(24, 15, 9, .44)";            // dusk: the picture sits back so the words can stand on it
+      c.fillStyle = "rgba(24, 15, 9, .30)";            // dusk: the picture sits back so the words can stand on it
       c.fillRect(0, 0, W, H);
     }
     const g = c.createRadialGradient(CX, 518, 0, CX, 518, 845);
-    g.addColorStop(0, "rgba(14, 9, 7, .80)");
-    g.addColorStop(.58, "rgba(14, 9, 7, .70)");
-    g.addColorStop(1, "rgba(14, 9, 7, .25)");
+    g.addColorStop(0, "rgba(14, 9, 7, .62)");
+    g.addColorStop(.58, "rgba(14, 9, 7, .50)");
+    g.addColorStop(1, "rgba(14, 9, 7, .10)");
     c.fillStyle = g;
     c.fillRect(0, 0, W, H);
   }
@@ -199,22 +204,35 @@ const Certificate = (() => {
     if (!im) return;
     const k = scratch(), x = k.getContext("2d");
     const wide = im.naturalWidth / im.naturalHeight > 1.2;
-    let from, to;
-    if (wide) {
-      cover(x, im, 0, 0, W, H, side === "left" ? 0 : 1, .5);
-      from = side === "left" ? 0 : W; to = side === "left" ? W * .42 : W * .58;   // her dark, empty side never covers the port
+    const left = side === "left";
+    let from, to, solid = .5, soft = .78;
+    if (wide && im.sideMade) {
+      // made for this side: she already stands in her third of the frame, but that is still too near the words,
+      // so the whole picture is slid out by SIDE_SLIDE and fades out sooner
+      x.save(); x.translate(left ? -SIDE_SLIDE : SIDE_SLIDE, 0); cover(x, im, 0, 0, W, H, left ? 0 : 1, .5); x.restore();
+      from = left ? 0 : W; to = left ? 640 : W - 640;   // her dark, empty side never covers the port
+      solid = .7; soft = .9;
+    } else if (wide) {
+      // An ordinary wide picture is laid across the whole frame and she lands near the middle, behind the words.
+      // Slide the picture out toward her own edge so she stands in the outer fifth, clear of the words, and let it
+      // fade out before the middle so the port shows.
+      const SLIDE = PLAIN_SLIDE;
+      x.save(); x.translate(left ? -SLIDE : SLIDE, 0); cover(x, im, 0, 0, W, H, left ? 0 : 1, .5); x.restore();
+      from = left ? 0 : W; to = left ? 700 : W - 700;
+      solid = .62; soft = .86;
     } else {
-      const bw = 760, bx = side === "left" ? -40 : W - bw + 40;
+      const bw = 760, bx = left ? -40 : W - bw + 40;
       x.save();
       x.beginPath(); x.rect(bx, 0, bw, H); x.clip();
       cover(x, im, bx, 0, bw, H, .5, .12);
       x.restore();
-      from = side === "left" ? bx : bx + bw; to = side === "left" ? bx + bw * .9 : bx + bw * .1;
+      from = left ? bx : bx + bw; to = left ? bx + bw * .9 : bx + bw * .1;
+      solid = .42; soft = .71;
     }
     const m = x.createLinearGradient(from, 0, to, 0);
     m.addColorStop(0, "rgba(0,0,0,1)");
-    m.addColorStop(wide ? .5 : .42, "rgba(0,0,0,1)");
-    m.addColorStop(wide ? .78 : .71, "rgba(0,0,0,.45)");
+    m.addColorStop(solid, "rgba(0,0,0,1)");
+    m.addColorStop(soft, "rgba(0,0,0,.45)");
     m.addColorStop(1, "rgba(0,0,0,0)");
     x.globalCompositeOperation = "destination-in";
     x.fillStyle = m;
@@ -300,17 +318,20 @@ const Certificate = (() => {
   }
 
   function paintWho(c, F, art) {
-    const f = facts, top = 392, size = 140, cy = top + size / 2;
+    const f = facts, size = 140;
     c.textBaseline = "alphabetic";
     const name = tx("cert.captain", { name: f.name }), house = tx("cert.house", { firm: f.firm });
     const epithet = f.epithet && (has("fin.epithet." + f.epithet) ? t("fin.epithet." + f.epithet) : "");
+    // Without an epithet the block is two lines, so it sits a little higher and tighter, leaving air above the net worth.
+    const top = epithet ? 392 : 380, cy = top + size / 2;
     c.font = `bold 50px ${F.body}`;
     const nameW = Math.min(520, c.measureText(name).width);
     c.font = `28px ${F.caps}`;
     const houseW = Math.min(560, c.measureText(house).width + 2 * Array.from(house).length);
     const block = Math.max(430, nameW, houseW), gap = 36;
-    const sides = (art.crest ? size + gap : 0) + (art.badge ? size + gap : 0);
-    let x = CX - (block + sides) / 2;
+    // The words always stand on the centre line, like everything else on the certificate; the crest stays on
+    // their left and the rank badge on their right, so a lone badge no longer drags the name off to one side.
+    let x = CX - block / 2 - gap - size;
     if (art.crest) {
       c.save();
       shadow(c, "rgba(0,0,0,.7)", 24, 8);
@@ -321,14 +342,13 @@ const Certificate = (() => {
       c.restore();
       c.lineWidth = 2; c.strokeStyle = "rgba(201, 162, 90, .7)";
       roundRect(c, x + 1, top + 1, size - 2, size - 2, 9); c.stroke();
-      x += size + gap;
     }
-    const mid = x + block / 2;
+    const mid = CX;
     c.textAlign = "center";
     shadow(c, "rgba(0,0,0,.85)", 10, 3);
     c.fillStyle = "#fff7e2";
     fit(c, name, 520, 50, s => `bold ${s}px ${F.body}`, 30);
-    c.fillText(name, mid, epithet ? top + 42 : top + 62);
+    c.fillText(name, mid, epithet ? top + 42 : top + 56);
     if (epithet) {
       c.fillStyle = GOLD; c.font = `italic 34px ${F.body}`;
       c.fillText(epithet, mid, top + 91);
@@ -336,9 +356,9 @@ const Certificate = (() => {
     c.fillStyle = IVORY;
     const hp = fit(c, house, 520, 28, s => `${s}px ${F.caps}`, 18);
     c.font = `${hp}px ${F.caps}`;
-    spaced(c, house, mid, top + 137, 2);
+    spaced(c, house, mid, top + (epithet ? 137 : 118), 2);
     calm(c);
-    x += block + gap;
+    x = CX + block / 2 + gap;
     if (art.badge) {
       c.save();
       shadow(c, "rgba(0,0,0,.75)", 18, 8);
@@ -495,7 +515,7 @@ const Certificate = (() => {
     const crestUrl = typeof Faces !== "undefined" ? Faces.of(Object.assign({ name: facts.name, firm: facts.firm }, seat)).crest : "";
     const badgeUrl = facts.rank_id && typeof Ranks !== "undefined" ? Ranks.url(facts.rank_id) : "";
     const [bg, mayor, persona, crest, badge] = await Promise.all([
-      load((pick.bg || {}).u).then(im => im || load(HARBOR)), load((pick.mayor || {}).u), load((pick.persona || {}).u),
+      load((pick.bg || {}).u).then(im => im || load(HARBOR)), load((pick.mayor || {}).u).then(im => mark(im, pick.mayor)), load((pick.persona || {}).u).then(im => mark(im, pick.persona)),
       load(crestUrl), load(badgeUrl), fontsReady(F)]);
     if (me !== run || !el) return;
     const art = { crest, badge, badgeRound: /\/media\/rank\//.test(badgeUrl) };
@@ -647,12 +667,14 @@ const Certificate = (() => {
       facts = f;
       const F = fonts();
       const badgeUrl = f.rank_id && typeof Ranks !== "undefined" ? Ranks.url(f.rank_id) : "";
-      const [bg, mayor, persona, badge] = await Promise.all([
-        load((sel.bg || {}).u).then(im => im || load(HARBOR)), load((sel.mayor || {}).u), load((sel.persona || {}).u),
-        load(badgeUrl), fontsReady(F)]);
+      // the House's crest from the Media Library, found by Captain and House name (Faces is in common.js)
+      const crestUrl = typeof Faces !== "undefined" ? Faces.of({ name: f.name, firm: f.firm }).crest : "";
+      const [bg, mayor, persona, badge, crest] = await Promise.all([
+        load((sel.bg || {}).u).then(im => im || load(HARBOR)), load((sel.mayor || {}).u).then(im => mark(im, sel.mayor)), load((sel.persona || {}).u).then(im => mark(im, sel.persona)),
+        load(badgeUrl), load(crestUrl), fontsReady(F)]);
       if (me !== studioRun) return false;
       facts = f;
-      const art = { crest: null, badge, badgeRound: /\/media\/rank\//.test(badgeUrl) };
+      const art = { crest, badge, badgeRound: /\/media\/rank\//.test(badgeUrl) };
       const c = canvas.getContext("2d");
       c.clearRect(0, 0, W, H);
       [() => paintBackdrop(c, bg), () => { paintWoman(c, mayor, "left"); paintWoman(c, persona, "right"); paintFrame(c); },

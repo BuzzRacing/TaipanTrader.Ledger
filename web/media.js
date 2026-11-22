@@ -234,6 +234,29 @@ const Media = (() => {
       }
       return html("persona", cid, "", cls || "", "", { video: true, fresh: true, slot: "speak" });
     },
+    /* A face for a Story screen (22 Nov 2026), the same video-first rule the Captain screen uses: from a list of
+       items, a clip is chosen as often as the persona's "video chance" allows (80% by default), else a still.
+       cid names whose rule to follow (the Mayor of a port follows the persona rule too, though her port pictures
+       are filed under "port"). opts.primary: when a still is chosen, take the starred one (else the first) instead
+       of a random one, as before. "Images only" drops the clips, as everywhere. Returns an item or null. */
+    pickFace(list, cid, opts) {
+      opts = opts || {};
+      list = (list || []).filter(i => i && (!imagesOnly || i.t === "image"));
+      if (!list.length) return null;
+      const side = split(list, rule("persona", cid || "").video_chance);
+      if (opts.primary && side.length && side[0].t !== "video") return side.find(i => i.p) || side[0];
+      return weighted(side, opts.avoid);
+    },
+    /* A picture or a clip as markup for a Story screen's own layout (no timed swapping): a clip plays muted and
+       looping, its still shown as the poster while it loads. */
+    faceMarkup(item, cls, extra) {
+      if (!item) return "";
+      const c = a(cls || ""), x = extra ? " " + extra : "";
+      if (item.t === "video") {
+        return `<video class="${c}"${x} src="${a(item.u)}"${item.po ? ` poster="${a(item.po)}"` : ""} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`;
+      }
+      return `<img class="${c}"${x} src="${a(item.u)}" alt="">`;
+    },
     options: () => L.options || {},
     family: () => !!L.family,
     imagesOnly: () => imagesOnly,

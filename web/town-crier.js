@@ -47,6 +47,7 @@ const TownCrier = (() => {
     dialog.addEventListener("cancel", event => { event.preventDefault(); dismiss(); });
     document.body.appendChild(dialog);
     dialog.showModal();
+    if (typeof SeaAudio !== "undefined") SeaAudio.playOnce("crier:" + key, "crier.headline");   // the bell, once per notice
   }
 
   return { sync };

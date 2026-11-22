@@ -126,3 +126,9 @@ body.in-jail #app { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .jl-screen, .jl-bg, .jl-tick.now, .jl-waiting, .jl-hint, .jl-opt, .jl-who, .jl-result .sf-rwho > video { animation: none; }
 }
+
+/* A speaker changing face (22 Nov 2026): the new picture fades in over the old one, which is removed a moment later. */
+@keyframes jlFaceIn { from { opacity: 0; } to { opacity: 1; } }
+.jl-who .sf-face.on.jl-in { animation: jlFaceIn .8s ease-out both, sfFace 7s ease-out both; }
+.jl-result .sf-rwho > .jl-in { animation: jlFaceIn .8s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .jl-who .sf-face.on.jl-in, .jl-result .sf-rwho > .jl-in { animation: none; } }

@@ -48,11 +48,14 @@ const Legend = (() => {
 
   /* ---- pictures ----------------------------------------------------------------------------------- */
   /* Her picture: a speaking one while she talks if she has one, else any portrait; a fresh draw per line. */
-  function faceUrl(cid, seed) {
-    const who = castOf(cid);
-    const item = Media.choose("persona", cid, "speaking", { slot: "legend-" + cid + "-" + seed })
-      || Media.choose("persona", cid, "portrait", { slot: "legend-" + cid });
-    return (item && item.t === "image" && item.u) || who.portrait || "";
+  /* A clip of her is chosen as often as the persona rule's video chance allows (video: true, as the Captain
+     screen asks); "Images only" leaves the clips out. Returns the markup: a clip, a picture, or her cast portrait. */
+  function faceItem(cid, seed) {
+    const item = Media.choose("persona", cid, "speaking", { video: true, slot: "legend-" + cid + "-" + seed })
+      || Media.choose("persona", cid, "portrait", { video: true, slot: "legend-" + cid });
+    if (item) return item;
+    const portrait = castOf(cid).portrait;
+    return portrait ? { t: "image", u: portrait, id: "cast-portrait" } : null;
   }
   /* The picture behind: the chapter's own, else any Legend's, else the port by night or the open sea. */
   function sceneUrl(L) {
@@ -88,10 +91,10 @@ const Legend = (() => {
     if (!cid) { el.hidden = true; el.innerHTML = ""; seats[side] = ""; return; }
     if (seats[side] === cid) return;
     seats[side] = cid;
-    const who = castOf(cid), url = faceUrl(cid, seed);
+    const who = castOf(cid), face = faceItem(cid, seed);
     el.style.setProperty("--who", who.color || "var(--deck-brass)");
-    el.classList.toggle("nopic", !url);
-    el.innerHTML = `${url ? `<div class="sf-frame"><img class="sf-face on" src="${esc(url)}" alt=""></div>` : ""}
+    el.classList.toggle("nopic", !face);
+    el.innerHTML = `${face ? `<div class="sf-frame">${Media.faceMarkup(face, "sf-face on")}</div>` : ""}
       <div class="sf-plate"><b>${esc(who.name || "")}</b><span>${esc(who.title || "")}</span></div>`;
     el.hidden = false;
     el.classList.remove("in"); void el.offsetWidth; el.classList.add("in");
@@ -283,9 +286,9 @@ const Legend = (() => {
     const cls = n => (n > 0 ? "up" : n < 0 ? "dn" : "");
     const tile = (label, value, c) => `<div class="${c || ""}"><small>${label}</small><b>${value}</b></div>`;
     const list = rows => (rows.length ? rows.map(r => `<li><span>${r}</span></li>`).join("") : `<li class="none">${te("legend.reck.none")}</li>`);
-    const who = castOf(L.teller), url = faceUrl(L.teller, "reckon");
+    const who = castOf(L.teller), face = faceItem(L.teller, "reckon");
     const good = silver >= 0 && !costs.length, bad = !gains.length && costs.length;
-    return `<figure class="sf-rwho lg-rwho${url ? "" : " nopic"}">${url ? `<img src="${esc(url)}" alt="">` : ""}
+    return `<figure class="sf-rwho lg-rwho${face ? "" : " nopic"}">${face ? Media.faceMarkup(face, "") : ""}
         <figcaption class="sf-rline"><header><span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header>
           ${who.catchphrase ? `<p>“${esc(who.catchphrase)}”</p>` : ""}</figcaption></figure>
       <section class="sf-card lg-card ${good ? "o-good" : bad ? "o-bad" : ""}" role="dialog" aria-modal="true" aria-labelledby="lg-title">

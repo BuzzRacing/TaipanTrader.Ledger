@@ -14,11 +14,13 @@
     tag: "", density: (() => { try { return localStorage.getItem("ml.density") || "m"; } catch (_) { return "m"; } })(),
     railOpen: (() => { try { return localStorage.getItem("ml.rail") !== "0"; } catch (_) { return true; } })(),
     navMin: (() => { try { return localStorage.getItem("ml.navmin") !== "0"; } catch (_) { return true; } })(),
+    ab: { find: "", alts: "", view: "", expect: 0 }, motion: "",
+    dsize: (() => { try { return localStorage.getItem("ml.dsize") || "wide"; } catch (_) { return "wide"; } })(),
     drawer: { open: false, mode: "gen", src: "" }, pickQ: "", jobsPop: false, cov: false,
     rec: { open: false, draft: null, busy: false, prog: "" }, recipes: [],
     rulesDraft: null, timers: {},
     // Videos (Anthony, 20 Nov 2026): the Make video panel and the side-by-side Compare of a clean + NSFW pair.
-    vid: { open: false, src: "", partner: "", pair: true, motion: "", preset: "keys", count: 2, tags: "" },
+    vid: { open: false, src: "", partner: "", pair: true, motion: "", clean: "", preset: "idle", count: 2, tags: "" },
     cmp: "",
   };
   const $ = id => document.getElementById(id);
@@ -52,12 +54,57 @@
   const posterOf = i => { const p = i && i.from_item ? byId(i.from_item) : null; return p && !p.missing ? p.url : ""; };
   const pairOf = pid => items().filter(i => i.type === "video" && i.pair === pid);
   // Motion prompts describe movement only: the look, the clothes and the rating come from the picture.
+  // Anthony, 22 Nov 2026: 20 general presets, blunt and exact so the video model has nothing to guess.
+  // [label, motion, group, clean twin]. A NSFW preset carries a tamer "clean twin" for the clean half of a pair.
+  const END = " Steady camera, smooth natural motion.";
   const MOTIONS = {
-    keys: ["Walk + spin the keys", "She walks slowly toward the camera with a confident sway, idly spinning a ring of heavy iron keys around one finger, the keys glinting and swinging, a knowing smile, then eases back to where she began, steady camera, smooth natural motion"],
-    keys_slow: ["Swing the keys (easier)", "She stands in place, slowly swinging a ring of heavy iron keys from one hand and shifting her weight from hip to hip, a knowing smile, steady camera, smooth natural motion"],
-    idle: ["Idle, breathing", "She breathes slowly with small natural movements, blinks, a faint smile, hair stirring in a light breeze, steady camera"],
-    speaking: ["Speaking to camera", "She talks to the camera with expressive hand gestures and a playful smile, steady camera, smooth natural motion"],
-    look: ["Turn to camera", "She turns her head toward the camera, holds its gaze and smiles slowly, steady camera"],
+    idle: ["Breathe and blink", "She stands still and breathes slowly, chest and shoulders rising and falling gently, blinks every two to three seconds, a faint closed-mouth smile, loose strands of hair stirring in a light breeze. Nothing else moves." + END, "clean"],
+    look: ["Turn to camera", "She starts looking slightly away, turns her head to look straight into the camera, holds eye contact for three seconds with a slow smile, then looks away again to where she began. Her body stays still." + END, "clean"],
+    speaking: ["Talk to camera", "She talks directly to the camera, lips moving steadily as if telling a story, head tilting, eyebrows lifting, one hand gesturing to stress each point, a playful smile between sentences, then she goes still." + END, "clean"],
+    wave: ["Wave hello", "She raises one hand to shoulder height and waves at the camera with three slow side-to-side waves, smiling warmly and nodding once, then lowers her hand to where it began." + END, "clean"],
+    walk: ["Walk toward camera", "She walks slowly toward the camera with a confident hip sway, four unhurried steps, skirts swishing, then stops, smiles and holds eye contact, then walks backward to where she began." + END, "clean"],
+    prop: ["Play with what she holds", "She plays with the object in her hand: turns it over, tosses it a few inches into the air and catches it, then holds it up beside her face with a knowing smile and lowers it again. Her other hand rests on her hip." + END, "clean"],
+    kiss: ["Wink and blow a kiss", "She winks at the camera, presses two fingertips to her lips, blows a kiss toward the camera with a small forward lean, smiles, and returns to her starting pose." + END, "clean"],
+    hair: ["Flick her hair", "She tosses her head and flicks her hair back over one shoulder with one hand, runs her fingers through it from temple to ends, glances at the camera with a smile, and lets her hand drop." + END, "clean"],
+    laugh: ["Laugh out loud", "She laughs out loud, shoulders shaking, head tipping back a little, the back of one hand pressed to her mouth, eyes crinkled, then catches her breath, grins at the camera and settles." + END, "clean"],
+    hips: ["Hands on hips, sway", "She plants both hands on her hips and sways slowly from one hip to the other, chin lifted, one eyebrow raised, a knowing smile, holding eye contact with the camera, then stops centred." + END, "clean"],
+    gust: ["Wind lifts her skirt (breezy business)", "A strong gust hits her from the side. Her skirt and petticoats blow up to her waist, showing her stockings, garters and bloomered backside. She gasps, laughs, grabs the hem with both hands and pushes it back down, hair whipping across her face, then smooths it flat." + END, "nsfw",
+      "A strong gust hits her from the side. Her skirt and hair blow sideways. She laughs, grabs the hem with both hands and holds it down at her knees so nothing shows, then smooths it flat." + END],
+    bend: ["Bend over (the rear view)", "She turns her back to the camera, bends forward at the waist with straight legs and her backside toward the camera, skirt riding up to show her stockings and bloomers, hips swaying slowly, then looks back over her shoulder with a wink and straightens up." + END, "nsfw",
+      "She turns her back to the camera, bends forward at the waist as if picking something off the ground, skirt staying down, then looks back over her shoulder with a wink and straightens up." + END],
+    unbutton: ["Unbutton her blouse (loose ends)", "Looking into the camera, she undoes her blouse buttons one at a time from the collar down, four buttons, slowly, then parts the fabric with both hands to show her cleavage and bites her lower lip." + END, "nsfw",
+      "Looking into the camera, she undoes just the top button at her collar, fans her neck with one hand as if the room is warm, and smiles." + END],
+    shimmy: ["Shimmy her bust (a bustling trade)", "She presses her upper arms together to push her breasts together and up, then shimmies her shoulders fast from side to side so her breasts bounce and jiggle, grinning at the camera, then stops and lets her arms drop." + END, "nsfw",
+      "She shimmies her shoulders fast from side to side, laughing, hands on her hips, grinning at the camera, then stops." + END],
+    hitch: ["Hitch her skirt (hem and haw)", "She grips her skirt hem in both hands and slowly hitches it up to the top of her thighs, showing stocking tops and garters, holds it there for two seconds with a cheeky smile, then drops it with a laugh." + END, "nsfw",
+      "She grips her skirt hem in both hands and lifts it just to the ankle to show her boots, holds it for two seconds with a cheeky smile, then lets it drop." + END],
+    peekaboo: ["Flash and cover (peek-a-boo)", "She pulls her neckline down with both hands for one second to flash her breasts, then covers them with her forearms, laughing and wide-eyed, then lowers her arms, tugs the neckline back up and winks." + END, "nsfw",
+      "She tugs her neckline modestly higher with both hands, smooths her collar, laughs and winks at the camera." + END],
+    wiggle: ["Wiggle her backside (tail wind)", "She turns her back to the camera and wiggles her hips side to side, her bottom jiggling under her skirt, one hand lifting the hem at the back for a second, then glances over her shoulder with a grin and turns back to face the camera." + END, "nsfw",
+      "She turns her back to the camera and sways her hips side to side, skirt swishing, glances over her shoulder with a grin and turns back to face the camera." + END],
+    garter: ["Adjust her garter (tied up)", "She lifts one foot onto a nearby chair or crate, slides her skirt up her thigh and adjusts her stocking garter, runs her hand up her thigh, looks at the camera with a slow smile, then puts her foot down and drops the skirt." + END, "nsfw",
+      "She lifts one foot onto a nearby chair or crate and fixes the lace of her boot, brushes her skirt flat over her knee, looks at the camera with a slow smile, then puts her foot down." + END],
+    lean: ["Lean in (cleavage on deck)", "She leans forward toward the camera with her forearms resting on a surface so her cleavage fills the lower frame, whispers something with a wink, holds for two seconds, then leans back upright." + END, "nsfw",
+      "She leans forward toward the camera with her elbows on a surface and her chin on her hands, whispers something with a wink, then leans back upright." + END],
+    spank: ["Slap her own backside (a stern word)", "She turns her back to the camera and gives her own backside a firm playful slap with one hand, the flesh and skirt jiggling, then looks back over her shoulder with a wink and a smirk and turns to face the camera." + END, "nsfw",
+      "She turns her back to the camera and gives her skirt a playful pat with one hand as if dusting it off, then looks back over her shoulder with a wink and turns to face the camera." + END],
+  };
+  // Which movement a clip was made with (Anthony, 22 Nov 2026): its motion-<name> tag, else matched from the movement text
+  // it saved (so clips made before the tags existed still filter). Old Jailer clips group under "keys".
+  function motionKeyOf(i) {
+    if (!i || i.type !== "video") return "";
+    const t = (i.tags || []).find(x => String(x).startsWith("motion-"));
+    if (t) return String(t).slice(7);
+    const m = String(i.motion || "").trim();
+    if (!m) return "";
+    const hit = Object.entries(MOTIONS).find(([, v]) => v[1] === m || v[3] === m);
+    if (hit) return hit[0];
+    return /heavy iron keys/.test(m) ? "keys" : "custom";
+  }
+  const motionLabel = k => MOTIONS[k] ? MOTIONS[k][0].replace(/\s*\(.*\)$/, "") : k === "keys" ? "Keys (old Jailer)" : k === "custom" ? "Own words" : String(k).replace(/[-_]/g, " ");
+  const motionSel = cur => {
+    const opts = grp => Object.entries(MOTIONS).filter(([, v]) => v[2] === grp).map(([k, v]) => `<option value="${k}"${k === cur ? " selected" : ""}>${e(v[0])}</option>`).join("");
+    return `<optgroup label="Everyday (clean)">${opts("clean")}</optgroup><optgroup label="Cheeky (NSFW)">${opts("nsfw")}</optgroup><option value="own"${cur === "own" ? " selected" : ""}>My own words</option>`;
   };
   // The other half of a pair: the newest picture of the same subject on the other side of the NSFW line
   // (a "clean" tag counts as clean), else any other picture of that subject.
@@ -75,8 +122,8 @@
     M.vid.open = true; M.vid.src = id; M.vid.partner = suggestPartner(i); M.cmp = "";
     M.drawer = { open: true, mode: "vid", src: id };
     M.vid.pair = !!M.vid.partner;
-    if (!M.vid.motion) M.vid.motion = MOTIONS[M.vid.preset][1];
-    if (!M.vid.tags && i.tags.some(t => t.includes("jail"))) M.vid.tags = "jail warden, motion-keys";
+    if (!M.vid.motion) { M.vid.motion = MOTIONS[M.vid.preset][1]; M.vid.clean = MOTIONS[M.vid.preset][3] || ""; }
+    if (!M.vid.tags && i.tags.some(t => t.includes("jail"))) M.vid.tags = "jail warden";
   }
 
   function vidPanel() {
@@ -98,11 +145,12 @@
       <div class="ml-gen-grid">
         <label class="ml-check"><input type="checkbox" data-mlvidf="pair"${M.vid.pair ? " checked" : ""}${pics.length ? "" : " disabled"}> Make a pair (clean + NSFW)</label>
         ${M.vid.pair ? `<label>Other picture<select data-mlvidf="partner">${pics.map(i => `<option value="${e(i.id)}"${i.id === M.vid.partner ? " selected" : ""}>${e((i.title || i.tags.join(", ") || i.url.split("/").pop()).slice(0, 60))}${i.nsfw ? " (NSFW)" : ""}</option>`).join("")}</select></label>` : ""}
-        <label>Movement<select data-mlvidf="preset">${Object.entries(MOTIONS).map(([k, [n]]) => `<option value="${k}"${k === M.vid.preset ? " selected" : ""}>${e(n)}</option>`).join("")}<option value="own"${M.vid.preset === "own" ? " selected" : ""}>My own words</option></select></label>
+        <label>Movement<select data-mlvidf="preset">${motionSel(M.vid.preset)}</select></label>
         <label>Takes${partner ? " each" : ""}<input type="number" min="1" max="4" value="${M.vid.count}" data-mlvidf="count"></label>
-        <label class="ml-grow">Tags<input type="text" value="${e(M.vid.tags)}" data-mlvidf="tags" placeholder="jail warden, motion-keys"></label>
+        <label class="ml-grow">Tags<input type="text" value="${e(M.vid.tags)}" data-mlvidf="tags" placeholder="jail warden, night"></label>
       </div>
-      <textarea rows="3" class="code" data-mlvidf="motion" id="mlvidmotion">${e(M.vid.motion)}</textarea>
+      <textarea rows="4" class="code" data-mlvidf="motion" id="mlvidmotion">${e(M.vid.motion)}</textarea>
+      ${M.vid.pair && M.vid.clean ? `<label class="ml-cleantwin"><span>Clean half uses this softer movement <small>(the NSFW half uses the one above)</small></span><textarea rows="3" class="code" data-mlvidf="clean" id="mlvidclean">${e(M.vid.clean)}</textarea></label>` : ""}
       <div class="row"><button type="button" class="primary" data-mlvidgo="1">Make ${n} clip${n === 1 ? "" : "s"}</button>
         <button type="button" class="link" data-mlvidclose="1">close</button>
         <span class="help">${partner ? "Both halves use the same movement and the same seeds, so you compare like with like. " : ""}${running.length ? `${running.length} video job${running.length === 1 ? "" : "s"} in the queue.` : ""}</span></div>
@@ -110,6 +158,58 @@
   }
 
   // Side by side: every take of a pair, NSFW on the left, clean on the right, matched by seed.
+  // ---- A/B test a phrase (Anthony, 22 Nov 2026): same seed, one wording change, side by side ----
+  function abVariants(srcId) {
+    const src = byId(srcId);
+    if (!src) return [];
+    return items().filter(i => i.type === "image" && i.replaces === srcId && i.tags.includes("ab-test") && i.seed === src.seed)
+      .sort((a, b) => String(a.added).localeCompare(String(b.added)) || String(a.id).localeCompare(String(b.id)));
+  }
+  // Word-level diff of the original prompt against a variant: html with <del>/<ins>, plus a short "what changed" label.
+  function wordDiff(a, b) {
+    const x = String(a || "").split(/\s+/).filter(Boolean), y = String(b || "").split(/\s+/).filter(Boolean);
+    const n = x.length, m = y.length;
+    if (n * m > 360000) return { html: e(b || ""), label: "changed" };
+    const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    const out = [], added = [], cut = [];
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (x[i] === y[j]) { out.push(e(y[j])); i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) { out.push(`<del>${e(x[i])}</del>`); cut.push(x[i]); i++; }
+      else { out.push(`<ins>${e(y[j])}</ins>`); added.push(y[j]); j++; }
+    }
+    while (i < n) { out.push(`<del>${e(x[i])}</del>`); cut.push(x[i]); i++; }
+    while (j < m) { out.push(`<ins>${e(y[j])}</ins>`); added.push(y[j]); j++; }
+    const label = added.length ? added.join(" ") : cut.length ? "cut: " + cut.join(" ") : "same wording";
+    return { html: out.join(" "), label: label.length > 48 ? label.slice(0, 47) + "…" : label };
+  }
+  function abPanel() {
+    if (!M.ab.view) return "";
+    const src = byId(M.ab.view);
+    if (!src) return "";
+    const vars = abVariants(src.id), wait = Math.max(0, M.ab.expect - vars.length);
+    const card = (it, tag, label, diff) => `<figure class="ml-ab-card"><div class="ml-ab-pic"><img src="${e(it.url)}" alt=""><b>${tag}</b></div>
+      <figcaption><span class="ml-ab-what">${e(label)}</span>
+      ${diff ? `<details><summary>whole prompt, changes marked</summary><p class="ml-ab-diff">${diff}</p></details>` : `<small>Original prompt, seed ${e(it.seed)}</small>`}
+      <div class="row">${diff ? `<button type="button" data-mlcmpset="${e(it.id)}" data-f="reviewed" data-v="1"${it.reviewed ? " disabled" : ""}>✓ Keep</button>
+        <button type="button" data-mlabuse="${e(it.id)}" title="Open this wording in the generator">✎ Use this wording</button>
+        <button type="button" class="danger" data-mlcmpdel="${e(it.id)}">🗑</button>` : `<button type="button" data-mlabuse="${e(it.id)}">✎ Edit</button>`}</div></figcaption></figure>`;
+    return `<section class="card ml-ab"><h2>⚖ A/B: ${e(subjectName(src.kind, src.subject))} <small>same seed ${e(src.seed)}, only the wording differs</small></h2>
+      <div class="ml-ab-grid">${card(src, "A", "Original")}${vars.map((v, n) => { const d = wordDiff(src.prompt, v.prompt); return card(v, "B" + (n + 1), d.label, d.html); }).join("")}</div>
+      ${wait ? `<p class="help">⏳ ${wait} more painting. They appear here as they finish.</p>` : ""}
+      <div class="row"><button type="button" class="link" data-mlabclose="1">Close A/B</button></div></section>`;
+  }
+  function abBox(src) {
+    const a = M.ab, made = abVariants(src.id).length;
+    return `<details class="ml-abbox"${a.alts || made ? " open" : ""}><summary>⚖ A/B test a phrase <small>same seed ${e(src.seed)}</small></summary>
+      <p class="help">Swap one phrase for several alternatives. Every one is painted on this picture's seed, so you see exactly what the words did.</p>
+      <label>Swap this phrase <small>(blank = add to the end)</small><input type="text" data-mlabf="find" value="${e(a.find)}" placeholder="golden hour"></label>
+      <label>For each of these <small>(one per line, up to 6)</small><textarea rows="4" class="code" data-mlabf="alts" placeholder="blue dusk&#10;heavy fog&#10;harsh noon sun">${e(a.alts)}</textarea></label>
+      <div class="row"><button type="button" class="primary" data-mlabgo="${e(src.id)}">⚖ Paint the variants</button>
+        ${made ? `<button type="button" data-mlabview="${e(src.id)}">Compare ${made} so far</button>` : ""}</div></details>`;
+  }
+
   function comparePanel() {
     if (!M.cmp) return "";
     const clips = pairOf(M.cmp);
@@ -118,6 +218,7 @@
     const cell = c => !c ? `<div class="ml-cmp-cell empty">not made yet</div>` : `<div class="ml-cmp-cell${c.enabled ? "" : " off"}">
         <video src="${e(c.url)}"${posterOf(c) ? ` poster="${e(posterOf(c))}"` : ""} muted loop playsinline preload="auto" data-mlcmpv="1"></video>
         <p><b>${c.nsfw ? "NSFW" : "Clean"}</b> · ${c.seconds || "?"} s${c.loop ? " loop" : ""} · ${fmtBytes(c.bytes || 0)}${c.render_s ? ` · ${Math.round(c.render_s / 60)} min to render` : ""}${!c.reviewed ? ' · <em>needs review</em>' : ""}</p>
+        ${c.motion ? `<details><summary>movement</summary><p class="mono ml-prompt">${e(c.motion)}</p></details>` : ""}
         <div class="row"><button type="button" data-mlcmpset="${e(c.id)}" data-f="reviewed" data-v="1"${c.reviewed ? " disabled" : ""}>✓ Keep</button>
           <button type="button" data-mlcmpset="${e(c.id)}" data-f="enabled" data-v="${c.enabled ? "0" : "1"}">${c.enabled ? "Switch off" : "Switch on"}</button>
           <button type="button" class="danger" data-mlcmpdel="${e(c.id)}">🗑</button></div></div>`;
@@ -146,6 +247,7 @@
       if (M.nsfw === "off" && i.enabled) return false;
       if (M.review && i.reviewed) return false;
       if (M.tag && !i.tags.includes(M.tag)) return false;
+      if (M.motion && motionKeyOf(i) !== M.motion) return false;
       if (q && ![i.title, i.subject, i.url, i.tags.join(" "), i.prompt, i.motion || "", i.model || ""].join(" ").toLowerCase().includes(q)) return false;
       return true;
     }).sort(SORTS[M.sort] || SORTS.new);
@@ -244,7 +346,10 @@
     const sc = scopeItems();
     const nReview = sc.filter(i => !i.reviewed).length, nClips = sc.filter(i => i.type === "image" && clipsOf(i.id).length).length;
     const tagCount = {};
-    sc.forEach(i => i.tags.forEach(t => { if (t) tagCount[t] = (tagCount[t] || 0) + 1; }));
+    sc.forEach(i => i.tags.forEach(t => { if (t && !String(t).startsWith("motion-")) tagCount[t] = (tagCount[t] || 0) + 1; }));
+    const mcount = {};
+    sc.forEach(i => { const k = motionKeyOf(i); if (k) mcount[k] = (mcount[k] || 0) + 1; });
+    const mkeys = Object.keys(MOTIONS).concat(Object.keys(mcount).filter(k => !MOTIONS[k])).filter(k => mcount[k] || k === M.motion);
     const tags = Object.entries(tagCount).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 18);
     return `<aside class="ml-rail" aria-label="Filters">
       <div class="ml-rail-sec"><h3>Quick views</h3><div class="ml-presets">
@@ -260,6 +365,7 @@
       <div class="ml-rail-sec"><h3>Status</h3><div class="ml-list">
         <button type="button" data-mlreview="1" class="${M.review ? "on" : ""}"><span>Needs review</span><i>${nReview}</i></button>
         <button type="button" data-mlstatus="hasvid" class="${M.type === "hasvid" ? "on" : ""}"><span>Has clips</span><i>${nClips}</i></button></div></div>
+      ${mkeys.length ? `<div class="ml-rail-sec"><h3>Movement</h3><div class="ml-list ml-scroll">${mkeys.map(k => `<button type="button" data-mlmotion="${M.motion === k ? "" : e(k)}" class="${M.motion === k ? "on" : ""}"><span>${e(motionLabel(k))}${MOTIONS[k] && MOTIONS[k][2] === "nsfw" ? ' <em class="nsfw">NSFW</em>' : ""}</span><i>${mcount[k] || 0}</i></button>`).join("")}</div></div>` : ""}
       ${tags.length ? `<div class="ml-rail-sec"><h3>Tags</h3><div class="ml-tagcloud">${tags.map(([t, n]) => `<button type="button" data-mltag="${e(M.tag === t ? "" : t)}" class="${M.tag === t ? "on" : ""}">${e(t)} <i>${n}</i></button>`).join("")}</div></div>` : ""}
     </aside>`;
   }
@@ -282,6 +388,7 @@
     if (M.nsfw) add("nsfw", (RATINGS.find(r => r[0] === M.nsfw) || [0, M.nsfw])[1]);
     if (M.review) add("review", "Needs review");
     if (M.tag) add("tag", "#" + M.tag);
+    if (M.motion) add("motion", "Movement: " + motionLabel(M.motion));
     if (M.q.trim()) add("q", "“" + M.q.trim() + "”");
     return out.length ? `<div class="ml-chips">${out.join("")}<button type="button" class="link" data-mlpreset="clear">clear all</button></div>` : "";
   }
@@ -772,7 +879,7 @@
     const found = !M.pickOpen ? [] : items().filter(i => i.type === "image" && i.prompt && (!q || [i.title, i.subject, i.prompt, i.tags.join(" ")].join(" ").toLowerCase().includes(q)))
       .sort(byAdded).slice(0, 6);
     const noSeed = src && src.seed == null;
-    return `
+    return `<div class="ml-dcols"><div class="ml-dleft">
       ${g.twin ? `<p class="ml-twinhint"><b>Clean twin.</b> NSFW tag is set to <b>Never</b> and the tag <i>clean</i> is added. Reword the prompt to remove nudity or erotic styling before painting.</p>` : ""}
       ${src ? `<div class="ml-src"><img src="${e(src.url)}" alt=""><div><b>${e(src.title || subjectName(src.kind, src.subject))}</b><small>${e(subjectName(src.kind, src.subject))}${src.seed != null ? " · seed " + e(src.seed) : ""}</small>
         <div class="row"><button type="button" data-mlquickredo="${e(src.id)}" data-mode="same" class="${noSeed ? "none" : ""}" title="Same prompt, same seed">↻ Regen</button>
@@ -793,9 +900,12 @@
         <label class="wide">Tags<input type="text" value="${e(g.tags)}" data-mlgenf="tags" placeholder="night, rain, close-up"></label>
       </div>
       ${K.roles.length ? `<details class="ml-rolesbox"${g.roles.length ? "" : " open"}><summary>Roles <small>${g.roles.length ? g.roles.map(r => e(roleName(kind, r))).join(", ") : "any"}</small></summary><div class="ml-roles">${K.roles.map(([k, n]) => `<label class="ml-check"><input type="checkbox" data-mlgenrole="${k}"${g.roles.includes(k) ? " checked" : ""}> ${e(n)}</label>`).join("")}</div></details>` : ""}
+      ${src && src.type === "image" && src.seed != null ? abBox(src) : ""}
+      </div><div class="ml-dright">
       <textarea rows="9" class="code ml-prompt-box" data-mlgenf="prompt" id="mlgenprompt" placeholder="Describe the picture…">${e(g.prompt)}</textarea>
       <div class="row"><button type="button" class="primary" data-mlgo="${e(kind)}|${e(subject)}">Paint ${g.count} picture${g.count == 1 ? "" : "s"}</button>
-        <span class="help">Filed under ${e(K.one || "")} · ${e(subjectName(kind, subject))}</span></div>`;
+        <span class="help">Filed under ${e(K.one || "")} · ${e(subjectName(kind, subject))}</span></div>
+      </div></div>`;
   }
 
   function drawer() {
@@ -804,7 +914,9 @@
     const vid = M.drawer.mode === "vid" && M.vid.open;
     const tabs = src && src.type === "image" && !src.missing && src.subject
       ? `<div class="ml-seg ml-dtabs"><button type="button" data-mldtab="gen" class="${vid ? "" : "on"}">Picture</button><button type="button" data-mldtab="vid" class="${vid ? "on" : ""}">Video</button></div>` : "";
-    return `<aside class="ml-drawer card"><div class="ml-dhead"><b>${vid ? "Make video" : src ? "Edit &amp; regenerate" : "New picture"}</b>${tabs}<button type="button" class="link" data-mldclose="1" aria-label="Close">✕</button></div>
+    const sz = ["side", "wide", "full"].includes(M.dsize) ? M.dsize : "wide";
+    const sizes = `<div class="ml-seg ml-dsize" title="How much room the generator gets">${[["side", "▭ Side"], ["wide", "◧ Wide"], ["full", "⛶ Popup"]].map(([k, n]) => `<button type="button" data-mldsize="${k}" class="${k === sz ? "on" : ""}">${n}</button>`).join("")}</div>`;
+    return `${sz === "full" ? '<button type="button" class="ml-dback" data-mldclose="1" aria-label="Close generator" tabindex="-1"></button>' : ""}<aside class="ml-drawer card ml-d-${sz}"><div class="ml-dhead"><b>${vid ? "Make video" : src ? "Edit &amp; regenerate" : "New picture"}</b>${tabs}${sizes}<button type="button" class="link" data-mldclose="1" aria-label="Close">✕</button></div>
       <div class="ml-dbody">${vid ? vidPanel() : genBody(src)}</div></aside>`;
   }
 
@@ -979,10 +1091,10 @@
       `<div class="ml-stats"><span><b>${c.total}</b> items</span><span><b>${c.video}</b> video</span><span><b>${c.nsfw}</b> NSFW</span>
         ${c.review ? `<button type="button" class="link ml-stat-review" data-mlreviewall="1" title="Show every item that needs review"><b>${c.review}</b> need review</button>` : `<span><b>0</b> need review</span>`}<span><b>${fmtBytes(c.bytes)}</b> on disk</span>
         <span class="ml-showing">showing <b>${list.length}</b></span></div>
-      <div class="ml-shell2${M.railOpen ? "" : " norail"}${M.drawer.open ? " withdrawer" : ""}">
+      <div class="ml-shell2${M.railOpen ? "" : " norail"}${M.drawer.open && M.dsize !== "full" ? " withdrawer" : ""}${M.drawer.open ? " dz-" + (M.dsize || "wide") : ""}">
         ${M.railOpen ? rail() : ""}
         <div class="ml-main">
-          ${toolbar()}${chips()}${uploadBar()}${comparePanel()}${rulesPanel()}${bulk()}
+          ${toolbar()}${chips()}${uploadBar()}${comparePanel()}${abPanel()}${rulesPanel()}${bulk()}
           ${recipesPanel()}${M.cov ? coverage() : ""}
           <div class="ml-body${M.sel.size === 1 ? " with-detail" : ""}${CFG.content.rating === "family" ? " ml-family" : ""}"${M.cov ? " hidden" : ""}>
             <div class="ml-grid d-${M.density}">${list.map(tile).join("") || `<p class="muted ml-empty">Nothing matches. Clear a filter, upload, or press + New to generate.</p>`}</div>
@@ -1075,17 +1187,18 @@
     if (d.mlview !== undefined) { M.type = d.mlview; M.sel.clear(); return redraw(); }
     if (d.mlrating !== undefined) { M.nsfw = d.mlrating; M.sel.clear(); return redraw(); }
     if (d.mlstatus) { M.type = M.type === d.mlstatus ? "" : d.mlstatus; M.sel.clear(); return redraw(); }
+    if (d.mlmotion !== undefined) { M.motion = d.mlmotion; if (M.motion && M.type !== "video" && M.type !== "pair") M.type = "video"; M.sel.clear(); return redraw(); }
     if (d.mltag !== undefined) { M.tag = d.mltag; M.sel.clear(); return redraw(); }
     if (d.mlchipx) {
       const f = d.mlchipx;
       if (f === "kind") { M.kind = ""; M.subject = ""; M.role = ""; } else if (f === "subject") { M.subject = ""; M.role = ""; }
       else if (f === "role") M.role = ""; else if (f === "type") M.type = ""; else if (f === "nsfw") M.nsfw = "";
-      else if (f === "review") M.review = false; else if (f === "tag") M.tag = ""; else if (f === "q") M.q = "";
+      else if (f === "review") M.review = false; else if (f === "tag") M.tag = ""; else if (f === "motion") M.motion = ""; else if (f === "q") M.q = "";
       M.sel.clear(); return redraw();
     }
     if (d.mlpreset) {
       const p = d.mlpreset;
-      M.kind = ""; M.subject = ""; M.role = ""; M.type = ""; M.nsfw = ""; M.review = false; M.tag = ""; M.q = ""; M.sel.clear(); M.cov = false;
+      M.kind = ""; M.subject = ""; M.role = ""; M.type = ""; M.nsfw = ""; M.review = false; M.tag = ""; M.motion = ""; M.q = ""; M.sel.clear(); M.cov = false;
       if (p === "review") M.review = true; else if (p === "vidreview") { M.review = true; M.type = "video"; }
       else if (p === "clips") M.type = "hasvid"; else if (p === "nsfw") M.nsfw = "nsfw"; else if (p === "off") M.nsfw = "off";
       return redraw();
@@ -1111,6 +1224,7 @@
     }
     if (d.mlnew) { openGen(null); return redraw(); }
     if (d.mledit) { ev.preventDefault(); ev.stopPropagation(); const it = byId(d.mledit); if (it) { openGen(it); redraw(); } return; }
+    if (d.mldsize) { M.dsize = d.mldsize; try { localStorage.setItem("ml.dsize", M.dsize); } catch (_) {} return redraw(); }
     if (d.mldclose) { M.drawer.open = false; M.vid.open = false; return redraw(); }
     if (d.mldtab) {
       const src = byId(M.drawer.src);
@@ -1172,12 +1286,20 @@
       const motion = (($("mlvidmotion") || {}).value || M.vid.motion).trim();
       const src = byId(M.vid.src), partner = M.vid.pair ? byId(M.vid.partner) : null;
       if (!src) return toast("That picture is no longer in the library.", true);
-      let body = { motion, count: M.vid.count, tags: M.vid.tags };
+      const mk = MOTIONS[M.vid.preset] && motion === MOTIONS[M.vid.preset][1] ? M.vid.preset : "custom";
+      let body = { motion, count: M.vid.count, tags: [M.vid.tags, "motion-" + mk].filter(Boolean).join(", ") };
       if (partner) {
         const srcNsfw = src.nsfw && !src.tags.includes("clean"), partnerClean = !partner.nsfw || partner.tags.includes("clean");
         const [n, c] = srcNsfw || partnerClean ? [src, partner] : [partner, src];
         body = Object.assign(body, { nsfw_id: n.id, clean_id: c.id });
-      } else body.id = src.id;
+        const clean = (($("mlvidclean") || {}).value || M.vid.clean || "").trim();
+        if (clean.length >= 10) body.clean_motion = clean;
+      } else {
+        body.id = src.id;
+        const preset = MOTIONS[M.vid.preset];
+        if (preset && preset[2] === "nsfw" && motion === preset[1] && (!src.nsfw || src.tags.includes("clean")) &&
+            !confirm("This movement is the NSFW one but the picture is clean. Make it anyway? (Tick Make a pair to give the clean half its softer twin.)")) return;
+      }
       el.disabled = true;
       const res = await api("media/video", body);
       el.disabled = false;
@@ -1191,6 +1313,30 @@
       document.querySelectorAll("[data-mlcmpv]").forEach(v => { if (d.mlcmpplay) { v.currentTime = 0; v.play().catch(() => {}); } else v.pause(); });
       return;
     }
+    if (d.mlabgo) {
+      const src = byId(d.mlabgo);
+      if (!src) return;
+      const base = (($("mlgenprompt") || {}).value || M.gen.prompt || "").trim(), find = M.ab.find.trim();
+      const alts = [...new Set(M.ab.alts.split("\n").map(s => s.trim()).filter(Boolean))].slice(0, 6);
+      if (!alts.length) return toast("Type at least one alternative, one per line.", true);
+      if (find && !base.includes(find)) return toast("That phrase is not in the prompt box. Copy it exactly.", true);
+      const prompts = alts.map(a => find ? base.replace(find, () => a) : base.replace(/[\s,.;]+$/, "") + ", " + a);
+      el.disabled = true;
+      const res = await api("media/ab", { id: src.id, prompts });
+      el.disabled = false;
+      toast(res.ok ? res.msg : res.error, !res.ok);
+      if (!res.ok) return;
+      M.ab.expect = abVariants(src.id).length + res.queued; M.ab.view = src.id;
+      if (M.dsize === "full") M.drawer.open = false;
+      await load(true); return window.scrollTo(0, 0);
+    }
+    if (d.mlabview) {
+      M.ab.view = d.mlabview; M.ab.expect = abVariants(d.mlabview).length;
+      if (M.dsize === "full") M.drawer.open = false;
+      redraw(); return window.scrollTo(0, 0);
+    }
+    if (d.mlabclose) { M.ab.view = ""; return redraw(); }
+    if (d.mlabuse) { const it = byId(d.mlabuse); if (it) { openGen(it); redraw(); } return; }
     if (d.mlcmpset) return change([d.mlcmpset], { [d.f]: d.v === "1" });
     if (d.mlcmpdel) {
       if (!d.armed) { d.armed = "1"; el.textContent = "Again to delete"; setTimeout(() => { if (el.isConnected) { delete d.armed; el.textContent = "🗑"; } }, 3500); return; }
@@ -1324,6 +1470,7 @@
       return redraw();
     }
     if (d.mlupload && ev.type === "change") { upload(el.files); el.value = ""; return; }
+    if (d.mlabf) { M.ab[d.mlabf] = el.value; return; }
     if (d.mlgenf) {
       const k = d.mlgenf;
       if (k === "subject") { M.gen.subject = el.value; M.gen.forKey = ""; return redraw(); }
@@ -1393,7 +1540,7 @@
       const k = d.mlvidf;
       if (k === "pair") { M.vid.pair = el.checked; if (M.vid.pair && !M.vid.partner) M.vid.partner = suggestPartner(byId(M.vid.src) || {}); return redraw(); }
       if (k === "partner") { M.vid.partner = el.value; return redraw(); }
-      if (k === "preset") { M.vid.preset = el.value; if (MOTIONS[el.value]) M.vid.motion = MOTIONS[el.value][1]; return redraw(); }
+      if (k === "preset") { M.vid.preset = el.value; if (MOTIONS[el.value]) { M.vid.motion = MOTIONS[el.value][1]; M.vid.clean = MOTIONS[el.value][3] || ""; } return redraw(); }
       if (k === "count") { M.vid.count = Math.max(1, Math.min(4, parseInt(el.value, 10) || 1)); if (ev.type === "change") redraw(); return; }
       if (k === "motion") { M.vid.motion = el.value; if (M.vid.preset !== "own" && MOTIONS[M.vid.preset] && el.value !== MOTIONS[M.vid.preset][1]) M.vid.preset = "own"; return; }
       M.vid[k] = el.value;

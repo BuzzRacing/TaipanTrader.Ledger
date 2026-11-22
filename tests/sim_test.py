@@ -70,11 +70,26 @@ def clear_customs(game, pid, rng, wild=False):
     assert not p.get("customs")
 
 
+def serve_jail(game, pid, rng):
+    """A captain in a cell has one button, "Serve the month"; a big desk fine's plea is answered at random.
+    Returns True while the captain is in a cell (nothing else to do this month)."""
+    p = game.s["players"][pid]
+    if jail.pending(p):
+        try_act(game, pid, {"type": "plea", "months": rng.choice([0, 1, 3])})
+    if jail.jailed(p):
+        if not p["ready"]:
+            assert try_act(game, pid, {"type": "jail_serve"})
+        return True
+    return False
+
+
 def trader_bot(game, pid, rng):
     """Sells what is dear here, buys what is cheap here, sails to the best market."""
     p = game.s["players"][pid]
+    if serve_jail(game, pid, rng):              # the plea comes first: the warden won't take a declaration before it
+        return
     clear_customs(game, pid, rng)
-    if jail.jailed(p):
+    if jail.jailed(p):                          # a desk fine can send her to a cell mid-clearance
         return
     here = p["port"]
     for g, q in list(p["cargo"].items()):
@@ -111,6 +126,8 @@ def trader_bot(game, pid, rng):
 def random_bot(game, pid, rng):
     """Presses every button with nonsense to make sure nothing breaks."""
     p = game.s["players"][pid]
+    if serve_jail(game, pid, rng):
+        return
     clear_customs(game, pid, rng, wild=True)
     if jail.jailed(p):
         return

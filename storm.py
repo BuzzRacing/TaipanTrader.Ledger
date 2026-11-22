@@ -46,6 +46,9 @@ DEFAULTS = {
     "patch_max": 0.5,
     # Limp home (Game 5 review): a storm never sinks a ship. One that would founder is left at 1 hull.
     "limp_home": True,
+    # Game 6 review (22 Nov 2026): a fleet a storm hit this month is found by pirates and the war fleet at
+    # this share of the usual odds (0.5 = half; 1 = no change).
+    "after_attack": 0.5,
 }
 
 # How many wording variants each line has in storm_text.py (the server picks one, the screen shows it).

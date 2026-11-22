@@ -28,6 +28,9 @@ const Promotion = (() => {
   let last = { inGame: false, canShow: false };
   let waitKey = null, waitSince = 0, waitTimer = null;
 
+  /* There is no rubber-stamp clip in the pack yet (Sound Effects Mapping, gap 1), so the seal lands with the
+     ledger's heavy close. Name another catalog event here once a real stamp is converted. */
+  const STAMP_CUE = "ledger.close";
   const ARM_MS = 1500;                          // a beat before the card's button can be pressed
   const TAP_AFTER_MS = 900;                     // a tap cannot skip a screen before it has had this long
   const MIN_BEAT_MS = 3400, PER_CHAR_MS = 40;   // a caption stays at least this long, plus reading time
@@ -66,14 +69,13 @@ const Promotion = (() => {
   /* ---- pictures ----------------------------------------------------------------------------------- */
   /* The Mayor's picture, best first: this rank's own portrait, then her congratulations pictures (Media Library >
      Ports > "Mayor congratulations": a new one each ceremony), then her everyday mayor portrait. Only pictures
-     ticked for the role count (no untagged harbour views). */
-  function mayorUrl(port, rank) {
-    const tagged = role => Media.items("port", port, role, false).filter(i => i.r.includes(role));
-    const anyOf = list => list.length ? list[Math.floor(Math.random() * list.length)] : null;
-    const dedicated = tagged("mayor_" + rank);
-    const pick = dedicated.find(i => i.p) || dedicated[0] || anyOf(tagged("mayor_congrats"))
+     ticked for the role count (no untagged harbour views). A clip of her is chosen as often as the persona rule's
+     video chance allows (Media.pickFace, as the Captain screen does); "Images only" leaves the clips out. */
+  function mayorItem(port, rank) {
+    const tagged = role => Media.items("port", port, role, true).filter(i => i.r.includes(role));
+    return Media.pickFace(tagged("mayor_" + rank), "mayor", { primary: true })
+      || Media.pickFace(tagged("mayor_congrats"), "mayor")
       || Media.choose("port", port, "mayor", { mode: "fixed", strict: true, slot: "promo-mayor" });
-    return pick && pick.t === "image" ? pick.u : "";
   }
   /* The picture behind: the port's arrival picture, else its banner, else its night scene, else the Graphics port picture. */
   function sceneUrl(port) {
@@ -103,9 +105,11 @@ const Promotion = (() => {
   /* ---- the speaker: the Mayor, tall on the left with her name plate, as the Sea Battle's ------------- */
   function figureHtml(port, rank) {
     const who = castOf("mayor");
-    const url = mayorUrl(port, rank) || who.portrait || "";
+    const item = mayorItem(port, rank);
+    const face = item ? Media.faceMarkup(item, "sf-face on")
+      : who.portrait ? `<img class="sf-face on" src="${esc(who.portrait)}" alt="">` : "";
     const label = te("fleet.promotion_mayor", { port: portName(port) });
-    return `<div class="sf-who pm-who${url ? "" : " nopic"}" style="--who:${esc(who.color || "var(--deck-brass)")}">${url ? `<div class="sf-frame"><img class="sf-face on" src="${esc(url)}" alt=""></div>` : ""}
+    return `<div class="sf-who pm-who${face ? "" : " nopic"}" style="--who:${esc(who.color || "var(--deck-brass)")}">${face ? `<div class="sf-frame">${face}</div>` : ""}
       <div class="sf-plate"><b>${label}</b>${who.name ? `<span>${esc(who.name)}</span>` : ""}</div></div>`;
   }
   let whoKey = "";
@@ -183,7 +187,9 @@ const Promotion = (() => {
     const ach = p.achievements, ranks = b.ranks, captain = b.captain;
     const next = Object.hasOwn(record, "next") ? record.next : me.next_rank;
     const mayor = te("fleet.promotion_mayor", { port });
-    const mayorPic = mayorUrl(p.port, p.rank_id) || castOf("mayor").portrait || "";
+    const mayorItm = mayorItem(p.port, p.rank_id);
+    const mayorPic = mayorItm ? Media.faceMarkup(mayorItm, "", `alt="${mayor}"`)
+      : castOf("mayor").portrait ? `<img src="${esc(castOf("mayor").portrait)}" alt="${mayor}">` : "";
     const tile = (label, value, cls) => `<div class="${cls || ""}"><small>${esc(label)}</small><b>${esc(value)}</b></div>`;
     const tiles = [tile(t("fleet.captain_worth"), money(record.worth ?? me.worth), "gold"),
       tile(t("fleet.promotion_ships"), String(record.ships ?? me.ships.length))];
@@ -207,7 +213,7 @@ const Promotion = (() => {
     const hear = b.clip && typeof Voice !== "undefined"
       ? `<button type="button" class="sf-rsay pm-say-btn" data-pm="say" aria-label="${tfb("fleet.promotion_say", "Hear her again")}">${SAY_ICON}</button>`
       : `<span class="sf-rsay" aria-hidden="true">${SAY_ICON}</span>`;
-    return `<figure class="sf-rwho pm-rwho${mayorPic ? "" : " nopic"}">${mayorPic ? `<img src="${esc(mayorPic)}" alt="${mayor}">` : ""}
+    return `<figure class="sf-rwho pm-rwho${mayorPic ? "" : " nopic"}">${mayorPic}
         <figcaption class="sf-rline pm-line"><header>${hear}<span>${mayor}</span></header>
           <p>“${esc(b.said)}”</p><small>${te("fleet.promotion_audience", { rank: p.title })}</small></figcaption></figure>
       <section class="sf-card pm-card good" role="dialog" aria-modal="true" aria-labelledby="pm-title">
@@ -245,6 +251,8 @@ const Promotion = (() => {
     me.started = false;
     me.armedAt = b.last ? Date.now() : 0;
     drawBeat(b);
+    // the fanfare on the commission, once per promotion; the stamp sounds with the rank (drawBeat)
+    if (b.kind === "commission" && typeof SeaAudio !== "undefined") SeaAudio.playOnce("pm:" + me.key + ":fanfare", "stinger.promotion");
     if (b.last) {
       remember("C|" + me.key);
       clearTimeout(armTimer);
@@ -349,6 +357,7 @@ const Promotion = (() => {
       if (badge) img.src = badge; else img.onerror();
       // restart the stamp
       seal.classList.remove("stamp"); void seal.offsetWidth; seal.classList.add("stamp");
+      if (typeof SeaAudio !== "undefined") SeaAudio.playOnce("pm:" + story.key + ":stamp", STAMP_CUE);
       rank.textContent = b.rank;
       prev.innerHTML = b.prev ? `${esc(b.prev)} <span aria-hidden="true">&rarr;</span> ${esc(b.rank)}` : "";
     }

@@ -51,6 +51,9 @@ def journey_sample():
             row["bridge"] = {"text":engine.tx(key, port=engine.PORTS[e.get("dest") or e.get("port")]["name"])}
         if e["type"] == "sailed":
             row["narration"] = {"text":engine.tx("l.table_underway", port=engine.PORTS[e["dest"]]["name"])}
+            row["passage"] = {k:copy.deepcopy(e[k]) for k in ("sea","orders","protect")}
+            row["passage"]["manifest"] = copy.deepcopy(e["table_manifest"])
+            row["passage"]["weather"] = copy.deepcopy(e["table_weather"])
         events.append(row)
     return game, events
 
@@ -86,13 +89,32 @@ def main():
     for key in ("gm.welcome", "gm.ask_sail", "gm.ask_battle", "gm.return", "gm.storm", "gm.finale", "gm.month_open.2"):
         base.setdefault("host", {})[key] = {"text": engine.tx(key, name="Anthony"), "clip": None}
 
-    def fixture(kind, elapsed):
+    def fixture(kind, elapsed, origin="hongkong", destination="singapore"):
         feed = copy.deepcopy(base)
         f, s = feed["focus"], feed["state"]
         feed["events"] = []
         f["customs"] = None
         f["jail"] = None
-        if kind in ("journey", "voyage"):
+        if kind in ("route", "rough-voyage"):
+            origin = origin if origin in engine.PORTS else "hongkong"
+            destination = destination if destination in engine.PORTS else "singapore"
+            f["port"] = origin
+            s["players"][0]["port"] = origin
+            if elapsed >= 2 and origin != destination:
+                feed["events"] = [{"n":1,"pid":"p1","turn":5,"type":"sailed","origin":origin,"dest":destination,
+                                   "focus":copy.deepcopy(f),"date":"June 1860",
+                                   "passage":dict(copy.deepcopy(journey_events[0]["passage"]),sea=2 if kind == "rough-voyage" else max(s["weather"][engine.PORTS[origin]["region"]],s["weather"][engine.PORTS[destination]["region"]])),
+                                   "bridge":{"text":engine.tx("gm.departure",port=engine.PORTS[destination]["name"])},
+                                   "narration":{"text":engine.tx("l.table_underway",port=engine.PORTS[destination]["name"])}}]
+                if kind == "rough-voyage":
+                    feed["events"][0]["passage"]["weather"] = {key:2 for key in s["weather"]}
+        elif kind == "arrival":
+            if elapsed >= 2:
+                feed["events"] = [copy.deepcopy(next(e for e in journey_events if e["type"] == "arrived"))]
+                feed["events"][0]["n"] = 1
+                f["port"] = "singapore"
+                s["players"][0]["port"] = "singapore"
+        elif kind in ("journey", "voyage"):
             feed["events"] = copy.deepcopy(journey_events) if elapsed >= 2 else []
             for e in feed["events"]:
                 e["at"] = int(time.time() * 1000)
@@ -117,6 +139,9 @@ def main():
             f["legend"] = {"id": 1, "chapter_id": "palace", "node": "start", "step": 1,
                            "title": "The Palace Beneath the Waves", "chapter": "A bargain below the tide",
                            "teller": "narrator", "scene": "legend", "beats": [{"who": "narrator", "text": "Some fortunes wait beneath the water, Captain."}]}
+        elif kind in ("buy", "sell"):
+            if elapsed >= 2:
+                feed["events"] = [dict(copy.deepcopy(trade_events[kind]),n=1,turn=5,port="hongkong",pid="p1",date="June 1860")]
         elif kind == "trade":
             # The second poll produces a new event rather than replaying a pre-existing receipt on load.
             feed["events"] = [{"n": 1 if elapsed < 2 else 2, "turn": 5,
@@ -126,6 +151,18 @@ def main():
         return feed
 
     journey_game, journey_events = journey_sample()
+    trade_events = {}
+    trade_game = engine.Game(seed=42)
+    trade_game.join("Anthony", "")
+    trade_game.admin("start", {})
+    trade_game.s["players"]["p1"].update(cash=100000,port="hongkong")
+    trade_rows = []
+    trade_game.on_event = lambda event: trade_rows.append(copy.deepcopy(event))
+    for action in ("buy","sell"):
+        trade_game.act("p1",{"type":action,"good":"tea","qty":20},present=["p1"])
+        event = next(e for e in reversed(trade_rows) if e["type"] == action and e["cat"] != "dice")
+        trade_events[action] = {k:copy.deepcopy(event[k]) for k in ("type","good","qty","total","cash","bank","debt") if k in event}
+        trade_events[action]["text"] = event.get("result") or event["msg"]
     from tools.preview_battle_results import simulate
     fight_sample = simulate(config.defaults(), 7)["result"]
     clients = {}
@@ -157,11 +194,20 @@ def main():
             if path == "/preview":
                 return self.send('''<!doctype html><html lang="en"><meta charset="utf-8"><title>Table Preview Theatre</title>
                 <style>body{margin:0;background:#15100c;color:#f1e3c5;font:18px Georgia}header{padding:18px 26px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}strong{color:#e8cf91}a{color:#f1e3c5;border:1px solid #c9a34e;padding:9px 16px;text-decoration:none}iframe{display:block;border:0;width:100%;height:calc(100vh - 125px)}p{margin:0 26px 15px;color:#c8b798}</style>
-                <header><strong>Table Preview Theatre</strong><a href="/table?scene=journey" target="stage">Full voyage</a><a href="/table?scene=storm" target="stage">Storm</a><a href="/table?scene=battle" target="stage">Battle</a><a href="/table?scene=battle-result" target="stage">Battle ending</a><a href="/table?scene=customs" target="stage">Port Authority</a><a href="/table?scene=legend" target="stage">Legend</a><a href="/table?scene=host" target="stage">Madame Anahit</a></header>
+                <header><strong>Table Preview Theatre</strong><a href="/routes" target="_top">Sea routes</a><a href="/table?scene=arrival" target="stage">Arrival</a><a href="/table?scene=journey" target="stage">Full voyage</a><a href="/table?scene=rough-voyage" target="stage">Rough seas</a><a href="/table?scene=buy" target="stage">Purchase</a><a href="/table?scene=sell" target="stage">Sale</a><a href="/table?scene=storm" target="stage">Storm</a><a href="/table?scene=battle" target="stage">Battle</a><a href="/table?scene=battle-result" target="stage">Battle ending</a><a href="/table?scene=customs" target="stage">Port Authority</a><a href="/table?scene=legend" target="stage">Legend</a><a href="/table?scene=host" target="stage">Madame Anahit</a></header>
                 <p>Disposable sample game · Your saved game is untouched · Use Skip to step through, or Linger to study a scene.</p><iframe title="Table story preview" name="stage" src="/table?scene=journey"></iframe></html>''', "text/html; charset=utf-8")
+            if path == "/routes":
+                from html import escape
+                def options(selected):
+                    return "".join('<option value="{}"{}>{}</option>'.format(escape(k), ' selected' if k == selected else '', escape(v["name"])) for k,v in engine.PORTS.items())
+                return self.send('''<!doctype html><html lang="en"><meta charset="utf-8"><title>Table Sea Route Theatre</title>
+                <style>body{margin:0;background:#15100c;color:#f1e3c5;font:18px Georgia}form{padding:18px 26px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}a{color:#e8cf91}select,button{font:inherit;padding:8px 14px;background:#2a2116;color:#f1e3c5;border:1px solid #c9a34e}iframe{display:block;border:0;width:100%;height:calc(100vh - 120px)}p{margin:0 26px 15px;color:#c8b798}</style>
+                <form action="/table" target="stage"><a href="/preview">Story theatre</a><input type="hidden" name="scene" value="route">
+                <label>From <select name="from">''' + options("calcutta") + '''</select></label><label>To <select name="to">''' + options("hongkong") + '''</select></label><button>Preview voyage</button></form>
+                <p>Disposable fixtures. Use Linger to hold the route after landfall; Pause freezes its movement.</p><iframe title="Sea route preview" name="stage" src="/table?scene=route&from=calcutta&to=hongkong"></iframe></html>''', "text/html; charset=utf-8")
             if path in ("/", "/table"):
                 html = (ROOT / "web/table.html").read_text(encoding="utf-8")
-                script = '<script>const realFetch=window.fetch.bind(window),previewClient=Math.random().toString(36).slice(2);window.fetch=(u,o)=>realFetch(u==="/api/table"?"/api/table?client="+previewClient+"&scene="+(new URLSearchParams(location.search).get("scene")||"host"):u,o);</script>'
+                script = '<script>const realFetch=window.fetch.bind(window),previewClient=Math.random().toString(36).slice(2);window.fetch=(u,o)=>realFetch(u==="/api/table"?"/api/table?client="+previewClient+"&"+(location.search.slice(1)||"scene=host"):u,o);</script>'
                 return self.send(html.replace('<script src="/table.js', script + '<script src="/table.js'), "text/html; charset=utf-8")
             if path == "/api/info":
                 return self.send(info)
@@ -169,7 +215,7 @@ def main():
                 query = parse_qs(parsed.query)
                 now = time.monotonic()
                 elapsed = now - clients.setdefault(query.get("client", [""])[0], now)
-                return self.send(fixture(query.get("scene", ["host"])[0], elapsed))
+                return self.send(fixture(query.get("scene", ["host"])[0], elapsed, query.get("from",["hongkong"])[0], query.get("to",["singapore"])[0]))
             if path == "/api/captains":
                 return self.send({"ok": True, "captains": []})
             if path in ("/theme.css", "/fonts.css"):

@@ -103,7 +103,8 @@ def test_classes_open_with_a_full_line_and_have_limits():
             raise AssertionError("over the class limit")
         except GameError:
             pass
-    assert g.capacity(p) == 60 + 4 * 500 + 5 * 750
+    # the junk's own guns take room in her hold (rules.fleet.gun_hold); the other ships are unarmed
+    assert g.capacity(p) == engine.ship_hold(p["ships"][0]) + 4 * 500 + 5 * 750 and engine.ship_hold(p["ships"][0]) == 60 - 2 * engine.gun_hold()
     gb = next(i for i, sh in enumerate(p["ships"]) if sh["type"] == "gunboat")
     cs = next(i for i, sh in enumerate(p["ships"]) if sh["type"] == "countryship")
     for _ in range(6):

@@ -14,6 +14,8 @@ const TAPE_SHOW = 14;
 const PAGES = [{ k: "race", n: "I" }, { k: "lanes", n: "II" }, { k: "markets", n: "III" }];
 
 const DEF = {
+  "mk.intel": "Port intelligence", "mk.layer": "Map data layer", "mk.price": "Cargo prices", "mk.change": "Monthly change", "mk.weather": "Weather", "mk.active": "Active market effects", "mk.noactive": "No active booms or crashes.", "mk.history": "Recent market history", "mk.expired": "Recorded event", "mk.left": "{n} months remaining", "mk.leftone": "1 month remaining", "mk.all": "All ports", "mk.quote": "Posted quote", "mk.cargos": "Cargo at this port", "mk.status": "Trade status", "mk.banned": "Banned cargo", "mk.open": "No ban on this cargo", "mk.customs": "Customs crackdown", "mk.pricekey": "Ring fill compares current quotes. More ring fill = higher price. ✦ Active market effect.", "mk.changekey": "Ring fill compares the size of this month’s change. Jade = rising; crimson = falling. ✦ Active market effect.", "mk.weatherkey": "Ring fill shows weather severity at each port. Weather is current; it is not a voyage forecast.", "mk.inspect": "Select a port for its cargo, weather and market effects.", "mk.legal": "Comparison excludes banned ports. Posted quotes exclude dealer margins, tax and voyage costs.",
+
   "tab.race": "The Race", "tab.lanes": "Sea Lanes", "tab.markets": "Markets & Booms",
   "race.title": "The Race", "race.sub": "Net worth of every house, month by month",
   "race.lead": "Lead changes", "race.nolead": "No one has passed anyone yet.",
@@ -25,16 +27,16 @@ const DEF = {
   "lanes.sealed": "Profit by lane opens at the finale.", "lanes.times": "{n} trips", "lanes.time": "1 trip",
   "now.sea": "At sea, {origin} to {dest}", "now.port": "At anchor in {port}",
   "mk.title": "Markets & Booms", "mk.sub": "{good} across the ports: cheapest {low}, dearest {high}",
-  "mk.movers": "Movers this month", "mk.booms": "Booms and crashes", "mk.none": "The markets are quiet.", "mk.nobooms": "No booms or crashes yet.",
+  "mk.basemovers": "Change this month", "mk.booms": "Booms and crashes", "mk.none": "The markets are quiet.", "mk.nobooms": "No booms or crashes yet.",
   "mk.boom": "Boom", "mk.crash": "Crash", "mk.months": "{n} months", "mk.month": "1 month", "mk.cheap": "cheap", "mk.dear": "dear",
   "sealed": "Sealed", "sealed.note": "Rivals are at the table. This page opens at the finale.",
   "tower": "Timing tower", "leader": "LEADER", "ghost.best": "Best game", "ghost.par": "Par pace",
   "status.port": "At {port}", "status.sea": "At sea", "status.fight": "In battle", "status.away": "Away",
-  "tower.foot.solo": "Racing the ghost of your best game.", "tower.foot.par": "Racing a par pace until you have a game on the books.",
+  "tower.foot.par": "Racing a par pace until you have a game on the books.",
   "tower.foot.n": "{n} houses on the line",
   "chalk": "Month times", "chalk.month": "Month", "chalk.none": "No laps run yet.", "chalk.best": "Best month: {date}, {firm} {gain}",
   "dial.months": "Months left", "dial.of": "of {n}", "dial.baro": "Barometer", "dial.hull": "Fleet hull",
-  "dial.ships": "{n} ships, {c} crippled", "dial.noships": "no ships afloat", "dial.fair": "fair everywhere",
+  "detail.close": "Close", "detail.hint": "Open details", "detail.weather": "Weather by sea", "detail.fleet": "Fleet condition", "detail.voyage": "The voyage", "detail.elapsed": "Months sailed", "detail.remaining": "Months remaining", "detail.sound": "Sound", "detail.crippled": "Crippled", "detail.scale": "Fair to dangerous · worst sea shown", "mk.cargo": "Choose cargo", "mk.buy": "Lowest quote", "mk.sell": "Highest quote", "mk.spread": "Price spread / unit", "mk.quotes": "Port quotes", "mk.select": "Select a port on the chart", "mk.gross": "Gross spread before voyage costs; quotes can change.", "mk.baseline": "Compared with the month’s opening quote; after a server restart, comparison begins with the first quote observed.", "mk.empty": "No quotes available yet.", "dial.ships": "{n} ships, {c} crippled", "dial.noships": "no ships afloat", "dial.fair": "fair everywhere",
   "date.lobby": "Waiting for captains", "sub.left": "{n} months left", "sub.ended": "Final standings", "sub.lobby": "Before departure",
   "tape.sailed": "{who} sailed {origin} for {dest}", "tape.arrived": "{who} dropped anchor at {port}", "tape.offcourse": "{who} was blown off course",
   "tape.storm": "Storm damage to {who}'s fleet", "tape.lost": "{who} lost a ship", "tape.crippled": "A ship of {who} is crippled",
@@ -60,7 +62,8 @@ const We = (key, vars) => esc(W(key, vars));
 
 let D = null, S = null, F = null, reloading = false, retryInfo, online = true;
 let page = "race", pageAt = Date.now(), held = false, lastFeed = 0, feeding = false, feedTimer = 0;
-let seenFights = null, seenBooms = null, tapeSeen = null, marketGood = null, marketTurn = -1;
+let marketPort = null, marketLens = "price", detailKind = null;
+let seenFights = null, seenBooms = null, tapeSeen = null, marketGood = null;
 let clicksOn = store("seatrader_dash_clicks") === "1", actx = null;
 let spotsOn = store("seatrader_dash_spots") !== "0";
 const app = document.getElementById("app"), loading = document.getElementById("db-loading");
@@ -169,6 +172,7 @@ function statusOf(h) {
 
 function renderTower() {
   const hs = ranked(), lead = hs.length ? hs[0].worth : 0, rows = [];
+  document.getElementById("pw-tower").classList.toggle("solo", solo());
   const g = ghostNow();
   const entries = hs.map(h => ({ h, worth: h.worth }));
   if (g != null) entries.push({ ghost: true, worth: g });
@@ -190,10 +194,10 @@ function renderTower() {
       <div class="tw-gap"><b class="${gap ? "behind" : "lead"}">${gap ? "-" + money(gap) : We("leader")}</b><span>${money(e.worth)}</span></div>
       <div class="tw-spark">${spark(vals, hcol(h))}</div></div>`);
   });
-  const foot = solo() ? (F.ghost && F.ghost.kind === "best" ? W("tower.foot.solo") : W("tower.foot.par")) : W("tower.foot.n", { n: hs.length });
+  const foot = solo() ? (F.ghost && F.ghost.kind === "best" ? "" : W("tower.foot.par")) : W("tower.foot.n", { n: hs.length });
   update("pw-tower", `<div class="tw-title"><span>${We("tower")}</span><b>${esc(S.date || "")}</b></div>
     <div class="tw-rows${hs.length > 5 ? " dense" : ""}">${rows.join("") || `<p class="pw-note" style="color:#bfa77a;padding:10px">${We("date.lobby")}</p>`}</div>
-    <div class="tw-foot">${esc(foot)}</div>`);
+    ${foot ? `<div class="tw-foot">${esc(foot)}</div>` : ""}`);
 }
 
 /* ---------------------------------------------------------------- dials -- */
@@ -226,7 +230,7 @@ let dialsBuilt = false;
 function buildDials() {
   if (dialsBuilt) return;
   document.getElementById("pw-dials").innerHTML = [0, 1, 2].map(i =>
-    `<div class="dial">${dialSvg(i, DIAL_ZONES[i])}<b id="dt${i}"></b><span id="ds${i}"></span></div>`).join("");
+    `<button type="button" class="dial" data-detail="${["voyage", "weather", "fleet"][i]}" aria-label="${We(["detail.voyage", "detail.weather", "detail.fleet"][i])}" title="${We("detail.hint")}">${dialSvg(i, DIAL_ZONES[i])}<b id="dt${i}"></b><span id="ds${i}"></span><small>${We("detail.hint")} &rarr;</small></button>`).join("");
   dialsBuilt = true;
 }
 function setDial(i, frac, value, title, sub) {
@@ -243,43 +247,72 @@ function renderDials() {
   setDial(0, total ? (total - left) / total : 0, lobby ? "-" : String(left), W("dial.months"), total ? W("dial.of", { n: total }) : "");
   // barometer
   const lv = Object.entries(S.weather || {}), names = D.weather || [], top = Math.max(1, names.length - 1);
-  let worst = 0, where = "", sum = 0;
-  lv.forEach(([r, l]) => { sum += l; if (l > worst) { worst = l; where = (D.regions[r] || {}).name || ""; } });
-  setDial(1, lv.length ? sum / lv.length / top : 0, "", W("dial.baro"), worst ? `${names[worst] || ""}${where ? ", " + where : ""}` : W("dial.fair"));
+  let worst = 0, where = "";
+  lv.forEach(([r, l]) => { if (l > worst) { worst = l; where = (D.regions[r] || {}).name || ""; } });
+  setDial(1, worst / top, String(worst) + "/" + top, W("dial.baro"), worst ? `${names[worst] || ""}${where ? ", " + where : ""}` : W("dial.fair"));
   // fleet hull
   const ships = F.houses.flatMap(h => h.hull || []), crip = ships.filter(s => s.crippled).length;
   const avg = ships.length ? ships.reduce((a, s) => a + s.hull, 0) / ships.length : 0;
   setDial(2, avg, ships.length ? Math.round(avg * 100) + "%" : "-", W("dial.hull"), ships.length ? W("dial.ships", { n: ships.length, c: crip }) : W("dial.noships"));
 }
 
+const detailDialog = document.getElementById("pw-detail");
+function renderDetail() {
+  if (!detailKind || !F || !S || !D) return;
+  let body = "";
+  if (detailKind === "weather") {
+    body = `<p class="pw-note">${We("detail.scale")}</p><ul class="instrument-list">${Object.entries(S.weather || {}).sort((a, b) => b[1] - a[1]).map(([r, level]) => `<li><b>${esc((D.regions[r] || {}).name || r)}</b><span>${esc((D.weather || [])[level] || level)}</span><meter min="0" optimum="0" low="${Math.max(1, (D.weather || []).length - 1) / 3}" high="${Math.max(1, (D.weather || []).length - 1) * 2 / 3}" max="${Math.max(1, (D.weather || []).length - 1)}" value="${level}">${level}</meter></li>`).join("")}</ul>`;
+  } else if (detailKind === "fleet") {
+    body = `<ul class="instrument-list">${ranked().map(h => `<li><b>${esc(h.firm)}</b><span>${(h.hull || []).length ? (h.hull || []).map((sh, i) => `<span class="ship-condition">#${i + 1} · ${Math.round(sh.hull * 100)}% · ${We(sh.crippled ? "detail.crippled" : "detail.sound")}</span>`).join("") : We("dial.noships")}</span></li>`).join("")}</ul>`;
+  } else {
+    const total = monthsTotal(), left = S.turns_left == null ? total : S.turns_left;
+    body = `<div class="voyage-numbers"><div><b>${Math.max(0, total - left)}</b><span>${We("detail.elapsed")}</span></div><div><b>${left}</b><span>${We("detail.remaining")}</span></div></div><progress max="${total || 1}" value="${Math.max(0, total - left)}"></progress><p>${esc(S.date || W("date.lobby"))}</p>`;
+  }
+  update("detail-body", `<h2 id="detail-title">${We("detail." + detailKind)}</h2>${body}`);
+  document.getElementById("detail-close").textContent = W("detail.close");
+}
+document.getElementById("pw-dials").addEventListener("click", e => {
+  const b = e.target.closest("[data-detail]");
+  if (!b) return;
+  detailKind = b.dataset.detail; renderDetail(); detailDialog.showModal();
+});
+document.getElementById("detail-close").addEventListener("click", () => detailDialog.close());
+detailDialog.addEventListener("close", () => { detailKind = null; pageAt = Date.now(); });
+document.getElementById("pw-book").addEventListener("change", e => {
+  if (e.target.id !== "market-cargo") return;
+  marketGood = e.target.value; pageAt = Date.now(); renderPage(false);
+  document.getElementById("market-cargo").focus({ preventScroll: true });
+});
+document.getElementById("pw-book").addEventListener("click", e => {
+  if (page !== "markets" || F.locked) return;
+  const b = e.target.closest("[data-market-port], [data-port], [data-market-good], [data-market-lens], [data-market-back]");
+  if (!b) return;
+  if (b.hasAttribute("data-market-back")) marketPort = null;
+  if (b.dataset.marketPort || b.dataset.port) marketPort = b.dataset.marketPort || b.dataset.port;
+  if (b.dataset.marketGood && D.goods[b.dataset.marketGood]) {
+    marketGood = b.dataset.marketGood;
+    if (b.dataset.marketPort) marketLens = "price";
+  }
+  if (["price","change","weather"].includes(b.dataset.marketLens)) marketLens = b.dataset.marketLens;
+  const pane = document.getElementById("pw-right").querySelector(".pg");
+  if (pane && !b.dataset.marketLens) pane.scrollTop = 0;
+  pageAt = Date.now(); renderPage(false);
+  const target = b.dataset.marketLens ? `[data-market-lens="${marketLens}"]` : b.hasAttribute("data-market-back") ? "[data-market-port]" : "[data-market-back]";
+  document.querySelector(target)?.focus({ preventScroll: true });
+});
+
 /* ---------------------------------------------------------------- chalkboard -- */
-function chalkData() {
-  const hs = ranked().slice(0, 4);
-  const per = hs.map(h => ({ h, gains: gainsOf(h) }));
-  const turns = [...new Set(per.flatMap(p => p.gains.map(g => g.turn)))].sort((a, b) => a - b);
-  return { per, rows: turns.slice(-6) };
-}
-function lastGain() {
-  const lead = ranked()[0];
-  if (!lead) return 0;
-  const g = gainsOf(lead);
-  return g.length ? g[g.length - 1].gain : 0;
-}
 function renderChalk() {
-  const { per, rows } = chalkData();
-  if (!rows.length) { update("pw-chalk", `<div class="chalk"><h4>${We("chalk")}</h4><p class="none">${We("chalk.none")}</p><footer></footer></div>`); return; }
-  const best = per.map(p => Math.max(...p.gains.map(g => g.gain))), worst = per.map(p => Math.min(...p.gains.map(g => g.gain)));
+  const hs = ranked(), turns = [...new Set(hs.flatMap(h => gainsOf(h).map(g => g.turn)))].sort((a, b) => a - b).slice(-2);
+  if (!turns.length) { update("pw-chalk", `<div class="chalk"><h4>${We("chalk")}</h4><p class="none">${We("chalk.none")}</p><footer></footer></div>`); return; }
   let champ = null;
-  per.forEach(p => p.gains.forEach(g => { if (!champ || g.gain > champ.gain) champ = { gain: g.gain, date: g.date, firm: p.h.firm }; }));
-  const head = `<tr><th>${We("chalk.month")}</th>${per.map(p => `<th style="color:${hcol(p.h)}" title="${esc(p.h.firm)}">${esc(String(p.h.firm).slice(0, 9))}</th>`).join("")}</tr>`;
-  const body = rows.map(t => `<tr><td>${esc(dateOfTurn(t))}</td>${per.map((p, i) => {
-    const g = p.gains.find(x => x.turn === t);
-    if (!g) return "<td>-</td>";
-    const cls = g.gain === best[i] && g.gain > 0 ? "best" : g.gain === worst[i] && g.gain < 0 ? "worst" : g.gain > 0 ? "pos" : "";
-    return `<td class="${cls}">${signed(g.gain)}${cls === "best" ? " &#9733;" : ""}</td>`;
+  hs.forEach(h => gainsOf(h).forEach(g => { if (!champ || g.gain > champ.gain) champ = { ...g, firm: h.firm }; }));
+  const head = `<tr><th></th>${turns.map(t => `<th>${esc(dateOfTurn(t))}</th>`).join("")}</tr>`;
+  const body = hs.map(h => `<tr><td>${esc(h.firm)}</td>${turns.map(t => {
+    const g = gainsOf(h).find(g => g.turn === t);
+    return `<td class="${g && g.gain > 0 ? "pos" : g && g.gain < 0 ? "worst" : ""}">${g ? signed(g.gain) : "—"}</td>`;
   }).join("")}</tr>`).join("");
-  update("pw-chalk", `<div class="chalk"><h4>${We("chalk")}</h4><table>${head}${body}</table>
-    <footer>${champ ? W("chalk.best", { date: esc(champ.date), firm: esc(champ.firm), gain: signed(champ.gain) }) : ""}</footer></div>`);
+  update("pw-chalk", `<div class="chalk"><h4>${We("chalk")}</h4><div class="chalk-scroll"><table>${head}${body}</table></div><footer>${champ ? We("chalk.best", { date: champ.date, firm: champ.firm, gain: signed(champ.gain) }) : ""}</footer></div>`);
 }
 
 /* ---------------------------------------------------------------- the telegraph -- */
@@ -354,12 +387,12 @@ function raceChart(w, h) {
   let s = `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(W("race.title"))}" style="display:block;overflow:visible">`;
   for (let i = 0; i <= 4; i++) {
     const v = lo + (hi - lo) * i / 4, yy = y(v);
-    s += `<line x1="${L}" x2="${w - R}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#6b452d" stroke-opacity=".25"/>
-      <text x="${L - 6}" y="${(yy + 5).toFixed(1)}" text-anchor="end" font-size="14" fill="#6b452d">${kfmt(v)}</text>`;
+    s += `<line x1="${L}" x2="${w - R}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#c9a34e" stroke-opacity=".25"/>
+      <text x="${L - 6}" y="${(yy + 5).toFixed(1)}" text-anchor="end" font-size="14" fill="#c4b18d">${kfmt(v)}</text>`;
   }
   for (let i = 0; i <= 3; i++) {
     const t = Math.round(t0 + (t1 - t0) * i / 3), label = dateOfTurn(t) || ("M" + (t - t0));
-    s += `<text x="${x(t).toFixed(1)}" y="${h - 6}" text-anchor="${i === 0 ? "start" : i === 3 ? "end" : "middle"}" font-size="13" fill="#6b452d">${esc(label)}</text>`;
+    s += `<text x="${x(t).toFixed(1)}" y="${h - 6}" text-anchor="${i === 0 ? "start" : i === 3 ? "end" : "middle"}" font-size="13" fill="#c4b18d">${esc(label)}</text>`;
   }
   if (g) {
     s += `<polyline fill="none" stroke="#6b452d" stroke-opacity=".55" stroke-width="3" stroke-dasharray="3 7" stroke-linecap="round" points="${g.curve.map((v, i) => x(t0 + i).toFixed(1) + "," + y(v).toFixed(1)).join(" ")}"/>`;
@@ -402,7 +435,7 @@ function pageRace() {
   if (!hs.length) return { left: `<h2>${We("race.title")}<small>${We("date.lobby")}</small></h2><div class="pg"></div>`, right: `<h2>&nbsp;</h2><div class="pg"></div>` };
   const legend = hs.map(h => `<li style="--house:${hcol(h)}"><span class="pw-dot"></span><b>${esc(h.firm)}</b><span class="num">${money(h.worth)}</span></li>`).join("");
   const left = `<h2>${We("race.title")}<small>${We("race.sub")}</small></h2>
-    <div class="pg"><div>${raceChart(440, 520)}</div>
+    <div class="pg"><div>${raceChart(520, 410)}</div>
     <ul class="pw-list">${legend}${F.ghost ? `<li><span class="pw-dot" style="background:transparent;border:2px dotted #6b452d"></span><b>${esc(F.ghost.kind === "best" ? W("ghost.best") : W("ghost.par"))}</b><span class="num">${money(F.ghost.final)}</span></li>` : ""}</ul></div>`;
   const lc = leadChanges().slice(0, 6);
   const changes = lc.length ? `<ul class="pw-list">${lc.map(c => `<li style="grid-template-columns:1fr auto"><b class="${c.up ? "up" : "down"}">${c.text}</b><small>${esc(c.date)}</small></li>`).join("")}</ul>`
@@ -411,11 +444,7 @@ function pageRace() {
   if (F.locked) deals = `<div class="pw-block-locked">${stamp(W("sealed"), W("race.sealed"))}</div>`;
   else if (!(F.deals || []).length) deals = `<p class="pw-note">${We("race.nodeals")}</p>`;
   else deals = `<table><tbody>${F.deals.slice(0, 5).map(d => `<tr><td><span class="pw-dot" style="--house:${house(d.pid) ? hcol(house(d.pid)) : "#888"}"></span>${d.qty} ${gn(d.good)}<br><small class="pw-note">${pn(d.port)} &middot; ${esc(d.date)}</small></td><td class="num up">${signed(d.profit)}</td></tr>`).join("")}</tbody></table>`;
-  const mood = lastGain() > 0 ? "happy" : lastGain() < 0 ? "angry" : "sly";
-  const role = Media.has("persona", "bookkeeper", mood) ? mood : "portrait";
-  const pic = Media.html("persona", "bookkeeper", role, "pz", "", { slot: "dash-keeper" });
-  const keeper = `<figure class="pw-keeper mood-${mood}">${pic || '<span class="pw-quill" aria-hidden="true">&#9998;</span>'}</figure>`;
-  const right = `<h2 style="padding-right:118px">${We("race.lead")}</h2><div class="pg" style="margin-right:118px">${changes}<h3 style="margin-top:8px">${We("race.deals")}</h3>${deals}</div>${keeper}`;
+  const right = `<h2>${We("race.lead")}</h2><div class="pg">${changes}<h3 style="margin-top:8px">${We("race.deals")}</h3>${deals}</div>`;
   return { left, right };
 }
 
@@ -470,7 +499,7 @@ function withOverlay(svg, overlay) {
 }
 function pageLanes() {
   const lanes = laneTotals();
-  const chart = withOverlay(cropChart(Chart.svg({ data: D, players: S.players, crackdown: S.crackdown || [], hideWeather: true, hideRose: true })), threads(lanes));
+  const chart = withOverlay(cropChart(Chart.svg({ data: D, players: S.players, crackdown: S.crackdown || [], weather: S.weather, hideWeather: false, hideRose: true })), threads(lanes));
   const left = `<h2>${We("lanes.title")}<small>${We("lanes.sub")}</small></h2><div class="pg"><div class="chart-wrap" id="dash-chart">${chart}</div>
     ${lanes.length ? `<ul class="pw-list">${ranked().map(h => {
       const n = (h.lanes || []).reduce((a, l) => a + l.count, 0), w = (h.lanes || []).reduce((a, l) => a + l.wrecks, 0);
@@ -502,55 +531,70 @@ function priceRows() {
   }));
   return out;
 }
-function lerpColor(a, b, t) {
-  const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16));
-  return "#" + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, "0")).join("");
+const marketEffects = () => F.locked ? [] : F.market_effects || [];
+const marketBanned = (port, good) => ((S.bans || {})[port] || []).includes(good);
+const marketPct = r => (r.pct >= 0 ? "+" : "") + Math.round(r.pct * 100) + "%";
+function marketMetrics(rows, good, lens) {
+  const selected = rows.filter(r => r.good === good), maxPrice = Math.max(1, ...selected.map(r => r.price));
+  const maxChange = Math.max(.01, ...selected.map(r => Math.abs(r.pct))), maxWeather = Math.max(1, (D.weather || []).length - 1);
+  const intel = {};
+  Object.entries(D.ports).forEach(([port, p]) => {
+    const row = selected.find(r => r.port === port), wx = (S.weather || {})[p.region] || 0;
+    const events = marketEffects().filter(w => w.port === port && w.good === good);
+    const banned = marketBanned(port, good);
+    const value = lens === "weather" ? (D.weather || [])[wx] || "—" : !row ? "—" : lens === "change" ? marketPct(row) : money(row.price);
+    intel[port] = { value: value + (banned ? " · ×" : events.length ? " · ✦" : ""),
+      fill: lens === "weather" ? wx / maxWeather : !row ? 0 : lens === "change" ? Math.abs(row.pct) / maxChange : row.price / maxPrice,
+      negative: banned || (lens === "weather" ? wx >= 2 : lens === "change" && row && row.pct < 0),
+      positive: !banned && lens === "change" && row && row.pct > 0,
+      title: `${p.name}: ${value}${banned ? "; " + W("mk.banned") : ""}${events.map(w => "; " + W(w.sort === "crash" ? "mk.crash" : "mk.boom") + " ×" + w.mult + ", " + W(w.turns === 1 ? "mk.leftone" : "mk.left", { n: w.turns })).join("")}` };
+  });
+  return intel;
 }
-function heat(ratio) {
-  const t = Math.max(0, Math.min(1, (ratio - .65) / .7));
-  return t < .5 ? lerpColor("1f5c46", "e8d4a0", t * 2) : lerpColor("e8d4a0", "8a2219", (t - .5) * 2);
+function effectButtons(effects) {
+  if (!effects.length) return `<p class="pw-note">${We("mk.noactive")}</p>`;
+  return `<div class="market-effects">${effects.map(w => `<button type="button" data-market-good="${esc(w.good)}" data-market-port="${esc(w.port)}"><span class="${w.sort === "crash" ? "down" : "up"}">${We(w.sort === "crash" ? "mk.crash" : "mk.boom")} · ${gn(w.good)}</span><b>${pn(w.port)} <em>×${w.mult}</em></b><small>${We(w.turns === 1 ? "mk.leftone" : "mk.left", { n: w.turns })}</small></button>`).join("")}</div>`;
+}
+function marketPortDetail(rows, port, good) {
+  const p = D.ports[port], chosen = rows.find(r => r.port === port && r.good === good);
+  const wx = (S.weather || {})[p.region] || 0, banned = marketBanned(port, good);
+  const facts = [[W("mk.quote"), chosen ? money(chosen.price) : "—"], [W("mk.basemovers"), chosen ? marketPct(chosen) : "—"], [W("mk.weather"), (D.weather || [])[wx] || "—"], [W("mk.status"), W(banned ? "mk.banned" : "mk.open")]];
+  return `<section class="market-port-detail" aria-label="${We("mk.intel")}"><div class="market-detail-head"><span>${gn(good)}</span><button type="button" data-market-back>${We("mk.all")}</button></div><dl>${facts.map(([k,v]) => `<div><dt>${esc(k)}</dt><dd${k === W("mk.status") && banned ? ' class="market-ban"' : ""}>${esc(v)}</dd></div>`).join("")}</dl>${(S.crackdown || []).includes(port) ? `<p class="market-warning">${We("mk.customs")}</p>` : ""}<h3>${We("mk.active")}</h3>${effectButtons(marketEffects().filter(w => w.port === port))}<h3>${We("mk.cargos")}</h3><div class="port-quotes">${rows.filter(r => r.port === port).map(r => `<button type="button" data-market-good="${esc(r.good)}" aria-pressed="${r.good === good}"><span>${gn(r.good)}${marketBanned(port,r.good) ? " ×" : ""}</span><b>${money(r.price)}<small class="${r.pct < 0 ? "down" : "up"}">${marketPct(r)}</small></b></button>`).join("")}</div></section>`;
 }
 function pageMarkets() {
-  if (F.locked) {
-    return { left: `<h2>${We("mk.title")}</h2><div class="pg">${stamp(W("sealed"), W("sealed.note"))}</div>`, right: `<h2>&nbsp;</h2><div class="pg">${stamp(W("sealed"), W("sealed.note"))}</div>` };
-  }
+  if (F.locked) return { left: `<h2>${We("mk.title")}</h2><div class="pg">${stamp(W("sealed"), W("sealed.note"))}</div>`, right: `<h2>&nbsp;</h2><div class="pg">${stamp(W("sealed"), W("sealed.note"))}</div>` };
   const rows = priceRows(), goods = Object.keys(D.goods);
-  // a new cargo each time the page comes round, the biggest mover first
-  if (marketTurn !== F.turn || marketGood === null) {
-    marketTurn = F.turn;
+  if (marketGood === null || !D.goods[marketGood]) {
     const big = rows.slice().sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))[0];
     marketGood = big ? big.good : goods[0];
   }
   const good = marketGood, ofGood = rows.filter(r => r.good === good);
-  const avg = ofGood.length ? ofGood.reduce((a, r) => a + r.price, 0) / ofGood.length : 1;
-  const low = ofGood.slice().sort((a, b) => a.price - b.price)[0], high = ofGood.slice().sort((a, b) => b.price - a.price)[0];
-  let over = '<g style="pointer-events:none">';
-  ofGood.forEach(r => {
-    const p = D.ports[r.port];
-    if (!p) return;
-    over += `<circle cx="${p.x}" cy="${p.y}" r="30" fill="${heat(r.price / avg)}" fill-opacity=".86" stroke="#2a170e" stroke-opacity=".6" stroke-width="2"/>
-      <text x="${p.x}" y="${p.y + 6}" text-anchor="middle" font-size="17" font-weight="700" fill="#fff" stroke="#2a170e" stroke-width="3.5" paint-order="stroke">${Math.round(r.price)}</text>`;
-  });
-  over += "</g>";
-  const chart = withOverlay(cropChart(Chart.svg({ data: D, players: [], crackdown: [], hideWeather: true, hideRose: true })), over);
-  const left = `<h2>${We("mk.title")}<small>${W("mk.sub", { good: gn(good), low: low ? pn(low.port) : "", high: high ? pn(high.port) : "" })}</small></h2>
-    <div class="pg"><div class="chart-wrap" id="dash-chart">${chart}</div><div class="price-legend"><span>${We("mk.cheap")}</span><i></i><span>${We("mk.dear")}</span></div>
-    <ul class="pw-list tight">${ofGood.slice().sort((a, b) => a.price - b.price).map(r => `<li style="grid-template-columns:1fr auto"><div><b>${pn(r.port)}</b>
-      <div class="pw-bar"><i style="width:${Math.max(6, r.price / (high ? high.price : 1) * 100)}%;background:${heat(r.price / avg)}"></i></div></div><span class="num">${money(r.price)}</span></li>`).join("")}</ul></div>`;
-  const movers = rows.filter(r => Math.abs(r.pct) >= .005).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 7);
-  const moverHtml = movers.length ? `<table><tbody>${movers.map(r => `<tr><td><b class="${r.pct >= 0 ? "up" : "down"}">${r.pct >= 0 ? "&#9650;" : "&#9660;"}</b> ${gn(r.good)}<br><small class="pw-note">${pn(r.port)}</small></td>
-    <td class="num">${money(r.price)}</td><td class="num ${r.pct >= 0 ? "up" : "down"}">${(r.pct >= 0 ? "+" : "") + Math.round(r.pct * 100)}%</td></tr>`).join("")}</tbody></table>` : `<p class="pw-note">${We("mk.none")}</p>`;
-  const booms = (F.booms || []).slice().reverse().slice(0, 5);
-  const boomHtml = booms.length ? `<ul class="pw-list">${booms.map(w => `<li style="grid-template-columns:auto 1fr auto"><b class="${w.sort === "crash" ? "down" : "up"}">${We(w.sort === "crash" ? "mk.crash" : "mk.boom")}</b>
-    <span>${gn(w.good)} at ${pn(w.port)}<br><small>${esc(w.date)}</small></span><span class="num">&times;${w.mult} <small>${w.turns === 1 ? We("mk.month") : We("mk.months", { n: w.turns })}</small></span></li>`).join("")}</ul>` : `<p class="pw-note">${We("mk.nobooms")}</p>`;
-  const right = `<h2>${We("mk.movers")}</h2><div class="pg">${moverHtml}<h3 style="margin-top:8px">${We("mk.booms")}</h3>${boomHtml}</div>`;
+  const legal = ofGood.filter(r => !marketBanned(r.port, good)).sort((a, b) => a.price - b.price);
+  const low = legal[0], high = legal[legal.length - 1];
+  let chart = cropChart(Chart.svg({ data: D, players: [], crackdown: S.crackdown || [], hideWeather: true, hideRose: true, clickable: true, intel: marketMetrics(rows,good,marketLens) }));
+  chart = chart.replace(/class="port-name"/g, 'class="port-name" dy="-4"').replace(/class="intel-value port-status"/g, 'class="intel-value port-status" dy="4"').replace(/height="64"/g, 'height="76"');
+  chart = chart.replace(/(<g\b[^>]*data-port="([^"]+)"[^>]*aria-pressed=")false/g, (all, start, port) => port === marketPort ? start + "true" : all);
+  const selector = `<label class="cargo-picker">${We("mk.cargo")}<select id="market-cargo">${goods.map(g => `<option value="${esc(g)}"${g === good ? " selected" : ""}>${gn(g)}</option>`).join("")}</select></label>`;
+  const layers = `<nav class="market-lenses" aria-label="${We("mk.layer")}">${["price","change","weather"].map(lens => `<button type="button" data-market-lens="${lens}" aria-pressed="${marketLens === lens}">${We("mk."+lens)}</button>`).join("")}</nav>`;
+  const summary = low && high ? `<div class="market-summary"><div><small>${We("mk.buy")}</small><b>${money(low.price)}</b><span>${pn(low.port)}</span></div><div><small>${We("mk.sell")}</small><b>${money(high.price)}</b><span>${pn(high.port)}</span></div><div><small>${We("mk.spread")}</small><b>${money(high.price-low.price)}</b><span>${gn(good)}</span></div></div>` : `<p class="pw-note">${We("mk.empty")}</p>`;
+  const left = `<h2>${We("mk.intel")}<small>${We("mk.inspect")}</small></h2><div class="pg market-map">${selector}${layers}<div class="chart-wrap" id="dash-chart">${chart}</div><p class="pw-note market-key">${We("mk."+marketLens+"key")}</p>${summary}<p class="pw-note">${We("mk.legal")}</p></div>`;
+  const quotes = `<div class="port-quotes">${ofGood.slice().sort((a,b) => a.price-b.price).map(r => `<button type="button" data-market-port="${esc(r.port)}"><span>${pn(r.port)}${marketBanned(r.port,good) ? " ×" : ""}</span><b>${money(r.price)}</b></button>`).join("")}</div>`;
+  const movers = rows.slice().sort((a,b) => Math.abs(b.pct)-Math.abs(a.pct)).slice(0,3);
+  const moverHtml = `<div class="market-effects">${movers.map(r => `<button type="button" data-market-good="${esc(r.good)}" data-market-port="${esc(r.port)}"><b>${gn(r.good)} <em class="${r.pct < 0 ? "down" : "up"}">${marketPct(r)}</em></b><small>${pn(r.port)}</small></button>`).join("")}</div>`;
+  const history = (F.booms || []).slice().reverse().slice(0,4);
+  const historyHtml = history.length ? `<details class="market-history"><summary>${We("mk.history")}</summary>${history.map(w => `<p><b>${gn(w.good)} · ${pn(w.port)}</b><br><small>${esc(w.date)} · ${We("mk.expired")} · ×${w.mult}</small></p>`).join("")}</details>` : "";
+  const selected = marketPort && D.ports[marketPort];
+  const right = selected ? `<h2>${pn(marketPort)}</h2><div class="pg">${marketPortDetail(rows,marketPort,good)}</div>` : `<h2>${We("mk.active")}</h2><div class="pg">${effectButtons(marketEffects())}<h3>${We("mk.quotes")}</h3>${quotes}<h3>${We("mk.basemovers")}</h3>${moverHtml}<p class="pw-note">${We("mk.baseline")}</p>${historyHtml}</div>`;
   return { left, right, fit: "dash-chart" };
 }
 
 const BUILDERS = { race: pageRace, lanes: pageLanes, markets: pageMarkets };
 function renderPage(flip) {
+  const scrolls = ["pw-left", "pw-right"].map(id => document.getElementById(id).querySelector(".pg")?.scrollTop || 0);
+  document.getElementById("pw-book").dataset.page = page;
   const b = BUILDERS[page]();
   const l = update("pw-left", b.left), r = update("pw-right", b.right);
+  if (!flip) ["pw-left", "pw-right"].forEach((id,i) => { const pg = document.getElementById(id).querySelector(".pg"); if (pg) pg.scrollTop = scrolls[i]; });
   if (b.fit && typeof Chart.fit === "function") {
     const el = document.getElementById(b.fit);
     if (el && (l || r)) Chart.fit(el);
@@ -564,8 +608,8 @@ function goto(k, why) {
   if (!BUILDERS[k] || !F) return;
   if (k === "markets") marketGood = null;          // a fresh cargo each time the page comes round
   const changed = k !== page;
-  if (changed) hostLine++;
   page = k; pageAt = Date.now();
+  document.title = brandName(D.brand) + " · " + W("tab." + page);
   renderTabs(); renderHost();
   renderPage(changed);
 }
@@ -577,7 +621,7 @@ setInterval(() => {
   if (!F) return;
   const bar = document.querySelector(".pw-tab.on .pw-prog");
   if (bar) bar.style.width = held ? "100%" : Math.min(100, (Date.now() - pageAt) / TURN_MS * 100) + "%";
-  if (!held && Date.now() - pageAt >= TURN_MS) turnPage(1);
+  if (!held && !detailKind && !(typeof DashWhisper !== "undefined" && DashWhisper.isOpen()) && Date.now() - pageAt >= TURN_MS) turnPage(1);
 }, 500);
 
 /* A fight, a boom or a crash that was not there a moment ago pulls the book to the page that shows it. */
@@ -586,7 +630,7 @@ function watchJumps() {
   if (seenFights === null) { seenFights = fights; seenBooms = booms; return; }
   const newFight = [...fights].some(id => !seenFights.has(id)), newBoom = [...booms].some(k => !seenBooms.has(k));
   seenFights = fights; seenBooms = booms;
-  if (held) return;
+  if (held || detailKind || typeof DashWhisper !== "undefined" && DashWhisper.isOpen()) return;
   if (newFight) goto("lanes");                       // a battle first: the game itself holds for fights
   else if (newBoom && !F.locked) goto("markets");
 }
@@ -651,13 +695,7 @@ const SAY = {
   finale: { who: ["gamemaster"], fb: ["taxlady", "mayor"], pri: 10, ms: 16000, lines: [
     ["The ledger closes. {who} takes the night with {worth}. Take a bow, darling.", "The ledger closes. {who} takes the night with {worth}. Take a bow."]] }
 };
-/* The woman on the line for each page, with what she says there. */
-const HOSTS = {
-  race: ["gamemaster", [["Watch the leaderboard, darlings. Everything else is foreplay.", "Watch the leaderboard. Everything else is warm-up."], ["A lead is only a lead until someone hungrier arrives.", "A lead is only a lead until someone hungrier arrives."]]],
-  lanes: ["narrator", [["Every lane is a promise, and the sea breaks most of them.", "Every lane is a promise, and the sea breaks most of them."], ["Sail where it's busy, and mind the weather. She has moods.", "Sail where it's busy, and mind the weather. She has moods."]]],
-  markets: ["bookmaker", [["Cheap here, dear there. That, sweethearts, is the whole game.", "Cheap here, dear there. That, friends, is the whole game."], ["A boom is just a crowd with the same idea. Be early.", "A boom is just a crowd with the same idea. Be early."]]]
-};
-let hostLine = 0;
+const HOSTS = { race: "gamemaster", lanes: "narrator", markets: "bookmaker" };
 const HOST_FB = { race: ["taxlady", "mayor", "bookkeeper"], lanes: ["bosun", "pirate"], markets: ["comprador", "banker", "lender"] };
 /* A woman with no pictures yet is stood in for by the next one who has some, so the stage is never an empty frame. */
 const hasArt = cid => { try { return Media.has("persona", cid, "", {}); } catch (e) { return false; } };
@@ -675,14 +713,12 @@ function art(cid, roles, cls, slot) {
 
 function renderHost() {
   const ended = S.phase === "ended";
-  const h = HOSTS[ended ? "race" : page] || HOSTS.race;
-  const w = who(withArt([ended ? "gamemaster" : h[0]], HOST_FB[ended ? "race" : page] || HOST_FB.race)[0]);
-  const text = ended ? lineOf(SAY.finale.lines[0]).replace(/\{who\}|\{worth\}/g, "") : lineOf(h[1][hostLine % h[1].length]);
-  const pic = art(w.cid, ["portrait", "speaking"], "ho-pic", "dash-host");
-  const body = ended ? W("sp.finale") : W("host.on");
-  update("pw-host", `<div class="ho-art" style="--who:${w.color}">${pic || `<span class="ho-mono">${esc(monogram(w.name))}</span>`}</div>
-    <div class="ho-shade"></div><div class="ho-on"><i></i>${esc(body)}</div>
-    <div class="ho-plate"><p class="ho-line">${esc(ended ? "" : text)}</p><b>${esc(w.name)}</b><small>${esc(w.title)}</small></div>`);
+  const host = HOSTS[ended ? "race" : page] || HOSTS.race;
+  const w = who(withArt([ended ? "gamemaster" : host], HOST_FB[ended ? "race" : page] || HOST_FB.race)[0]);
+  const pic = art(w.cid, [F.brief?.mood || "portrait", "portrait", "speaking"], "ho-pic", "dash-host");
+  document.getElementById("pw-host").setAttribute("aria-label", w.name);
+  update("pw-host", `<div class="ho-art" style="--who:${w.color}">${pic || `<span class="ho-mono">${esc(monogram(w.name))}</span>`}</div><div class="ho-shade"></div>`);
+  if (typeof DashWhisper !== "undefined") DashWhisper.sync(F.brief, w.cid, { blocked: !online || !!spotNow || detailDialog.open });
 }
 
 /* ---- the spotlight ---- */
@@ -773,7 +809,7 @@ function runSpots() {
   if (spotNow) { if (now >= spotEnd || !spotsOn) endSpot(); return; }
   spotQ = spotQ.filter(s => now - s.at < (s.pri >= 6 ? 60000 : 25000));
   if (!spotsOn) { spotQ = []; return; }
-  if (!spotQ.length || now < spotFree || !F) return;
+  if (!spotQ.length || now < spotFree || !F || detailKind || typeof DashWhisper !== "undefined" && DashWhisper.isOpen()) return;
   const s = spotQ.shift();
   if (s.pri <= 2 && now - lastSpotAt < 40000) return;     // a plain arrival only gets the stage in a quiet moment
   showSpot(s);
@@ -784,14 +820,14 @@ document.getElementById("pw-spot").addEventListener("click", () => { if (spotNow
 /* ---------------------------------------------------------------- data -- */
 function renderAll() {
   if (!D || !S || !F) return;
-  renderHead(); renderTower(); renderHost(); renderDials(); renderChalk(); renderTape(); renderTabs(); renderPage(false);
+  renderHead(); renderTower(); renderHost(); renderDials(); renderDetail(); renderChalk(); renderTape(); renderTabs(); renderPage(false);
   app.hidden = false; loading.hidden = true; fit();
 }
 async function pullFeed() {
   if (feeding) return;
   feeding = true; lastFeed = Date.now();
   try {
-    const r = await fetch("/api/dashboard", { cache: "no-store" });
+    const r = await fetch("/api/dashboard" + (screenFamily() ? "?family=1" : ""), { cache: "no-store" });
     const f = await r.json();
     if (f && f.ok) { F = f; watchJumps(); watchStage(); renderAll(); }
   } catch (e) { /* the next poll tries again */ }
@@ -808,6 +844,16 @@ async function refreshInfo() {
   try {
     const info = await loadInfo();
     D = info.data; CAST = (info.voice && info.voice.cast) || {};
+    if (typeof DashWhisper !== "undefined") {
+      Voice.setup(info.voice);
+      DashWhisper.setup({ closed: () => { pageAt = Date.now(); }, navigate: target => {
+        if (target.page === "fleet") document.querySelector('[data-detail="fleet"]').click();
+        else {
+          goto(target.page);
+          if (target.page === "markets" && !F.locked) { marketPort = target.port; marketGood = target.good; marketLens = "price"; renderPage(false); }
+        }
+      } });
+    }
     document.title = brandName(D.brand) + " · " + W("tab.race");
     labelButtons();
   } catch (e) {
@@ -837,6 +883,7 @@ document.getElementById("pw-sound").addEventListener("click", () => {
 function quitDash() { window.close(); setTimeout(() => { if (!window.closed) document.getElementById("pw-quit").textContent = "Close this window"; }, 300); }
 document.getElementById("pw-quit").addEventListener("click", quitDash);
 document.addEventListener("keydown", e => {
+  if (e.defaultPrevented || detailDialog.open || typeof DashWhisper !== "undefined" && DashWhisper.isOpen() || e.key !== "Escape" && e.target.closest("button, select, input, textarea, [role=button]")) return;
   if (e.key === "Escape") { e.preventDefault(); quitDash(); }
   else if (e.key === "ArrowRight") turnPage(1);
   else if (e.key === "ArrowLeft") turnPage(-1);

@@ -113,10 +113,9 @@ MAYOR_SCENE = ("standing at the great window of her harbour office at dusk, seen
                "held in one hand, ")
 # The NSFW looks name no costume: her own dress varies too much from port to port to describe it coming off.
 MAYOR_LOOKS = {
-    "topless": "her dress fallen open and gathered at her hips, bare to the waist, her gold mayor's chain of office "
-               "lying across her bare skin, one hand at her hip, a proud knowing smile and direct eye contact",
-    "nude": "completely nude, wearing only her gold mayor's chain of office and her jewellery, her dress laid over "
-            "the chair behind her, standing tall in a tasteful vintage glamour nude with one hand at her hip, "
+    "topless": "her dress fallen open and gathered at her hips, completely topless, her gold mayor's chain of office lying across her skin, one hand at her hip, a proud knowing smile and direct eye contact",
+    "nude": "completely naked, wearing only her gold mayor's chain of office and her jewellery, her dress laid over "
+            "the chair behind her, standing tall in a tasteful vintage glamour pose with one hand at her hip, "
             "a proud knowing smile and direct eye contact",
     "clean": "a dignified high-necked formal gown in the colours of her usual dress with her shoulders and chest "
              "fully covered and her gold mayor's chain of office worn over it, a proud warm smile and direct eye contact",

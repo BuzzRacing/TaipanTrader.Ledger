@@ -1,4 +1,4 @@
-"""Cannons on the big ships: worth ten guns in a fight, cost seven and a half, take two mounts.
+"""Cannons on the big ships: worth rules.fleet.cannon_power guns in a fight (2 by default), cost seven and a half, take two mounts.
 
 Run from the project folder:  python tests/cannon_test.py
 """
@@ -35,7 +35,8 @@ def main():
     assert not any(SHIPS[k]["cannons"] for k in ("junk", "lorcha", "clipper"))
     price = engine.cannon_price()
     assert price == int(round(f["gun_price"] * 7.5)), price
-    assert engine.cannon_power() == 10 and engine.cannon_slots() == 2
+    power = engine.cannon_power()
+    assert power == 2 and engine.cannon_slots() == 2
 
     g, pid, p = setup()
     # A junk cannot carry one.
@@ -56,8 +57,8 @@ def main():
     assert p["cash"] == cash - price
     assert g.mounts_free(sh) == 0
     assert refused(g, pid, {"type": "buy_gun", "index": 0}), "deck full, yet a gun was mounted"
-    # Firepower: ten guns' worth per cannon.
-    assert g.firepower(p) == sh["guns"] + 10, g.firepower(p)
+    # Firepower: cannon_power guns' worth per cannon.
+    assert g.firepower(p) == sh["guns"] + power, g.firepower(p)
     # Short of silver.
     g.act(pid, {"type": "sell_gun", "index": 0}, present=[pid])
     g.act(pid, {"type": "sell_gun", "index": 0}, present=[pid])
@@ -79,7 +80,7 @@ def main():
     p["cash"] = 10 ** 7
     for _ in range(SHIPS["indiaman"]["slots"] // 2):
         g.act(pid, {"type": "buy_cannon", "index": 0}, present=[pid])
-    assert p["ships"][0]["cannons"] == 12 and g.firepower(p) == 120
+    assert p["ships"][0]["cannons"] == 12 and g.firepower(p) == 12 * power
     assert refused(g, pid, {"type": "buy_cannon", "index": 0})
 
     # Saves and settings that disagree are put right: no cannons on a ship that cannot carry them,

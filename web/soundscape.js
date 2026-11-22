@@ -1,7 +1,7 @@
 /* Where the game tells the mixer what is happening (web/audio.js does the playing).
 
    - sync(S, opts) runs at the end of every redraw. It names the scene (lobby, port, voyage, finale) and keeps
-     overlays (battle, jail, storm) on top of it while they are on screen. Calling it again with the same
+     overlays (battle, jail, storm, the Port Authority desk) on top of it while they are on screen. Calling it again with the same
      state changes nothing, so a redraw never restarts the music.
    - acted(type, res) and ran(done, last) run from the REPLY to the player's own action, so a poll, a redraw
      or a reconnect can never replay a cue. A refused action gets the low knock, whatever it was.
@@ -26,7 +26,7 @@ const Soundscape = (() => {
     if (!a || !S) return;
     opts = opts || {};
     a.scene(sceneFor(S));
-    for (const [name, on] of [["storm", opts.storm], ["jail", opts.jail]]) {
+    for (const [name, on] of [["storm", opts.storm], ["jail", opts.jail], ["desk", opts.desk]]) {
       if (on && !shown.has(name)) { shown.add(name); a.push(name); }
       else if (!on && shown.has(name)) { shown.delete(name); a.pop(name); }
     }

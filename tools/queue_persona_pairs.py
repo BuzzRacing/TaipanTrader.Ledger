@@ -62,7 +62,7 @@ MOODS.update({
 })
 PERSONA_ROLES = ("portrait", "speaking", "idle", "happy", "angry", "sly")
 
-NUDE = ("completely nude, her clothes fallen away, bare breasts and body shown openly, only her jewellery and the "
+NUDE = ("completely naked, her clothes fallen away, breasts and body shown openly, only her jewellery and the "
         "props of her trade left on her")
 CLEAN_STYLE = ("fully and modestly clothed, high neckline, no nudity, no cleavage, romanticized cinematic historical "
                "realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, "

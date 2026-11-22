@@ -1,0 +1,257 @@
+.threshold{color-scheme:dark;--ivory:var(--deck-ivory);--gold:var(--deck-brass);--line:color-mix(in srgb,var(--deck-brass) 32%,transparent);--sub:color-mix(in srgb,var(--deck-ivory) 62%,var(--deck-leather));--jade-hi:color-mix(in srgb,var(--deck-jade) 45%,#d9fff0);--jade:var(--jade-hi);--panel:var(--deck-lacquer);--body:var(--sans);--brass-hi:color-mix(in srgb,var(--deck-brass) 70%,#fff3cf)}
+.threshold *{box-sizing:border-box}
+.threshold{margin:0;background:var(--deck-night);color:var(--ivory);font:18px/1.4 var(--body);min-width:320px;background-image:linear-gradient(color-mix(in srgb,var(--deck-night) 85%,transparent),color-mix(in srgb,var(--deck-night) 93%,transparent)),var(--threshold-bg,none);background-size:cover;background-attachment:fixed}
+.threshold button,.threshold input,.threshold select{font:inherit}
+.threshold button{cursor:pointer;color:var(--ivory);background:var(--deck-lacquer);border:1px solid var(--line);padding:10px 19px;border-radius:3px;min-height:44px}
+.threshold button:hover{background:color-mix(in srgb,var(--deck-brass) 14%,var(--deck-lacquer));border-color:var(--gold)}
+.threshold button:focus-visible,.threshold input:focus-visible,.threshold select:focus-visible,.threshold a:focus-visible,.threshold summary:focus-visible{outline:3px solid var(--jade);outline-offset:4px}
+.threshold button[aria-pressed=true],.threshold button.selected{border-color:var(--gold);background:color-mix(in srgb,var(--deck-brass) 24%,var(--deck-lacquer));color:var(--brass-hi)}
+.threshold button.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--deck-oxblood) 85%,var(--deck-leather)),var(--deck-oxblood));border-color:color-mix(in srgb,var(--deck-oxblood) 70%,var(--deck-brass));color:var(--deck-ivory);font-weight:700}
+.threshold .quiet{background:transparent}
+.threshold .shell{max-width:1512px;margin:0 auto;padding:22px 38px 16px}
+.threshold .brand{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.threshold .brand-left{display:flex;align-items:center;gap:12px}
+.threshold .brand img{width:55px;height:55px}
+.threshold .wordmark{font:24px/1.1 var(--title,Georgia);color:var(--gold)}
+.threshold .eyebrow{font-size:13px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--gold)}
+.threshold .sub{color:var(--sub)}
+.threshold .pill{border:1px solid var(--line);border-radius:99px;padding:6px 14px;color:var(--jade);font-size:15px}
+.threshold .stage{display:grid;grid-template-columns:minmax(260px,31%) minmax(0,1fr);min-height:580px;border:1px solid color-mix(in srgb,var(--deck-brass) 70%,transparent);background:color-mix(in srgb,var(--deck-night) 93%,transparent);box-shadow:0 24px 80px #0006;position:relative}
+.threshold .persona{position:relative;min-height:580px;background:var(--deck-night);overflow:hidden;border-right:1px solid var(--line)}
+.threshold .persona>img{position:absolute;width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.threshold .persona::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,color-mix(in srgb,var(--deck-night) 96%,transparent) 0%,color-mix(in srgb,var(--deck-night) 87%,transparent) 14%,transparent 58%)}
+.threshold .persona-copy{position:absolute;bottom:28px;left:28px;right:25px;z-index:1}
+.threshold .persona-copy h2{font:30px/1.15 var(--serif);margin:7px 0}
+.threshold .persona-copy p{margin:12px 0 0;color:var(--deck-ivory);font-size:19px}
+.threshold .work{padding:28px 32px 24px;min-width:0;display:flex;flex-direction:column}
+.threshold .work h1{font:38px/1.1 var(--title);font-weight:500;margin:7px 0 10px}
+.threshold .intro{margin:0 0 22px;color:var(--sub);max-width:52ch}
+.threshold .captains{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.threshold .captain{padding:0;position:relative;height:300px;text-align:right;overflow:hidden;border:2px solid var(--deck-night);border-bottom:4px solid var(--house,var(--deck-brass));background:var(--deck-lacquer)}
+.threshold .captain img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;transition:transform .3s}
+.threshold .captain:hover img{transform:scale(1.03)}
+.threshold .captain .cap-label{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,color-mix(in srgb,var(--deck-night) 96%,transparent) 40%);padding:50px 13px 13px}
+.threshold .captain b{font-size:20px;text-transform:uppercase;display:block}
+.threshold .captain small{display:block;font-size:14px;color:var(--sub)}
+.threshold .support{margin-top:auto;padding-top:20px}
+.threshold .support-title{display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid var(--line);padding-top:15px;margin-bottom:10px;font-size:16px}
+.threshold .houses{display:flex;gap:16px;flex-wrap:wrap}
+.threshold .house-mini{display:flex;align-items:center;gap:10px;font-size:16px}
+.threshold .crest{width:38px;height:38px;object-fit:contain}
+.threshold .house-mini small{display:block;color:var(--sub);font-size:14px}
+.threshold .actionbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.threshold .actionbar p{font-size:15px;color:var(--sub);margin:0;max-width:40ch}
+.threshold .buttons{display:flex;flex-wrap:wrap;gap:8px}
+.threshold .footer{display:flex;justify-content:space-between;gap:18px;align-items:center;color:var(--sub);font-size:14px;padding:14px 2px}
+.threshold .footer a,.threshold a{color:var(--gold)}
+.threshold .details{display:grid;grid-template-columns:180px minmax(0,1fr);gap:26px;margin-top:8px}
+.threshold .details h2{font:29px var(--serif);margin:0 0 8px}
+.threshold .field{display:block;color:var(--sub);margin:16px 0}
+.threshold .field input,.threshold .field select{display:block;width:100%;margin-top:7px;padding:10px;background:color-mix(in srgb,var(--deck-night) 78%,#000);border:1px solid var(--line);border-radius:3px;color:var(--ivory)}
+.threshold .house-select{display:flex;gap:12px;align-items:center;width:100%;text-align:left;margin:8px 0}
+.threshold .house-select span{flex:1}
+.threshold .house-select small{display:block;font-size:15px;color:var(--sub)}
+.threshold .columns{display:grid;grid-template-columns:1.1fr 1fr;gap:26px;margin-top:12px}
+.threshold .columns h2,.threshold .support h2{font:24px var(--serif);margin:0 0 12px}
+.threshold .lengths{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.threshold .lengths button{padding:15px 8px;text-align:left}
+.threshold .lengths b{font:25px var(--serif);display:block}
+.threshold .lengths small{display:block;color:var(--sub);font-size:14px}
+.threshold .lengths button.selected{box-shadow:inset 3px 0 var(--gold)}
+.threshold .summary{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:20px 0 0;padding:15px 0;gap:12px}
+.threshold .summary span{font-size:14px;color:var(--sub)}
+.threshold .summary b{display:block;font-size:20px;color:var(--ivory)}
+.threshold .roster{list-style:none;padding:0;margin:0}
+.threshold .roster li{display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0}
+.threshold .roster li:first-child{padding-top:0}
+.threshold .roster small{display:block;color:var(--sub);font-size:14px}
+.threshold .roster .state{margin-left:auto;color:var(--jade);font-size:14px}
+.threshold .roster img{width:46px;height:55px;object-fit:cover;object-position:50% 20%}
+.threshold .howto{margin-top:20px;font-size:16px;color:var(--sub)}
+.threshold .howto summary{color:var(--gold);cursor:pointer}
+.threshold .howto p{max-width:65ch}
+.threshold .end-head{display:flex;align-items:center;gap:16px}
+.threshold .end-head img{width:65px;height:80px;object-fit:cover}
+.threshold .end-head h1{font-size:34px;margin:3px 0}
+.threshold .fortune{font-size:52px;font-family:var(--serif);line-height:1.2;margin-top:13px;color:var(--gold)}
+.threshold .fortune small{display:block;font:14px var(--body);color:var(--sub)}
+.threshold .end-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+.threshold .end-stats>div{border-left:2px solid var(--deck-brass);padding-left:12px}
+.threshold .end-stats b{display:block;font-size:24px}
+.threshold .end-stats span{font-size:14px;color:var(--sub)}
+.threshold .standings{list-style:none;padding:0;margin:12px 0}
+.threshold .standings li{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.threshold .standings .place{font:25px var(--serif);color:var(--gold);width:23px}
+.threshold .standings .worth{margin-left:auto;white-space:nowrap}
+.threshold .standings small{display:block;font-size:14px;color:var(--sub)}
+.threshold .end-columns{display:grid;grid-template-columns:1.1fr 1fr;gap:28px}
+.threshold .end-columns h2{font:24px var(--serif);margin:22px 0 0}
+.threshold .honour{color:var(--gold);font-size:16px;padding:14px 0}
+.threshold .loading{text-align:center;padding:60px}
+.threshold .caption{font-size:14px;color:var(--sub)}
+.threshold button:disabled{cursor:default;opacity:.7}
+
+@media(min-width:1100px) and (min-height:850px){.threshold .stage{min-height:660px}
+.threshold .persona{min-height:660px}
+.threshold .captain{height:355px}
+.threshold .work{padding-top:40px}
+}
+
+@media(max-width:1050px){.threshold .shell{padding:20px}
+.threshold .stage{grid-template-columns:27% minmax(0,1fr)}
+.threshold .work{padding:24px}
+.threshold .captains{gap:8px}
+.threshold .captain{height:270px}
+.threshold .captain b{font-size:17px}
+.threshold .persona-copy{left:18px;right:18px}
+.threshold .persona-copy h2{font-size:25px}
+.threshold .columns,.threshold .end-columns{gap:18px}
+.threshold .details{grid-template-columns:140px 1fr;gap:18px}
+.threshold .fortune{font-size:42px}
+}
+
+@media(max-width:760px){.threshold .shell{padding:15px 12px}
+.threshold .brand{margin-bottom:14px}
+.threshold .wordmark{font-size:19px}
+.threshold .brand img{width:42px;height:42px}
+.threshold .brand .pill{font-size:13px;padding:5px 9px}
+.threshold .stage{display:block}
+.threshold .persona{min-height:180px;border-right:0;border-bottom:1px solid var(--line)}
+.threshold .persona>img{width:46%;right:0;object-position:50% 22%}
+.threshold .persona::after{background:linear-gradient(90deg,var(--deck-night) 25%,color-mix(in srgb,var(--deck-night) 79%,transparent) 58%,transparent)}
+.threshold .persona-copy{left:20px;right:37%;bottom:20px}
+.threshold .persona-copy h2{font-size:24px}
+.threshold .persona-copy p{font-size:16px;margin-top:6px}
+.threshold .persona-copy .eyebrow{font-size:11px}
+.threshold .work{padding:22px 18px}
+.threshold .work h1{font-size:34px}
+.threshold .intro{font-size:17px}
+.threshold .captains{grid-template-columns:repeat(3,minmax(0,1fr))}
+.threshold .captain{height:220px}
+.threshold .captain b{font-size:15px}
+.threshold .captain small{font-size:12px}
+.threshold .captain .cap-label{padding:40px 7px 9px}
+.threshold .actionbar{align-items:stretch;flex-direction:column}
+.threshold .actionbar .buttons button{flex:1}
+.threshold .footer{align-items:start;flex-direction:column;gap:6px}
+.threshold .columns,.threshold .end-columns{grid-template-columns:1fr}
+.threshold .columns .roster{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.threshold .columns .roster li{border:0;padding:0}
+.threshold .columns .roster .state{display:none}
+.threshold .summary{margin-top:16px}
+.threshold .details{grid-template-columns:100px 1fr;gap:15px}
+.threshold .house-select{padding:9px}
+.threshold .details h2{font-size:24px}
+.threshold .field{margin-top:12px}
+.threshold .end-columns h2{margin-top:16px}
+}
+
+@media(max-width:380px){.threshold .captains{grid-template-columns:1fr 1fr}
+.threshold .captain{height:210px}
+.threshold .persona-copy h2{font-size:21px}
+.threshold .end-stats{gap:6px}
+.threshold .end-stats b{font-size:21px}
+.threshold .summary b{font-size:17px}
+}
+
+@media(prefers-reduced-motion:reduce){.threshold *{transition:none!important}
+}
+.threshold .art-placeholder{display:grid;place-items:center;min-height:44px;background:radial-gradient(ellipse,var(--deck-leather),var(--deck-night));color:var(--gold);font:32px var(--title)}
+.threshold .persona>.art-placeholder{height:100%;min-height:300px}
+.threshold .eyebrow{font-family:var(--special)}
+.threshold .work{background:linear-gradient(180deg,color-mix(in srgb,var(--deck-lacquer) 45%,transparent),transparent)}
+
+
+body.player.threshold-screen{background-image:none!important;background-color:var(--deck-night)!important}
+
+body.threshold-screen #ambient{display:none}
+
+.threshold main.stage{max-width:none;width:100%;margin:0;padding:0}
+
+.threshold .house-select .cap-crest{flex:0 0 38px}
+
+.threshold .shell{padding-bottom:0}
+
+.threshold .cap-grid{margin:0}
+
+.threshold .captain{display:block;min-height:0;border-radius:0;color:var(--ivory)}
+
+.threshold .captain .cap-face{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;border-radius:0}
+
+.threshold .captain .cap-face img{width:100%;height:100%;object-fit:cover}
+
+.threshold .captain .cap-label{margin:0}
+
+.threshold .captain b{color:var(--ivory);font-family:var(--serif)}
+
+.threshold .details .cap-face{width:100%;height:260px;aspect-ratio:auto;border-radius:0}
+
+.threshold .details label{display:block;color:var(--sub);margin:16px 0}
+
+.threshold .details input,.threshold .cap-typed input{display:block;width:100%;margin-top:7px;padding:10px;background:var(--deck-night);border:1px solid var(--line);color:var(--ivory)}
+
+.threshold .cap-typed label{display:block;margin:12px 0}
+
+.threshold .cap-houses{display:block}
+
+.threshold .cap-house{margin:8px 0;min-width:0;border-radius:3px}
+
+.threshold .cap-crest{width:38px;height:38px;border:0;background:none;flex:none}
+
+.threshold .cap-crest img{width:100%;height:100%;object-fit:contain}
+
+.threshold .cap-house span{font-size:16px}
+
+.threshold .cap-house b{color:var(--ivory)}
+
+.threshold .cap-house.on{border-color:var(--gold);background:color-mix(in srgb,var(--deck-brass) 24%,var(--deck-lacquer))}
+
+.threshold .roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+
+.threshold .roster li{display:flex;min-width:0;padding:8px 0;border-bottom:1px solid var(--line)}
+
+.threshold .roster li>span:not(.state){min-width:0;overflow-wrap:anywhere}
+
+.threshold .columns .roster{display:block}
+
+.threshold .roster .art-placeholder{width:46px;height:55px;flex:none;font-size:18px}
+
+.threshold .winner{font-family:var(--serif);color:var(--gold);font-size:23px;margin:8px 0 24px}
+
+.threshold .end-head .art-placeholder{width:65px;height:80px;flex:none}
+
+.threshold .end-head>div{min-width:0;overflow-wrap:anywhere}
+
+.threshold .standings li>span:not(.place){min-width:0;overflow-wrap:anywhere}
+
+.threshold .standings .crest{flex:none}
+
+.threshold .down{color:var(--blood-hi)}
+
+.threshold .note{margin:12px 0}
+
+.threshold .actionbar .row{margin:0;gap:8px}
+
+.threshold .actionbar button{white-space:normal}
+
+.threshold .end-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+
+.threshold .end-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+.threshold .end-stats b{font-size:clamp(18px,1.8vw,24px);overflow-wrap:anywhere}
+
+.threshold .fortune{overflow-wrap:anywhere}
+
+.threshold .threshold-retry{margin-left:8px}
+
+@media(max-width:760px){.threshold .details .cap-face{height:165px}
+.threshold .end-columns{grid-template-columns:minmax(0,1fr)}
+.threshold .standings .worth{font-size:16px}
+.threshold .end-stats b{font-size:20px}
+.threshold .summary b{overflow-wrap:anywhere}
+.threshold .roster{grid-template-columns:minmax(0,1fr)}
+}
+
+@media(max-width:760px){.threshold .persona-copy{position:relative;left:auto;right:auto;bottom:auto;width:67%;padding:20px}}
+
+.threshold .captain.guest{border-style:solid}

@@ -166,6 +166,13 @@ def view(game, present=()):
         out["deals"] = deals[:8]
         out["ports"] = harbor_view.ports(game, lvl)
         out["booms"] = [w for w in (extra.get("windfalls") or [])][-14:]
+        out["market_effects"] = [
+            {"port": w["port"], "good": w["good"],
+             "sort": w.get("kind") or ("boom" if float(w["mult"]) >= 1 else "crash"),
+             "mult": round(float(w["mult"]), 2), "turns": int(w["turns"])}
+            for w in list(s.get("windfalls") or []) + list(s.get("shocks") or [])
+            if int(w.get("turns") or 0) > 0
+        ]
     return out
 
 

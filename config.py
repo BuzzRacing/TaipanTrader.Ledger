@@ -144,6 +144,14 @@ DEFAULTS = {
                    # silver a month for each cargo: purse_depths x the cargo's depth x its normal price there
                    # x the port's own purse size (Ports table). Silver asked past it is paid at purse_over.
                    "purse_enabled": True, "purse_depths": 0.75, "purse_over": 0.35,
+                   # 22 Nov 2026: the purse grows with the price. A boom (or any big swing) at x4 of usual gives the
+                   # dealers x4 the silver, so a boom can be sold in full. purse_boom = share of the rise it follows
+                   # (1 = all, 0 = off); purse_boom_cap = the biggest lift.
+                   "purse_boom": 1.0, "purse_boom_cap": 10.0,
+                   # Game 5 review, Phase 2 (21 Nov 2026): a buy this many depths or bigger shows what it would
+                   # sell back for here, and a sale past the purse asks for a confirm. purse_over stays at 0.35
+                   # until real play says otherwise.
+                   "sellback_depths": 0.25, "purse_confirm": True, "buy_confirm": True, "buy_confirm_share": 0.67,
                    "review3_v1": False,
                    # Wild cargoes (Game 4 review, 20 Nov 2026): Maijiuana (porcelain) swings wildly. Each month a
                    # port may start a run: its price climbs or falls runs_drift_min..max a month for runs_min..max
@@ -153,14 +161,17 @@ DEFAULTS = {
                    "wild_floor": 0.15, "wild_ceiling": 6.0,
                    "runs_chance": 0.15, "runs_min": 2, "runs_max": 4, "runs_drift_min": 0.15, "runs_drift_max": 0.35,
                    "review4_v1": False},
-        "bank": {"bank_rate": 0.01, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
+        "bank": {"bank_rate": 0.01, "tiered": True, "tier_years": 20, "tier1_to": 25_000_000, "tier2_rate": 0.005,
+                 "tier2_to": 100_000_000, "tier3_rate": 0.0025, "bills_from_bank": True, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_worth_share": 0.08, "debt_rep_penalty": 1,
                  "debt_grace_months": 3, "debt_call_every": 3,
                  "debt_cap_mult": 3.0, "bankrupt_enabled": True, "bankrupt_months": 12, "bankrupt_warn": 3,
-                 "bankrupt_stake": 2000, "bankrupt_rep": 10, "wu_advice": True, "wu_easy_share": 0.25,
+                 "bankrupt_stake": 2000, "bankrupt_rep": 10, "stuck_enabled": True, "stuck_months": 2, "stuck_silver": 500, "wu_advice": True, "wu_easy_share": 0.25,
                  "mug_threshold": 20000, "mug_chance": 0.06, "mug_rep": 0.6,
                  "mug_min": 0.07, "mug_max": 0.15,
-                 "whrob_chance": 0.02, "whrob_rep": 0.6, "whrob_min": 0.10, "whrob_max": 0.30},
+                 "whrob_chance": 0.02, "whrob_rep": 0.6, "whrob_min": 0.10, "whrob_max": 0.30,
+                 "remit_fee": 0.05, "remit_rob_chance": 0.05, "remit_rob_min": 0.30, "remit_rob_max": 0.80,
+                 "remit_skim_chance": 0.15, "remit_skim_min": 0.02, "remit_skim_max": 0.10},
         # max_fleet counts merchantmen (ships with role "trader"). Escorts (guns, no hold) and cargo ships
         # (hold, no guns) have their own limits, and open once the house has escort_unlock merchantmen.
         "fleet": {"max_fleet": 5, "max_escorts": 5, "max_cargo": 5, "escort_unlock": 5, "cargo_unlock": 5,
@@ -224,7 +235,7 @@ DEFAULTS = {
                   "savage_cargo_max": 0.35, "savage_guns": 0.33,
                   "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4,
                   "w_price": 0.5, "w_yard": 0.35, "w_standing": 0.15, "ban_penalty": 0.25,
-                  "patch_max": 0.5, "limp_home": True},
+                  "patch_max": 0.5, "limp_home": True, "after_attack": 0.5},
         # Legends (legend.py, 20 Nov 2026; project doc "SeaTrader Legends Library"). Big stories that break
         # into the game on a landfall and take no game time: rare (per_game of them begin), told in chapters
         # gap_min..gap_max months apart (for a 10-year game; scaled to the game's length), every effect sized
@@ -390,6 +401,10 @@ DEFAULTS = {
                     "house_cost_1": 500000, "house_cost_2": 2000000, "house_cost_3": 6000000,
                     "house_rep_1": 5, "house_rep_2": 8, "house_rep_3": 12,
                     "house_rob_1": 0.3, "house_rob_2": 0.6, "house_rob_3": 0.9,
+                    # Game 6 review (22 Nov 2026): the top two stages pay. Extra bank interest a month on every slice
+                    # of the deposit, and a share off harbour dues at home. (Townhouse gets neither.)
+                    "house_bank_1": 0.0, "house_bank_2": 0.001, "house_bank_3": 0.0025, "house_bank_anywhere": True,
+                    "house_dues_1": 0.0, "house_dues_2": 0.2, "house_dues_3": 0.4,
                     # Selling back (19 Nov 2026): the top stage of the great house can be sold at home for
                     # house_sell_back of what was paid for it. Its standing and robbery cut go with it.
                     "house_sell": True, "house_sell_back": 0.5,
@@ -406,7 +421,11 @@ DEFAULTS = {
                       "hold_share_short": 0.35, "hold_share_year": 1.0, "min_qty": 10,
                       "fee_share": 0.25, "fee_share_year": 0.35, "supply_mult": 1.5, "shortage_at": 1.35,
                       "standing_short": 10, "standing_year": 25, "standing_fee": 0.0015,
-                      "rep_short": 3, "rep_year": 8, "fee_wealth": True},
+                      "rep_short": 3, "rep_year": 8, "fee_wealth": True,
+                      # Game 6 review (22 Nov 2026): jobs grow with net worth, and a yearly goal also carries a perk.
+                      "job_scale": True, "job_ref": 5_000_000, "job_exp": 0.5, "job_max": 10.0,
+                      "job_cap_short": 1.0, "job_cap_year": 3.0,
+                      "perks": True, "perk_tax_months": 6, "perk_protect_months": 6, "perk_share": True},
         # Under the Counter (counter.py, 20 Nov 2026): the port's tax lady sells a tip. Her price is a share
         # of the tip's worth, from fee_min at the lowest rank to fee_max at the top.
         # Hidden for now (20 Nov 2026): Anthony isn't ready for it, so the tab is off until the next phase.
@@ -505,25 +524,25 @@ DEFAULTS = {
     },
     # mods = local price multipliers (below 1 = made here, above 1 = in demand).
     "ports": {
-        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "officer_hongkong", "mood": 0.15, "purse": 1.4,
+        "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "officer_hongkong", "mood": 0.15, "purse": 1.4,
                       "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
-        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15, "purse": 1.3,
+        "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15, "purse": 1.3,
                       "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
-        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.025, "officer": "officer_nagasaki", "mood": 0.1, "purse": 0.8,
+        "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.025, "officer": "officer_nagasaki", "mood": 0.1, "purse": 0.8,
                       "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}},
-        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.015, "officer": "officer_manila", "mood": 0.15, "purse": 0.9,
+        "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.015, "officer": "officer_manila", "mood": 0.15, "purse": 0.9,
                       "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}},
-        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.025, "officer": "officer_foochow", "mood": 0.15, "purse": 0.9,
+        "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.025, "officer": "officer_foochow", "mood": 0.15, "purse": 0.9,
                       "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}},
-        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.02, "officer": "officer_saigon", "mood": 0.5, "purse": 0.8,
+        "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.02, "officer": "officer_saigon", "mood": 0.5, "purse": 0.8,
                       "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}},
-        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.03, "officer": "officer_bangkok", "mood": 0.12, "purse": 0.9,
+        "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.03, "officer": "officer_bangkok", "mood": 0.12, "purse": 0.9,
                       "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}},
-        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "bank": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.01, "officer": "officer_singapore", "mood": 0.1, "purse": 1.2,
+        "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.01, "officer": "officer_singapore", "mood": 0.1, "purse": 1.2,
                       "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}},
-        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "bank": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.035, "officer": "officer_batavia", "mood": 0.1, "purse": 1.0,
+        "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.035, "officer": "officer_batavia", "mood": 0.1, "purse": 1.0,
                       "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}},
-        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "bank": True, "warehouse": True, "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2, "purse": 1.2,
+        "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2, "purse": 1.2,
                       "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}},
     },
     # hold = cargo units; hull = damage it can take; slots = guns it can mount (a cannon takes
@@ -866,10 +885,39 @@ SECTIONS = [
              F("rules.market.purse_depths", "Purse for each cargo (x its depth at its usual price)", "num",
                "0.75 with opium's depth of 600 at $8,000 is $3.6 million a month at a normal port. A boom drains it faster.",
                min=0.01, max=100, step=0.05),
+             F("rules.market.purse_boom", "Purse follows booms and big swings (share of the price rise)", "num",
+               "When a cargo's price is x4 its usual, the dealers carry silver for that price too, so a full hold sold into a boom "
+               "is paid in full. 1 = the purse grows as much as the price (a x4 boom, 4x the silver); 0.5 = half as much; 0 = off. "
+               "Fixed at the start of each month.", min=0, max=1, step=0.05),
+             F("rules.market.purse_boom_cap", "Biggest boom lift of the purse (x)", "num",
+               "The purse never grows by more than this many times, however far the price runs.", min=1, max=100, step=0.5),
              _pct("rules.market.purse_over", "Paid for silver asked past the purse",
-                  "What the dealers pay, as a share of their price, for a sale that runs past their purse.")]},
+                  "What the dealers pay, as a share of their price, for a sale that runs past their purse."),
+             F("rules.market.purse_confirm", "Ask before a sale runs past the purse", "bool",
+               "A sale that would run past the dealers' purse (the red warning) waits for \"Sell anyway\" or \"Keep it\"."),
+             F("rules.market.sellback_depths", "Show the sell-back price on buys of (x the cargo's depth)", "num",
+               "A buy this big or bigger shows what it would sell straight back for here, after the dealers' margin and "
+               "purse. 0.25 of a depth is about a third of a normal purse.",
+               min=0, max=100, step=0.05),
+             F("rules.market.buy_confirm", "Ask before a big buy that would sell back cheap", "bool",
+               "A buy of the size above that would sell straight back for the share below of its cost or less waits for "
+               "\"Buy anyway\" or \"Keep it\". The server still takes any buy."),
+             _pct("rules.market.buy_confirm_share", "...when it would sell back for this share of the cost or less",
+                  "0.67 asks when a buy would sell straight back for two thirds of its cost or less.")]},
          {"title": "Bank and moneylender", "fields": [
-             _pct("rules.bank.bank_rate", "Bank interest per month", "", 0, 1),
+             _pct("rules.bank.bank_rate", "Bank interest per month (first slice)", "The full rate, paid on the first slice of a deposit.", 0, 1),
+             F("rules.bank.tiered", "Interest falls on bigger deposits", "bool", "On: the full rate is paid up to the first limit, "
+               "then the second rate up to the second limit, then the third rate on the rest. Off: one flat rate."),
+             F("rules.bank.tier_years", "Tier limits are set for a game of (years)", "int", "The limits below scale with the "
+               "game's length: a 10-year game halves them.", min=1, max=100),
+             F("rules.bank.tier1_to", "First slice ends at (silver)", "int", "Deposit up to here earns the full rate.", min=0, max=10**13),
+             _pct("rules.bank.tier2_rate", "Second slice rate per month", "", 0, 1),
+             F("rules.bank.tier2_to", "Second slice ends at (silver)", "int", "Deposit from the first limit up to here earns the second rate.", min=0, max=10**13),
+             _pct("rules.bank.tier3_rate", "Rate above that, per month", "", 0, 1),
+             F("rules.bank.bills_from_bank", "Bills the silver can't cover come out of the bank first", "bool",
+               "On: customs tax and fines and harbour dues are taken from silver, then the bank, and only what is "
+               "still missing goes on the debt. (Wages, rent and the yearly upkeep always do this.) Off: the old rule, "
+               "silver then debt."),
              _pct("rules.bank.loan_rate", "Loan interest per month", "Compounding. Multiplied by the difficulty level.", 0, 1),
              F("rules.bank.loan_base", "Loan limit: base", "int", min=0, max=10**9),
              F("rules.bank.loan_per_rep", "Loan limit: per point of home standing", "int", min=0, max=10**7),
@@ -895,6 +943,13 @@ SECTIONS = [
                min=1, max=600),
              F("rules.bank.bankrupt_warn", "Warn each month in the last (months)", "int",
                "Also warned in the first month under water.", min=0, max=600),
+             F("rules.bank.stuck_enabled", "Stuck for good: close the books early", "bool",
+               "On (and Bankruptcy is on): a house with almost no silver, nothing aboard or stored, no loan the lender will make and "
+               "no ship to sell, swap or call back is bankrupt after the months below, however much it is "
+               "worth, and starts again with no gaol. A house with a way out is only told what it is."),
+             F("rules.bank.stuck_months", "Stuck for good after (months in a row)", "int", min=1, max=600),
+             F("rules.bank.stuck_silver", "Stuck means less silver than this (cash and bank together)", "int",
+               min=0, max=10**9),
              F("rules.bank.bankrupt_stake", "Stake after bankruptcy (silver)", "int", min=0, max=10**9),
              F("rules.bank.bankrupt_rep", "Home standing lost on bankruptcy (Standing swings off)", "num", min=0, max=100, step=0.5),
              F("rules.bank.wu_advice", "The moneylender gives advice when you borrow or repay", "bool",
@@ -902,7 +957,18 @@ SECTIONS = [
                "Off: the receipt only. Her lines are in Language & Text (Confirmations, m.borrowed.* and m.repaid.*)."),
              _pct("rules.bank.wu_easy_share", "She starts to caution you at (share of the collectors' line)",
                   "Below this the moneylender just encourages you; from here to the line she cautions; over it she warns.",
-                  0, 1)]},
+                  0, 1),
+             _pct("rules.bank.remit_fee", "Repaying from afar: the merchant's fee",
+                  "Repaying the home moneylender from another port (Admin > Ports > Moneylender) sends the silver home by a "
+                  "merchant. He keeps this share of what is sent. Only what arrives lowers the debt.", 0, 0.9),
+             _pct("rules.bank.remit_rob_chance", "Repaying from afar: chance the merchant is robbed",
+                  "Each sending. A robbed merchant loses a share of what was left after his fee (the range below).", 0, 1),
+             _pct("rules.bank.remit_rob_min", "Robbed: least lost of the rest"),
+             _pct("rules.bank.remit_rob_max", "Robbed: most lost of the rest"),
+             _pct("rules.bank.remit_skim_chance", "Repaying from afar: chance the merchant helps himself",
+                  "Each sending that is not robbed. He takes a small share of what was left after his fee.", 0, 1),
+             _pct("rules.bank.remit_skim_min", "Skimmed: least taken of the rest"),
+             _pct("rules.bank.remit_skim_max", "Skimmed: most taken of the rest")]},
          {"title": "Street robbery", "fields": [
              F("rules.bank.mug_threshold", "Silver on hand that tempts thieves", "int", min=0, max=10**9),
              _pct("rules.bank.mug_chance", "Chance per month"),
@@ -1087,6 +1153,12 @@ SECTIONS = [
              _pct("rules.estates.house_rob_1", "Townhouse: cut in the chance of being robbed ashore at home"),
              _pct("rules.estates.house_rob_2", "Mansion: cut in the chance of being robbed ashore at home"),
              _pct("rules.estates.house_rob_3", "Palace: cut in the chance of being robbed ashore at home"),
+             _pct("rules.estates.house_bank_2", "Mansion: extra bank interest per month", "Added to the rate on every slice of the deposit.", 0, 0.1),
+             _pct("rules.estates.house_bank_3", "Palace: extra bank interest per month", "Added to the rate on every slice of the deposit.", 0, 0.1),
+             F("rules.estates.house_bank_anywhere", "The extra interest is paid wherever the house ends the month", "bool",
+               "On: always. Off: only when the month ends at home."),
+             _pct("rules.estates.house_dues_2", "Mansion: share off harbour dues at home", "", 0, 1),
+             _pct("rules.estates.house_dues_3", "Palace: share off harbour dues at home", "", 0, 1),
              F("rules.estates.house_sell", "Houses can sell the great house back, a stage at a time", "bool",
                "At home. The top stage goes, with the standing it gave and its cut in robbery; December's upkeep falls with it."),
              _pct("rules.estates.house_sell_back", "Selling a stage back pays this share of what was paid for it", "", 0, 1)]},
@@ -1118,7 +1190,19 @@ SECTIONS = [
              F("rules.contracts.standing_year", "Yearly standing goal: points to gain", "int", min=1, max=100),
              _pct("rules.contracts.standing_fee", "Standing goal fee per point, as a share of the house's net worth", hi=0.1),
              F("rules.contracts.rep_short", "Short contract done: home standing gained", "num", min=0, max=100, step=1),
-             F("rules.contracts.rep_year", "Yearly goal done: home standing gained", "num", min=0, max=100, step=1)]},
+             F("rules.contracts.rep_year", "Yearly goal done: home standing gained", "num", min=0, max=100, step=1),
+             F("rules.contracts.job_scale", "Cargo jobs grow with the house's net worth", "bool",
+               "On: a delivery or supply run asks for more cargo (and so pays more) as the house gets richer."),
+             F("rules.contracts.job_ref", "Jobs start to grow at a net worth of (silver)", "int", "Set for a 20-year game; scales with the game's length.", min=1, max=10**13),
+             F("rules.contracts.job_exp", "How fast jobs grow", "num", "1 is in step with net worth, 0.5 is the square root.", min=0, max=2, step=0.05),
+             F("rules.contracts.job_max", "Jobs grow at most this many times", "num", min=1, max=100, step=0.5),
+             F("rules.contracts.job_cap_short", "A short job never asks more than this many holds of cargo", "num", min=0.1, max=10, step=0.1),
+             F("rules.contracts.job_cap_year", "A yearly job never asks more than this many holds of cargo", "num", min=0.1, max=20, step=0.1),
+             F("rules.contracts.perks", "A yearly goal also grants a perk", "bool",
+               "One of: a tax holiday, the pirate lord's protection, or a free port share (while the house can hold one)."),
+             F("rules.contracts.perk_tax_months", "Tax holiday: months with no Port Authority tax", "int", "0 leaves it out of the draw.", min=0, max=60),
+             F("rules.contracts.perk_protect_months", "Pirate protection: months", "int", "0 leaves it out of the draw.", min=0, max=60),
+             F("rules.contracts.perk_share", "A free port share can be the perk", "bool")]},
          {"title": "The Mayor's Parlour (a gift for standing)", "fields": [
              F("rules.gift.enabled", "Players can call on the Mayor with a gift", "bool",
                "Off: the Call on the Mayor row is hidden on the Port tab."),
@@ -1363,6 +1447,9 @@ SECTIONS = [
                       C("shipyard", "Shipyard", "bool"),
                       C("bank", "Bank", "bool", "The bank's counter in this port. It is the one account: deposit anywhere, "
                         "withdraw anywhere there is a counter. A house's own home port always has it.", default=False),
+                      C("lender", "Moneylender", "bool", "A moneylender's office in this port, where a house can repay its home "
+                        "moneylender's loan by sending the silver home with a merchant (Economy > Bank and moneylender sets his fee "
+                        "and the risk). Away offices never lend. A house's own home port always has her.", default=False),
                       C("warehouse", "Warehouse", "bool", "Houses may open a warehouse of their own here (Fleet and warehouse "
                         "sets the price). Each port's store holds only what was left in that port. Home always has one, free.",
                         default=False),
@@ -1491,6 +1578,8 @@ SECTIONS = [
              F("rules.storm.ban_penalty", "Port score: each banned cargo aboard costs", "num", min=0, max=10, step=0.05),
              _pct("rules.storm.patch_max", "A port with no shipyard can mend a ship up to", "A share of her full hull. "
                   "100% turns the rule off; full repair then works in every port as before."),
+             _pct("rules.storm.after_attack", "After a storm: pirates and the war fleet find you at", "A share of the usual "
+                  "odds, for the month a storm hit the fleet. 50% halves them; 100% turns the rule off."),
              F("rules.storm.limp_home", "A storm never sinks a ship", "bool", "On: a ship a storm would sink is left "
                "at 1 hull and limps into port, so a second storm cannot wipe out a battered fleet. Off: she founders.")]},
      ]},

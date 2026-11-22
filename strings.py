@@ -10,6 +10,8 @@ these work in every line: {lender} {pirate} {bank} {winner} {home} {title}
 
 import jail_text as _jail_text
 import promo_text as _promo_text
+import remit_text as _remit_text
+import robbery_text as _robbery_text
 import rot_text as _rot_text
 import legend_text as _legend_text
 import storm_text as _storm_text
@@ -214,6 +216,8 @@ EN = {
     "l.slip_caught": "The harbour watch caught you slipping out of {port}. The Mayor is furious, and word of it is spreading along the coast.",
     "l.slip_fine": "Caught slipping out of {port}: the Mayor fined you {fine}, and your standing there fell by {rep}.",
     "l.dues_short": "You paid the Mayor of {port} {paid} in harbour dues. The {owed} you could not pay went on your debt.",
+    "l.dues_bank": "You paid the Mayor of {port} {total} in harbour dues. Your silver fell short, so the bank paid {drawn} of it.",
+    "l.bank_drawn": "Port Authority of {port}: your silver fell short, so the bank paid {drawn} of the bill.",
     "l.seized": "Customs officers searched the fleet, seized {qty} chests of {contraband} and fined you {fine}.",
     "l.attack": "{n} {enemy} attacked. Your orders were to {orders}.",
     "l.attack_met": "{n} {enemy} attacked.",
@@ -539,6 +543,26 @@ EN = {
     "market.purse_short": "dealers short: {left} left",
     "market.purse_tip": "The dealers here have {left} of {size} left this month for {good}. Silver past that is paid at {over}% of the price, so sell the rest in another port or next month.",
     "market.purse_tip_short": "The dealers here have only {left} left this month for {good}. This sale would fetch {full} at their prices, but past their purse they pay {over}%: you get {total}. Sell the rest in another port or next month.",
+    # Phase 2 (Game 5 review, 21 Nov 2026): the sell-back price on a big buy, and the confirm before a sale past the purse.
+    "market.back": "sells back",
+    "market.back_tip": "Sold straight back here, these {n} {good} would fetch about {back}: {pct}% of the {cost} you pay now. The dealers' margin and the price moving under the sale take the rest.",
+    "market.back_tip_purse": " The dealers have only {left} left this month for {good}; past that they pay {over}%.",
+    "dealer.back": "Sold straight back",
+    "dealer.back_sub": "{pct}% of what you pay",
+    "market.confirm_eyebrow": "The dealers' purse",
+    "market.confirm_title": "The dealers are short of silver",
+    "market.confirm_line": "{qty} {good}: worth {full} at their prices, but they have only {left} left this month. Past that they pay {over}%, so you would get {total}: {lost} less.",
+    "market.confirm_more": "And {n} more in the same order.",
+    "market.confirm_tip": "Sell the rest in another port, or next month when the purse is full again.",
+    "market.confirm_yes": "Sell anyway",
+    "market.confirm_no": "Keep it",
+    # Game 6 review (22 Nov 2026): the same modal before a big buy that would sell straight back cheap.
+    "market.buy_confirm_eyebrow": "A big buy",
+    "market.buy_confirm_title": "This would sell back for much less",
+    "market.buy_confirm_line": "{qty} {good} cost {cost} now, but sold straight back here they would fetch only about {back}: {pct}% of what you pay. The buy itself pushes the price up.",
+    "market.buy_confirm_tip": "Buy a smaller lot, or buy where the dealers are deeper, if you only mean to carry it somewhere that pays more.",
+    "market.buy_confirm_yes": "Buy anyway",
+    "market.confirm_both": "Go ahead",
     "market.all_buy_even_tip": "Buy {n} {good} for {total}: as many as pay their way. Past that, the next unit would cost more here than it fetches in {port} (about {sale} a unit).",
     "market.all_no_profit": "No profit known",
     "market.all_no_profit_tip": "No port you know pays enough for {good} to cover buying it here. Drag the bar to buy anyway.",
@@ -793,6 +817,13 @@ EN = {
     "contract.progress_cargo": "{now} of {total} sold there",
     "contract.progress_standing": "Standing there now {now} of {total}",
     "contract.due": "By the end of {date} ({months} left)",
+    "contract.perk.tax_holiday": "Also: a tax holiday, {months} months with no Port Authority tax",
+    "contract.perk.protection": "Also: the pirate lord's protection for {months} months",
+    "contract.perk.share": "Also: one free port share to place",
+    "l.share_goal": "The Mayor rewards your yearly goal with a free port share ({earned} of {cap}). Place it on Port > Services in any port. Still to place: {free}.",
+    "l.goal_tax_holiday": "The Mayor's thanks: no Port Authority tax for {months} months.",
+    "l.goal_protect": "The Mayor's thanks: the pirate lord's protection now runs {months} months.",
+    "l.tax_holiday_over": "Your tax holiday is over. The Port Authority is waiting.",
     "contract.reward": "Pays {fee} and +{rep} standing in {home}",
     "contract.offered": "On offer",
     "contract.accept": "Take it",
@@ -853,6 +884,9 @@ EN = {
     "estate.none": "A house of your own in {home}: three stages, built in turn. Each raises your standing here and keeps the streets around you safer. It counts in your net worth at what you paid.",
     "estate.have": "Your {stage} stands in {home}. It cuts the chance of being robbed ashore here by {rob}%.",
     "estate.next": "Build the {stage} for {cost}: +{rep} standing in {home}, robbery ashore here cut by {rob}%.",
+    "estate.perk_have": " Its bank pays {bank}% more a month on your deposits{where}, and harbour dues in {home} are {dues}% lower.",
+    "estate.perk_where_home": " when the month ends at home",
+    "estate.perk_next": " It also adds {bank}% to the bank's monthly interest and takes {dues}% off harbour dues in {home}.",
     "estate.done": "The Palace is the finest house in {home}. There is nothing grander to build.",
     "estate.build": "Build the {stage} for {cost}",
     "e.estate_off": "The great house is not offered in this game.",
@@ -1535,6 +1569,7 @@ EN = {
     "dues.standing_off": "Mayor's courtesy", "dues.standing_off_sub": "standing {n}: {rate} off",
     "dues.standing_on": "Mayor's displeasure", "dues.standing_on_sub": "standing {n}: {rate} extra",
     "dues.debt": "Debtor's relief", "dues.debt_sub": "{rate} off for a house in debt",
+    "dues.house": "Great house", "dues.house_sub": "Mansion or Palace at home: {rate} off",
     "dues.profit": "Share of profit", "dues.profit_sub": "{month} this month on {n} profit past the first {free}; {rate} after margin, standing and shares",
     "ledger.now": "this month", "ledger.ago": "{n} mo ago", "ledger.never": "not visited",
     "ledger.here": "you are here", "ledger.blank": "No prices yet. Visit to fill this page.",
@@ -2311,6 +2346,12 @@ FAMILY.update(_jail_text.FAMILY)
 # The Promotion Story's captions and labels (promo_text.py, 20 Nov 2026).
 EN.update(_promo_text.EN)
 FAMILY.update(_promo_text.FAMILY)
+# Repaying from another port (remit_text.py, 23 Nov 2026).
+EN.update(_remit_text.EN)
+FAMILY.update(_remit_text.FAMILY)
+# The Robbery Story's captions and labels (robbery_text.py, 22 Nov 2026).
+EN.update(_robbery_text.EN)
+FAMILY.update(_robbery_text.FAMILY)
 # Perishable cargo that rots (rot_text.py).
 EN.update(_rot_text.EN)
 FAMILY.update(_rot_text.FAMILY)
@@ -2341,6 +2382,10 @@ FAMILY.update(_fleet_ledger_text.FAMILY)
 import acct_text as _acct_text  # noqa: E402
 EN.update(_acct_text.EN)
 FAMILY.update(_acct_text.FAMILY)
+# A house that is stuck for good (stuck_text.py, 21 Nov 2026): the early bankruptcy and the way-out hints.
+import stuck_text as _stuck_text  # noqa: E402
+EN.update(_stuck_text.EN)
+FAMILY.update(_stuck_text.FAMILY)
 # The Game Master's wording (gm_text.py, 21 Nov 2026): the Table's questions and action items.
 import gm_text as _gm_text  # noqa: E402
 EN.update(_gm_text.EN)
@@ -2379,6 +2424,75 @@ import cert_text as _cert_text  # noqa: E402
 EN.update(_cert_text.EN)
 FAMILY.update(_cert_text.FAMILY)
 
+EN.update({
+    "threshold.certificate": "Voyage certificate", "threshold.tally": "Tally Book",
+    "threshold.ledger": "Read the voyage ledger", "threshold.open": "Open the voyage",
+    "threshold.register": "The harbour register", "threshold.registration": "Registration",
+    "threshold.host": "Your host", "threshold.guest": "Guest view",
+    "threshold.connected": "Connected", "threshold.board": "Big-screen harbour board",
+    "threshold.registrar_line": "A name for the register, Captain. A reputation comes later.",
+    "threshold.anahit_line": "Choose how long you intend to tempt fortune. I shall keep the clock.",
+    "threshold.celeste_line": "The books are closed, Captain. Let us see what your charm was worth.",
+    "threshold.new_voyage": "A new voyage", "threshold.terms": "Set the terms",
+    "threshold.prepare": "Choose the voyage length. Begin when everyone is aboard.",
+    "threshold.months": "{n} monthly turns", "threshold.duration": "Voyage length",
+    "threshold.difficulty": "Difficulty", "threshold.victory": "Victory",
+    "threshold.net_worth": "Highest net worth", "threshold.month_help": "What happens each month?",
+    "threshold.month_rules": "Trade and tend your fleet, then choose a destination or stay in port. The month advances when all connected captains have given orders, or the host ends it.",
+    "threshold.final_worth": "Final net worth", "threshold.best_profit": "Best sale profit",
+    "threshold.standings": "Final standings", "threshold.highlights": "Voyage highlights",
+    "threshold.closed": "The books are closed", "threshold.complete": "Voyage complete",
+    "threshold.tied": "Joint first place: {houses}",
+    "threshold.summary_loading": "Opening the voyage record…",
+    "threshold.summary_missing": "Voyage highlights are unavailable. The final standings are shown here.",
+    "threshold.art_failed": "Clean artwork is unavailable. You can still join and play.",
+    "threshold.captains_failed": "Could not load the captain register. Please retry.",
+    "threshold.no_house": "This Captain has no active House. Ask the host to add one in Admin.",
+    "threshold.loading": "Opening the captain register…", "threshold.retry": "Retry",
+})
+
+EN.update({
+    "dash.whisper.cue": "Something worth knowing…",
+    "dash.whisper.read": "Read", "dash.whisper.hear": "Hear more",
+    "dash.whisper.listen": "Listen", "dash.whisper.stop": "Stop speaking",
+    "dash.whisper.enable": "Enable voices & listen", "dash.whisper.close": "Close",
+    "dash.whisper.show": "Show me", "dash.whisper.voices": "Voices",
+    "dash.whisper.on": "Voices on", "dash.whisper.off": "Voices off",
+    "dash.whisper.loading": "Asking for the latest word…",
+    "dash.whisper.failed": "The voice could not be played. Her note is still here to read.",
+    "dash.whisper.unavailable": "Cast audio is unavailable. You can still read her note.",
+    "dash.whisper.stale": "The situation has changed. Her latest note is shown below.",
+    "dash.whisper.teaser.gamemaster": "Something worth knowing, darling. Come closer.",
+    "dash.whisper.teaser.bookmaker": "Something worth knowing, sweetheart. A little attention could pay off.",
+    "dash.whisper.teaser.narrator": "Something worth knowing, Captain. Lend me an ear.",
+    "dash.whisper.teaser.other": "Something worth knowing, Captain. A moment of your attention.",
+    "dash.whisper.weather.title": "{weather} in the {region}",
+    "dash.whisper.weather.text": "The {region} currently reports {weather}. Check the sea chart before choosing a route through these waters. This is the current weather, not a promise about your voyage.",
+    "dash.whisper.weather.speech": "The {region} is reporting {weather}, Captain. Check the sea chart before you commit. She is in no mood to be taken for granted.",
+    "dash.whisper.fleet.title": "{firm} has a crippled ship",
+    "dash.whisper.fleet.text": "At least one ship in {firm}'s fleet is crippled. Review fleet condition before ordering another voyage; the fleet barometer opens the public hull figures.",
+    "dash.whisper.fleet.speech": "A crippled ship in {firm}'s fleet, Captain. Check her condition before another voyage. Pride is a poor substitute for a sound hull.",
+    "dash.whisper.ban.title": "A market effect with a customs catch",
+    "dash.whisper.ban.text": "{good} has an active market effect at {port}, but this cargo is currently banned there. The posted quote does not make it a legal trade. Check the port detail before committing cargo.",
+    "dash.whisper.ban.speech": "There is a market effect for {good} at {port}, but that cargo is banned there. A tempting quote does not make the customs officer look away, darling.",
+    "dash.whisper.expiring.title": "The {good} boom is in its final month",
+    "dash.whisper.expiring.text": "{port}'s {good} boom has one month remaining. Its current target-price multiplier is {mult}. That is a market effect, not a guaranteed sale price; check the quote and voyage timing.",
+    "dash.whisper.expiring.speech": "The {good} boom at {port} is in its final month. Check the quote and your voyage timing, Captain. A late entrance can be terribly expensive.",
+    "dash.whisper.boom.title": "{good} is booming at {port}",
+    "dash.whisper.boom.text": "The {good} boom at {port} has {months} months remaining, with a target-price multiplier of {mult}. Check current quotes and bans. Dealer margins, taxes and voyage costs still apply.",
+    "dash.whisper.boom.speech": "There is a live boom for {good} at {port}, Captain. Have a look at the quote and the timing. An invitation, perhaps; a guarantee, never.",
+    "dash.whisper.spread.title": "A price gap worth inspecting",
+    "dash.whisper.spread.text": "{good} is quoted at {low} in {origin} and {high} in {port}: a gross gap of {gap} per unit. Both ports currently permit this cargo. These are posted quotes, before dealer margins, taxes and voyage costs; prices may change before arrival.",
+    "dash.whisper.spread.speech": "The posted quote for {good} is lower at {origin} than at {port}, Captain. Inspect the gap, then account for margins, taxes and the voyage. Temptation is not the same as profit.",
+})
+FAMILY.update({k: v for k, v in EN.items() if k.startswith("dash.whisper.")})
+FAMILY.update({
+    "dash.whisper.teaser.gamemaster": "Something worth knowing, Captain. Take a look.",
+    "dash.whisper.teaser.bookmaker": "Something worth knowing, Captain. This deserves a closer look.",
+    "dash.whisper.weather.speech": "The {region} is reporting {weather}, Captain. Check the sea chart before choosing your route. This is the current weather, not a voyage forecast.",
+    "dash.whisper.ban.speech": "There is a market effect for {good} at {port}, but that cargo is banned there. Check the port detail before committing cargo.",
+})
+
 # The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
 # wording it replaces becomes the family-friendly wording. Keep this after every other EN/FAMILY update.
 import house_voice as _house_voice  # noqa: E402
@@ -2394,10 +2508,11 @@ GROUPS = [
     ["l", "Captain's log"], ["n", "News"], ["m", "Confirmations"], ["e", "Rule messages"],
     ["w", "Small words"], ["wx", "Weather"], ["mon", "Months"], ["ui", "Loading and connection"],
     ["st", "Tally Book (statistics)"], ["opt", "Options popup"],
-    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["promo", "Promotion Story"], ["storm", "Storms and damage"], ["legend", "Legends"], ["counter", "Under the Counter"], ["acct", "Accounting Ledger"], ["band", "Standing bands"], ["lot", "Private lots"],
+    ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["promo", "Promotion Story"], ["rob", "Robbery Story"], ["storm", "Storms and damage"], ["legend", "Legends"], ["counter", "Under the Counter"], ["acct", "Accounting Ledger"], ["band", "Standing bands"], ["lot", "Private lots"],
 ]
 
 GROUPS.append(["gm", "Game Master (the Table)"])
+GROUPS.append(["dash", "Dashboard"])
 
 
 def resolve(cfg, lang=None):

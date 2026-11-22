@@ -17,8 +17,7 @@ WARDENS = {
         secret="She keeps a second key to every cell sewn into her stays.",
         stats={"cunning": 7, "nerve": 9, "charm": 5, "greed": 4},
         prompt="An {adult} English woman (age 52), tall, broad-shouldered and handsome with a full mature figure, "
-               "iron-grey hair in a severe bun, the matron of Victoria Gaol in Hong Kong in 1860, completely nude, "
-               "her bare breasts, belly and hips shown openly, wearing only a wide leather belt slung low on her "
+               "iron-grey hair in a severe bun, the matron of Victoria Gaol in Hong Kong in 1860, completely naked, her breasts, belly and hips shown openly, wearing only a wide leather belt slung low on her "
                "naked hips with a great ring of brass keys hanging from it, a crisp white matron's collar at her "
                "throat and black stockings, standing tall and unashamed at an open iron cell door with one hand on "
                "the bars, lamplight on whitewashed stone and on her skin, a dry, knowing half-smile, fully in "
@@ -35,8 +34,7 @@ WARDENS = {
         secret="She lets the pretty ones out a day early.",
         stats={"cunning": 6, "nerve": 7, "charm": 9, "greed": 5},
         prompt="An {adult} English woman (age 36), slim and curvy with sun-browned skin and chestnut curls pinned up "
-               "loosely, the keeper of the Pearl's Hill lock-up in Singapore in 1860, completely nude, her bare "
-               "breasts and body shown openly, a white linen officer's tunic dropped to the floor at her feet, only "
+               "loosely, the keeper of the Pearl's Hill lock-up in Singapore in 1860, completely naked, her breasts and body shown openly, a white linen officer's tunic dropped to the floor at her feet, only "
                "a pith helmet tipped back on her head and a ring of keys twirled on one finger, leaning back against "
                "barred teak doors, slatted tropical light striping her naked skin, a bright teasing smile, playful "
                "and in charge, {style}"),
@@ -52,10 +50,9 @@ WARDENS = {
         secret="The confessions are sold to the Aduana.",
         stats={"cunning": 8, "nerve": 8, "charm": 7, "greed": 7},
         prompt="An {adult} Spanish-Filipina mestiza woman (age 48), full-figured and statuesque with heavy breasts "
-               "and wide hips, black hair under a sheer black lace mantilla that falls over her bare shoulders and "
-               "hides nothing, the alcaide of the Bilibid prison in Manila in 1860, nude but for the mantilla, a "
+               "and wide hips, black hair under a sheer black lace mantilla that falls over her bare shoulders, the alcaide of the Bilibid prison in Manila in 1860, completely naked except for the mantilla, a "
                "crimson sash knotted loosely at her naked hips and a rosary wound around one wrist, a ring of iron "
-               "keys in her hand, standing in a candlelit stone archway of the gaol, her bare body lit gold, a "
+               "keys in her hand, standing in a candlelit stone archway of the gaol, her naked body lit gold, a "
                "serene, merciless gaze, {style}"),
     "warden_saigon": dict(
         name="Madame Odile Marchetti", title="Gardienne of the Saigon Maison Centrale", age=41, origin="Corsica",
@@ -69,7 +66,7 @@ WARDENS = {
         secret="She has never once lost at cards, and never once played honestly.",
         stats={"cunning": 8, "nerve": 9, "charm": 7, "greed": 6},
         prompt="An {adult} Corsican-French woman (age 41), lean and curvy with olive skin and cropped black hair, "
-               "the gardienne of the Maison Centrale in Saigon in 1860, nude, bare breasts and body shown openly, "
+               "the gardienne of the Maison Centrale in Saigon in 1860, completely naked, breasts and body shown openly, "
                "only an open military coat slipping off her shoulders and a pistol belt buckled around her naked "
                "hips, seated astride a stool before a cell with a hand of playing cards fanned against the bars and "
                "a thin cigarette between her lips, shuttered tropical light across her skin, an amused, bored, "
@@ -86,8 +83,8 @@ WARDENS = {
         secret="She learned Dutch from a prisoner and reads every letter that leaves her gaol.",
         stats={"cunning": 9, "nerve": 8, "charm": 5, "greed": 3},
         prompt="An {adult} Japanese woman (age 44), slender and composed, black hair in a tight samurai-wife's knot, "
-               "the warden of the Sakuramachi gaol in Nagasaki in 1860, nude, her dark indigo kimono fallen open and "
-               "slipped completely off her shoulders to pool around her hips, bare breasts and body shown openly, "
+               "the warden of the Sakuramachi gaol in Nagasaki in 1860, completely naked, her dark indigo kimono fallen open and "
+               "slipped completely off her shoulders to pool around her hips, breasts and body shown openly, "
                "kneeling upright on a tatami platform before a wooden lattice cell with a brush and an open "
                "register, a ring of iron keys beside her knee, paper lantern glow on her pale skin, a perfectly "
                "calm, unreadable stare, {style}"),
@@ -104,8 +101,7 @@ WARDENS = {
         stats={"cunning": 8, "nerve": 7, "charm": 7, "greed": 6},
         prompt="An {adult} Chinese woman (age 50), plump, soft and handsome with heavy breasts and a round belly, "
                "silver-streaked hair pinned up with jade, the keeper of the yamen cells on the Min River at Foochow "
-               "in 1860, nude, her dark green silk jacket hanging open and off her shoulders over her bare body, "
-               "bare breasts shown openly, a ring of keys on a red cord around her naked waist, standing before a "
+               "in 1860, completely naked, her dark green silk jacket hanging open and off her shoulders over her naked body, breasts shown openly, a ring of keys on a red cord around her naked waist, standing before a "
                "wooden-barred cell holding a lantern and a cup of tea, smoky lantern light on her skin, a patient, "
                "knowing smile, {style}"),
     "warden_shanghai": dict(
@@ -121,8 +117,8 @@ WARDENS = {
         stats={"cunning": 8, "nerve": 10, "charm": 6, "greed": 6},
         prompt="An {adult} Chinese woman (age 39), tall and athletic with a sharp jaw, firm breasts and strong legs, "
                "black hair in a long braid over one bare shoulder, the gaoler of the Mixed Court cells in Shanghai "
-               "in 1860, nude but for black riding boots and gloves and a ring of keys on a leather strap across her "
-               "naked body, her bare breasts and body shown openly, striding down a stone corridor of iron-barred "
+               "in 1860, completely naked except for black riding boots and gloves and a ring of keys on a leather strap across her "
+               "naked body, her breasts and body shown openly, striding down a stone corridor of iron-barred "
                "cells with a bamboo rod resting on her shoulder, cold gaslight on her skin, a cold, commanding "
                "stare, {style}"),
     "warden_bangkok": dict(
@@ -137,8 +133,8 @@ WARDENS = {
         secret="She once kept a prince for a year past his sentence because he was rude.",
         stats={"cunning": 7, "nerve": 7, "charm": 9, "greed": 4},
         prompt="An {adult} Thai court lady (age 46), graceful and full-figured with short court-style hair, the "
-               "keeper of the King's prison in Bangkok in 1860, nude, a gold-threaded silk sabai slipped down to her "
-               "hips leaving her breasts and body bare, heavy gold armlets, anklets and a gold belly chain her only "
+               "keeper of the King's prison in Bangkok in 1860, completely naked, a gold-threaded silk sabai slipped down to her "
+               "hips leaving her breasts and body completely naked, heavy gold armlets, anklets and a gold belly chain her only "
                "other covering, a lotus bud in one hand and a ring of keys in the other, standing at a teak-barred "
                "cell in a gilded courtyard, warm river light on her skin, a gracious, immovable smile, {style}"),
     "warden_batavia": dict(
@@ -154,8 +150,8 @@ WARDENS = {
         stats={"cunning": 8, "nerve": 8, "charm": 5, "greed": 5},
         prompt="An {adult} Dutch woman (age 45), tall and robust with full breasts and broad hips, pale blonde hair "
                "pinned tight under a white cap, the keeper of the cells beneath the Stadhuis of Batavia in 1860, "
-               "nude but for the white cap, a starched white collar, black stockings and a heavy ring of keys on a "
-               "belt around her naked hips, her bare breasts and body shown openly, standing in a vaulted brick "
+               "completely naked except for the white cap, a starched white collar, black stockings and a heavy ring of keys on a "
+               "belt around her naked hips, her breasts and body shown openly, standing in a vaulted brick "
                "cellar before an iron grille with a lantern held high and a printed list of rules in her other hand, "
                "lamplight on her skin, a stern, wickedly amused look, {style}"),
     "warden_calcutta": dict(
@@ -171,8 +167,8 @@ WARDENS = {
         stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 5},
         prompt="An {adult} English woman (age 49), heavyset and comfortable with heavy breasts, a soft belly and "
                "rosy cheeks, auburn hair going grey in soft curls, the superintendent of the Presidency Jail in "
-               "Calcutta in 1860, nude, her plum silk gown fallen to the floor around her ankles, only a cameo "
-               "brooch on a velvet ribbon at her throat and a great ring of keys in her hand, her bare body shown "
+               "Calcutta in 1860, completely naked, her plum silk gown fallen to the floor around her ankles, only a cameo "
+               "brooch on a velvet ribbon at her throat and a great ring of keys in her hand, her naked body shown "
                "openly, standing at a barred cell door with a folded blanket over one arm, punkah fan and warm "
                "lamplight on her skin, a sweet, motherly, quietly terrifying smile, {style}"),
 }

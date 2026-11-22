@@ -20,8 +20,8 @@ SERVER = (ARGS[0] if ARGS else "http://192.168.1.69:8765").rstrip("/")
 
 HEAD = ("An unmistakably adult Macanese-Chinese woman (age 37), Madam Shek Yu-lan, the pirate queen's dangerously "
         "glamorous agent, sleek black hair pinned with jade combs, a red silk protection token tied at her wrist")
-NUDE = ("completely nude but for an oxblood silk jacket with sheer sleeves slipping from her shoulders and falling "
-        "open, her bare breasts and body shown openly, jade earrings and a gold coin belt low on her naked hips")
+NUDE = ("completely naked except for an oxblood silk jacket with sheer sleeves slipping from her shoulders and falling "
+        "open, her breasts and body shown openly, jade earrings and a gold coin belt low on her naked hips")
 TAIL = (", every sailor and warrior in the scene is a woman, no men, romanticized cinematic historical realism, "
         "China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, "
         "antique brass, imperial jade, private-release adult erotic glamour, nudity including exposed breasts, "

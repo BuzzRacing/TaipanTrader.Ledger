@@ -1,0 +1,50 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('web/thresholds.js','utf8');
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const t = (key,vars={})=>key+Object.values(vars).join('|');
+async function fixture({family=true,fail=false,bookOk=true}={}) {
+  const requests=[];
+  const p={id:'p1',name:'Anne',firm:'House',worth:-1000,rank:'Trader',portrait:'/adult.webp',crest:'/adult-crest.webp',host:true};
+  const catalog={family,items:{persona:{taxlady:[{t:'image',u:'/clean.webp',r:['happy'],g:[]}]},captain:{c1:[{t:'image',u:'/captain.webp'}]},house:{h1:[{t:'image',u:'/crest.webp'}]}}};
+  const ctx={S:{cfg:1,game_id:'g1',phase:'lobby',me:null,players:[p],join_url:'http://test'},D:{brand:{title_a:'Crimson',currency:'$'},lengths:[5,10]},VS:{cast:{taxlady:{name:'Evelyn',portrait:'/adult.webp'}}},CAPS:{typed:false,captains:[]},ui:{},console:{error(){}},esc,t,te:(k,v)=>esc(t(k,v)),th:t,capInitials:s=>String(s).slice(0,2),brandName:b=>b.title_a,btn:(label,action,data,cls,disabled)=>`<button data-act="${action}" ${disabled?'disabled':''}>${label}</button>`,captainPicker:()=>'',input:()=>'',money:n=>'$'+n,newGameControl:()=>'',Certificate:{},Ceremony:{story:()=>''},render:()=>{},fetch:async url=>{
+    requests.push(url);
+    if(fail)throw Error('offline');
+    const data=url.includes('/api/info')?{ok:true,media:catalog,voice:{cast:{taxlady:{name:'Evelyn'}}}}:url==='/api/captains'?{ok:true,captains:[{name:'Anne',portrait:'/captain.webp',houses:[{name:'House',image:'/crest.webp'}]}]}:{ok:bookOk,game:'g1',houses:[{id:'p1',voyages:3,won:0,trades:2,best_sale:null}],honours:[]};
+    return {ok:true,json:async()=>data};
+  }};
+  vm.createContext(ctx);vm.runInContext(source+'\nglobalThis.api=Thresholds;',ctx);
+  const settle=()=>new Promise(r=>setImmediate(r));
+  return {ctx,requests,settle};
+}
+(async()=>{
+  const f=await fixture();
+  assert(!f.ctx.api.join().includes('/adult'));
+  await f.settle();
+  assert(f.ctx.api.join().includes('/clean.webp'));
+  assert(!f.ctx.api.join().includes('/adult'));
+  assert.equal(f.ctx.api.clean('/adult.webp'),'');
+  assert(f.requests.includes('/api/info?family=1'));
+  f.ctx.S.me=f.ctx.S.players[0];f.ctx.S.years=5;
+  assert(!f.ctx.api.lobby().includes('data-act="start" disabled'));
+  f.ctx.S.me={...f.ctx.S.me,host:false};
+  assert(!f.ctx.api.lobby().includes('data-act="start"'));
+  assert(f.ctx.api.lobby().includes('disabled'));
+  f.ctx.S.phase='ended';f.ctx.S.players.push({...f.ctx.S.players[0],id:'p2',name:'Mary',firm:'Other'});
+  const end=f.ctx.api.end();
+  assert(end.includes('threshold.tied'));
+  assert.equal((end.match(/class="place">1</g)||[]).length,2);
+  assert(end.includes('$-1000'));
+  await f.settle();
+  assert(f.ctx.api.end().includes('fin.f.trades'));
+  f.ctx.S.game_id='g2';
+  assert(!f.ctx.api.end().includes('fin.f.passages'));
+  const bad=await fixture({family:false});bad.ctx.api.join();await bad.settle();
+  assert(!bad.ctx.api.join().includes('/clean.webp'));
+  assert(bad.ctx.api.join().includes('threshold.art_failed'));
+  const offline=await fixture({fail:true});offline.ctx.api.join();await offline.settle();
+  offline.ctx.api.join();await offline.settle();
+  assert.equal(offline.requests.length,2,'Failed catalog must not request forever');
+  console.log('PASS public image gate, clean happy-role artwork, host permissions, ties, negative worth, missing best sale, stale game summaries and bounded error retry');
+})().catch(e=>{console.error(e);process.exitCode=1});

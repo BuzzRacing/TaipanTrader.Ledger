@@ -52,13 +52,13 @@ STEPS = [
      "of triumph shining on her lashes, a sheer silk chemise sliding off her arm"),
     ("the swoon",
      "she swoons theatrically back against the heavy teak desk as lightning flashes, the commission and a scatter of "
-     "letters fallen to the floor, {garb} pooled around her hips, topless, her gold mayor's chain of office and one "
+     "letters fallen to the floor, {garb} pooled around her hips, completely topless, her gold mayor's chain of office and one "
      "hand just covering her breasts, back arched, head thrown back with parted lips and then burning eyes on the "
      "camera, a spilled glass of Madeira, lightning rim-lighting her bare skin"),
     ("the surrender",
-     "in the last scene of the episode she has let everything fall, completely nude, reclining across the teak desk "
+     "in the last scene of the episode she has let everything fall, completely naked, reclining across the teak desk "
      "on the unrolled commission and a drift of red silk, wearing only her gold mayor's chain of office and her "
-     "jewellery, one knee raised and the silk and her arm placed to keep it a tasteful glamour nude, a wicked "
+     "jewellery, one knee raised and the silk and her arm placed to keep it a tasteful glamour portrait, a wicked "
      "triumphant smile, unbroken eye contact as if inviting the viewer to claim his reward, scattered rose petals"),
 ]
 

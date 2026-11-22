@@ -570,7 +570,7 @@ body.ingame #speaking { display: none !important; }
   .cl-art::after { background: linear-gradient(to top, var(--deck-night), transparent 76%); }
 }
 @media (orientation: portrait) {
-  .dk-over:has(:is(.cl-veil, .cx-veil)) { grid-row: side-start / main-end; }
+  .dk-over:has(:is(.cl-veil, .cx-veil, .pg-veil)) { grid-row: side-start / main-end; }
 }
 @keyframes veilIn { from { opacity: 0; } }
 .deck .veil.no-fade { animation: none; }
@@ -1562,6 +1562,18 @@ body.player .pt .pt-actions button.primary { flex: none; display: inline-flex; a
 .pm-call .pt-chip { margin: 0; }
 /* the chit */
 .pm-chit { min-width: 0; }
+/* THE HOLD MANIFEST (21 Nov 2026): one row per cargo under the Month's End card. */
+.deck .pt .pt-hold { container-type: inline-size; min-width: 0; }
+.pt-view.pt-arrival > .pt-hold { align-self: start; }
+.pt-hold .pt-cardhead { margin-bottom: .5rem; }
+.ph-table td b { font-weight: 600; }
+.ph-qty { color: var(--muted); font-size: .85rem; margin-left: .3rem; }
+.ph-table td.n small { display: block; margin-top: .1rem; font: italic .78rem/1.25 var(--sans); color: var(--muted); }
+.ph-table td.n small.up { color: var(--jade, #4f9b78); }
+.ph-table td.n small.down { color: var(--oxblood, #b5483d); }
+.ph-tag.warn { color: var(--oxblood, #b5483d); }
+.ph-tag.hot { color: var(--brass, #c8a24a); }
+.ph-tag.best { color: var(--jade, #4f9b78); }
 .pm-favour + .pm-chit { padding-top: .9rem; border-top: 1px solid; border-image: linear-gradient(90deg, transparent, var(--edge-hi) 12%, var(--edge-hi) 88%, transparent) 1; }
 .pm-table td { border-bottom-style: dotted; font-size: .94rem; }
 .pm-table td.n { vertical-align: top; }
@@ -2169,3 +2181,34 @@ body.player button.helm-act.coin { color: #1a1d22; text-shadow: 0 1px 0 rgba(255
 body.player button.helm-act.coin:hover:not(:disabled) { border-color: #fff; filter: brightness(1.07);
   background: linear-gradient(180deg, #ffffff 0%, #e1e6eb 38%, #b9c0c8 52%, #d9dee4 74%, #f6f8fa 100%); }
 @container pane (max-width: 600px) { .helm-panel { --panel-h: 8rem; } .helm-face { width: 42%; } .helm-panel-body { width: 58%; } }
+
+/* ====================================================== SELL-BACK PRICE AND PURSE CONFIRM (21 Nov 2026) == */
+/* Game 5 review, Phase 2. A big buy shows what it would sell straight back for, in the slot where a sale shows
+   its profit; the dealer card sums the big buys; and a sale past the dealers' purse asks before it goes. */
+.mk-act em.mk-pl.back { flex-direction: column; gap: .12rem; padding: 0 .5rem; font-size: .98rem; line-height: 1; }
+.mk-act em.mk-pl.back small { font: 800 .56rem/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.mk-act em.mk-pl.back.ok { color: #3b2a0c; background: #f3e7c9; box-shadow: inset 0 0 0 1.5px var(--brass-hi); }
+.mk-act em.mk-pl.back.amber { color: #4a2f00; background: #ffe2a3; box-shadow: inset 0 0 0 1.5px #e0a21f; }
+.mk-act em.mk-pl.back.red { color: #6e0f04; background: #ffe1d8; box-shadow: inset 0 0 0 1.5px var(--blood-hi); }
+@container pane (max-width: 620px) {
+  .mk-act em.mk-pl.back { font-size: .86rem; padding: 0 .35rem; } }
+.dl-row.back b { color: var(--brass-hi); }
+.dl-row.back.amber b { color: #ffd27a; }
+.dl-row.back.red b { color: #ff8a7a; }
+
+.deck .purse-ask { display: flex; flex-direction: column; gap: .7rem; align-self: center; margin: auto; width: min(34rem, 100%);
+  padding: clamp(1rem, 3vw, 1.6rem); border-color: var(--blood-hi); }
+.deck .purse-ask header { display: flex; flex-direction: column; gap: .2rem; }
+.deck .purse-ask ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .4rem; font-size: 1rem; line-height: 1.35; }
+.deck .purse-ask p { margin: 0; }
+.deck .purse-ask p.muted { font-size: .88rem; }
+.deck .purse-ask footer { display: flex; gap: .6rem; justify-content: flex-end; flex-wrap: wrap; padding-top: .3rem; }
+.deck .purse-ask footer button { min-height: 44px; }
+
+/* Repaying the home moneylender from another port (23 Nov 2026): the merchant's terms and the report of what got home. */
+.pt-remit-terms { margin: .55rem 0 0; font-size: .82rem; line-height: 1.35; opacity: .8; }
+.pt-remit { margin-top: .8rem; padding-top: .6rem; border-top: 1px solid var(--rule, rgba(0,0,0,.15)); }
+.pt-remit h4 { margin: 0 0 .4rem; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; opacity: .75; }
+.pt-remit-rows { margin-top: .4rem; font-size: .82rem; }
+.pt-remit-rows tr.warn td { color: var(--vermilion, #a6342a); }
+.pt-remit-rows small { margin-left: .3rem; opacity: .85; }

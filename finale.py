@@ -209,6 +209,8 @@ def _work(gid):
         r["final_worth"] = int(q.get("worth", r["worth"]))
         r["final_rank"] = q.get("rank") or r["rank"]
         r["final_rank_id"] = _rank_id(r["final_rank"])
+        # The Ledger of the Voyage reads worth and rank, so they carry the closing figures too.
+        r["worth"], r["rank"], r["rank_id"] = r["final_worth"], r["final_rank"], r["final_rank_id"]
     turns = [e.get("turn", 0) for e in events if e.get("cat") == "snapshot"]
     first, last = (min(turns), max(turns)) if turns else (0, 0)
     return {"ok": True, "game": gid, "first": stats._date(first), "last": stats._date(last),

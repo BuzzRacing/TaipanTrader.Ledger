@@ -64,7 +64,9 @@ voice._transport = fake
 # --- defaults are valid and complete ------------------------------------------------
 cfg, errs = config.validate(config.defaults())
 check(not errs, "default settings validate: {}".format(errs[:3]))
-check(len(cfg["characters"]) == 23, "twenty-three default characters (the Mayor, the Registrar and ten Port Authority officers)")
+_officers = [k for k in cfg["characters"] if k.startswith("officer_")]
+check(len(_officers) == 10 and "mayor" in cfg["characters"] and len(cfg["characters"]) >= 23,
+      "the default cast holds the Mayor, the Registrar and ten Port Authority officers (and the wardens, tellers and legends since): {}".format(len(cfg["characters"])))
 for cid, c in cfg["characters"].items():
     check(c["voice_id"], "{} has a voice".format(cid))
     check(c["bio"] and c["catchphrase"] and c["secret"] and c["portrait_prompt"], "{} has a full profile".format(cid))
@@ -115,7 +117,7 @@ samples = {
     tx("l.seized", qty=12, fine="$3,600"): "customs",
     tx("l.sank_all", n=4, rounds=3, s="s", booty="$1,200"): "bosun",
     tx("l.ship_lost", ship="Junk", name="Lucky Star", how=tx("l.how_foundered")): "narrator",
-    tx("l.robbed", lost="$4,000"): "narrator",
+    tx("l.robbed", lost="$4,000"): "thieves",   # a pickpocket reads it now (the thieves cast, 21 Nov 2026)
 }
 for line, who in samples.items():
     key = voice.PLAN.matcher.key(line)
@@ -162,13 +164,15 @@ del cfg["voice"]["lines"]["m.sold"]
 said = lambda r: voice._registry[r["u"][len("/voice/"):-4]]["text"]
 a1 = voice.PLAN.msg(tx("m.bought", qty=60, good="Rice", cost="$951"))
 a2 = voice.PLAN.msg(tx("m.bought", qty=20, good="Rice", cost="$300"))
-check(a1["u"] == a2["u"] and said(a1) == "Approved. Bought Rice.", "different amounts share one spoken clip: {}".format(said(a1)))
+# (the house voice, house_voice.py, adds her flourish to the spoken line; the amounts are still left out)
+check(a1["u"] == a2["u"] and said(a1) == cast.SAY["m.bought"].format(good="Rice") and "$" not in said(a1),
+      "different amounts share one spoken clip: {}".format(said(a1)))
 check(voice.PLAN.msg(tx("m.bought", qty=5, good="Tea", cost="$9"))["u"] != a1["u"], "a different good is its own clip")
-check(said(voice.PLAN.msg(tx("e.cost", cost="$5", cash="$1"))) == "You cannot afford that.", "refusals lose their amounts")
+check(said(voice.PLAN.msg(tx("e.cost", cost="$5", cash="$1"))) == cast.SAY["e.cost"], "refusals lose their amounts")
 for k, v in cast.SAY.items():
     check(all("{" + n + "}" in strings.EN[k] for n in re.findall(r"\{(\w+)\}", v)), "spoken {} uses only its own names".format(k))
 cfg["voice"]["say"] = {"m.bought": "", "m.sold": "Sold the {good}, Captain."}
-check(said(voice.PLAN.msg(tx("m.bought", qty=60, good="Rice", cost="$951"))) == "Bought 60 Rice for $951.",
+check(said(voice.PLAN.msg(tx("m.bought", qty=60, good="Rice", cost="$951"))) == tx("m.bought", qty=60, good="Rice", cost="$951"),
       "an empty spoken version reads the line as shown")
 check(said(voice.PLAN.msg(tx("m.sold", qty=1, good="Tea", gain="$70"))) == "Sold the Tea, Captain.", "Admin spoken version")
 cfg["voice"]["say"] = {}
@@ -240,6 +244,7 @@ server.SAVES = os.path.join(TMP, "saves")
 server.SAVE_FILE = os.path.join(server.SAVES, "current.json")
 server.apply_settings()
 server.HUB = server.Hub(engine.Game(), "http://test")
+engine.R["captains"]["typed"] = True      # seats are claimed with a saved Captain unless typed names are allowed (rules.captains)
 httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
 base = "http://127.0.0.1:{}".format(httpd.server_address[1])
@@ -256,7 +261,9 @@ def call(path, body=None, admin=False):
 info = call("/api/info")
 check(info["voice"]["enabled"] and info["voice"]["cast"]["pirate"]["name"] == "Admiral Li Yue", "info carries the cast")
 tok = call("/api/join", {"name": "Ann", "firm": "Ann & Co"})["token"]
-call("/api/act", {"token": tok, "type": "start"})
+# The server's start counts down an intro (about eleven seconds) before the game begins; begin it here.
+_pid = server.HUB.game.pid_for_token(tok)
+server.HUB.game.act(_pid, {"type": "start"}, present=[_pid])
 res = call("/api/act", {"token": tok, "type": "buy", "good": "rice", "qty": 5})
 check(res["ok"] and res["voice"] and res["voice"]["c"] == "comprador", "buying answers with the comprador's voice")
 res = call("/api/act", {"token": tok, "type": "buy", "good": "rice", "qty": 999999})

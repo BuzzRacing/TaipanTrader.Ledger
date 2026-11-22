@@ -790,6 +790,20 @@ SPOKEN.update({
 })
 
 
+# ---------------------------------------------------------------------------------------------------------
+# Kamala "Magpie" Pillai, the Thieves (21 Nov 2026): merry, unhurried, already holding your purse. She reads the
+# mugging (l.robbed) and the warehouse robbery (l.wh_robbed), which Roxana used to read.
+# ---------------------------------------------------------------------------------------------------------
+LINES.update({
+    "l.robbed": "Oh dear, Captain. You seem to have lost {lost}. Don't look so shocked; I did leave you the feather. Banks keep it safe, sweet. I keep it interesting.",
+    "l.wh_robbed": "Your warehouse in {port} is a little lighter, Captain: about {pct}% of the stock, {goods}. I left you the heavy bits. I'm not a monster.",
+})
+SPOKEN.update({
+    "l.robbed": "Oh dear, Captain. You seem to have lost something. Don't look so shocked; I did leave you the feather. Banks keep it safe, sweet. I keep it interesting.",
+    "l.wh_robbed": "Your warehouse is a little lighter, Captain. I left you the heavy bits. I'm not a monster.",
+})
+
+
 # ------------------------------------------------------------------------------------------------- apply --
 ORIGINAL = {}   # key -> the wording a line had before this module rewrote it
 

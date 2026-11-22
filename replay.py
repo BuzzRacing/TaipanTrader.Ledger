@@ -92,6 +92,11 @@ def replay(gid, turn=None, start=None):
                                "This stretch has no closing snapshot yet (the month is still being played).")
             else:
                 want, got = copy.deepcopy(e["state"]), _clean(game.s)
+                # A live game picks up some fields (fame, shares, the tally's counters) only when it is next
+                # loaded, and every replay stretch starts from a loaded snapshot. Compare with what a reload
+                # of both states gives, so a field that merely appears at a restart is not a difference.
+                want = _clean(Game(state=want, seed=want.get("seed")).s)
+                got = _clean(Game(state=got, seed=got.get("seed")).s)
                 if e.get("type") != "turn_begin":      # a restart begins a fresh run of dice, by design
                     want.pop("seed", None)
                     got.pop("seed", None)

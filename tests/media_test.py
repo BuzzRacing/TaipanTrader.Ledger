@@ -46,9 +46,16 @@ try:
     it = [i for i in media.load(cfg)["items"] if i["subject"] == "crier"][0]
     assert added == 1 and it["nsfw"] and it["roles"] == ["speaking"], it
     # Editing, one primary per subject, remove to trash.
+    # Personas have no primary: any of their pictures may be shown (the persona rule and the roles ticked on each),
+    # so marking one changes nothing. Every other kind has exactly one primary per subject, the last one marked.
     media.update([safe["id"]], {"primary": True})
-    prim = [i for i in media.load(cfg)["items"] if i["subject"] == "bosun" and i["primary"]]
-    assert [i["id"] for i in prim] == [safe["id"]]
+    assert not any(i["primary"] and i["id"] == safe["id"] for i in media.load(cfg)["items"])
+    one = media.add_bytes(PNG, ".png", "cargo", "rice", [], [], False, "upload")
+    two = media.add_bytes(PNG + b"\x00", ".png", "cargo", "rice", [], [], False, "upload")
+    media.update([one["id"]], {"primary": True})
+    media.update([two["id"]], {"primary": True})
+    prim = [i for i in media.load(cfg)["items"] if i["kind"] == "cargo" and i["subject"] == "rice" and i["primary"]]
+    assert [i["id"] for i in prim] == [two["id"]], prim
     media.update([safe["id"]], {}, add_tags=["Night Sky!"])
     assert "night sky" in [i for i in media.load(cfg)["items"] if i["id"] == safe["id"]][0]["tags"]
     media.remove([clip["id"]])
