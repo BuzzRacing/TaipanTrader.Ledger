@@ -94,7 +94,8 @@ const SeaAudio = (() => {
     applyLevels(); applyDuck();
     listeners.forEach(fn => { try { fn(settings()); } catch (e) { /* a listener's problem */ } });
   }
-  const audible = cat => st.master.on && st.master.vol > 0 && st[cat].on && st[cat].vol > 0;
+  let tableChannels = new Set();
+  const audible = cat => !tableChannels.has(cat) && st.master.on && st.master.vol > 0 && st[cat].on && st[cat].vol > 0;
 
   /* ---------------- the Web Audio graph ---------------- */
   let ctx = null, nodes = null, failed = false, catalog = null, catalogLoading = null;
@@ -135,7 +136,7 @@ const SeaAudio = (() => {
   function applyLevels() {
     if (!nodes) return;
     ramp(nodes.master.gain, st.master.on ? st.master.vol : 0);
-    for (const c of CATS) ramp(nodes[c].gain, st[c].on ? st[c].vol : 0);
+    for (const c of CATS) ramp(nodes[c].gain, st[c].on && !tableChannels.has(c) ? st[c].vol : 0);
     // Night mode: the limiter bites much earlier, so loud moments are pulled down toward the quiet ones.
     nodes.comp.threshold.value = opts.night ? -30 : -10; nodes.comp.ratio.value = opts.night ? 10 : 3; nodes.comp.knee.value = opts.night ? 20 : 12;
     refresh();
@@ -493,6 +494,12 @@ const SeaAudio = (() => {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", onState); else onState();
 
   return {
+    followTable(channels) {
+      const next = new Set(channels || []);
+      if (next.size === tableChannels.size && [...next].every(c => tableChannels.has(c))) return;
+      tableChannels = next; applyLevels();
+      listeners.forEach(fn => fn(settings()));
+    },
     settings, set,
     option: k => opts[k], setOption,
     onChange(fn) { if (typeof fn === "function") listeners.push(fn); },

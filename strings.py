@@ -2315,6 +2315,10 @@ FAMILY.update(_fleet_ledger_text.FAMILY)
 import acct_text as _acct_text  # noqa: E402
 EN.update(_acct_text.EN)
 FAMILY.update(_acct_text.FAMILY)
+# The Game Master's wording (gm_text.py, 21 Nov 2026): the Table's questions and action items.
+import gm_text as _gm_text  # noqa: E402
+EN.update(_gm_text.EN)
+FAMILY.update(_gm_text.FAMILY)
 
 # Selling an away warehouse back to the port for half of what it cost (21 Nov 2026).
 EN.update({
@@ -2336,6 +2340,9 @@ FAMILY.update({
     "e.depot_not_empty": "Empty your {port} warehouse first.",
 })
 
+EN["l.table_underway"] = "Bound for {port}, Captain. The shore has let go of us. Keep your nerve; the sea can smell hesitation."
+FAMILY["l.table_underway"] = "Bound for {port}, Captain. We have left the harbour. Keep a steady course."
+
 # The house voice (19 Nov 2026): every spoken line in Madam Shek Yu-lan's style (house_voice.py). The
 # wording it replaces becomes the family-friendly wording. Keep this after every other EN/FAMILY update.
 import house_voice as _house_voice  # noqa: E402
@@ -2353,6 +2360,8 @@ GROUPS = [
     ["st", "Tally Book (statistics)"], ["opt", "Options popup"],
     ["jail", "Jail"], ["plea", "Jail: the plea deal"], ["promo", "Promotion Story"], ["storm", "Storms and damage"], ["legend", "Legends"], ["counter", "Under the Counter"], ["acct", "Accounting Ledger"], ["band", "Standing bands"], ["lot", "Private lots"],
 ]
+
+GROUPS.append(["gm", "Game Master (the Table)"])
 
 
 def resolve(cfg, lang=None):

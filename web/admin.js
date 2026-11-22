@@ -20,13 +20,21 @@ const lv = { code: "en", q: "", group: "", changed: false, family: false };
 
 const NAV = [
   ["Game", [["live", "Live Game"], ["captains", "Captains"], ["report", "Captain's Report"]]],
-  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["artbible", "Art Bible"], ["media", "Media Library"], ["cast", "Cast & Voices"], ["voices", "Voice Library"], ["language", "Language & Text"]]],
+  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["artbible", "Art Bible"], ["media", "Media Library"], ["clips", "Voices"], ["language", "Language & Text"]]],
   ["Rules", [["ratings", "Ratings & Difficulty"], ["game", "Game Setup"], ["economy", "Economy"], ["goods", "Cargo"],
              ["ports", "Ports"], ["ships", "Ships"], ["weather", "Weather & Seas"], ["danger", "Pirates & Customs"]]],
   ["System", [["backup", "Backup & Access"]]],
 ];
 const NAV_MARKS = ["I", "II", "III", "IV"];
-const openNavGroups = new Set(NAV.filter(([, items]) => items.some(([id]) => id === section)).map(([title]) => title));
+/* Voices is one nav entry with three tabs. Each tab is still its own section (clips, voices, cast). */
+const VOICE_TABS = [["clips", "Clips"], ["voices", "Voice Library"], ["cast", "Cast & Voices"]];
+const navOn = id => id === section || (id === "clips" && VOICE_TABS.some(([t]) => t === section));
+function voiceTabs(active) {
+  return `<nav class="vtabs" aria-label="Voices">${VOICE_TABS.map(([id, label]) =>
+    `<button type="button" class="vtab${id === active ? " on" : ""}" data-vtab="${id}"${id === active ? ' aria-current="page"' : ""}>${label}${
+      CFG && id === "cast" && sectionChanged(id) ? '<i aria-label="Unsaved changes"></i>' : ""}</button>`).join("")}</nav>`;
+}
+const openNavGroups = new Set(NAV.filter(([, items]) => items.some(([id]) => navOn(id))).map(([title]) => title));
 
 /* ------------------------------------------------------------- basics -- */
 function esc(s) {
@@ -125,6 +133,7 @@ function sectionChanged(id) {
   if (id === "language") return JSON.stringify(LANGS) !== LANGS_SAVED || !same(CFG.language, saved.language);
   if (id === "graphics") return !same(CFG.graphics, saved.graphics);
   if (id === "cast") return SeaTraderCast.sectionChanged(saved);
+  if (id === "clips" || id === "voices") return SeaTraderCast.sectionChanged(saved);
   const sec = A.sections.find(s => s.id === id);
   if (!sec) return false;
   return sectionPaths(sec).some(p => !same(get(CFG, p), get(saved, p)));
@@ -141,7 +150,7 @@ function drawNav() {
   $("#nav").innerHTML = NAV.map(([title, items], index) => {
     const groupId = "nav-group-" + title.toLowerCase();
     const open = openNavGroups.has(title);
-    const active = items.some(([id]) => id === section);
+    const active = items.some(([id]) => navOn(id));
     return `<section class="nav-group${open ? " open" : ""}${active ? " active" : ""}">
       <button type="button" class="nav-section-toggle" data-nav-group="${title}" aria-expanded="${open}" aria-controls="${groupId}">
         <span class="nav-section-mark" aria-hidden="true">${NAV_MARKS[index]}</span>
@@ -149,12 +158,16 @@ function drawNav() {
         <span class="nav-section-chevron" aria-hidden="true"></span>
       </button>
       <div class="nav-options" id="${groupId}"${open ? "" : " hidden"}>${items.map(([id, label]) =>
-        `<button type="button" data-nav="${id}" class="nav-option${id === section ? " on" : ""}"${id === section ? ' aria-current="page"' : ""}>
+        `<button type="button" data-nav="${id}" class="nav-option${navOn(id) ? " on" : ""}"${navOn(id) ? ' aria-current="page"' : ""}>
           <span>${label}</span>${CFG && sectionChanged(id) ? '<i aria-label="Unsaved changes"></i>' : ""}
         </button>`).join("")}</div>
     </section>`;
   }).join("");
 }
+main.addEventListener("click", e => {
+  const t = e.target.closest("[data-vtab]");
+  if (t && CFG) go(t.dataset.vtab);
+});
 $("#nav").addEventListener("click", e => {
   const toggle = e.target.closest("[data-nav-group]");
   if (toggle) {
@@ -169,6 +182,8 @@ $("#nav").addEventListener("click", e => {
 function go(id) {
   if (section === "cast" && id !== "cast") SeaTraderCast.leave();
   if (section === "voices" && id !== "voices") SeaTraderVoices.leave();
+  if (section === "clips" && id !== "clips") SeaTraderClips.leave();
+  if (VOICE_TABS.some(([t]) => t === id)) openNavGroups.add("Identity");
   if (section === "captains" && id !== "captains") SeaTraderCaptains.leave();
   if (section === "report" && id !== "report") SeaTraderReport.leave();
   if (section === "media" && id !== "media") SeaTraderMedia.leave();
@@ -374,6 +389,7 @@ function draw() {
     SeaTraderArtBible.hydrate();
   }
   else if (section === "cast") main.innerHTML = SeaTraderCast.render();
+  else if (section === "clips") { main.innerHTML = SeaTraderClips.render(); SeaTraderClips.enter(); }
   else if (section === "voices") { main.innerHTML = SeaTraderVoices.render(); SeaTraderVoices.enter(); }
   else if (section === "captains") { main.innerHTML = SeaTraderCaptains.render(); SeaTraderCaptains.enter(); }
   else if (section === "media") { main.innerHTML = SeaTraderMedia.render(); SeaTraderMedia.enter(); }

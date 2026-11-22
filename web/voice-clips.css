@@ -1,0 +1,106 @@
+/* Crimson Ledger Admin: Voices > Clips (web/voice-clips.js) and the Voices tab strip. */
+.vtabs { display: flex; gap: .3rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line); }
+.vtab { border-radius: 8px 8px 0 0; border-bottom: 0; padding: .45rem 1rem; background: var(--panel); color: var(--muted); font-weight: 600; position: relative; }
+.vtab.on { background: var(--panel-2); color: #fff3da; border-color: var(--brass); box-shadow: inset 0 3px 0 var(--brass); }
+.vtab i { display: inline-block; width: .5rem; height: .5rem; margin-left: .4rem; border-radius: 50%; background: var(--brass); vertical-align: 1px; }
+
+#ckp .ck-summary { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; align-items: flex-end; }
+.ck-stat { display: grid; gap: .1rem; min-width: 5.5rem; }
+.ck-stat b { font: 700 1.5rem var(--serif); color: #fff3da; }
+.ck-stat span, .ck-price span { font-size: .76rem; color: var(--muted); }
+.ck-stat.warn b { color: #ffb36b; }
+.ck-price { margin-left: auto; display: grid; gap: .15rem; max-width: 16rem; }
+.ck-price input { width: 8rem; }
+.ck-price small { color: var(--muted); font-size: .74rem; }
+
+.ck-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+.ck-tab { border-radius: 99px; padding: .3rem .9rem; }
+.ck-tab i { font-style: normal; margin-left: .3rem; color: var(--muted); }
+.ck-tab.on { background: var(--brass); color: #1b1208; border-color: var(--brass); }
+.ck-tab.on i { color: #1b1208; }
+
+.ck-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem .9rem; align-items: end; }
+.ck-filters label span { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: .2rem; }
+.ck-filters .ck-wide { grid-column: span 2; }
+.ck-check { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
+.ck-check input { accent-color: var(--brass); width: 1.05rem; height: 1.05rem; }
+.ck-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .4rem 0; }
+button.danger { border-color: #8f211a; color: #ff9d92; }
+
+.ck-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1rem; align-items: start; }
+.ck-count { margin: 0 0 .4rem; }
+.ck-row { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr) auto; gap: .7rem; align-items: center; padding: .55rem .7rem; margin-bottom: .4rem;
+  background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; cursor: pointer; }
+.ck-row:hover { background: var(--panel-2); }
+.ck-row.sel { border-color: var(--brass); background: var(--panel-2); box-shadow: 0 0 0 1px var(--brass); }
+.ck-row.stale { border-left-color: #ffb36b; }
+.ck-row.missing { border-left-color: #ff9d92; opacity: .92; }
+.ck-row.current { border-left-color: var(--green); }
+.ck-row.binned { opacity: .7; border-left-color: #6b5a44; }
+.ck-play { width: 2.2rem; height: 2.2rem; padding: 0; border-radius: 50%; border-color: var(--brass); }
+.ck-play[disabled] { opacity: .35; }
+.ck-text { font: 400 1rem/1.35 var(--serif); color: #fff3da; overflow-wrap: anywhere; }
+.ck-meta { display: flex; flex-wrap: wrap; gap: .2rem .8rem; align-items: center; margin-top: .25rem; font-size: .76rem; color: var(--muted); }
+.ck-meta code { font: 400 .72rem var(--mono); }
+.ck-who { display: inline-flex; align-items: center; gap: .35rem; color: var(--ink); }
+.ck-voice { color: var(--muted); font-size: .74rem; }
+.ck-note { margin-top: .25rem; font-size: .8rem; color: var(--brass); font-style: italic; }
+.ck-av { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; object-position: 50% 18%; border: 2px solid var(--cv, var(--line)); background: #120c08; display: inline-grid; place-items: center; font: 700 .72rem var(--serif); color: #fff3da; flex: none; }
+.ck-av.none { border-color: var(--line); color: var(--muted); }
+.ck-side { display: grid; gap: .3rem; justify-items: end; }
+.ck-stars { display: inline-flex; }
+.ck-star { padding: 0 .08rem; border: 0; background: none; font-size: 1.05rem; color: #5a4833; line-height: 1; }
+.ck-star.on { color: var(--brass); }
+.ck-star:hover { color: #ffd77a; }
+.ck-badges { display: flex; flex-wrap: wrap; gap: .25rem; justify-content: flex-end; max-width: 15rem; }
+.ck-badge { display: inline-block; border: 1px solid var(--line); border-radius: 99px; padding: .02rem .5rem; font: 600 .7rem var(--sans); color: var(--muted); }
+.ck-badge.current { border-color: var(--green); color: var(--green); }
+.ck-badge.stale { border-color: #ffb36b; color: #ffb36b; }
+.ck-badge.missing, .ck-badge.redo { border-color: #ff9d92; color: #ff9d92; }
+.ck-badge.fam { border-color: #8fb4ff; color: #8fb4ff; }
+.ck-more { width: 100%; margin: .3rem 0 1rem; }
+.ck-empty { padding: 1.5rem; text-align: center; }
+
+/* The persona stands full height on the right, like the Sea Battle screen. */
+.ck-panel { position: sticky; top: calc(var(--top-height) + .6rem); max-height: calc(100vh - var(--top-height) - 1.2rem); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.ck-panel h3 { margin: 0 0 .4rem; }
+.ck-pp { --cv: var(--brass); border-top: 4px solid var(--cv); }
+.ck-portrait { position: relative; aspect-ratio: 3 / 4; max-height: 46vh; width: 100%; background: linear-gradient(160deg, var(--cv), #120c08); overflow: hidden; display: grid; place-items: center; }
+.ck-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; display: block; }
+.ck-portrait > span { font: 700 5rem var(--serif); color: rgba(241,230,204,.75); }
+.ck-portrait-name { position: absolute; inset: auto 0 0 0; padding: 1.6rem .8rem .6rem; background: linear-gradient(transparent, rgba(10,6,3,.92)); display: grid; }
+.ck-portrait-name b { font: 700 1.2rem var(--serif); color: #fff3da; }
+.ck-portrait-name small { color: var(--muted); }
+.ck-vals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-block: 1px solid var(--line); }
+.ck-val { background: var(--panel-2); padding: .4rem .5rem; display: grid; }
+.ck-val span { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.ck-val b { font: 700 .95rem var(--serif); color: #fff3da; overflow-wrap: anywhere; }
+.ck-need { display: flex; flex-wrap: wrap; gap: .3rem; padding: 0 .8rem; margin: .6rem 0 0; }
+.ck-tune { margin: .6rem .8rem; }
+.ck-tune summary { cursor: pointer; color: var(--brass); }
+.ck-tune label { display: block; margin-top: .5rem; }
+.ck-tune label span { display: block; font-size: .76rem; color: var(--muted); }
+.ck-tune textarea, .ck-edit textarea, .ck-notebox input { width: 100%; }
+.ck-links { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0 .8rem .8rem; }
+.ck-cp { padding: .8rem; border-top: 1px solid var(--line); }
+.ck-said { font: 400 1.05rem/1.4 var(--serif); color: #fff3da; margin: 0 0 .4rem; }
+.ck-facts, .ck-screen { font-size: .78rem; color: var(--muted); margin: .2rem 0; }
+.ck-rank { display: flex; align-items: center; gap: .6rem; margin: .5rem 0; }
+.ck-rank > span, .ck-edit span, .ck-notebox span { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.ck-notebox, .ck-edit { display: block; margin: .5rem 0; }
+.ck-lb { display: grid; grid-template-columns: 22px minmax(0, 1fr) 4rem 3.2rem; gap: .5rem; align-items: center; width: 100%; text-align: left; margin-bottom: .3rem; padding: .35rem .5rem; }
+.ck-lb-name { display: grid; line-height: 1.15; min-width: 0; }
+.ck-lb-name small { color: var(--muted); font-size: .7rem; }
+.ck-lb-bar { background: var(--field); height: .5rem; border-radius: 99px; overflow: hidden; }
+.ck-lb-bar i { display: block; height: 100%; background: var(--brass); }
+.ck-lb-pct { text-align: right; font-size: .78rem; }
+.ck-lb-pct small { display: block; color: var(--muted); font-size: .66rem; }
+.ck-panel > h3, .ck-panel > p { padding: 0 .8rem; }
+.ck-panel > h3:first-child { padding-top: .8rem; }
+
+@media (max-width: 1000px) {
+  .ck-wrap { grid-template-columns: 1fr; }
+  .ck-panel { position: static; max-height: none; }
+  .ck-filters .ck-wide { grid-column: auto; }
+}

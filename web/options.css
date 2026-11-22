@@ -156,6 +156,10 @@ body.player .op-fam-state.safe { color: var(--jade-hi); }
 body.player .op-fam-state.unsafe { color: #e08a8a; }
 body.player .op-fam .op-switch { margin: 1rem 0 .7rem; }
 body.player .op-flip-wrap { margin: 0; }
+body.player .op-persona-pick { margin-top: .6rem; }
+body.player .op-persona-pick-line { display: flex; justify-content: space-between; align-items: baseline; gap: .8rem; color: var(--muted); font: italic .95rem var(--sans); }
+body.player .op-persona-pick-count { font: normal .8rem var(--special); letter-spacing: .12em; }
+body.player .op-persona-slider { width: 100%; margin: .45rem 0 0; accent-color: var(--brass-hi); cursor: pointer; }
 body.player .op-flip-wrap figcaption { margin-top: .5rem; text-align: center; color: var(--muted); font: italic .95rem var(--sans); }
 body.player .op .op-flip { position: relative; display: block; width: 100%; height: auto; min-height: 0; aspect-ratio: 1; padding: 0; border: 0; background: none; perspective: 1000px; cursor: pointer; }
 body.player .op .op-flip:disabled { cursor: default; }
@@ -174,3 +178,11 @@ body.player .op-flip-tag.unsafe { background: #8a2434; color: #fff4e0; }
   body.player .op-flip-wrap { max-width: 18rem; margin: 0 auto; }
 }
 @media (prefers-reduced-motion: reduce) { body.player .op-flip-inner { transition: none; } }
+
+/* Table settings > Full screen, no borders (21 Nov 2026): two buttons under the Family Friendly block. */
+body.player .op-fs { margin-top: 2rem; padding-top: 1.4rem; border-top: 1px solid var(--edge); }
+body.player .op-sec .op-fs h4 { margin: 0 0 .3rem; font: 400 1.65rem/1.2 var(--serif); color: var(--brass-hi); }
+body.player .op-fs-btns { display: flex; flex-wrap: wrap; gap: .8rem; margin: .8rem 0; }
+body.player .op .op-fs-btns .op-btn { flex: 1 1 12rem; padding: .8rem 1.2rem; border: 1px solid var(--edge-hi); border-radius: 3px; background: var(--deck-lacquer); color: var(--deck-ivory); font: 1rem var(--special); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+body.player .op .op-fs-btns .op-btn:not(:disabled):hover { border-color: var(--brass-hi); color: var(--brass-hi); }
+body.player .op .op-fs-btns .op-btn:disabled { opacity: .4; cursor: default; }

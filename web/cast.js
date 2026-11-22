@@ -252,7 +252,7 @@
   function render() {
     if (st.open && !C()[st.open]) st.open = null;
     if (!st.voices && !st.loading && !st.voicesErr && S().key.has_key) loadVoices(false);
-    return `<div id="cast">${st.open ? detail(st.open) : overview()}</div>`;
+    return (typeof voiceTabs === "function" ? voiceTabs("cast") : "") + `<div id="cast">${st.open ? detail(st.open) : overview()}</div>`;
   }
   function redraw() {
     const m = $m();

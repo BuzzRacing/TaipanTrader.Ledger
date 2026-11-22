@@ -221,7 +221,8 @@
     return list.length ? list.map(voiceRow).join("") : `<p class="muted">No voices match. Loosen the filters.</p>`;
   }
 
-  function render() {
+  function render() { return (typeof voiceTabs === "function" ? voiceTabs("voices") : "") + renderPage(); }
+  function renderPage() {
     if (!st.lib && !st.loading && !st.err && !st.off) load();
     const intro = "Every Inworld voice you can use, on one page, with the personas who speak with each one. Listen, mark the ones you like, " +
       "and assign a persona to a voice. Assignments are kept with Save & apply; marks and notes are saved as you go.";

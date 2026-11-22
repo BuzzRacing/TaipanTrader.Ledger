@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard</title>
+<link rel="icon" id="fav" href="/assets/branding/crimson-ledger-icon-v01.png">
+<link rel="apple-touch-icon" id="touch-icon" href="/assets/branding/crimson-ledger-icon-v01.png">
+<link rel="stylesheet" href="/style.css?v=20261117cr">
+<link rel="stylesheet" id="fonts" href="/fonts.css">
+<link rel="stylesheet" id="theme" href="/theme.css">
+<link rel="stylesheet" href="/wordmark.css?v=20261118text1">
+<link rel="stylesheet" href="/ranks.css?v=20261119ranks">
+<link rel="stylesheet" href="/dashboard.css?v=20261121dash3">
+</head>
+
+<body class="board dashboard">
+<p id="db-loading" class="loading" role="status">Opening the pit box...</p>
+<div id="db-fit"><main id="app" class="pw" hidden>
+  <header class="pw-head">
+    <div class="pw-lounge" id="pw-lounge" aria-hidden="true"></div>
+    <div class="pw-brand" id="pw-brand"></div>
+    <div class="pw-clock"><b id="pw-date"></b><span id="pw-sub"></span></div>
+    <nav class="pw-tabs" id="pw-tabs" aria-label="Pages of the book"></nav>
+  </header>
+  <div class="pw-side"><aside class="pw-tower" id="pw-tower" aria-label="Timing tower"></aside>
+  <aside class="pw-host" id="pw-host" aria-label="On the line"></aside></div>
+  <section class="pw-book" id="pw-book" aria-live="off">
+    <div class="pw-leaf pw-left" id="pw-left"></div>
+    <div class="pw-leaf pw-right" id="pw-right"></div>
+    <div class="pw-spot" id="pw-spot" hidden aria-live="polite"></div>
+  </section>
+  <aside class="pw-instr" aria-label="Instruments">
+    <div class="pw-dials" id="pw-dials"></div>
+    <div class="pw-chalk" id="pw-chalk"></div>
+  </aside>
+  <footer class="pw-tape" id="pw-tape" aria-label="Telegraph tape"><div class="pw-tape-track" id="pw-tape-track"></div></footer>
+  <nav class="pw-controls" aria-label="Dashboard controls">
+    <span id="pw-connection" role="status"></span>
+    <button id="pw-pause" type="button" aria-pressed="false">Hold page</button>
+    <button id="pw-next" type="button">Next page</button>
+    <button id="pw-spots" type="button" aria-pressed="true">Spotlights</button>
+    <button id="pw-sound" type="button" aria-pressed="false">Clicks</button>
+    <button id="pw-quit" type="button">Quit</button>
+  </nav>
+</main></div>
+<script src="/ranks.js?v=20261119ranks"></script>
+<script src="/wordmark.js?v=20261118text1"></script>
+<script src="/common.js?v=20261119ranks"></script>
+<script src="/media.js"></script>
+<script src="/chart.js"></script>
+<script src="/dashboard.js?v=20261121dash3"></script>
+</body>
+</html>

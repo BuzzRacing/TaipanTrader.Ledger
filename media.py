@@ -71,7 +71,8 @@ KINDS = {
                           ["happy", "Happy: good news (sales, escapes, wins; the tax lady's tax paid and buyout)"],
                           ["angry", "Angry: bad news (losses, seizures, threats; the tax lady catching a lie)"],
                           ["sly", "Sly: a secret or a bargain (Powder's whisper when pirates misjudge the hold)"],
-                          ["storm", "Storm: battered and bruised, on the storm screen after a heavy or savage storm (Roxana's)"]],
+                          ["storm", "Storm: battered and bruised, on the storm screen after a heavy or savage storm (Roxana's)"],
+                          ["wallpaper", "Wallpaper: a wide 16:9 master shot of her in a dramatic scene, for backgrounds and hero screens"]],
                 "default_role": "speaking"},
     "port": {"label": "Ports", "one": "Port", "subjects": "ports",
              "roles": [["banner", "Banner at the top of the market and port tabs"],
@@ -1117,25 +1118,111 @@ def admin_view(cfg):
 
 
 # ------------------------------------------------------------ generation --
+JOBS_FILE = os.path.join(ROOT, "config", "media_jobs.json")
+LANES = ("picture", "video")
+# Until the farm has timed a few renders, these guesses feed the ETA (seconds per picture, per clip).
+DEFAULT_SECONDS = {"picture": 45.0, "video": 1500.0}
+
+
+def _lane(job):
+    return "video" if job.get("type") == "video" else "picture"
+
+
+def _left(job):
+    return max(0, int(job.get("count") or 0) - int(job.get("done") or 0) - int(job.get("failed") or 0))
+
+
 class Jobs:
-    """Generates pictures one after another in the background, saving each into the library as it finishes."""
+    """The render queue. Pictures and clips wait in separate lanes (one worker feeds the farm, pictures first, so a
+    picture never sits in the farm's own queue behind a 25-minute clip and times out). The queue is saved to
+    config/media_jobs.json after every change, so a restart picks up where it left off."""
 
     def __init__(self):
         self.lock = threading.Lock()
         self.jobs = []
+        self.paused = {"picture": False, "video": False}
+        self.times = {"picture": [], "video": []}     # recent seconds per finished picture / clip, for the ETA
         self.wake = threading.Event()
         self.thread = None
         self.render = None      # function(prompt, prefix, width, height, negative, seed=None) -> (bytes, seed)
         self.render_video = None  # function(image_path, motion, width, height, seconds, seed, prefix, progress) -> (bytes, info)
         self.log = None         # function(level, text)
 
+    # ------------------------------------------------------------ saving --
+    def _save_locked(self):
+        data = {"saved": time.time(), "paused": self.paused, "times": self.times, "jobs": self.jobs}
+        tmp = JOBS_FILE + ".tmp"
+        for _try in range(3):       # the worker may add an item while we copy the job out; just try again
+            try:
+                text = json.dumps(data, ensure_ascii=False)
+                os.makedirs(os.path.dirname(JOBS_FILE), exist_ok=True)
+                with open(tmp, "w", encoding="utf-8") as f:
+                    f.write(text)
+                os.replace(tmp, JOBS_FILE)
+                return
+            except RuntimeError:
+                continue
+            except OSError:
+                return
+
+    def _save(self):
+        with self.lock:
+            self._save_locked()
+
+    def _restore(self):
+        try:
+            with open(JOBS_FILE, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return
+        if not isinstance(data, dict):
+            return
+        kept, back = [], 0
+        for j in data.get("jobs") or []:
+            if not (isinstance(j, dict) and isinstance(j.get("id"), str) and isinstance(j.get("count"), int)):
+                continue
+            for k, v in (("done", 0), ("failed", 0), ("items", []), ("roles", []), ("tags", []), ("error", ""),
+                         ("negative", None), ("replaces", ""), ("seed", None)):
+                j.setdefault(k, v)
+            if j.get("status") == "running":        # the server stopped mid-render: run what is left
+                j["status"], j["resumed"] = "waiting", True
+                back += 1
+            elif j.get("status") == "cancelling":
+                j["status"], j["finished"] = "cancelled", time.time()
+            elif j.get("status") == "waiting":
+                back += 1
+            kept.append(j)
+        self.jobs = kept
+        p = data.get("paused")
+        if isinstance(p, dict):
+            self.paused = {l: bool(p.get(l)) for l in LANES}
+        t = data.get("times")
+        if isinstance(t, dict):
+            self.times = {l: [float(x) for x in (t.get(l) or []) if isinstance(x, (int, float))][-12:] for l in LANES}
+        if back and self.log:
+            self.log("INFO", "Media library: restored {} queued render job(s) after the restart".format(back))
+
     def start(self, render, log=None, render_video=None):
         self.render, self.log = render, log
         if render_video is not None:
             self.render_video = render_video
         if self.thread is None:
+            with self.lock:
+                self._restore()
             self.thread = threading.Thread(target=self._run, daemon=True, name="media-jobs")
             self.thread.start()
+            self.wake.set()
+
+    def _push(self, job):
+        with self.lock:
+            self.jobs.append(job)
+            live = [j for j in self.jobs if j["status"] in ("waiting", "running", "cancelling")]
+            done = [j for j in self.jobs if j["status"] not in ("waiting", "running", "cancelling")][-30:]
+            keep = {id(j) for j in live + done}
+            self.jobs = [j for j in self.jobs if id(j) in keep]
+            self._save_locked()
+        self.wake.set()
+        return job
 
     def add(self, kind, subject, roles, prompt, width, height, count, nsfw, negative=None, tags=(), aspect="",
             replaces="", seed=None):
@@ -1146,12 +1233,7 @@ class Jobs:
                "replaces": replaces if ITEM_RE.match(replaces or "") else "",
                # Anthony, 20 Nov 2026: a fixed seed re-renders a known picture (Media Library quick "Regen").
                "seed": seed if isinstance(seed, int) and seed >= 0 else None}
-        with self.lock:
-            self.jobs.append(job)
-            self.jobs = [j for j in self.jobs if j["status"] in ("waiting", "running")] + \
-                        [j for j in self.jobs if j["status"] not in ("waiting", "running")][-30:]
-        self.wake.set()
-        return job
+        return self._push(job)
 
     def add_video(self, source, motion, seeds, nsfw, tags=(), pair="", seconds=10, loop=True, width=0, height=0):
         """Queue clips made from one library picture: one clip per seed. nsfw is "yes" or "no" (the pair button
@@ -1165,13 +1247,163 @@ class Jobs:
                "seed": None, "source_id": source["id"], "source_url": source["url"],
                "pair": pair if PAIR_RE.match(pair or "") else "", "seconds": int(seconds), "loop": bool(loop),
                "progress": ""}
-        with self.lock:
-            self.jobs.append(job)
-            self.jobs = [j for j in self.jobs if j["status"] in ("waiting", "running")] + \
-                        [j for j in self.jobs if j["status"] not in ("waiting", "running")][-30:]
-        self.wake.set()
-        return job
+        return self._push(job)
 
+    # ------------------------------------------------------------ timing --
+    def _avg(self, lane):
+        t = self.times.get(lane) or []
+        return sum(t) / len(t) if t else DEFAULT_SECONDS[lane]
+
+    def _note(self, lane, seconds):
+        with self.lock:
+            self.times[lane] = (self.times.get(lane, []) + [round(float(seconds), 1)])[-12:]
+
+    def _snapshot(self):
+        """Jobs in the order they will run (running, waiting pictures, waiting clips, then finished newest first),
+        each with its place in its lane and an estimate of when it starts and finishes. Call with the lock held."""
+        now = time.time()
+        avg = {l: self._avg(l) for l in LANES}
+        running = [j for j in self.jobs if j["status"] in ("running", "cancelling")]
+        waiting = {l: [j for j in self.jobs if j["status"] == "waiting" and _lane(j) == l] for l in LANES}
+        t, plan = 0.0, {}
+        for j in running:
+            l, rem = _lane(j), _left(j)
+            if j["status"] == "cancelling":
+                rem = min(rem, 1)
+            gone = min(now - (j.get("item_started") or now), avg[l] * 0.9)
+            t += max(0.0, rem * avg[l] - gone) if rem else 0.0
+            plan[j["id"]] = (0.0, t)
+        lanes = {}
+        for l in LANES:
+            lane_t = t
+            for n, j in enumerate(waiting[l], 1):
+                if self.paused[l]:
+                    plan[j["id"]] = (None, None)
+                else:
+                    start = t
+                    t += _left(j) * avg[l]
+                    plan[j["id"]] = (start, t)
+                    lane_t = t
+                j["_pos"] = n
+            lanes[l] = {"waiting": len(waiting[l]), "paused": self.paused[l], "avg_s": round(avg[l], 1),
+                        "items": sum(_left(j) for j in waiting[l] + [r for r in running if _lane(r) == l]),
+                        "running": any(_lane(r) == l for r in running),
+                        "eta_s": None if self.paused[l] and waiting[l] else int(lane_t)}
+        order = running + waiting["picture"] + waiting["video"] + \
+            [j for j in reversed(self.jobs) if j["status"] not in ("waiting", "running", "cancelling")]
+        out = []
+        for j in order:
+            row = {k: v for k, v in j.items() if k not in ("negative", "_pos")}
+            row["lane"] = _lane(j)
+            row["left"] = _left(j)
+            if j["id"] in plan:
+                s, e = plan[j["id"]]
+                row["start_s"] = None if s is None else int(s)
+                row["eta_s"] = None if e is None else int(e)
+            if j["status"] == "waiting":
+                row["pos"] = j.get("_pos", 0)
+            out.append(row)
+        for j in self.jobs:
+            j.pop("_pos", None)
+        return out, {"lanes": lanes, "total_eta_s": int(t), "avg": avg}
+
+    def list(self):
+        with self.lock:
+            return self._snapshot()[0]
+
+    def summary(self):
+        with self.lock:
+            return self._snapshot()[1]
+
+    # ---------------------------------------------------------- controls --
+    def cancel(self, jid):
+        with self.lock:
+            for j in self.jobs:
+                if j["id"] == jid and j["status"] in ("waiting", "running"):
+                    if j["status"] == "running":
+                        j["status"] = "cancelling"
+                    else:
+                        j["status"], j["finished"] = "cancelled", time.time()
+                    self._save_locked()
+                    return True
+        return False
+
+    def cancel_all(self, lane=None):
+        n = 0
+        with self.lock:
+            for j in self.jobs:
+                if lane in LANES and _lane(j) != lane:
+                    continue
+                if j["status"] == "waiting":
+                    j["status"], j["finished"] = "cancelled", time.time()
+                    n += 1
+                elif j["status"] == "running":
+                    j["status"] = "cancelling"
+                    n += 1
+            self._save_locked()
+        return n
+
+    def move(self, jid, to):
+        """Reorder a waiting job inside its own lane. `to` is up, down, top, bottom or "before:<job id>"."""
+        with self.lock:
+            j = next((x for x in self.jobs if x["id"] == jid and x["status"] == "waiting"), None)
+            if j is None:
+                return False
+            lane = _lane(j)
+            ws = [x for x in self.jobs if x["status"] == "waiting" and _lane(x) == lane]
+            i = ws.index(j)
+            ws.pop(i)
+            to = str(to or "")
+            if to.startswith("before:"):
+                other = next((n for n, x in enumerate(ws) if x["id"] == to[7:]), None)
+                if other is None:
+                    return False
+                k = other
+            else:
+                k = {"up": max(0, i - 1), "down": min(len(ws), i + 1), "top": 0, "bottom": len(ws)}.get(to)
+                if k is None:
+                    return False
+            ws.insert(k, j)
+            slots = [n for n, x in enumerate(self.jobs) if x["status"] == "waiting" and _lane(x) == lane]
+            for n, x in zip(slots, ws):
+                self.jobs[n] = x
+            self._save_locked()
+        return True
+
+    def pause(self, lane, on):
+        if lane not in LANES:
+            return False
+        with self.lock:
+            self.paused[lane] = bool(on)
+            self._save_locked()
+        self.wake.set()
+        return True
+
+    def clear_finished(self):
+        with self.lock:
+            before = len(self.jobs)
+            self.jobs = [j for j in self.jobs if j["status"] in ("waiting", "running", "cancelling")]
+            self._save_locked()
+            return before - len(self.jobs)
+
+    def command(self, body):
+        """One entry point for the admin page: {action: cancel_all|move|pause|resume|clear, job, to, lane}."""
+        act, lane = str(body.get("action") or ""), body.get("lane")
+        if act == "cancel_all":
+            n = self.cancel_all(lane)
+            return {"ok": True, "msg": "Stopped {} job{}.".format(n, "" if n == 1 else "s")}
+        if act == "move":
+            return {"ok": self.move(str(body.get("job") or ""), body.get("to")), "msg": "Moved.",
+                    "error": "That job is no longer waiting."}
+        if act in ("pause", "resume"):
+            return {"ok": self.pause(lane, act == "pause"), "msg": "Paused." if act == "pause" else "Resumed.",
+                    "error": "Unknown lane."}
+        if act == "clear":
+            n = self.clear_finished()
+            return {"ok": True, "msg": "Cleared {} finished job{}.".format(n, "" if n == 1 else "s")}
+        return {"ok": False, "error": "Unknown queue action."}
+
+    # ----------------------------------------------------------- workers --
     def _run_video(self, job):
         src = path_for(job["source_url"])
         if not src or not os.path.isfile(src):
@@ -1183,15 +1415,18 @@ class Jobs:
             job["error"] = "Video generation is not set up on this server."
             return
         for n, seed in enumerate(job["seeds"]):
+            if n < job["done"] + job["failed"]:     # already made (or failed) before a restart
+                continue
             if job["status"] == "cancelling":
                 break
             try:
                 def progress(text, _n=n):
                     job["progress"] = "clip {} of {}: {}".format(_n + 1, job["count"], text)
-                t0 = time.time()
+                t0 = job["item_started"] = time.time()
                 data, info = self.render_video(src, job["prompt"], job["width"], job["height"], job["seconds"], seed,
                                                "seatrader/video-{}-{}".format(job["kind"], job["subject"] or "item"),
                                                progress)
+                self._note("video", time.time() - t0)
                 if job["nsfw"] in ("yes", "no"):
                     nsfw = job["nsfw"] == "yes"
                 else:
@@ -1217,67 +1452,74 @@ class Jobs:
                     self.log("ERROR", "Media library: clip failed from {}: {}".format(job["source_url"], e))
                 if job["failed"] >= 2 and job["done"] == 0:
                     break
+            self._save()
         job["progress"] = ""
 
-    def cancel(self, jid):
-        with self.lock:
-            for j in self.jobs:
-                if j["id"] == jid and j["status"] in ("waiting", "running"):
-                    j["status"] = "cancelling" if j["status"] == "running" else "cancelled"
-                    return True
-        return False
-
-    def list(self):
-        with self.lock:
-            return [{k: v for k, v in j.items() if k != "negative"} for j in reversed(self.jobs)]
-
     def _next(self):
+        """Pictures go first (they are quick); clips run when no picture is waiting. A paused lane is skipped."""
         with self.lock:
-            for j in self.jobs:
-                if j["status"] == "waiting":
-                    j["status"] = "running"
-                    return j
+            for lane in LANES:
+                if self.paused[lane]:
+                    continue
+                for j in self.jobs:
+                    if j["status"] == "waiting" and _lane(j) == lane:
+                        j["status"] = "running"
+                        j["item_started"] = time.time()
+                        self._save_locked()
+                        return j
         return None
+
+    def _finish(self, job):
+        job["status"] = "cancelled" if job["status"] == "cancelling" else ("failed" if not job["done"] else "done")
+        job["finished"] = time.time()
+        job.pop("item_started", None)
+        self._save()
 
     def _run(self):
         while True:
-            job = self._next()
-            if job is None:
-                self.wake.wait(5)
-                self.wake.clear()
-                continue
-            if job.get("type") == "video":
-                self._run_video(job)
-                job["status"] = "cancelled" if job["status"] == "cancelling" else ("failed" if not job["done"] else "done")
-                job["finished"] = time.time()
-                continue
-            for _n in range(job["count"]):
-                if job["status"] == "cancelling":
-                    break
-                try:
-                    fixed = {"seed": job["seed"]} if job.get("seed") is not None else {}
-                    data, seed = self.render(job["prompt"], "seatrader/{}-{}".format(job["kind"], job["subject"] or "item"),
-                                             job["width"], job["height"], job["negative"], **fixed)
-                    nsfw = nsfw_from_prompt(job["prompt"], {"new_nsfw": job["nsfw"]})
-                    data, ext = compact_picture(data)
-                    it = add_bytes(data, ext, job["kind"], job["subject"], job["roles"], job["tags"], nsfw,
-                                   "generated", job["prompt"], seed, stem="{}-{}".format(job["kind"], job["subject"]),
-                                   reviewed=not nsfw, replaces=job.get("replaces") or "")
-                    job["items"].append(it["id"])
-                    job["done"] += 1
-                    if self.log:
-                        self.log("INFO", "Media library: generated {} for {}/{} (seed {}{})".format(
-                            it["url"], job["kind"], job["subject"], seed, ", NSFW" if nsfw else ""))
-                except Exception as e:      # the farm being down must not stop the queue
-                    job["failed"] += 1
-                    job["error"] = str(e)[:300]
-                    if self.log:
-                        self.log("ERROR", "Media library: generation failed for {}/{}: {}".format(
-                            job["kind"], job["subject"], e))
-                    if job["failed"] >= 2 and job["done"] == 0:
+            try:
+                job = self._next()
+                if job is None:
+                    self.wake.wait(5)
+                    self.wake.clear()
+                    continue
+                if job.get("type") == "video":
+                    self._run_video(job)
+                    self._finish(job)
+                    continue
+                for _n in range(_left(job)):
+                    if job["status"] == "cancelling":
                         break
-            job["status"] = "cancelled" if job["status"] == "cancelling" else ("failed" if not job["done"] else "done")
-            job["finished"] = time.time()
+                    try:
+                        fixed = {"seed": job["seed"]} if job.get("seed") is not None else {}
+                        t0 = job["item_started"] = time.time()
+                        data, seed = self.render(job["prompt"], "seatrader/{}-{}".format(job["kind"], job["subject"] or "item"),
+                                                 job["width"], job["height"], job["negative"], **fixed)
+                        self._note("picture", time.time() - t0)
+                        nsfw = nsfw_from_prompt(job["prompt"], {"new_nsfw": job["nsfw"]})
+                        data, ext = compact_picture(data)
+                        it = add_bytes(data, ext, job["kind"], job["subject"], job["roles"], job["tags"], nsfw,
+                                       "generated", job["prompt"], seed, stem="{}-{}".format(job["kind"], job["subject"]),
+                                       reviewed=not nsfw, replaces=job.get("replaces") or "")
+                        job["items"].append(it["id"])
+                        job["done"] += 1
+                        if self.log:
+                            self.log("INFO", "Media library: generated {} for {}/{} (seed {}{})".format(
+                                it["url"], job["kind"], job["subject"], seed, ", NSFW" if nsfw else ""))
+                    except Exception as e:      # the farm being down must not stop the queue
+                        job["failed"] += 1
+                        job["error"] = str(e)[:300]
+                        if self.log:
+                            self.log("ERROR", "Media library: generation failed for {}/{}: {}".format(
+                                job["kind"], job["subject"], e))
+                        if job["failed"] >= 2 and job["done"] == 0:
+                            break
+                    self._save()
+                self._finish(job)
+            except Exception as e:      # nothing may kill the worker thread
+                if self.log:
+                    self.log("ERROR", "Media library: queue worker error: {}".format(e))
+                time.sleep(2)
 
 
 JOBS = Jobs()

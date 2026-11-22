@@ -325,9 +325,14 @@ def clip_path(cid):
     return os.path.join(CACHE_DIR, cid + ".mp3")
 
 
-def register(params):
+_who = {}                   # clip id -> character id, for the index (so the Clips page knows who spoke it)
+
+
+def register(params, who=""):
     cid = clip_id(params)
     with _reg_lock:
+        if who:
+            _who[cid] = who
         _registry[cid] = params
         _registry.move_to_end(cid)
         while len(_registry) > REGISTRY_SIZE:
@@ -342,6 +347,8 @@ def _index(cid, params, nbytes):
     """Notes a newly paid-for clip in cache/voice/index.jsonl (what it says, who says it)."""
     row = {"clip": cid, "at": time.strftime("%Y-%m-%d %H:%M:%S"), "bytes": nbytes}
     row.update(params)
+    if _who.get(cid):
+        row["who"] = _who[cid]
     try:
         with _index_lock, open(os.path.join(CACHE_DIR, INDEX_NAME), "a", encoding="utf-8") as f:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -602,9 +609,9 @@ class Planner:
         clean = self.clean(text)
         if ((self.cfg.get("content") or {}).get("rating") == "family"):
             text = clean
-        out = {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, vcfg)))}
+        out = {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, vcfg), cid))}
         if clean != text:
-            out["f"] = "/voice/{}.mp3".format(register(_params(clean, ch, vcfg)))
+            out["f"] = "/voice/{}.mp3".format(register(_params(clean, ch, vcfg), cid))
         return out
 
     def _who(self, key, port):

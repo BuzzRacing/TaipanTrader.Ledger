@@ -481,6 +481,9 @@ class Game:
         e = {"turn": self.s["turn"], "cat": cat, "type": kind, "msg": msg}
         if p is not None:
             e["pid"], e["who"] = p["id"], p["name"]
+            if kind in ("sailed", "arrived", "customs_open", "storm_report", "battle_result"):
+                data["table_focus"] = copy.deepcopy({k: p.get(k) for k in ("id", "name", "firm", "port", "ships", "cash", "bank", "debt")})
+                data["table_focus"]["worth"] = int(self.worth(p))
         e.update(data)
         if self._hold is not None:
             self._hold.append(e)
@@ -2090,7 +2093,8 @@ class Game:
             "asks for a declaration at {}: {}; strongbox {}, mood x{}".format(
                 pct(rate), ", ".join("{} {} worth {}".format(ln["qty"], GOODS[ln["good"]]["name"], money(ln["value"]))
                                      for ln in lines), money(box), cx["mood"])),
-            p, port=port, rate=rate, lines=lines, cx=cx, box=box, status=status, spot=spot)
+            p, port=port, rate=rate, lines=lines, cx=cx, box=box, status=status, spot=spot,
+            table_report=copy.deepcopy(self.customs_view(p)))
 
     # ------------------------------------------------------ the Registrar --
     # Mrs. Evelyn Marlowe (cast key "taxlady") keeps the register of every merchant house. She is
@@ -2508,6 +2512,9 @@ class Game:
                             ", fine {}".format(money(fine_total)) if fine_total else "",
                             ", bought out for {}".format(money(paid_in)) if paid_in else "",
                             ", {} short, added to the debt".format(money(owed)) if owed else "")}
+        self._detail["table_report"] = copy.deepcopy(self.customs_view(p))
+        self._detail["table_focus"] = copy.deepcopy({k: p.get(k) for k in ("id", "name", "firm", "port", "ships", "cash", "bank", "debt")})
+        self._detail["table_focus"]["worth"] = int(self.worth(p))
         if caught:
             return tx("m.customs_caught", total=money(tax_total + fine_total), fine=money(fine_total))
         if bribe and not bribe["taken"]:
@@ -2667,6 +2674,7 @@ class Game:
         c = R["customs"]
         ch = (CFG.get("characters") or {}).get(cu["officer"]) or {}
         out = {k: cu[k] for k in ("status", "port", "officer", "rate", "base", "free", "lines", "cx", "result")}
+        out["turn"] = cu.get("turn", self.s["turn"])
         out["name"], out["title"], out["line"] = ch.get("name", ""), ch.get("title", ""), ch.get("catchphrase", "")
         out["view"] = MULT.get("customs_view", "bar")
         out["bond"] = bool(c.get("bond", True))
@@ -5197,7 +5205,9 @@ class Game:
                 self._ev("voyage", "arrived", "{} anchored in {}: {} ship{}, hull {}, hold {}/{}, silver {}".format(
                     who, PORTS[dest]["name"], len(p["ships"]), "" if len(p["ships"]) == 1 else "s",
                     "/".join(str(sh["hull"]) for sh in p["ships"]), self.used(p), self.capacity(p), money(p["cash"])),
-                    p, port=dest, cargo=dict(p["cargo"]), cash=int(p["cash"]))
+                    p, port=dest, origin=origin, cargo=dict(p["cargo"]), cash=int(p["cash"]),
+                    ships=copy.deepcopy(p["ships"]),
+                    welcome=tx(p["mayor_greet"]["key"], port=PORTS[dest]["name"]))
                 risky = self.at_risk(dest)
                 jail_seized = False
                 held = sum(p["cargo"].get(g, 0) for g in risky)
@@ -6277,6 +6287,8 @@ class Game:
                 "match": b.get("match"), "enemy_hull": b.get("enemy_hull"), "enemy_guns": b.get("enemy_guns"),
                 "fleet": b.get("fleet"), "tip": b.get("spared_tip"), "crippled": list(b.get("crippled") or ()),
                 "beat": {"id": b["step"] + 1, "frames": frames}})
+            self._ev("battle", "battle_result", "{}: {} against {}".format(p["name"], outcome, b["label"]),
+                     p, port=dest, table_report=copy.deepcopy(p["fights"][-1]))
         p.pop("battle", None)
 
     def toll_plan(self, p, price):

@@ -375,7 +375,8 @@ def hit(g, p, v, level, risk, news):
     g._ev("voyage", "storm_report", "{}: {} storm: hull -{} of {}, {} lost overboard, {} guns and {} cannons gone{}".format(
         who, band, hull_lost, hull_full, ", ".join("{} {}".format(q, gd) for gd, q in sorted(lost.items())) or "no cargo",
         guns_lost, cannons_lost, "; landed in " + PORTS[landing["port"]]["name"] if diverted else ""), p, band=band,
-        landing=landing, hull_lost=hull_lost, cargo=dict(lost), guns=guns_lost, cannons=cannons_lost)
+        landing=landing, hull_lost=hull_lost, cargo=dict(lost), guns=guns_lost, cannons=cannons_lost,
+        table_report=p["storm"])
     return p["storm"]
 
 

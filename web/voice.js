@@ -22,6 +22,8 @@ const Voice = (() => {
   const KEY_BRIEF = "seatrader_brief";
   const BRIEF_KEEP = { log: 3, news: 1 };
   const SID = "s" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const tableScreen = document.body.classList.contains("harbor-view");
+  let leading = true;
 
   const brief = () => store(KEY_BRIEF) === "1";
   let cast = {}, enabled = false, muted = store("seatrader_mute") === "1";
@@ -82,13 +84,16 @@ const Voice = (() => {
   /* ---- the turn, shared with the other screens through the server ---- */
   async function floor(op, item) {
     if (!floorOk && Date.now() < floorRetryAt) return { granted: true };
-    const body = { id: SID, op };
-    if (item) { body.clip = clipId(item.u); body.once = item.group === "news"; }
+    const body = { id: SID, op, role: tableScreen ? "table" : "player" };
+    if (op === "table") body.channels = leading && typeof SeaAudio !== "undefined" && SeaAudio.running()
+      ? ["dialogue", "music", "atmosphere", "system"].filter(c => SeaAudio.audible(c)) : [];
+    if (item) { body.clip = clipId(item.u); body.once = true; }
     try {
       const r = await fetch("/api/voice/floor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (r.status === 404) { floorOk = false; floorRetryAt = Date.now() + FLOOR_RETRY_MS; return { granted: true }; }   // an older server
       floorOk = true;
       const j = await r.json();
+      if (!tableScreen && j.table_channels && typeof SeaAudio !== "undefined") SeaAudio.followTable(j.table_channels);
       return j && typeof j.granted === "boolean" ? j : { granted: true };
     } catch (e) {
       return { granted: true };          // server unreachable: never hold the lines back
@@ -99,7 +104,9 @@ const Voice = (() => {
   window.addEventListener("pagehide", () => {
     if (!navigator.sendBeacon) return;
     try { navigator.sendBeacon("/api/voice/floor", JSON.stringify({ id: SID, op: "free" })); } catch (e) { /* closing anyway */ }
+    if (tableScreen) navigator.sendBeacon("/api/voice/floor", JSON.stringify({ id: SID, op: "leave_table", role: "table" }));
   });
+  setInterval(() => floor(tableScreen ? "table" : "status"), RENEW_MS);
 
   /* ---- playing ---- */
   function release(n) {
@@ -231,6 +238,7 @@ const Voice = (() => {
   }
 
   return {
+    lead(on) { leading = !!on; if (tableScreen) floor("table"); },
     /* Settings from /api/info. */
     setup(v) {
       v = v || {};

@@ -310,6 +310,31 @@ CHARACTERS = {
                            "and silver dollars, a smouldering heavy-lidded gaze over her spectacles as if she has found "
                            "something deliciously wrong in your accounts, {style}",
     },
+    # The Table's Game Master (21 Nov 2026): she opens the month on the Harbor View, says whose turn it is and
+    # puts each decision and action item to the Captain. Speaks aloud on the Table only (gm_text.py).
+    # Voice is a provisional shared one: cast her in Admin > Identity > Voice Library (casting lives on the Pi).
+    "gamemaster": {
+        "name": "Madame Anahit Sarkissian", "title": "Mistress of the Table & Queen of the Hour", "brand_link": "",
+        "age": 44, "origin": "Calcutta (the Armenian quarter)", "home_port": "calcutta", "color": "#c8922e", "portrait": "",
+        "voice_id": "Sarah", "speaking_rate": 1.04,
+        "delivery": "grand, brisk and theatrical, a ringmistress with a queen's poise who makes every question sound like a royal summons and every deadline like a dare",
+        "catchphrase": "The table is yours, Captain. Do try to make it interesting.",
+        "bio": "Daughter of an Armenian silk-and-silver house from New Julfa, raised in Calcutta's Armenian quarter "
+               "among dice, ledgers and auction bells. She ran the floor of three gaming halls and one very illegal "
+               "auction house before the pirate queens hired her to run the Table. Every month she opens it, puts "
+               "the questions and keeps the captains honest, or at least entertained.",
+        "quirk": "Rings her brass bell exactly once before any question that matters, and twice if she already knows the answer.",
+        "vice": "Armenian brandy, loaded dice she swears she does not own, and captains who cannot resist a side bet.",
+        "secret": "She knows every House's orders before the table does, and has never once let it show.",
+        "stats": {"cunning": 8, "nerve": 7, "charm": 9, "greed": 4},
+        "portrait_prompt": "An {adult} Armenian woman (age 44), the regal ringmistress-croupier of a Calcutta "
+                           "merchant-palace gaming hall, standing at the head of a gilded table, crimson velvet "
+                           "ringmaster's tailcoat with gold braid and ermine lapels open over a gold-embroidered black "
+                           "corset, white opera gloves, a ruby collar necklace, dark hair swept up beneath a small gold "
+                           "diadem, a jewelled bell and an ivory gavel before her, chandelier glow on gold leaf, a "
+                           "queen's knowing smile as if she is about to pose you a question you will not want "
+                           "to answer, {style}",
+    },
 }
 # The Port Authority officers, one for each taxed port (Admin > Ports > Port Authority officer).
 # Each captain's home port is kept by the Registrar, Mrs. Evelyn Marlowe (key "taxlady", above);
@@ -484,9 +509,29 @@ for _cid, _o in _OFFICERS.items():
     _o["portrait_prompt"] = _o.pop("prompt")
     CHARACTERS[_cid] = _o
 # Added after games were already saved: config.validate adds these to a saved cast once.
-SEEDED = list(_OFFICERS) + ["bookkeeper"]
+SEEDED = list(_OFFICERS) + ["bookkeeper", "gamemaster"]
 for _c in CHARACTERS.values():
     _c["portrait_prompt"] = _c["portrait_prompt"].format(adult=_ADULT, style=_STYLE)
+
+# Persona prompts v2 (21 Nov 2026): persona_prompts_v2.py is the source of every default portrait prompt, and of
+# her costume ladder (sultry / boudoir / topless / nude / clean), her light and her motion line. The old defaults
+# above stay as the fallback if that module is ever missing. PORTRAIT_TIER is the look the Admin shows by default.
+PORTRAIT_TIER = "topless"
+try:
+    import persona_prompts_v2 as _pp
+except ImportError:      # pragma: no cover - the old defaults keep the game running
+    _pp = None
+if _pp:
+    for _cid, _c in CHARACTERS.items():
+        if _cid in _pp.LOOKS:
+            _c["portrait_prompt"] = _pp.build(_cid, PORTRAIT_TIER)
+
+
+def tier_prompt(cid, tier, mood=None):
+    """Her prompt at one look (sultry, boudoir, topless, nude, clean) from persona_prompts_v2, else her default."""
+    if _pp and cid in _pp.LOOKS:
+        return _pp.build(cid, tier, mood)
+    return CHARACTERS.get(cid, {}).get("portrait_prompt", "")
 
 LINE_DEFAULTS = {}
 for _who, _keys in {
@@ -556,6 +601,10 @@ LINE_DEFAULTS["n.legend_palace_sold"] = "crier"
 for _k in strings.EN:
     if _k.startswith("l.acct_"):
         LINE_DEFAULTS[_k] = "bookkeeper"
+# The Game Master (gm_text.py, 21 Nov 2026): her prompts are read on the Table only.
+for _k in strings.EN:
+    if _k.startswith("gm."):
+        LINE_DEFAULTS[_k] = "gamemaster"
 # The comprador's buy and sell banks (trade_text.py): all hers.
 for _k in trade_text.KEYS:
     LINE_DEFAULTS[_k] = "comprador"
@@ -822,6 +871,15 @@ def _num(v, lo, hi, default, integer=False):
     return int(round(v)) if integer else round(v, 3)
 
 
+def _saved_prompt(saved, default):
+    """A saved portrait prompt, unless it is an untouched old default (it still carries the old shared style tail):
+    then she gets the v2 prompt. A prompt edited in Admin has no such tail and is kept as written."""
+    saved = str(saved or "").strip()
+    if saved and not (_pp and _STYLE in saved):
+        return saved
+    return str(default or "").strip()
+
+
 def clean(cfg, url_re, errors):
     """Checks and tidies cfg['characters'] and cfg['voice'] in place."""
     raw = cfg.get("characters")
@@ -855,7 +913,7 @@ def clean(cfg, url_re, errors):
             "vice": _text(c.get("vice"), 300),
             "secret": _text(c.get("secret"), 300),
             "stats": {},
-            "portrait_prompt": str(c.get("portrait_prompt") or base.get("portrait_prompt") or "").strip()[:2000],
+            "portrait_prompt": _saved_prompt(c.get("portrait_prompt"), base.get("portrait_prompt"))[:2000],
         }
         if not d["name"] and not d["brand_link"]:
             errors.append("Cast & Voices / {}: give the character a name".format(cid))

@@ -12,54 +12,40 @@
 <link rel="stylesheet" id="theme" href="/theme.css">
 <link rel="stylesheet" href="/wordmark.css?v=20261118text1">
 <link rel="stylesheet" href="/ranks.css?v=20261119ranks">
-<link rel="stylesheet" href="/table.css?v=20261121hv6">
+<link rel="stylesheet" href="/table.css?v=20261121blend1">
 </head>
-<!-- Harbor View: the game seen from straight above, laid out on a captain's table (phase 1, 21 Nov 2026).
-     Read-only. Uses the same public stream as the harbor board. Plan: project doc "SeaTrader Harbor View". -->
+
 <body class="board harbor-view">
-<p id="hv-loading" class="loading">…</p>
-<div id="hv-fit">
-  <main id="app" class="hv-table board-room" hidden>
-    <div class="hv-lamp" aria-hidden="true"></div>
-
-    <section class="hv-board" aria-label="Sea chart">
-      <div class="hv-chart">
-        <div id="hv-world">
-          <div id="hv-chart-base"></div>
-          <div class="hv-water" aria-hidden="true"><i></i><i></i><i></i></div>
-          <svg id="hv-sky" class="hv-layer" viewBox="0 0 1000 600" aria-hidden="true"></svg>
-          <div id="hv-title" class="hv-title"></div>
-          <svg id="hv-pieces" class="hv-layer" viewBox="0 0 1000 600"></svg>
-        </div>
-        <aside id="hv-popup" class="hv-popup" aria-live="polite"></aside>
-      </div>
-    </section>
-
-    <aside class="hv-side">
-      <section id="hv-date" class="hv-card hv-date"></section>
-      <section class="hv-gazette">
-        <h2 id="hv-gazette-head"></h2>
-        <div id="hv-news" class="hv-news"></div>
-      </section>
-    </aside>
-
-    <section id="hv-mats" class="hv-mats"></section>
-
-    <footer id="hv-controls" class="hv-controls">
-      <span id="hv-connection" role="status"></span>
-      <button id="hv-quit" type="button">Quit</button>
-    </footer>
-  </main>
-</div>
+<p id="hv-loading" class="loading" role="status">Preparing the table...</p>
+<div id="hv-fit"><main id="app" class="hv-table" hidden>
+<div id="hv-backdrop" class="hv-backdrop" aria-hidden="true"></div><div id="hv-backdrop-next" class="hv-backdrop" aria-hidden="true"></div><div class="hv-light" aria-hidden="true"></div><div class="hv-frame" aria-hidden="true"></div>
+<header class="hv-context"><span id="hv-date"></span><span id="hv-location"></span><span id="hv-phase"></span></header>
+<section class="hv-board" aria-label="Live sea chart"><div class="hv-board-edge"><div class="hv-chart"><div id="hv-world">
+<div id="hv-chart-base"></div><svg id="hv-sky" class="hv-layer" viewBox="0 0 1000 600" aria-hidden="true"></svg>
+<svg id="hv-route" class="hv-layer" viewBox="0 0 1000 600" aria-hidden="true"></svg><svg id="hv-pieces" class="hv-layer" viewBox="0 0 1000 600"></svg>
+</div></div></div><div id="hv-map-note" class="hv-map-note"></div></section>
+<section id="hv-persona" class="hv-persona" aria-label="Storyteller"></section>
+<section id="hv-counterpart" class="hv-persona hv-counterpart" aria-label="Other speaker"></section>
+<section id="hv-story" class="hv-story" aria-live="polite" aria-atomic="true"></section>
+<div class="hv-weather-fx" aria-hidden="true"></div><aside id="hv-bulletin" class="hv-bulletin"></aside>
+<footer id="hv-ledger" class="hv-ledger"></footer>
+<nav id="hv-controls" class="hv-controls" aria-label="Presentation controls"><span id="hv-connection" role="status"></span>
+<button id="hv-pause" type="button" aria-pressed="false" title="Pause presentation; gameplay continues">Pause</button>
+<button id="hv-skip" type="button">Skip</button><button id="hv-board" type="button">Sea chart</button>
+<button id="hv-linger" type="button" aria-pressed="false">Linger</button><button id="hv-sound" type="button">Sound</button><button id="hv-quit" type="button">Quit</button></nav>
+<span id="hv-paused" class="hv-paused" hidden>Presentation paused - Game continues</span>
+<dialog id="hv-sound-dialog" aria-labelledby="hv-sound-title"><header><h2 id="hv-sound-title">Sound at the Table</h2><button id="hv-sound-close" type="button" aria-label="Close sound settings">Close</button></header><div id="hv-sound-panel"></div></dialog>
+</main></div>
 <script src="/ranks.js?v=20261119ranks"></script>
 <script src="/wordmark.js?v=20261118text1"></script>
 <script src="/common.js?v=20261119ranks"></script>
 <script src="/media.js"></script>
-<script src="/audio.js?v=20261120snd"></script>
-<script src="/voice.js?v=20261120snd"></script>
+<script src="/audio.js?v=20261121table1"></script>
+<script src="/voice.js?v=20261121table1"></script>
 <script src="/chart.js"></script>
-<script src="/ceremony.js?v=20261119ranks"></script>
+
 <script src="/soundscape.js?v=20261120snd"></script>
-<script src="/table.js?v=20261121hv6"></script>
+<script src="/table-director.js?v=20261121story2"></script>
+<script src="/table.js?v=20261121story2"></script>
 </body>
 </html>

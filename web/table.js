@@ -1,69 +1,27 @@
-/* Harbor View: the game seen from straight above, laid out on a captain's table.
-   Read-only, like the harbor board, and fed by the same public stream (so nothing private is shown).
-   Phase 1 (21 Nov 2026): the table, the board with the title at its centre, the month track round the
-   rim, a mat for every seat in play (and none for empty seats), ship pieces at their ports, sealed
-   orders, weather and bans. Plan and later phases: project doc "SeaTrader Harbor View". */
 "use strict";
-
-// Wording this screen needs that an older server may not have yet (Admin > Language & Text wins).
-const T_FALLBACK = {
-  "table.title": "Harbor View",
-  "table.gazette": "The Gazette",
-  "table.fleet": "Fleet · {n}",
-  "table.fleet_label": "Ships in fleet",
-  "table.writing": "Writing orders…",
-  "table.at": "At {port}",
-  "table.jailed": "In jail at {port}",
-  "table.home": "Home",
-  "table.mayor": "Mayor of {port}",
-  "act.buy": "{firm} buys {qty} {good}.",
-  "act.sell": "{firm} sells {qty} {good}.",
-  "act.bank_out": "{firm} puts its silver in the bank.",
-  "act.bank_in": "{firm} draws its silver from the bank.",
-  "act.loan_in": "{firm} borrows against the House.",
-  "act.loan_out": "{firm} pays down its debt.",
-  "act.shares_out": "{firm} buys shares in our port.",
-  "act.shares_in": "{firm} sells its shares in our port.",
-  "act.estate_out": "{firm} builds a great house here.",
-  "act.estate_in": "{firm} sells its great house.",
-  "table.home_port": "Home port: {port}",
-};
-
-let D = null, S = null, reloading = false, retryInfo, VS = {}, newsSeen = null, newsShown = new Set();
-const app = document.getElementById("app");
-const loading = document.getElementById("hv-loading");
-const connection = document.getElementById("hv-connection");
-const quitBtn = document.getElementById("hv-quit");
-const previous = new Map();
-const SVGNS = "http://www.w3.org/2000/svg";
-const TITLE_AT = { x: 610, y: 262 };          // where the title sits on the 1000 x 600 chart
-
+const T_FALLBACK = { "table.title": "Harbor View", "table.home": "Home" };
+let D = null, S = null, TV = null, VS = {}, scene = null, infoAt = 0, hostSpoken = false;
+const app = document.getElementById("app"), previous = new Map(), SVGNS = "http://www.w3.org/2000/svg";
+const portName = key => D?.ports[key]?.name || key || "";
+const colorOf = p => COLORS[(p.color || 0) % COLORS.length];
 function update(id, html) {
   if (previous.get(id) === html) return null;
   const el = document.getElementById(id);
-  el.innerHTML = html;
-  previous.set(id, html);
-  return el;
+  if (!el) return null;
+  el.innerHTML = html; previous.set(id, html); return el;
 }
-const portName = key => (D.ports[key] && D.ports[key].name) || key;
-const colorOf = p => COLORS[(p.color || 0) % COLORS.length];
-
-/* The table is a fixed 1920 x 1080 stage, scaled to whatever screen it is on. It never scrolls. */
 function fitStage() {
-  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-  const x = (window.innerWidth - 1920 * s) / 2, y = (window.innerHeight - 1080 * s) / 2;
-  app.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+  const k = Math.min(innerWidth / 1920, innerHeight / 1080);
+  app.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px,${(innerHeight - 1080 * k) / 2}px) scale(${k})`;
 }
 window.addEventListener("resize", fitStage);
 fitStage();
-
 /* --------------------------------------------------------------- the sky -- */
-function drawSky() {
+function drawSky(S) {
   const out = [];
   for (const key of Object.keys(D.regions)) {
     const reg = D.regions[key];
     let x = (reg.label_lon - 85) / 50 * 1000, y = (35 - reg.label_lat) / 45 * 600;
-    if (Math.abs(x - TITLE_AT.x) < 190 && Math.abs(y - TITLE_AT.y) < 95) y = TITLE_AT.y + 118;   // keep clear of the title
     const lvl = S.weather[key] == null ? 0 : S.weather[key];
     let art = "";
     if (lvl >= 3) {
@@ -90,24 +48,10 @@ const SAILS = '<path class="deck" d="M0 -11 C4 -6 4.5 5 3 11 L-3 11 C-4.5 5 -4 -
   '<rect class="sail" x="-10" y="-7" width="20" height="5.5" rx="1.5"/><rect class="sail" x="-9" y="3" width="18" height="5" rx="1.5"/>';
 const pieces = new Map();      // player id -> { g, x, y, port, heading }
 
-/* The spectator feed (/api/table, harbor_view.py): each house's Captain, home port and ship classes.
-   Fetched again whenever the month, the phase or a fleet's size changes. */
-let TV = null, tvKey = "", tvBusy = false, tvTimer = null;
-function refreshTable() {
-  if (!S || tvBusy) return;
-  const key = [S.game_id, S.turn, S.phase, S.players.map(p => p.id + ":" + p.ships + ":" + p.port).join(","),
-    TV && TV.level === "open" ? Math.floor(Date.now() / 2500) : ""].join("|");   // prices tick: ask again every few seconds
-  if (key === tvKey) {      // nothing new yet: look again shortly, so a deal made just after a read is not missed
-    if (TV && TV.level === "open" && !tvTimer) tvTimer = setTimeout(() => { tvTimer = null; refreshTable(); }, 2600);
-    return;
-  }
-  tvBusy = true; tvKey = key;
-  let failed = false;
-  fetch("/api/table").then(r => r.json()).then(r => { if (r && r.ok) { TV = r; handleActivity(r.activity || []); render(); } })
-    .catch(() => { failed = true; tvKey = ""; setTimeout(refreshTable, 5000); })
-    .finally(() => { tvBusy = false; if (!failed) refreshTable(); });
-}
-const houseOf = p => (TV && TV.houses && TV.houses[p.id]) || null;
+const houseOf = p => {
+  const house = TV?.houses?.[p.id];
+  return scene?.focus?.id === p.id && scene.focus.ships ? { ...house, ships: scene.focus.ships.map(sh => ({ ...sh, hull: sh.hull / Math.max(1, D.ships[sh.type]?.hull || 1) })) } : house;
+};
 
 /* A painted ship piece (Media Library > Ships, role "topdown", on white so it lifts off the chart), or "". */
 function shipArt(type) {
@@ -159,20 +103,20 @@ function cutout(url) {
 
 function seatAt(port, index, count) {
   const p = D.ports[port];
-  if (!p) return { x: TITLE_AT.x, y: 560 };
+  if (!p) return { x: 500, y: 560 };
   const side = p.label_left ? 1 : -1;
   return { x: p.x + side * 40, y: p.y + (index - (count - 1) / 2) * 34 };
 }
 
 function paintedMarkup(p, fleet) {
   const col = colorOf(p), size = 92;
-  const shown = fleet.slice(0, 4).map(sh => ({ sh, u: shipArt(sh.type) }));
+  const shown = fleet.slice(0, 1).map(sh => ({ sh, u: shipArt(sh.type) }));
   if (!shown.some(x => x.u)) return "";
   let out = `<ellipse class="berth" rx="26" ry="38" fill="${col}"/>`;
   for (let i = shown.length - 1; i >= 0; i--) {
     const { sh, u } = shown[i];
     if (!u) continue;
-    out += `<image class="painted${sh.crippled || sh.hull < .5 ? " hurt" : ""}" href="${u}" x="${-size / 2 + i * 9}" y="${-size / 2 + i * 6}" width="${size}" height="${size}"/>`;
+    out += `<image class="painted${sh.crippled || sh.hull < .5 ? " hurt" : ""}" href="${u}" x="${-size / 2}" y="${-size / 2}" width="${size}" height="${size}"/>`;
   }
   return `<g class="turn"><g class="bob">${out}<circle class="pennant" cx="0" cy="-38" r="5" fill="${col}"/></g></g>` +
     `<circle class="ready-ring" r="30"/>` +
@@ -186,7 +130,7 @@ function pieceMarkup(p) {
     const painted = paintedMarkup(p, house.ships);
     if (painted) return painted;
   }
-  const n = Math.max(1, Math.min(5, p.ships || 1)), col = colorOf(p);
+  const n = 1, col = colorOf(p);
   let behind = "";
   for (let i = n - 1; i >= 1; i--) behind += `<path class="hull behind" fill="${col}" transform="translate(${i * 5} ${i * 3.5})" d="${HULL}"/>`;
   return `<g class="turn"><g class="bob">${behind}<path class="hull" fill="${col}" d="${HULL}"/>${SAILS}</g></g>` +
@@ -196,7 +140,7 @@ function pieceMarkup(p) {
     `<text class="tag" y="37">${esc(p.firm)}</text>`;
 }
 
-function drawPieces(fighting) {
+function drawPieces(fighting, S) {
   const layer = document.getElementById("hv-pieces");
   let fleet = layer.querySelector("#hv-fleet");
   if (!fleet) {
@@ -207,7 +151,6 @@ function drawPieces(fighting) {
   const byPort = {};
   for (const p of S.players) (byPort[p.port] = byPort[p.port] || []).push(p);
   const seen = new Set();
-  let overTitle = false;
   for (const port of Object.keys(byPort)) {
     byPort[port].forEach((p, i) => {
       seen.add(p.id);
@@ -231,12 +174,11 @@ function drawPieces(fighting) {
       rec.g.classList.toggle("ready", Boolean(p.ready && p.present && S.phase === "port"));
       rec.g.classList.toggle("away", !p.present && S.phase !== "lobby" && S.phase !== "ended");
       rec.g.classList.toggle("jailed", Boolean(p.jailed));
+      rec.g.classList.toggle("sailing", scene?.kind === "voyage" && p.id === TV.focus?.id);
       if (rec.g.classList.contains("new")) requestAnimationFrame(() => rec.g.classList.remove("new"));
-      if (Math.abs(at.x - TITLE_AT.x) < 150 && Math.abs(at.y - TITLE_AT.y) < 80) overTitle = true;
     });
   }
   for (const [id, rec] of pieces) if (!seen.has(id)) { rec.g.remove(); pieces.delete(id); }
-  document.getElementById("hv-title").classList.toggle("dim", overTitle);
 
   // Ban seals, and the enemy closing in while a fight is on.
   const marks = [];
@@ -284,70 +226,13 @@ function drawPieces(fighting) {
   if (previous.get("hv-marks") !== html) { previous.set("hv-marks", html); layer.querySelector("#hv-marks").innerHTML = html; }
 }
 
-/* ---------------------------------------------- the camera and the Mayor -- */
-// Big deals (harbor_view.activity: at least half the cash held before) pull the camera to the port for a few seconds
-// with the Mayor's popup; deals queue and play one after another, and a burst of the same kind is joined into one.
-const ZOOM = 3, HOLD_MS = 8000, EASE_MS = 1800;
-let seenN = null, zooming = false;
-const queue = [];
-function handleActivity(list) {
-  const top = list.reduce((m, e) => Math.max(m, e.n || 0), 0);
-  if (seenN === null) { seenN = top; return; }            // what happened before the view opened is not replayed
-  for (const e of list) {
-    if (!(e.n > seenN)) continue;
-    const last = queue[queue.length - 1];
-    if (last && last.pid === e.pid && last.port === e.port && last.type === e.type && last.good === e.good && last.cash_out === e.cash_out) {
-      last.value += e.value; last.qty += e.qty;
-    } else queue.push(Object.assign({}, e));
-  }
-  seenN = Math.max(seenN, top);
-  playQueue();
-}
-function portPx(key) {
-  const world = document.getElementById("hv-world"), idx = Object.keys(D.ports).indexOf(key);
-  const g = document.getElementById("hv-chart-base").querySelectorAll(".port")[idx], dot = g && g.querySelector(".dot");
-  if (!dot) return null;
-  const was = [world.style.transform, world.style.transition];
-  world.style.transition = "none"; world.style.transform = "none";
-  const wr = world.getBoundingClientRect(), k = wr.width / world.offsetWidth, r = dot.getBoundingClientRect();
-  world.style.transform = was[0]; world.style.transition = was[1];
-  return { x: (r.left + r.width / 2 - wr.left) / k, y: (r.top + r.height / 2 - wr.top) / k, w: world.offsetWidth, h: world.offsetHeight };
-}
-function playQueue() {
-  if (zooming || !queue.length || !D || !S) return;
-  const e = queue.shift(), p = S.players.find(q => q.id === e.pid), pt = portPx(e.port);
-  if (!p || !pt) return playQueue();
-  zooming = true;
-  const world = document.getElementById("hv-world"), pop = document.getElementById("hv-popup");
-  const tx = Math.min(0, Math.max(pt.w - pt.w * ZOOM, pt.w / 2 - pt.x * ZOOM)), ty = Math.min(0, Math.max(pt.h - pt.h * ZOOM, pt.h / 2 - pt.y * ZOOM));
-  const sx = pt.x * ZOOM + tx, sy = pt.y * ZOOM + ty, PW = 470, PH = 190;
-  const left = sx + 70 + PW > pt.w - 10 ? sx - 70 - PW : sx + 70, top = Math.min(pt.h - PH - 10, Math.max(10, sy - PH / 2));
-  const key = e.type === "buy" || e.type === "sell" ? "act." + e.type : "act." + e.type + (e.cash_out ? "_out" : "_in");
-  const mayor = Media.choose("port", [e.port], "mayor", { mode: "fixed" });
-  const good = (D.goods[e.good] && D.goods[e.good].name) || e.good;
-  pop.style.left = left.toFixed(0) + "px"; pop.style.top = top.toFixed(0) + "px";
-  pop.innerHTML = `<div class="mayor">${mayor && mayor.t === "image" ? `<img src="${esc(mayor.u)}" alt="">` : "<b>M</b>"}</div>` +
-    `<div class="say"><span class="who">${te("table.mayor", { port: portName(e.port) })}</span>` +
-    `<p class="line">${te(key, { firm: p.firm, qty: e.qty, good })}</p>` +
-    `<span class="amt ${e.cash_out ? "out" : "in"}">${e.cash_out ? "−" : "+"}${esc(money(e.value))}</span></div>`;
-  world.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${ZOOM})`;
-  pop.classList.add("show");
-  setTimeout(() => {
-    pop.classList.remove("show");
-    world.style.transform = "none";
-    setTimeout(() => { zooming = false; playQueue(); }, EASE_MS);
-  }, HOLD_MS);
-}
 
-/* ------------------------------------------------ port rings and cards -- */
-// One segment per share round the port, in the holder's house colour (sweeping in when bought); a small stock-board
-// card at ports in play (a ship, a home port, or a house holding shares) with the three goods that moved most.
 const SHARE_R = 15, lastRing = {}, lastPrice = {};
 function ringPath(i, n, r) {
   const gap = 0.10, a0 = -Math.PI / 2 + (i / n) * 2 * Math.PI + gap, a1 = -Math.PI / 2 + ((i + 1) / n) * 2 * Math.PI - gap;
   return `M${(r * Math.cos(a0)).toFixed(2)} ${(r * Math.sin(a0)).toFixed(2)} A${r} ${r} 0 0 1 ${(r * Math.cos(a1)).toFixed(2)} ${(r * Math.sin(a1)).toFixed(2)}`;
 }
-function drawPorts() {
+function drawPorts(S) {
   if (!TV || !TV.ports) return;
   const byId = new Map(S.players.map(p => [p.id, p]));
   const active = new Set(S.players.map(p => p.port));
@@ -367,7 +252,7 @@ function drawPorts() {
     }
     lastRing[key] = colours;
     let card = "";
-    if (info.prices && (active.has(key) || holders.length)) {
+    if (info.prices && scene?.kind === 'trade' && scene.port === key) {
       const goods = Object.keys(info.prices);
       const move = g => { const b = (info.base || {})[g] || info.prices[g]; return b ? (info.prices[g] - b) / b : 0; };
       const rows = goods.sort((a, b) => Math.abs(move(b)) - Math.abs(move(a)) || info.prices[b] - info.prices[a]).slice(0, 3).map((g, i) => {
@@ -387,166 +272,305 @@ function drawPorts() {
   update("hv-ports", out.join(""));
 }
 
-/* -------------------------------------------------------------- the mats -- */
 
-
-function drawMats(ranked, fighting) {
-  const lobby = S.phase === "lobby", ended = S.phase === "ended";
-  const players = S.players, n = players.length;
-  const mats = document.getElementById("hv-mats");
-  mats.className = "hv-mats n" + n + (n >= 5 ? " many" : "");
-  const place = new Map(ranked.map((p, i) => [p.id, i + 1]));
-  update("hv-mats", players.map(p => {
-    const faces = Faces.of(p), battle = fighting.has(p.id);
-    const status = lobby ? t(p.host ? "w.host" : "board.joined")
-      : ended ? "" : t(battle ? "board.in_battle" : !p.present ? "w.away" : p.ready ? "board.ready" : "board.in_port");
-    const cls = ["hv-mat"];
-    if (!lobby && !ended && !p.present) cls.push("away");
-    if (!lobby && !ended && p.ready && p.present && !battle) cls.push("ready");
-    if (battle) cls.push("fighting");
-    const initial = esc(String(p.firm || p.name || "?").trim().charAt(0).toUpperCase());
-    const cloth = Media.choose("scene", ["table_cloth"], "background", { mode: "fixed" });
-    return `<article class="${cls.join(" ")}" style="--house:${colorOf(p)}${cloth ? `;--cloth:url('${esc(cloth.u)}')` : ""}">
-      ${!lobby && n > 1 ? `<span class="place">${place.get(p.id) || ""}</span>` : ""}
-      <div class="face">${faces.portrait ? `<img src="${esc(faces.portrait)}" alt="">` : `<b>${initial}</b>`}</div>
-      ${faces.crest ? `<div class="crestbox"><img src="${esc(faces.crest)}" alt=""></div>` : ""}
-      <div class="who"><h3>${esc(p.firm)}</h3><span class="cap">${esc(p.name)}${lobby && status ? " · " + esc(status) : ""}</span>${lobby ? "" : Ranks.label(p)}</div>
-      ${lobby || ended ? "" : `<div class="orders"><div class="letter">${te("table.writing")}</div><span class="seal">${initial}</span>
-        <small class="${battle ? "bad" : p.ready && p.present ? "ok" : ""}">${esc(status)}</small></div>`}
-      <div class="fleet"><span class="label">${te("table.fleet_label")}</span><span class="ships">${esc(String(p.ships || 0))}</span>
-        <span class="where">${te(p.jailed ? "table.jailed" : "table.at", { port: portName(p.port) })}</span>
-        ${houseOf(p) ? `<span class="homeline">${te("table.home_port", { port: portName(houseOf(p).home) })}</span>` : ""}</div>
-      ${lobby ? "" : `<div class="silver"><span class="label">${te("stat.worth")}</span><span class="worth">${esc(money(p.worth))}</span></div>`}
-    </article>`;
-  }).join(""));
-}
-
-/* ------------------------------------------------- the cards beside the board -- */
-function drawDate(ranked, encounters) {
-  const lobby = S.phase === "lobby", ended = S.phase === "ended", sea = S.phase === "sea";
-  const active = S.players.filter(p => p.present);
-  const label = lobby ? "board.before_departure" : ended ? "board.voyage_complete"
-    : encounters.length ? "board.battle" : sea ? "battle.title" : "board.orders";
-  let headline, detail = "";
-  if (lobby) headline = t("board.join");
-  else if (ended) headline = ranked.length ? t("board.winner", { name: ranked[0].firm }) : t("board.over");
-  else if (sea) headline = t("board.at_sea");
-  else {
-    headline = active.length ? t("board.readiness", { n: active.filter(p => p.ready).length, total: active.length }) : t("board.no_active");
-    if (S.waiting.length) detail = t("sail.waiting", { names: S.waiting.join(", ") });
-  }
-  const sub = lobby ? t("board.length", { years: S.years }) : ended ? t("board.final") : t("board.months_left", { months: S.turns_left });
-  document.getElementById("hv-date").classList.toggle("battle", encounters.length > 0);
-  update("hv-date", `<span class="kicker">${te(label)}</span><h2>${esc(S.date)}</h2><span class="sub">${esc(sub)}</span>${lobby ? "" : `<div class="prog" title="${esc(sub)}"><i style="width:${Math.min(100, Math.round(100 * (S.turn || 0) / Math.max(1, (S.years || 1) * 12)))}%"></i></div>`}
-    <div class="state">${esc(headline)}${detail ? `<small>${esc(detail)}</small>` : ""}</div>
-    ${encounters.length ? `<ul>${encounters.map(f => `<li><b>${esc(f.firm)}</b> · ${te(f.where ? "board.encounter" : "board.encounter_unknown",
-      { port: f.where, left: f.left, n: f.n, enemy: f.enemy })}</li>`).join("")}</ul>` : ""}
-    ${lobby ? `<div class="join">${te("board.join_phone")}<b>${esc(S.join_url)}</b></div>` : ""}`);
-}
-
-function drawNews() {
-  update("hv-gazette-head", te("table.gazette"));
-  const news = S.news || [], heat = S.news_heat || [];
-  const first = newsShown.size === 0;
-  const html = news.length ? news.map((line, i) => {
-    const h = heat[i] || 0, fresh = !first && !newsShown.has(line);
-    return `<article class="${h >= .66 ? "hot" : h >= .33 ? "warm" : ""}${fresh ? " fresh" : ""}" style="animation-delay:${(i * .12).toFixed(2)}s">${esc(line)}</article>`;
-  }).join("") : `<p class="empty">${te("ledger.no_news")}</p>`;
-  if (update("hv-news", html)) news.forEach(line => newsShown.add(line));
-}
-
-/* ------------------------------------------------------------------ draw -- */
-function render() {
-  if (!D || !S) return;
-  Ceremony.sync(S, D, app);
-  const lobby = S.phase === "lobby", sea = S.phase === "sea";
-  const ranked = lobby ? S.players : Ceremony.ranked(S);
-  const encounters = sea ? S.sea || [] : [];
-  const fighting = new Set(encounters.map(f => f.id));
-
-  const chart = update("hv-chart-base", Chart.svg({ data: D, players: [], crackdown: S.crackdown, hideWeather: true, hideRose: true }));
-  update("hv-title", `<svg class="rose" viewBox="-170 -170 340 340"><circle r="160"/><circle r="120"/>` +
-    `<path class="pt" d="M0 -160 L10 0 L0 160 L-10 0Z M-160 0 L0 -10 L160 0 L0 10Z"/>` +
-    `<path class="needle" d="M0 -150 L6 0 L-6 0Z"/></svg><h1>${wordmarkHtml(brandName(D.brand))}</h1>` +
-    (D.brand.tagline ? `<p>${esc(D.brand.tagline)}</p>` : ""));
-  drawSky();
-  drawPieces(encounters);
-  drawPorts();
-  drawMats(ranked, fighting);
-  drawDate(ranked, encounters);
-  drawNews();
-
-  app.hidden = false;
-  loading.hidden = true;
-  const base = document.getElementById("hv-chart-base");
-  const here = new Set(S.players.map(p => p.port));
-  [...base.querySelectorAll(".port")].forEach((g, i) => g.classList.toggle("occupied", here.has(Object.keys(D.ports)[i])));
-  if (chart) { Chart.fit(chart); refitSoon(); }
-  if (typeof Soundscape !== "undefined") Soundscape.sync(S, { battle: encounters.length > 0 });
-}
-
-/* Port label boxes are sized to their text, so measure again once the web fonts are really in. */
-let refitTimer = null;
-function refitSoon() {
-  clearTimeout(refitTimer);
-  refitTimer = setTimeout(() => Chart.fit(document.getElementById("hv-chart-base")), 900);
-}
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => refitSoon());
-
-function showConnection(online) {
-  connection.textContent = online ? "" : t("board.stale");
-}
-
-async function refreshInfo() {
-  if (reloading) return;
-  clearTimeout(retryInfo);
-  reloading = true;
-  try {
-    const info = await loadInfo();
-    D = info.data;
-    VS = Voice.setup(info.voice);
-    document.title = brandName(D.brand) + " · " + t("table.title");
-    quitBtn.textContent = t("board.quit");
-    quitBtn.title = t("board.quit");
-    previous.clear();
-    const layer = document.getElementById("hv-pieces");
-    layer.innerHTML = "";
-    pieces.clear();
-  } catch (error) {
-    console.warn("Harbor View could not load settings", error);
-    retryInfo = setTimeout(refreshInfo, 3000);
-  } finally {
-    reloading = false;
-  }
-  if (D && S && S.cfg === cfgSeen) { render(); speakNews(); }
-}
-
-/* The news crier reads fresh headlines aloud, exactly as on the harbor board (same Admin switch).
-   Headlines already up when the view opens are not read. */
-function speakNews() {
-  const news = S.news || [], plans = (S.voice && S.voice.news) || [];
-  if (newsSeen === null) { newsSeen = new Set(news); return; }
-  const fresh = [];
-  news.forEach((n, i) => { if (!newsSeen.has(n)) { newsSeen.add(n); if (plans[i]) fresh.unshift(plans[i]); } });
-  if (fresh.length && VS.news_board) Voice.say(fresh, { group: "news" });
-}
-
-/* Esc or the small Quit button closes the window (the game keeps running). */
-function quitView() {
-  window.close();
-  setTimeout(() => { if (!window.closed) quitBtn.textContent = t("board.quit_hint"); }, 300);
-}
-quitBtn.addEventListener("click", quitView);
-document.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); quitView(); } });
-
-// The mute button joins the corner controls; the speaking card stays on the page so it keeps its place.
-const muteButton = document.getElementById("mute");
-if (muteButton) document.getElementById("hv-controls").prepend(muteButton);
-Faces.onChange = () => render();
-listen(null, state => {
-  S = state;
-  refreshTable();
-  if (!D || state.cfg !== cfgSeen) return refreshInfo();
+const whoOf = key => VS.cast?.[key] || {};
+const fact = (label, value) => `<span><small>${esc(label)}</small><b>${esc(value)}</b></span>`;
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const director = new TableDirector(next => {
+  Voice.drop('table');
+  scene = next;
+  document.getElementById('hv-linger').setAttribute('aria-pressed', String(director.linger));
   render();
-  speakNews();
-}, showConnection);
+  speakScene();
+  if (next) sceneSound(next);
+});
+director.canAdvance = s => {
+  const now = Date.now(), age = now - s.startedAt;
+  const reading = Math.max(s.kind === 'voyage' ? 6500 : 3400, Math.min(16000, 1600 + (s.presentationText || '').length * 40), s.duration);
+  if (age >= 28000) return true;
+  if (!s.voiceExpected || Voice.muted()) return age >= reading;
+  if (s.voiceEndedAt) return age >= 3400 && now >= s.voiceEndedAt + 900;
+  if (s.voiceStarted) return false;
+  return age >= Math.max(5000, reading);
+};
+
+function sceneSound(s) {
+  const moment = s.frame?.moment || s.frame?.kind;
+  const cue = s.kind === 'battle' ? ({ sighting: 'battle.alert', broadside: 'battle.broadside', enemy_hit: 'battle.enemy_hit',
+    we_are_hit: 'battle.we_are_hit', ship_lost: 'battle.ship_lost', boarding: 'battle.boarding.clash',
+    victory: 'stinger.victory', defeat: 'stinger.defeat', got_away: 'battle.got_away', retreat: 'battle.retreat' })[moment]
+    : s.kind === 'storm' ? 'ship.groan' : s.kind === 'promotion' ? 'stinger.promotion'
+    : s.kind === 'jail' ? 'jail.door' : s.kind === 'news' ? 'crier.headline'
+    : s.kind === 'host' ? 'turn.new' : ({ buy: 'trade.buy.success', sell: 'trade.sell.success', repair: 'ship.repair',
+      ship: 'ship.purchased', protect: 'deal.heavy', loan: 'desk.coin', bank: 'desk.coin', ship_lost: 'stinger.ship_lost' })[s.type];
+  if (cue) SeaAudio.playOnce('table:' + TV.game_id + ':' + s.key, cue);
+}
+
+function chooseArt(who, mood, key, port, story) {
+  if (port && who === 'mayor') {
+    const portraits = Media.items('port', port);
+    const role = story?.kind === 'promotion' ? 'mayor_congrats' : 'mayor';
+    const image = portraits.find(i => (i.r || []).includes(role));
+    if (image) return image;
+  }
+  const list = Media.items('persona', who);
+  const dedicated = list.filter(i => (i.g || []).includes('table-' + mood));
+  const pick = dedicated.length ? dedicated : list.filter(i => (i.r || []).includes(mood));
+  if (pick.length) {
+    let hash = 0;
+    for (const c of String(key)) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+    return pick[Math.abs(hash) % pick.length];
+  }
+  return Media.choose('persona', who, 'wallpaper', { strict: true, mode: 'fixed' })
+    || Media.choose('persona', who, 'portrait', { mode: 'fixed' });
+}
+
+function characterOf(s) {
+  if (!s) return 'gamemaster';
+  if (s.who) return s.who;
+  return ({ buy: 'comprador', sell: 'comprador', bank: 'banker', loan: 'lender', protect: 'agent', repair: 'shipwright',
+    ship: 'shipwright', guns: 'bosun', seized: 'officer_' + s.port, customs: 'officer_' + s.port,
+    declare: 'officer_' + s.port, tax: 'officer_' + s.port, jail: 'warden_' + s.port,
+    shipwreck: 'narrator', ship_lost: 'narrator', won: 'bosun', retreat: 'bosun', plundered: 'bosun',
+    arrived: 'mayor', shares: 'mayor', estate: 'mayor', gift: 'mayor', band: 'mayor', patron: 'mayor' })[s.type] || 'gamemaster';
+}
+
+function lineText(key, report = {}) {
+  if (!key || !T[key]) return '';
+  return t(key, { goods: (report.cargo || []).map(c => D.goods[c.good]?.name || c.good).join(', '),
+    port: portName(report.landing?.port || report.port), yard: portName(report.landing?.yard_port) });
+}
+const words = (key, fallback) => T[key] == null ? fallback : t(key);
+
+function stageData() {
+  const s = scene, p = s?.focus || TV.focus, who = characterOf(s), r = s?.report || {};
+  let title = '', text = s?.text || '', facts = '', location = portName(s?.port || p?.port), mood = s?.mood || 'speaking';
+  let clips = (s?.clips || []).filter(Boolean), backdrop = null, full = false;
+  const voice = s?.voice || {};
+  if (!s || ['host','departure','landfall','return'].includes(s.kind)) {
+    const key = s?.hostKey || (S.phase === 'lobby' ? 'gm.welcome' : S.phase === 'ended' ? 'gm.finale' : p?.storm ? 'gm.storm' : p?.battle ? 'gm.ask_battle' : 'gm.ask_sail');
+    const host = s?.hostLine || s?.host?.[key] || TV.host?.[key];
+    title = whoOf('gamemaster').name || 'Madame Anahit Sarkissian';
+    text = host?.text || whoOf('gamemaster').catchphrase || '';
+    clips = host?.clip ? [host.clip] : [];
+    mood = s?.mood || (S.phase === 'ended' || S.phase === 'lobby' ? 'happy' : p?.ready ? 'sly' : 'host');
+  } else if (s.kind === 'voyage') {
+    title = `${portName(s.from)} → ${portName(s.port)}`; location = title;
+    backdrop = Media.choose('scene', ['voyage'], 'background', { mode: 'fixed' });
+  } else if (s.kind === 'arrival') {
+    full = true; title = portName(s.port);
+    backdrop = Media.choose('port', [s.port], 'arrival', { mode: 'fixed' });
+  } else if (s.kind === 'storm' || (s.kind === 'reckoning' && s.source === 'storm')) {
+    full = true;
+    title = words('storm.title.' + r.band, 'Storm at sea');
+    text = lineText(s.textKey, r);
+    backdrop = Media.choose('scene', [r.typhoon ? 'typhoon' : 'storm'], 'background', { mode: 'fixed' });
+    if (s.kind === 'reckoning') {
+      facts = fact(words('storm.t.hull','Hull lost'), (r.hull_full ? Math.round(100 * r.hull_lost / r.hull_full) : 0) + '%')
+        + fact(words('storm.t.cargo','Cargo lost'), money(r.cargo_cost || 0))
+        + fact(words('storm.t.guns','Guns lost'), (r.guns_lost || 0) + (r.cannons_lost || 0))
+        + fact('Making port', portName(r.landing?.port));
+    }
+  } else if (s.kind === 'battle' || (s.kind === 'reckoning' && s.source === 'battle')) {
+    full = true;
+    title = s.kind === 'reckoning' ? words('battle.res.' + r.outcome, 'The Reckoning') : s.frame?.cap || r.enemy || 'At close quarters';
+    backdrop = Media.choose('scene', [r.kind === 'lord' ? 'seafight_lord' : 'seafight_pirates', 'battle'], s.frame?.moment || 'event', { mode: 'fixed' });
+    if (s.kind === 'reckoning') {
+      text = words('battle.res.reason_' + r.outcome, '');
+      facts = fact(words('battle.res.sunk','Enemy sunk'), `${r.sunk} / ${r.n}`)
+        + fact('Ships home', `${(r.ships || []).filter(x => !x.lost).length} / ${(r.ships || []).length}`)
+        + fact('Prize silver', money(r.booty || 0)) + fact(words('battle.res.net','Net result'), (r.net > 0 ? '+' : '') + money(r.net || 0));
+    }
+  } else if (s.kind === 'legend') {
+    full = true; title = r.chapter || r.title;
+    backdrop = Media.choose('scene', ['legend_' + r.tale + '_' + r.chapter_id, 'legend'], 'background', { mode: 'fixed' });
+  } else if (s.kind === 'customs' || (s.kind === 'reckoning' && s.source === 'customs')) {
+    full = true; title = s.phase === 'verdict' || s.kind === 'reckoning' ? words('customs.verdict','Her verdict') : 'The Port Authority';
+    backdrop = Media.choose('port', [s.port], 'banner', { mode: 'fixed' });
+    if (s.kind === 'reckoning') {
+      const result = r.result || {};
+      facts = fact(words('customs.paid_her','Paid to the officer'), money((result.tax || 0) + (result.fine || 0)))
+        + (result.paid ? fact(words('customs.she_paid','Paid to the House'), money(result.paid)) : '')
+        + fact('Standing', (result.rep > 0 ? '+' : '') + (result.rep || 0))
+        + (result.owed ? fact('Added to debt', money(result.owed)) : '');
+    }
+  } else if (s.kind === 'jail' || (s.kind === 'reckoning' && s.source === 'jail')) {
+    full = true; title = words('jail.arrested','An audience behind bars');
+    text = s.text || '';
+    if (s.kind === 'reckoning') { const j = r.jail || r.plea || {}; facts = fact('Months remaining', j.left ?? j.months ?? 0); }
+    backdrop = Media.choose('port', [s.port], 'jail_cell', { mode: 'fixed' });
+    clips = s.clips || [];
+  } else if (s.kind === 'promotion') {
+    full = true; title = r.title || 'A House ascends'; text = r.text || '';
+    clips = (voice.promotion || []).filter(Boolean);
+    backdrop = Media.choose('port', [s.port], 'banner', { mode: 'fixed' });
+  } else if (s.kind === 'news') { title = 'Word from the waterfront'; }
+  else {
+    title = ({ buy:'A bargain struck', sell:'The silver changes hands', bank:'Under lock and key', loan:'The price of ambition',
+      protect:'A price for safe passage', shares:'A stake in the harbour', estate:'A House takes root', repair:'Fit for the next voyage',
+      seized:'The hold is opened', ship_lost:'A ship lost', shipwreck:'The cost of the sea' })[s.type] || 'At the table';
+    backdrop = Media.choose('port', [s.port], 'banner', { mode: 'fixed' });
+  }
+  const art = chooseArt(who, mood, s?.key || 'host:' + S.turn, s?.port, s);
+  const peerArt = s?.peer ? chooseArt(s.peer, 'speaking', s.sequence + ':peer', s.port, s) : null;
+  return { who, title, text, facts, location, mood, clips, backdrop, full, art, peerArt, focus:p, state:s?.state || S };
+}
+
+function camera(port, from) {
+  const world = document.getElementById('hv-world'), p = D.ports[port], a = D.ports[from];
+  let zoom = 1, cx = 500, cy = 300;
+  if (p && a) {
+    const w = Math.max(260, Math.abs(p.x - a.x) + 200), h = Math.max(180, Math.abs(p.y - a.y) + 130);
+    zoom = Math.min(2, 1000 / w, 600 / h); cx = (p.x + a.x) / 2; cy = (p.y + a.y) / 2;
+  } else if (p && scene && !['host','return','storm','battle','reckoning','legend','jail','promotion','customs'].includes(scene.kind)) {
+    zoom = 1.75; cx = p.x; cy = p.y;
+  }
+  const x = Math.min(0, Math.max(1000 - 1000 * zoom, 500 - cx * zoom));
+  const y = Math.min(0, Math.max(600 - 600 * zoom, 300 - cy * zoom));
+  world.style.transform = `translate(${x / 10}%,${y / 6}%) scale(${zoom})`;
+}
+
+function route() {
+  if (scene?.kind !== 'voyage') return update('hv-route', '');
+  const a = D.ports[scene.from], b = D.ports[scene.port];
+  if (!a || !b) return;
+  const id = 'hv-course', path = `M${a.x} ${a.y} Q${(a.x+b.x)/2+28} ${(a.y+b.y)/2-28} ${b.x} ${b.y}`;
+  const art = shipArt(scene.focus?.ships?.[0]?.type);
+  const ship = art ? `<image href="${art}" x="-36" y="-36" width="72" height="72"/>` : '<path d="M0 -14L7 9L0 5L-7 9Z"/>';
+  update('hv-route', `<path id="${id}" class="course" d="${path}"/><g class="traveller"${reduced() ? ` transform="translate(${b.x} ${b.y})"` : ''}><g transform="rotate(90)">${ship}</g>${reduced() ? '' : `<animateMotion dur="5s" fill="freeze" rotate="auto"><mpath href="#${id}"/></animateMotion>`}</g>`);
+}
+
+let backdropUrl = '', backdropToken = 0, backdropSide = 0;
+function setBackdrop(url) {
+  if (!url || url === backdropUrl) return;
+  backdropUrl = url;
+  const token = ++backdropToken, image = new Image();
+  image.onload = () => {
+    if (token !== backdropToken) return;
+    backdropSide = 1 - backdropSide;
+    const panes = [document.getElementById('hv-backdrop'), document.getElementById('hv-backdrop-next')];
+    panes[backdropSide].style.backgroundImage = `url("${url}")`;
+    panes[backdropSide].classList.add('on'); panes[1-backdropSide].classList.remove('on');
+  };
+  image.onerror = () => { console.warn('Table backdrop could not load', url); backdropUrl = ''; };
+  image.src = url;
+}
+
+function render() {
+  if (!D || !S || director.paused) return;
+  const view = stageData(), shown = { ...view.state };
+  const focus = view.focus;
+  shown.players = (shown.players || []).map(p => p.id === focus?.id ? { ...p, port: focus.port, ships: focus.ships?.length ?? p.ships, worth: focus.worth } : p);
+  app.classList.toggle('is-duet', Boolean(scene?.peer && view.peerArt));
+  app.classList.toggle('speaker-right', scene?.side === 'right');
+  app.dataset.scene = scene?.kind || 'host'; app.classList.toggle('is-story', view.full);
+  update('hv-date', esc(shown.date)); update('hv-location', esc(view.location));
+  update('hv-phase', esc(scene?.kind === 'voyage' ? 'Under sail' : shown.phase === 'ended' ? 'Voyage complete' : shown.phase === 'sea' ? 'At sea' : shown.phase === 'lobby' ? 'The table is gathering' : 'In port'));
+  const changed = update('hv-chart-base', Chart.svg({ data: D, players: [], crackdown: shown.crackdown, hideWeather: true, hideRose: false }));
+  drawSky(shown); drawPieces(shown.sea || [], shown); drawPorts(shown); route(); camera(scene?.port, scene?.from);
+  if (changed) { requestAnimationFrame(() => Chart.fit(changed)); setTimeout(() => Chart.fit(changed), 900); }
+  const figure = (art, who) => {
+    const picture = art?.u || whoOf(who).portrait;
+    return picture ? `<img class="figure" src="${esc(picture)}" alt="${esc(whoOf(who).name || who)}">`
+      : `<div class="missing"><b>${esc(whoOf(who).name || who)}</b><p>Her portrait is being prepared.</p></div>`;
+  };
+  const right = scene?.side === 'right';
+  update('hv-persona', figure(right && view.peerArt ? view.peerArt : view.art, right && view.peerArt ? scene.peer : view.who));
+  update('hv-counterpart', scene?.peer && view.peerArt ? figure(right ? view.art : view.peerArt, right ? view.who : scene.peer) : '');
+  const background = view.backdrop?.u || Media.items('scene', 'loading').find(x => (x.g || []).includes('table-cabin'))?.u;
+  setBackdrop(background);
+  update('hv-story', `<p class="eyebrow">${esc(scene?.kind === 'reckoning' ? 'The Reckoning · ' + view.location : view.full ? view.location : whoOf(view.who).title || '')}</p><h1>${esc(view.title)}</h1>`
+    + (view.text ? `<blockquote>${esc(view.text)}</blockquote>` : '')
+    + (view.full || scene?.kind === 'trade' ? `<p class="byline">${esc(whoOf(view.who).name || '')}</p>` : '')
+    + (view.facts ? `<div class="facts">${view.facts}</div>` : '') + (scene?.beatCount > 1 ? `<p class="hv-beats" aria-label="Story beat ${scene.beatIndex+1} of ${scene.beatCount}">${Array.from({length:scene.beatCount}, (_,i) => `<i class="${i===scene.beatIndex?'active':''}"></i>`).join('')}</p>` : ''));
+  const p = focus || shown.players[0], crest = p && Faces.of(p).crest;
+  const shipCount = Array.isArray(p?.ships) ? p.ships.length : p?.ships || 0;
+  update('hv-ledger', p ? `${crest ? `<img class="crest" src="${esc(crest)}" alt="">` : ''}<span class="house">${esc(p.firm)}</span><span>${esc(portName(p.port))}</span><span>${shipCount} ${shipCount === 1 ? 'ship' : 'ships'}</span><span class="worth">Net worth ${esc(money(p.worth))}</span>` : '<span>The table awaits its Captain.</span>');
+  update('hv-map-note', esc(scene?.kind === 'voyage' ? `${portName(scene.from)} → ${portName(scene.port)}` : TV.focus ? `${portName(TV.focus.port)} · ${TV.focus.ready ? 'Orders sealed' : 'The Captain is doing business'}` : 'The trading waters'));
+  update('hv-bulletin', esc((S.news || [])[0] || ''));
+  document.getElementById('hv-loading').hidden = true; app.hidden = false;
+  Soundscape.sync(shown, { battle: scene?.kind === 'battle', storm: scene?.kind === 'storm' });
+}
+
+function speakScene() {
+  if (!TV || director.paused) return;
+  const view = stageData();
+  if (!scene && hostSpoken) return;
+  if (!scene) hostSpoken = true;
+  if (scene) { scene.presentationText = view.text; scene.voiceExpected = view.clips.length > 0 && Voice.enabled() && !Voice.muted(); }
+  if (view.clips.length) Voice.say(view.clips.map(c => ({ ...c, tag: 'table:' + (scene?.key || TV.game_id), m: view.mood })), { group: 'table', front: true });
+}
+
+let polling = false, retry = 1500, closed = false;
+async function poll() {
+  if (polling || closed) return;
+  polling = true;
+  try {
+    const response = await fetch('/api/table', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Table feed HTTP ' + response.status);
+    const feed = await response.json();
+    if (!feed.ok || !feed.state) throw new Error('Table feed is missing its game snapshot');
+    if (!D || Date.now() - infoAt > 30000 || feed.state.cfg !== cfgSeen) {
+      const info = await loadInfo(); D = info.data; VS = Voice.setup(info.voice); infoAt = Date.now();
+      document.title = brandName(D.brand) + ' · Harbor View'; previous.clear();
+    }
+    if (feed.state.cfg !== undefined && feed.state.cfg !== cfgSeen) return;
+    if (TV && TV.game_id !== feed.game_id) {
+      pieces.clear(); previous.clear(); hostSpoken = false; scene = null; Voice.drop('table');
+      for (const key of Object.keys(lastRing)) delete lastRing[key];
+      for (const key of Object.keys(lastPrice)) delete lastPrice[key];
+      document.getElementById('hv-pieces').innerHTML = '';
+    }
+    TV = feed; S = feed.state;
+    director.ingest(feed);
+    const pause = document.getElementById('hv-pause');
+    pause.setAttribute('aria-pressed', String(director.paused)); pause.textContent = director.paused ? 'Resume' : 'Pause';
+    document.getElementById('hv-paused').hidden = !director.paused;
+    render();
+    if (!hostSpoken && !scene) speakScene();
+    document.getElementById('hv-connection').textContent = '';
+    retry = 1500;
+  } catch (error) {
+    console.warn('Harbor View could not refresh', error);
+    document.getElementById('hv-connection').textContent = 'Reconnecting…'; retry = 4000;
+    if (!D) document.getElementById('hv-loading').textContent = 'The table is reconnecting to the game…';
+  } finally { polling = false; if (!closed) setTimeout(poll, retry); }
+}
+
+const soundDialog = document.getElementById('hv-sound-dialog');
+const muteButton = document.getElementById('mute');
+if (muteButton) document.getElementById('hv-controls').prepend(muteButton);
+function drawSound() { if (typeof SeaAudioPanel !== 'undefined') update('hv-sound-panel', SeaAudioPanel.html((key, fb) => T[key] || fb)); }
+function quitView() { window.close(); setTimeout(() => { document.getElementById('hv-quit').textContent = 'Close this browser window'; }, 300); }
+
+document.getElementById('hv-controls').addEventListener('click', e => {
+  const id = e.target.closest('button')?.id;
+  if (id === 'hv-pause') {
+    const paused = director.pause(); e.target.setAttribute('aria-pressed', String(paused)); e.target.textContent = paused ? 'Resume' : 'Pause';
+    document.getElementById('hv-paused').hidden = !paused; Voice.lead(!paused); if (paused) Voice.drop('table'); else render();
+  } else if (id === 'hv-skip') director.skip();
+  else if (id === 'hv-board') director.board();
+  else if (id === 'hv-linger') { director.linger = !director.linger; e.target.setAttribute('aria-pressed', String(director.linger)); }
+  else if (id === 'hv-sound') { drawSound(); soundDialog.showModal(); }
+  else if (id === 'hv-quit') quitView();
+});
+document.getElementById('hv-sound-close').addEventListener('click', () => soundDialog.close());
+soundDialog.addEventListener('input', e => { if (typeof SeaAudioPanel !== 'undefined') SeaAudioPanel.input(e); });
+soundDialog.addEventListener('click', e => { if (typeof SeaAudioPanel !== 'undefined') SeaAudioPanel.click(e); });
+SeaAudio.onChange(() => { if (soundDialog.open) { previous.delete('hv-sound-panel'); drawSound(); } });
+Voice.onChange(item => {
+  if (!scene || director.paused) return;
+  if (item?.tag === 'table:' + scene.key) scene.voiceStarted = true;
+  else if (scene.voiceStarted && !scene.voiceEndedAt) scene.voiceEndedAt = Date.now();
+});
+document.addEventListener('keydown', e => {
+  if (soundDialog.open || e.target.matches('input,button,select,textarea')) return;
+  if (e.key === 'Escape') { e.preventDefault(); director.board(); }
+  if (e.key === ' ') { e.preventDefault(); document.getElementById('hv-pause').click(); }
+  if (e.key === 'ArrowRight') director.skip();
+});
+Faces.onChange = () => render();
+window.addEventListener('pagehide', () => { closed = true; Voice.stop(); });
+setInterval(() => { if (D && S) director.tick(); }, 200);
+if (document.fonts?.ready) document.fonts.ready.then(() => Chart.fit(document.getElementById('hv-chart-base')));
+poll();

@@ -8,7 +8,7 @@ const Options = (() => {
     table: '<path d="M4 9h16v5H4zM6 14v7M18 14v7M8 9V4h8v5"/>',
     sound: '<path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
   };
-  let dlg = null, info = null, mayorTimer = null, page = "table", opener = null, flip = null;
+  let dlg = null, info = null, mayorTimer = null, page = "table", opener = null, flip = null, pairs = [], pairIdx = 0;
   let mayors = [], mayorIndex = 0;
 
   const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -46,16 +46,45 @@ const Options = (() => {
     Object.values(persons(fam.media)).forEach(list => list.forEach(it => safeIds.add(it.id)));
     const tableFam = !!(all.media && all.media.family);
     const tagged = it => it.t === "image" && (it.g || []).some(g => String(g).indexOf(FLIP_TAG) >= 0);
-    const pairs = [];
+    pairs = [];
     for (const [cid, list] of Object.entries(persons(all.media))) {
       const t = list.filter(tagged), safe = t.filter(it => safeIds.has(it.id)), unsafe = t.filter(it => !safeIds.has(it.id));
-      if (safe.length && (unsafe.length || tableFam)) pairs.push({ cid, safe, unsafe });
+      if (!(safe.length && (unsafe.length || tableFam))) continue;
+      const cast = (typeof VS !== "undefined" && VS.cast && VS.cast[cid]) || {};
+      pairs.push({ cid, name: cast.name || "", safe, unsafe });
     }
     if (!pairs.length) return;
-    const p = pickOne(pairs), cast = (typeof VS !== "undefined" && VS.cast && VS.cast[p.cid]) || {};
-    flip = { cid: p.cid, name: cast.name || "", safe: pickOne(p.safe).u, unsafe: p.unsafe.length ? pickOne(p.unsafe).u : "" };
-    [flip.safe, flip.unsafe].forEach(u => { if (u) new Image().src = u; });
+    pairs.sort((a, b) => a.name.localeCompare(b.name));      // the slider walks them in name order
+    pairIdx = Math.floor(Math.random() * pairs.length);       // still opens on a surprise
+    pickPersona(pairIdx);
     draw(["table"]);
+  }
+
+  /* Make pair i the one on show: a fresh Safe and Unsafe picture from that persona. */
+  function pickPersona(i) {
+    pairIdx = Math.max(0, Math.min(pairs.length - 1, i));
+    const p = pairs[pairIdx];
+    flip = { cid: p.cid, name: p.name, safe: pickOne(p.safe).u, unsafe: p.unsafe.length ? pickOne(p.unsafe).u : "" };
+    [flip.safe, flip.unsafe].forEach(u => { if (u) new Image().src = u; });
+  }
+
+  /* The slider moved: swap the pictures and the name in place (no redraw, so the thumb keeps its drag). */
+  function setPersona(i) {
+    if (!dlg || !pairs.length) return;
+    pickPersona(i);
+    const blanks = dlg.querySelectorAll(".op-flip-face");
+    const faces = [flip.safe, flip.unsafe];
+    blanks.forEach((face, n) => {
+      const url = faces[n] || "";
+      let img = face.querySelector("img");
+      if (url) {
+        if (!img) { img = document.createElement("img"); img.alt = ""; face.querySelector(".op-flip-blank")?.replaceWith(img); }
+        img.src = url;
+      }
+    });
+    const name = dlg.querySelector(".op-persona-pick-name"), count = dlg.querySelector(".op-persona-pick-count");
+    if (name) name.textContent = flip.name;
+    if (count) count.textContent = `${pairIdx + 1} / ${pairs.length}`;
   }
 
   function flipFace(kind, url, side) {
@@ -69,7 +98,11 @@ const Options = (() => {
     return `<figure class="op-flip-wrap"><button type="button" class="op-flip${safeNow ? "" : " is-unsafe"}" data-op="famflip" ${locked ? "disabled" : ""} aria-pressed="${safeNow}"
         aria-label="${tx("opt.flip_label", "Family Friendly: {state}. Tap to switch.", { state })}">
         <span class="op-flip-inner">${flipFace("safe", f.safe, "front")}${locked ? "" : flipFace("unsafe", f.unsafe, "back")}</span></button>
-      ${f.name ? `<figcaption>${esc(f.name)}</figcaption>` : ""}</figure>`;
+      ${pairs.length > 1 ? `<div class="op-persona-pick">
+        <div class="op-persona-pick-line"><span class="op-persona-pick-name">${esc(f.name || "")}</span><span class="op-persona-pick-count">${pairIdx + 1} / ${pairs.length}</span></div>
+        <input type="range" class="op-persona-slider" data-op="persona" min="0" max="${pairs.length - 1}" step="1" value="${pairIdx}"
+          aria-label="${tx("opt.persona_slider", "Browse the other personas")}" aria-valuetext="${esc(f.name || "")}">
+      </div>` : (f.name ? `<figcaption>${esc(f.name)}</figcaption>` : "")}</figure>`;
   }
 
   /* Family Friendly on this screen, applied live: the choice is saved, the picture, switch and Safe / Unsafe word
@@ -101,6 +134,32 @@ const Options = (() => {
     queueApply();
   }
 
+  /* ------------------------------------------------ full screen, no borders -- */
+  /* The browser's own full screen (like F11): no tabs, address bar or window frame. Entering needs a tap, which is
+     why it is a button. Esc or "Exit full screen" leaves it. Some phone browsers (iPhone Safari) do not allow it. */
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  const fsCan = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  function fsEnter() {
+    const el = document.documentElement, go = el.requestFullscreen || el.webkitRequestFullscreen;
+    try { const p = go && go.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) { /* refused */ }
+  }
+  function fsExit() {
+    const out = document.exitFullscreen || document.webkitExitFullscreen;
+    try { const p = out && out.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ }
+  }
+  function fsHtml() {
+    const can = fsCan(), on = !!fsEl();
+    return `<div class="op-fs"><h4>${tx("opt.fs_title", "Full screen")}</h4>
+      <p class="op-fam-state ${on ? "safe" : "unsafe"}">${on ? tx("opt.fs_on", "Full screen, no borders") : tx("opt.fs_off", "Windowed")}</p>
+      <div class="op-fs-btns">
+        <button type="button" class="op-btn" data-op="fs_enter" ${can && !on ? "" : "disabled"}>${tx("opt.fs_enter", "Full screen, no borders")}</button>
+        <button type="button" class="op-btn" data-op="fs_exit" ${on ? "" : "disabled"}>${tx("opt.fs_exit", "Exit full screen")}</button>
+      </div>
+      <p class="op-note">${can ? tx("opt.fs_note", "Hides the browser's tabs, address bar and window borders on this screen. Press Esc to leave it too.")
+        : tx("opt.fs_none", "This browser does not allow full screen. On an iPhone or iPad, use Share > Add to Home Screen to open the game without borders.")}</p></div>`;
+  }
+  ["fullscreenchange", "webkitfullscreenchange"].forEach(ev => document.addEventListener(ev, () => { if (dlg) draw(["table"]); }));
+
   function tableHtml() {
     const tableFam = info ? info.table_family : (D && D.rating === "family" && !D.screen_family);
     const safeNow = !!(tableFam || screenFamily());
@@ -113,7 +172,7 @@ const Options = (() => {
         <p class="op-note">${tableFam ? tx("opt.family_table", "Family-friendly is on for the whole table (set in Admin).")
           : tx("opt.family_note", "Hides NSFW pictures and uses the family names of cargo on this screen only. Spoken lines stay as the table has them.")}</p>
         ${tableFam ? "" : `<p class="op-hint">${tx("opt.flip_hint", "Tap the picture to switch.")}</p>`}
-      </div>${flipHtml(safeNow, !!tableFam)}</div>`;
+      </div>${flipHtml(safeNow, !!tableFam)}</div>${fsHtml()}`;
   }
 
   function soundHtml() {
@@ -199,6 +258,8 @@ const Options = (() => {
     if (!b || b.tagName === "FORM" || b.tagName === "INPUT") return;
     const op = b.dataset.op;
     if (op === "close") return close();
+    if (op === "fs_enter") { if (!b.disabled) fsEnter(); return; }
+    if (op === "fs_exit") { if (!b.disabled) fsExit(); return; }
     if (op === "famflip") {
       if (!b.disabled) setFamily(!screenFamily());       // back and forth on every tap
       return;
@@ -214,11 +275,12 @@ const Options = (() => {
     if (op === "family" && e.type === "change") {
       setFamily(el.checked);
     }
+    if (op === "persona") setPersona(parseInt(el.value, 10) || 0);
   }
 
   function open() {
     if (dlg) return;
-    info = null; flip = null; page = "table"; opener = document.activeElement;
+    info = null; flip = null; pairs = []; pairIdx = 0; page = "table"; opener = document.activeElement;
     mayors = Object.entries(D.ports || {}).filter(([, p]) => p.officer && VS.cast && VS.cast[p.officer]);
     mayorIndex = Math.floor(Math.random() * mayors.length);
     dlg = document.createElement("dialog");

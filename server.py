@@ -6,10 +6,12 @@ Run:  python server.py [--port 8765] [--new] [--admin-password WORD]
   /            player screen (phones, tablets, laptops)
   /board       harbor board for a big shared screen
   /table       harbor view: the game from above, on a table (big shared screen)
+  /dashboard   the pit box: timing tower, ledger book, dials, chalkboard, telegraph tape (big shared screen)
   /admin       command center: every setting, the look, the wording, the live game
   /stats       the player's statistics: this voyage and career, charts and heat maps (see stats.py)
   /voice/...   lines read aloud by the cast (Inworld voices; see voice.py)
   /api/table        the Table's spectator feed: Captains, home ports, ship classes (harbor_view.py)
+  /api/dashboard    the Dashboard's feed: worth history, voyages, markets, booms, the ghost (dashboard_feed.py)
   /api/voice/floor  whose turn it is to speak, so screens never talk over each other (voicefloor.py)
   journal/     everything that happens, written down (see journal.py); read it on
                the Admin page under Captain's Report
@@ -43,14 +45,17 @@ import config
 import engine
 import finale
 import fonts
+import dashboard_feed
 import harbor_view
 import imagegen
 import journal
 import media
+import recipes
 import stats
 import strings
 import voice
 import voicefloor
+import voiceclips
 import voicelib
 from engine import Game, GameError, static_data
 
@@ -993,6 +998,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._file("board.html")
         if path == "/table":
             return self._file("table.html")
+        if path == "/dashboard":
+            return self._file("dashboard.html")
         if path == "/design/ceremony-preview.html":
             with open(os.path.join(ROOT, "design", "ceremony-preview.html"), "rb") as preview:
                 return self._send(200, preview.read(), "text/html; charset=utf-8")
@@ -1012,9 +1019,58 @@ class Handler(BaseHTTPRequestHandler):
             cfg = engine.CFG
             return self._send(200, {"ok": True, "captains": captains.public_list(cfg),
                                     "typed": bool(engine.R.get("captains", {}).get("typed"))})
+        if path == "/api/dashboard":
+            with HUB.cond:
+                feed = dashboard_feed.view(HUB.game, HUB.present())
+                feed["version"] = HUB.version
+            return self._send(200, feed)
         if path == "/api/table":
             with HUB.cond:
-                return self._send(200, harbor_view.view(HUB.game, HUB.present()))
+                solo = HUB.game.s["order"][0] if len(HUB.game.s["order"]) == 1 else None
+                snapshot = HUB.view(solo)
+                table = harbor_view.view(HUB.game, HUB.present(), snapshot)
+                table["version"] = HUB.version
+                name = (table.get("focus") or {}).get("name", "Captain")
+                keys = ["gm.welcome", "gm.month_open.{}".format(HUB.game.s["turn"] % 3),
+                        "gm.ask_sail", "gm.storm", "gm.ask_battle", "gm.finale", "gm.all_sealed.0",
+                        "gm.departure", "gm.arrival", "gm.return", "gm.customs_clear", "gm.customs_caught",
+                        "gm.customs_buyout", "gm.reckoning"]
+
+                def table_line(key, port=None, cid="gamemaster"):
+                    text = engine.tx(key, name=name, port=(engine.PORTS.get(port) or {}).get("name", ""))
+                    return {"text": text, "clip": voice.PLAN._clip(text, cid) if voice.PLAN.ready() else None}
+
+                here = (table.get("focus") or {}).get("port")
+                table["host"] = {k: table_line(k, here) for k in keys}
+                for event in table["events"]:
+                    kind, report = event["type"], event.get("report")
+                    if kind == "sailed":
+                        event["bridge"] = table_line("gm.departure", event.get("dest"))
+                        event["narration"] = table_line("l.table_underway", event.get("dest"), "narrator")
+                    elif kind == "arrived":
+                        event["bridge"] = table_line("gm.arrival", event.get("port"))
+                    elif kind == "customs_declare" and report:
+                        result = report.get("result") or {}
+                        key = "gm.customs_caught" if result.get("caught") else "gm.customs_buyout" if result.get("paid") else "gm.customs_clear"
+                        event["bridge"] = table_line(key, event.get("port"))
+                    if not voice.PLAN.ready():
+                        continue
+                    if kind == "storm_report" and report:
+                        event["voice"] = {"storm": HUB._storm_voice(report)}
+                    elif kind == "battle_result" and report:
+                        event["voice"] = {"battle": HUB._battle_voice({"fights": [report]}),
+                                          "battle_foe": HUB._battle_foe_voice({"fights": [report]})}
+                    elif kind == "customs_open" and report and report.get("aloud", True):
+                        event["clips"] = voice.PLAN.lines([report["welcome"]], "log", port=report["port"])
+                    elif kind == "customs_declare" and report and report.get("line"):
+                        event["clips"] = [voice.PLAN._clip(report["line"], report["officer"])]
+                    elif kind == "arrived" and event.get("welcome"):
+                        event["clips"] = [voice.PLAN._clip(event["welcome"], "mayor")]
+                    else:
+                        key, _fields = voice.PLAN.matcher.match(event["text"])
+                        if key:
+                            event["clips"] = [c for c in voice.PLAN.lines([event["text"]], "msg", port=event["port"]) or [] if c]
+                return self._send(200, table)
         if path == "/api/info":
             with HUB.cond:
                 cfg = engine.CFG
@@ -1054,7 +1110,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/voice/floor":
                 once = body.get("clip") if body.get("once") else ""
                 return self._send(200, dict(voicefloor.FLOOR.ask(self._addr(), body.get("id"),
-                                                                 body.get("op"), once), ok=True))
+                                                                 body.get("op"), once, role=body.get("role", ""),
+                                                                 channels=body.get("channels") or []), ok=True))
             if path == "/api/join":
                 if body.get("captain"):
                     return self._join_captain(body)
@@ -1398,14 +1455,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": False, "error": str(e)})
         if what == "voice/library":
             return self._send(200, dict(voicelib.public(), ok=True))
+        if what == "voice/clips":
+            return self._send(200, dict(voiceclips.view(engine.CFG, engine.TEXT), ok=True))
+        if what == "voice/clips/bin_audio":
+            try:
+                return self._send(200, voiceclips.bin_audio(query.get("id", [""])[0]), "audio/mpeg")
+            except voiceclips.ClipError as e:
+                return self._send(404, {"ok": False, "error": str(e)})
         if what == "artbible/examples":
             return self._send(200, {"ok": True, "examples": artbible_examples(), "aspects": imagegen.ASPECTS})
         if what == "media/library":
             v = media.admin_view(engine.CFG)
-            v.update(ok=True, jobs=media.JOBS.list(), aspects=imagegen.ASPECTS)
+            v.update(ok=True, jobs=media.JOBS.list(), queue=media.JOBS.summary(), aspects=imagegen.ASPECTS, recipes=recipes.load())
             return self._send(200, v)
         if what == "media/jobs":
-            return self._send(200, {"ok": True, "jobs": media.JOBS.list()})
+            return self._send(200, {"ok": True, "jobs": media.JOBS.list(), "queue": media.JOBS.summary()})
         if what.startswith("journal/"):
             return self._journal_get(what[len("journal/"):], query)
         if what == "export":
@@ -1715,6 +1779,8 @@ class Handler(BaseHTTPRequestHandler):
             journal.log("INFO", "admin", "Media library: removed {} item(s)".format(n), **self._via())
             return self._send(200, {"ok": True, "msg": "Removed {} item{} (files moved to web/media/_trash).".format(
                 n, "" if n == 1 else "s")})
+        if what == "recipes":
+            return self._send(200, {"ok": True, "recipes": recipes.save(body.get("recipes"))})
         if what == "rules":
             media.set_rules(body.get("rules"), body.get("options"))
             return self._send(200, {"ok": True, "msg": "Playback rules saved. Every screen has been updated."})
@@ -1847,6 +1913,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "jobs": [j["id"] for j in jobs], "pair": pair,
                                     "msg": "Queued {} clip{}. Each takes a while on the farm and is filed as it "
                                     "finishes.".format(n, "" if n == 1 else "s")})
+        if what == "queue":     # stop all / reorder / pause a lane / clear finished
+            return self._send(200, media.JOBS.command(body))
         if what == "cancel":
             ok = media.JOBS.cancel(str(body.get("job") or ""))
             return self._send(200, {"ok": ok, "msg": "Cancelled.", "error": "That job has already finished."})
@@ -2002,6 +2070,13 @@ class Handler(BaseHTTPRequestHandler):
             journal.log("INFO", "voice", "Voice library checked against Inworld: {} new, {} gone, {} back".format(
                 len(diff["added"]), len(diff["removed"]), len(diff["back"])), **self._via())
             return self._send(200, dict(voicelib.public(), ok=True, diff=diff))
+        if what.startswith("clips/"):
+            # The Clips page (voiceclips.py): rank, bin, restore, record.
+            res = voiceclips.handle(what[len("clips/"):], body, engine.CFG, engine.TEXT)
+            if res.get("ok") and what in ("clips/bin", "clips/restore", "clips/empty_bin", "clips/record"):
+                journal.log("INFO", "voice", "Voice clips: {} ({})".format(what[len("clips/"):], body.get("id") or body.get("key") or ""),
+                            **self._via())
+            return self._send(200, res)
         if what in ("library/mark", "library/sample"):
             try:
                 if what == "library/mark":

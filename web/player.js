@@ -565,14 +565,16 @@ function tabFaceUrl(k) {
   const f = TAB_FACES[k], me = S.me;
   if (!f) return "";
   if (f.woman) {
-    const tagged = subs => plainWomen(subs, f.woman, false);
+    // Same list as the stage (clips included, and clips first when she has any), so the two always
+    // agree on one pick; a clip shows on the tab as its poster picture.
+    const tagged = subs => womanList(subs, f.woman);
     let list = tagged(me.port);
     if (!list.length) list = tagged(Object.keys(D.ports));
     if (list.length) {
       const key = f.woman + ":" + me.port;   // same pick as the stage, so tab and stage match
       let it = list.find(i => i.id === womanPick[key]);
       if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
-      return it.u;
+      return it.t === "video" ? (it.po || "") : it.u;
     }
   }
   if (f.port) {   // Port, or Set sail without a mayor: the port the house is in
@@ -599,8 +601,16 @@ function plainWomen(subs, role, video) {
   return Media.items("port", subs, role, video)
     .filter(i => i.r.includes(role) && !i.r.some(r => r !== role && r.startsWith(role + "_")));
 }
+/* Her pictures and clips for a role. When she has a clip it is the only thing offered (always the
+   clip, as on the jail screen); with "Images only" on, or no clip yet, her pictures. The tab rail and the
+   stage both use this, so their shared pick (womanPick) is always in both lists. */
+function womanList(subs, role) {
+  const list = plainWomen(subs, role, true);
+  const clips = list.filter(i => i.t === "video");
+  return clips.length ? clips : list;
+}
 function stageWomanHtml(port, role) {
-  const tagged = subs => plainWomen(subs, role, true);
+  const tagged = subs => womanList(subs, role);
   let list = tagged(port);
   if (!list.length) list = tagged(Object.keys(D.ports));
   if (!list.length) return "";
@@ -609,7 +619,7 @@ function stageWomanHtml(port, role) {
   if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
   const u = esc(it.u), cls = "stg-img stg-keeper stg-" + role;
   return it.t === "video"
-    ? `<video class="${cls}" src="${u}" muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`
+    ? `<video class="${cls}" src="${u}"${it.po ? ` poster="${esc(it.po)}"` : ""} muted autoplay loop playsinline preload="auto" disablepictureinpicture></video>`
     : `<img class="${cls}" src="${u}" alt="">`;
 }
 
@@ -1723,21 +1733,18 @@ function portBadge(v) {
 }
 
 /* ---- Arrival */
-/* Two columns when the port has services. Left, the port itself: Port business (what needs doing), then At a
-   Glance (or the Mayor's Parlour). Right, the house's affairs here: money and protection first, then the
-   warehouse, the Mayor's commissions, the estate and shares. One column on narrow panes, in that order.
-   A port with no services keeps the old two-up of Port business and At a Glance. */
+/* Two columns when the port has services (21 Nov 2026, At a Glance removed). Left, a narrow column: Port business,
+   or the Mayor's Parlour when open. Right, the wide column: the house's affairs here, with bank and moneylender
+   first, then protection, the warehouse, shares, the Mayor's commissions and the estate. One column on narrow
+   panes, in that order. A port with no services shows Port business alone (or with the Mayor's Parlour). */
 function portArrival() {
   // The "Welcome to (port)" banner lives in the header (portPlate); the month's result is under
   // Accounts and the full voyage log is under the Log sub-tab.
-  const me = S.me;
-  // Call on the Mayor swaps At a Glance for the Mayor's Parlour, and the stage shows her (deckArt).
-  const right = mayorOpen() ? mayorParlour()
-    : `<section class="card pt-glance"><h2>${te("port.glance.title", { port: esc(portName(me.port)) })}</h2>${portGlance()}</section>`;
   const todo = `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>`;
-  if (!hasServices()) return todo + right;
-  return `<div class="pt-col pt-col-port">${todo}${right}</div>
-    <div class="pt-col pt-col-svc"><h3 class="pt-svc-head">${te("port.view.services_here", { port: esc(portName(me.port)) })}</h3>${portServiceCards()}</div>`;
+  const mayor = mayorOpen() ? mayorParlour() : "";
+  if (!hasServices()) return todo + mayor;
+  return `<div class="pt-col pt-col-port">${todo}${mayor}</div>
+    <div class="pt-col pt-col-svc"><h3 class="pt-svc-head">${te("port.view.services_here", { port: esc(portName(S.me.port)) })}</h3>${portServiceCards()}</div>`;
 }
 
 /* The live hot tip, pinned in brass across the top of the Port and Market screens from the month it
@@ -1984,28 +1991,6 @@ function portTodo() {
 }
 
 /* The port at a glance: what is cheap and dear, bans, the dealer's cut, dues, shipyard, the Port Authority, rivals. */
-function portGlance() {
-  const me = S.me, port = D.ports[me.port], mods = port.mods || {};
-  const goods = Object.keys(D.goods).filter(g => mods[g] != null);
-  const cheap = goods.filter(g => mods[g] < 1).sort((a, b) => mods[a] - mods[b]).slice(0, 3);
-  const dear = goods.filter(g => mods[g] > 1).sort((a, b) => mods[b] - mods[a]).slice(0, 3);
-  const chips = (list, cls) => list.length ? list.map(g => `<span class="pt-chip ${cls}">${esc(D.goods[g].name)}</span>`).join("") : `<span class="muted">—</span>`;
-  const bans = (S.bans || {})[me.port] || [];
-  const rivals = S.players.filter(p => p.port === me.port && p.id !== me.id);
-  const rate = Number(port.tax_rate) || 0;
-  const row = (label, value) => `<tr><td>${label}</td><td class="n">${value}</td></tr>`;
-  return `<table class="pt-table">
-    ${row(te("port.glance.cheap"), chips(cheap, "up"))}
-    ${row(te("port.glance.dear"), chips(dear, "down"))}
-    ${row(te("port.glance.bans"), bans.length ? chips(bans, "down") : te("port.glance.no_bans"))}
-    ${row(te("port.glance.cut", { rep: (me.rep || {})[me.port] }), pct(me.spread, 1) + "%")}
-    ${row(te("port.glance.dues"), "×" + (me.dues && me.dues.level != null ? me.dues.level : 1))}
-    ${row(te("port.glance.authority"), me.home_free && me.port === myHome() ? te("port.glance.home_free") : rate > 0 ? te("port.glance.authority_rate", { rate: pct(rate, 1) }) : te("port.glance.free"))}
-    ${row(te("port.glance.yard"), yardAt(me.port) ? te("port.glance.yes") : te("port.glance.no_yard", { yards: esc(yardList()) }))}
-    ${row(te("port.glance.rivals"), rivals.length ? rivals.map(p => `<span class="pt-chip">${houseMark(p)}${esc(p.firm)}</span>`).join("") : te("port.glance.alone"))}
-  </table>`;
-}
-
 function portRace() {
   return `${standings()}${btn(te("st.open_hint"), "tally", "", "wide ghost")}`;
 }
@@ -2270,14 +2255,34 @@ function serviceAmount(range) {
   return p < 0 ? -Math.round(-p / SVC_STEPS * have) : Math.round(p / SVC_STEPS * room);
 }
 
+/* Short labels for the service cards (kept here, not in strings.py: they are headings, not spoken lines). */
+const SVC = {
+  balance: "Balance", rate: "Rate a month", next: "Next month", ashore: "Silver ashore", theft: "Thieves",
+  owe: "You owe", room: "Can borrow", cover: "Cover", renew: "Renewal", cost: "Cost", units: "Room",
+  store: "In store", hold: "Hold", rent: "Rent a month", worth: "Store worth",
+  held: "Held here", left: "Still open", placed: "Placed", tax: "Your tax here", cut: "Cut per share", patron: "Patron",
+  all: "All", half: "½",
+};
+/* A strip of figures: [label, value, tone ("up" "down" "warn"), small line, fill 0..1]; false entries are skipped. */
+function svcStats(list) {
+  return `<dl class="pt-stats">${list.filter(Boolean).map(([k, v, cls, sub, fill]) =>
+    `<div class="pt-stat${cls ? " " + cls : ""}"><dt>${k}</dt><dd>${v}</dd>${sub ? `<small>${sub}</small>` : ""}${
+      fill != null ? `<i class="pt-stat-bar" aria-hidden="true"><b style="width:${Math.round(100 * Math.max(0, Math.min(1, fill)))}%"></b></i>` : ""}</div>`).join("")}</dl>`;
+}
+
 function serviceSlider(k, title, g) {
   const tr = serviceTransfer(k, g), locked = S.me.ready;
   // Madam Wu's desk: one tap clears the debt (or as much of it as the silver ashore covers).
   const whole = k === "loan" && tr.have >= Math.ceil(S.me.debt);
   const quick = k === "loan" && tr.have > 0
-    ? `<div class="pt-actions pt-transfer-quick" style="margin:0 0 .55rem">${btn(
-        te("btn.repay") + " " + (whole ? te("btn.whole_debt") + " \u00b7 " : "") + esc(money(tr.have)),
+    ? `<div class="pt-actions pt-transfer-quick">${btn(
+        te("btn.repay") + " " + (whole ? te("btn.whole_debt") + " · " : "") + esc(money(tr.have)),
         "repay_all", "", "pt-go primary", locked)}</div>` : "";
+  // All and half either way: they set the bar, the button under it does the moving.
+  const chip = (to, label, tip, off) => btn(label, "svc_preset", `data-service="${k}" data-good="${g || ""}" data-to="${to}" title="${esc(tip)}"`, "pt-chipbtn", locked || off);
+  const presets = tr.have || tr.room ? `<div class="pt-presets">
+      <span>${tr.have ? chip(-1, SVC.all, te("btn." + tr.left) + " " + SVC.all.toLowerCase()) + chip(-.5, SVC.half, te("btn." + tr.left) + " " + SVC.half) : ""}</span>
+      <span>${tr.room ? chip(.5, SVC.half, te("btn." + tr.right) + " " + SVC.half) + chip(1, SVC.all, te("btn." + tr.right) + " " + SVC.all.toLowerCase()) : ""}</span></div>` : "";
   return `<div class="pt-transfer">${quick}
     <div class="pt-transfer-scale"><span>${te("btn." + tr.left)}</span><span>${te("btn." + tr.right)}</span></div>
     <input type="range" class="mk-range pt-range" data-k="${tr.key}" data-service="${k}" data-good="${g || ""}"
@@ -2285,6 +2290,7 @@ function serviceSlider(k, title, g) {
       min="${tr.have ? -SVC_STEPS : 0}" max="${tr.room ? SVC_STEPS : 0}" step="1" value="${tr.pos}" style="${barStyle(tr.bar)}"
       aria-label="${title} · ${te("btn." + tr.left)} / ${te("btn." + tr.right)}"
       aria-valuetext="${tr.qty ? te("btn." + tr.op) + " " : ""}${esc(tr.label)}" ${locked || !tr.max ? "disabled" : ""}>
+    ${presets}
     <div class="pt-transfer-action" data-side="${tr.side}"><output>${esc(tr.label)}</output>
       ${btn(tr.qty ? te("btn." + tr.op) : te("btn." + tr.left) + " / " + te("btn." + tr.right),
         "service_transfer", `data-service="${k}" data-good="${g || ""}"`, "", locked || !tr.qty)}</div>
@@ -2304,18 +2310,20 @@ function serviceDrag(range) {
   button.disabled = S.me.ready || !tr.qty;
 }
 
-/* One service on Arrival: a slim header (small picture, name, one line of what it is), then the controls.
-   `flag` ("warn" brass, "down" oxblood) puts a mark by the name and a coloured edge on the card when the
-   service needs attention; the card's own line says why. id "svc-<art>" lets other screens jump here. */
-function serviceCard(art, title, info, body, flag) {
+/* One service on Arrival (21 Nov 2026): name and flag across the top; then the picture, whole, with the figures
+   under it, and the controls beside them (stacked on a narrow card). `stats` is svcStats(); `info` is an
+   optional single line. `flag` ("warn" brass, "down" oxblood) marks a service that needs attention.
+   id "svc-<art>" lets other screens jump here. */
+function serviceCard(art, title, info, body, flag, stats) {
   const id = art.replace(/_\d+$/, "");
   const pic = Media.html("service", art, "background", "pt-service-image", "", { strict: true });
-  return `<section class="card pt-service${flag ? " attn " + flag : ""}" id="svc-${id}">
-    <header class="pt-service-head">
-      ${pic ? `<span class="pt-service-thumb">${pic}</span>` : ""}
-      <div class="pt-service-titles"><h2>${title}${flag ? `<i class="pt-service-flag" aria-hidden="true">${flag === "down" ? "\u2696" : "!"}</i>` : ""}</h2><p>${info}</p></div>
-    </header>
-    <div class="pt-service-body">${body}</div>
+  return `<section class="card pt-service${flag ? " attn " + flag : ""}${pic ? " has-pic" : ""}${stats ? " has-data" : ""}" id="svc-${id}">
+    <div class="pt-service-in">
+      <header class="pt-service-head"><h2>${title}${flag ? `<i class="pt-service-flag" aria-hidden="true">${flag === "down" ? "⚖" : "!"}</i>` : ""}</h2>${info ? `<p>${info}</p>` : ""}</header>
+      ${pic ? `<div class="pt-service-pic">${pic}</div>` : ""}
+      ${stats ? `<div class="pt-service-data">${stats}</div>` : ""}
+      <div class="pt-service-body">${body}</div>
+    </div>
   </section>`;
 }
 
@@ -2336,32 +2344,55 @@ function jumpToService(id) {
 function portServiceCards() {
   const me = S.me, home = me.port === myHome(), port = esc(portName(me.port));
   const locked = me.ready, dr = me.depot_rules || {}, wr = me.wh_rent || {};
-  let out = "", agentCard = "";
+  const mo = n => n + (n === 1 ? " month" : " months");
+  let out = "";
   if (home || me.bank_here) {
-    out += serviceCard("bank", te("bank.title"), te("bank.info", { balance: money(me.bank), rate: pct(D.bank_rate, 2) })
-      + (home ? "" : " " + te("bank.one_account")), serviceSlider("bank", te("bank.title")));
+    const br = bankRest();
+    const stats = svcStats([
+      [SVC.balance, money(me.bank)],
+      [SVC.rate, pct(D.bank_rate, 2) + "%"],
+      [SVC.next, me.bank > 0 ? "+" + money(me.bank * D.bank_rate) : "—", me.bank > 0 ? "up" : ""],
+      [SVC.ashore, money(me.cash), "", br ? `${SVC.theft} ~${(br.odds * 100).toFixed(1).replace(/\.0$/, "")}%` : ""],
+    ]);
+    const rest = br ? `<div class="pt-actions pt-bank-rest">${btn(te("bank.rest", { amount: money(br.amount) }), "bank_rest", "", "pt-go primary")}</div>` : "";
+    out += serviceCard("bank", te("bank.title"), home ? "" : te("bank.one_account"), serviceSlider("bank", te("bank.title")) + rest, "", stats);
   }
   if (home) {
-    const owe = me.debt > 0
-      ? `<p class="pt-service-note down">${te("port.owe.next")} <b>${money(me.debt * D.loan_rate)}</b></p>` : "";
-    out += serviceCard("lender", te("loan.title"), te("loan.info", { debt: money(me.debt), rate: pct(D.loan_rate, 2), room: money(me.loan_room) }),
-      owe + serviceSlider("loan", te("loan.title")), me.debt > 0 ? "down" : "");
+    const stats = svcStats([
+      [SVC.owe, money(me.debt), me.debt > 0 ? "down" : "up"],
+      [SVC.rate, pct(D.loan_rate, 2) + "%"],
+      [SVC.next, me.debt > 0 ? "+" + money(me.debt * D.loan_rate) : "—", me.debt > 0 ? "down" : ""],
+      [SVC.room, money(me.loan_room)],
+    ]);
+    out += serviceCard("lender", te("loan.title"), "", serviceSlider("loan", te("loan.title")), me.debt > 0 ? "down" : "", stats);
   }
   if (home) {
     const low = me.protect <= D.renew_at;
-    const agent = me.protect > D.renew_at ? te("agent.content", { months: me.protect })
-      : me.protect > 0 ? te("agent.running_out", { months: me.protect }) : te("agent.none");
-    const tribute = low ? btn(te("agent.pay", { cost: money(me.protect_cost) }),
-      "protection", "", "primary", me.ready || me.protect_cost > me.cash) : "";
-    agentCard = serviceCard("agent", te("agent.title"), agent, tribute, low ? "warn" : "");
+    const stats = svcStats([
+      [SVC.cover, me.protect > 0 ? mo(me.protect) : "None", me.protect > D.renew_at ? "up" : me.protect > 0 ? "warn" : "down"],
+      [SVC.renew, money(me.protect_cost)],
+    ]);
+    const tribute = low ? `<div class="pt-actions">${btn(te("agent.pay", { cost: money(me.protect_cost) }),
+      "protection", "", "primary", me.ready || me.protect_cost > me.cash)}</div>` : "";
+    out += serviceCard("agent", te("agent.title"), "", tribute, low ? "warn" : "", stats);
   }
-  out += agentCard;
   if (me.wh_here === "closed") {
-    out += serviceCard("warehouse", te("wh.offer_title"), te("wh.offer", { port, cost: money(dr.open), cap: (dr.cap || 0).toLocaleString() }),
-      `<div class="pt-actions">${btn(te("wh.open", { cost: money(dr.open) }), "depot", 'data-op="open"', "primary", locked || dr.open > me.cash)}</div>`);
+    out += serviceCard("warehouse", te("wh.offer_title"), "",
+      `<div class="pt-actions">${btn(te("wh.open", { cost: money(dr.open) }), "depot", 'data-op="open"', "primary", locked || dr.open > me.cash)}</div>`, "",
+      svcStats([[SVC.cost, money(dr.open)], [SVC.units, (dr.cap || 0).toLocaleString()]]));
   } else if (me.wh_here === "home" || me.wh_here === "open") {
     const whUsed = Object.values(me.wh).reduce((a, b) => a + b, 0);
     const goods = Object.keys(D.goods).filter(g => (me.cargo[g] || 0) + (me.wh[g] || 0) > 0);
+    let worth = 0;
+    Object.keys(me.wh || {}).forEach(g => { const q = me.wh[g] || 0; if (q > 0 && Number.isFinite(me.prices[g])) worth += quote(g, q, "sell"); });
+    const rentNow = wr.here > 0, rentFree = home && wr.home_free > 0;
+    const stats = svcStats([
+      [SVC.store, `${whUsed.toLocaleString()} / ${me.wh_cap.toLocaleString()}`, "", "", me.wh_cap ? whUsed / me.wh_cap : 0],
+      [SVC.hold, `${me.used.toLocaleString()} / ${me.capacity.toLocaleString()}`, "", "", me.capacity ? me.used / me.capacity : 0],
+      [SVC.rent, rentNow ? money(wr.here) : rentFree ? "Free" : "—", "",
+        [rentNow && wr.empty ? "half while empty" : "", rentFree ? "starts in " + mo(wr.home_free) : "", wr.more > 0 ? "enlarging +" + money(wr.more) : ""].filter(Boolean).join(" · ")],
+      worth > 0 && [SVC.worth, money(worth)],
+    ]);
     const warehouse = goods.map(g => {
       const name = esc(D.goods[g].name);
       const sellable = (me.wh[g] || 0) + Math.max(0, (me.cargo[g] || 0) - ((me.bond || {})[g] || 0));
@@ -2377,18 +2408,14 @@ function portServiceCards() {
     const others = Object.entries(Object.assign(home ? {} : { [myHome()]: { goods: me.wh_home || {} } }, me.wh_away || {}))
       .filter(([k, d]) => k !== me.port && Object.keys(d.goods || {}).length)
       .map(([k, d]) => esc(portName(k)) + " (" + Object.entries(d.goods).map(([g, q]) => q.toLocaleString() + " " + esc(D.goods[g] ? D.goods[g].name : g)).join(", ") + ")");
+    const elsewhere = others.length ? `<p class="pt-service-note">${te("wh.elsewhere", { list: others.join("; ") })}</p>` : "";
     const expand = me.wh_here === "open"
       ? `<div class="pt-actions">${btn(te("wh.expand", { qty: (dr.add || 0).toLocaleString(), cost: money(dr.expand) }), "depot", 'data-op="expand"', "pt-go", locked || dr.expand > me.cash)}${btn(te("wh.sell", { gain: money(dr.sell || 0) }), "depot", `data-op="sell" title="${te(whUsed > 0 ? "wh.sell_full_tip" : "wh.sell_tip")}"`, "", locked || whUsed > 0)}</div>` : "";
-    out += serviceCard("warehouse", home ? te("wh.title") : te("wh.title_away", { port }),
-      te("wh.info", { used: whUsed.toLocaleString(), cap: me.wh_cap.toLocaleString(), hold_used: me.used, hold: me.capacity })
-      + (wr.here > 0 ? " " + te("wh.rent", { rent: money(wr.here), note: wr.empty ? te("wh.rent_empty") : "" }) : "")
-      + (home && wr.home_free > 0 ? " " + te("wh.rent_free", { months: wr.home_free, s: wr.home_free === 1 ? "" : "s" }) : "")
-      + (wr.more > 0 ? te("wh.rent_more", { more: money(wr.more) }) : "")
-      + (others.length ? " " + te("wh.elsewhere", { list: others.join("; ") }) : ""), warehouse + expand);
+    out += serviceCard("warehouse", home ? te("wh.title") : te("wh.title_away", { port }), "", warehouse + expand + elsewhere, "", stats);
   }
+  if (me.shares) out += sharesCard(me);
   if (me.commissions && (home || me.commissions.active.length)) out += commissionsCard(me);
   if (home && me.estate) out += estateCard(me);
-  if (me.shares) out += sharesCard(me);
   return out;
 }
 
@@ -2396,32 +2423,26 @@ function portServiceCards() {
 function sharesCard(me) {
   const sh = me.shares, locked = me.ready, port = portName(sh.port);
   // Captain's share allowance (19 Nov 2026): earned by promotion, at most sh.cap in all, placed in any port.
-  const rule = sh.buy ? "" : " " + te("shares.rule", { cap: sh.cap });
-  const info = (sh.home ? te("shares.info_home", { port }) : te("shares.info", { port, total: sh.total, cut: pct(sh.cut, 0) })) + rule;
-  const allowance = sh.earned >= sh.cap && !sh.free ? te("shares.allowance_full", { cap: sh.cap })
-    : sh.earned || sh.placed ? te("shares.allowance", { placed: sh.placed, free: sh.free, earned: sh.earned, cap: sh.cap })
-    : te("shares.allowance_none");
-  const rows = [
-    sh.home ? "" : te("shares.rate", { mine: pct(sh.my_rate, 2), base: pct(sh.base_rate, 2) }),
-    te("shares.held", { n: sh.here, total: sh.total }),
-    sh.left <= 0 ? te("shares.none_left", { port })
-      : sh.buy ? te("shares.left", { left: sh.left, total: sh.total, price: money(sh.price) })
-      : te("shares.open", { left: sh.left, total: sh.total }),
-    sh.patron_me ? te("shares.patron_me", { port }) : sh.patron ? te("shares.patron", { port, firm: sh.patron }) : te("shares.no_patron", { port }),
-    sh.holders.length ? te("shares.holders", { list: sh.holders.map(h => `${h.firm} ${h.n}`).join(", ") }) : "",
-    allowance,
-  ].filter(Boolean).map(t => `<li>${t}</li>`).join("");
+  const stats = svcStats([
+    [SVC.held, `${sh.here} / ${sh.total}`, sh.here > 0 ? "up" : ""],
+    [SVC.left, String(Math.max(0, sh.left)), "", sh.buy && sh.left > 0 ? money(sh.price) + " each" : ""],
+    [SVC.placed, `${sh.placed} / ${sh.cap}`, "", sh.free ? sh.free + " to place" : ""],
+    [SVC.tax, sh.home ? "None" : pct(sh.my_rate, 2) + "%", sh.home || sh.my_rate < sh.base_rate ? "up" : "", sh.home ? "home port" : "posted " + pct(sh.base_rate, 2) + "%"],
+    [SVC.cut, pct(sh.cut, 0) + "%"],
+    [SVC.patron, sh.patron_me ? "You" : sh.patron ? esc(sh.patron) : "None", sh.patron_me ? "up" : ""],
+  ]);
+  const holders = sh.holders.length ? `<p class="pt-service-note">${te("shares.holders", { list: sh.holders.map(h => `${esc(h.firm)} ${h.n}`).join(", ") })}</p>` : "";
   const mine = Object.entries(sh.mine || {});
   const list = mine.map(([k, n]) => `${portName(k)} ${n}`).join(", ");
-  const yours = mine.length ? `<p class="muted">${sh.value ? te("shares.yours", { list, value: money(sh.value) }) : te("shares.yours_free", { list })}</p>` : "";
+  const yours = mine.length ? `<p class="pt-service-note">${sh.value ? te("shares.yours", { list, value: money(sh.value) }) : te("shares.yours_free", { list })}</p>` : "";
   const room = sh.placed < sh.cap;
   const buttons = [
     sh.left > 0 && sh.free > 0 ? btn(te("shares.place"), "shares", 'data-op="buy"', "primary", locked) : "",
     sh.left > 0 && sh.buy && !sh.free && room ? btn(te("shares.buy", { cost: money(sh.price) }), "shares", 'data-op="buy"', "primary", locked || sh.price > me.cash) : "",
     sh.sell_back && sh.here > 0 ? btn(sh.back ? te("shares.sell", { gain: money(sh.back) }) : te("shares.take_back"), "shares", 'data-op="sell"', "pt-go", locked) : "",
   ].join("");
-  return serviceCard("shares", te("shares.title", { port }), info,
-    `<ul class="pt-share-facts">${rows}</ul>${yours}${buttons ? `<div class="pt-actions">${buttons}</div>` : ""}`);
+  return serviceCard("shares", te("shares.title", { port }), "",
+    `${buttons ? `<div class="pt-actions">${buttons}</div>` : ""}${yours}${holders}`, "", stats);
 }
 
 function commissionsCard(me) {
@@ -3013,6 +3034,12 @@ app.addEventListener("click", async e => {
         : await act(d.service, { op: tr.op, amount: tr.qty });
       if (ok) { delete ui.vals[tr.key]; render(); }
       return;
+    }
+    case "svc_preset": {
+      if (S.me.ready) return;
+      const tr = serviceTransfer(d.service, d.good), to = parseFloat(d.to) || 0;
+      ui.vals[tr.key] = String(to < 0 ? -Math.round(-to * tr.have) : Math.round(to * tr.room));
+      return render();
     }
     case "repay_all": {
       const tr = serviceTransfer("loan");

@@ -65,18 +65,20 @@ class Floor:
     def _room(self, key):
         r = self.rooms.get(key)
         if r is None:
-            r = self.rooms[key] = {"holder": None, "until": 0.0, "line": [], "heard": {}}
+            r = self.rooms[key] = {"holder": None, "until": 0.0, "line": [], "heard": {}, "table": None}
         return r
 
     @staticmethod
     def _tidy(r, now):
+        if r.get("table") and r["table"]["until"] < now:
+            r["table"] = None
         if r["holder"] and r["until"] < now:
             r["holder"] = None
         r["line"] = [w for w in r["line"] if now - w[1] <= STALE]
         if len(r["heard"]) > 200:
             r["heard"] = {k: v for k, v in r["heard"].items() if now - v[1] <= HEARD}
 
-    def ask(self, address, sid, op, clip="", now=None):
+    def ask(self, address, sid, op, clip="", now=None, role="", channels=()):
         """Answer one screen. Returns {"granted": bool, "skip": bool, "wait": seconds}."""
         now = time.monotonic() if now is None else now
         sid = str(sid or "")[:64]
@@ -86,11 +88,27 @@ class Floor:
         with self.lock:
             r = self._room(self.room_for(address))
             self._tidy(r, now)
+            if op == "table" and role == "table":
+                active = [c for c in channels if c in ("dialogue", "music", "atmosphere", "system")]
+                owner = r.get("table")
+                if not owner or owner["id"] == sid:
+                    r["table"] = {"id": sid, "until": now + LEASE, "channels": active}
+                return {"granted": True, "skip": False, "wait": 0}
+            table = r.get("table")
+            following = table["channels"] if table and table["id"] != sid else []
+            if op == "status":
+                return {"granted": False, "skip": False, "wait": 0, "table_channels": following}
             if op == "free":
                 if r["holder"] == sid:
                     r["holder"] = None
                 r["line"] = [w for w in r["line"] if w[0] != sid]
                 return {"granted": False, "skip": False, "wait": 0}
+            if op == "leave_table":
+                if table and table["id"] == sid:
+                    r["table"] = None
+                return {"granted": False, "skip": False, "wait": 0}
+            if role != "table" and "dialogue" in following:
+                return {"granted": False, "skip": True, "wait": 0, "table_channels": following}
             if op == "renew":
                 if r["holder"] == sid:
                     r["until"] = now + LEASE

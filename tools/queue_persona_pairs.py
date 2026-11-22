@@ -31,6 +31,11 @@ import sys
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+try:
+    import persona_prompts_v2 as pp
+except ImportError:
+    pp = None
 
 # Expressions. The first five match the Media Library's own persona moods (media-admin.js PERSONA_MOODS);
 # bored / curious / hungry are the Port Authority's tells.
@@ -156,6 +161,8 @@ def main():
                 continue
             total += 1
             prompt = nsfw_prompt(base, mood) if kind == "nsfw" else clean_prompt(base, mood)
+            if pp and cid in pp.LOOKS:      # v2 (21 Nov 2026): her own nude and clean looks, no regex swapping
+                prompt = pp.build(cid, "nude" if kind == "nsfw" else "clean", mood)
             job = {"kind": "persona", "subject": cid, "roles": roles, "prompt": prompt[:6000], "aspect": "3:4",
                    "count": max(1, min(8, a.count)), "nsfw": "yes" if kind == "nsfw" else "no",
                    "tags": tag if kind == "nsfw" else tag + ", clean"}

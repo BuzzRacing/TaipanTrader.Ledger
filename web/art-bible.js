@@ -324,10 +324,28 @@
   ];
   const TIERS = [
     ["I · Smolder", "Atmosphere", "Close eye contact, rolled sleeves, open collar, damp hair, fitted waist, lantern light. Use for markets, rules and general UI art."],
-    ["II · Sultry", "Dressed heat", "Corsetry, deep neckline, exposed thigh or shoulder, sheer layers and a commanding pose. Provocative and credible inside the scene."],
-    ["III · Nude glamour", "Exposed", "Bare breasts or buttocks, optional full-frontal adult nudity and a deliberately erotic pose. Story-led, natural and visibly adult."],
-    ["IV · Private after hours", "Historical default", "Exposed breasts, buttocks or genitals; bold erotic posing; and consensual kink cues built from silk, rope, leather and power exchange. Adult agency stays unmistakable."],
+    ["II · Sultry", "Dressed heat", "Corsetry, plunging neckline, bare shoulders and thighs, sheer layers, gloves and a commanding pose. Matches the persona \"sultry\" look in persona_prompts_v2.py."],
+    ["III · Boudoir", "Clever cover", "Garments slipping or unlaced, stockings and garters; hands, hair, props and fabric supply the cover. Intimate adult glamour. Matches the persona \"boudoir\" look."],
+    ["IV · Private after hours", "Historical default", "Bold vintage-centerfold glamour: bare-breasted, with jewellery, leather, gloves and silk cords as costume, tasteful and playful, she is always in command. Matches the persona \"topless\" look. Nothing explicit."],
   ];
+  // Cargo icons: the generic template ("a single ... trade-goods arrangement ... brass merchant token") only
+  // works when the good's name already paints a picture. For goods that don't, add a concrete look here, keyed
+  // by the good's id in Admin > Goods. The look replaces the subject, and no brass token is added, so the
+  // token can't take over the picture. Delete the old picture in the Media Gallery and re-run "Generate missing".
+  const CARGO_LOOKS = {
+    marijuana: "a compressed bale of dried Indian hemp (cannabis) herb wrapped in coarse jute sacking and bound with tarred cord, " +
+      "split open at one end to show dense dried green-brown flower clusters and serrated fan-shaped leaves, a second smaller " +
+      "bale and a loose handful of dried herb resting on the lid of an open teak export crate lined with straw, " +
+      "the plant material is the clear hero of the picture"
+  };
+  function cargoPrompt(key, name, recipeStyle) {
+    const look = CARGO_LOOKS[key];
+    if (look) {
+      return "Trade-goods still life on a lacquer-black surface: " + look + ", tactile material, three-quarter product view, " +
+        "soft directional lantern light, square composition, clean silhouette, no person, no label, no coin, no seal, readable at 30 pixels. " + recipeStyle;
+    }
+    return "A single historically plausible " + String(name || key).toLowerCase() + " trade-goods arrangement on a lacquer-black surface: tactile material, antique brass merchant token for scale, three-quarter product view, soft directional lantern light, square composition, clean silhouette, no person, no label, readable at 30 pixels. " + recipeStyle;
+  }
   const STUDIO_ASPECT = [["16:9", "16:9"], ["18:7", "18:7"], ["square", "1:1"], ["3:4", "3:4"], ["3:2", "3:2"]];
 
   function defineSlots(o) {
@@ -358,7 +376,7 @@
     goods.forEach(([key, v]) => define("cargo_" + key, { title: "Cargo · " + (v.name || key), aspect: "1:1", size: "1024 × 1024 WebP", kicker: "Cargo icon",
       current: (G.goods || {})[key], apply: setGroup("goods", key), negative: neg,
       notes: "Single object cluster, three-quarter view, plain dark ground, readable at 30 px.",
-      prompt: "A single historically plausible " + String(v.name || key).toLowerCase() + " trade-goods arrangement on a lacquer-black surface: tactile material, antique brass merchant token for scale, three-quarter product view, soft directional lantern light, square composition, clean silhouette, no person, no label, readable at 30 pixels. " + recipeStyle }));
+      prompt: cargoPrompt(key, v.name, recipeStyle) }));
     ports.forEach(([key, v]) => define("port_" + key, { title: "Port · " + (v.name || key), aspect: "18:7", size: "1800 × 700 WebP", kicker: "Port banner",
       current: (G.ports || {})[key], apply: setGroup("ports", key), negative: neg,
       notes: "Landmark/environment; horizon upper third; survives a 190 px center crop.",
@@ -382,8 +400,10 @@
     o.subjectList.forEach(([key, label, who, action]) => define("arch_" + key.replace(/-/g, "_"), { title: label, aspect: "3:4", size: "1536 × 2048 WebP", kicker: "Archetype · dressed", negative: neg,
       notes: "Wardrobe, silhouette and status signal for this role, fully dressed so the costume reads.",
       prompt: who + " in Victoria Harbour, Hong Kong, caught while " + action + ", fully dressed in clothing grounded in 1860 maritime trade, confident posture and clear agency, hands visible, original faces, poses and garment design, no text. " + (familyMode ? FAMILY_STYLE : recipeStyle + ". Tone: smolder: restrained sensuality through gaze, tailoring and posture") }));
-    heatList.forEach((heat, i) => define("heat_" + (i + 1), { title: TIERS[i] ? TIERS[i][0] : "Tier " + (i + 1), aspect: "3:4", size: "1536 × 2048 WebP", kicker: "Sensuality tier", negative: NEGATIVE,
-      prompt: "An unmistakably adult woman (age 28+), a merchant-captain, in Victoria Harbour, Hong Kong, caught while surveying the harbor before a dangerous high-value trade; clear agency, hands visible, original face, pose and garment design, no explicit sex act, no text. Tone: " + heat + ". " + MASTER_STYLE }));
+    // Master shots (21 Nov 2026): each tier example is a wide 16:9 wallpaper, the woman dominating a dramatic scene.
+    heatList.forEach((heat, i) => define("heat_" + (i + 1), { title: TIERS[i] ? TIERS[i][0] : "Tier " + (i + 1), aspect: "16:9", size: "2560 × 1440 WebP", kicker: "Sensuality tier · master shot", negative: NEGATIVE,
+      notes: "A wide wallpaper master shot of this tier: the woman dominates a dramatic scene. The persona looks in persona_prompts_v2.py use the same wording.",
+      prompt: "An unmistakably adult woman (age 34), a pirate queen in her full glory: a dramatic wide 16:9 wallpaper master shot, alone on the stern deck of her great war junk at night with the harbor fleet glittering below and a storm-lit sky behind her, low heroic camera angle, cinematic depth, lantern light with a strong rim light, hair and silk lifting in the wind, confident direct gaze, hands in frame, original face, pose and garment design. Tone: " + heat + ". " + MASTER_STYLE }));
     define("studio", { title: "Prompt studio preview", aspect: "16:9", size: "From composition", kicker: "Live brief", negative: neg, noAuto: true, prompt: "" });
   }
 
@@ -407,13 +427,13 @@
     const heatOptions = familyMode
       ? '<option selected value="family-safe: fully dressed adults, confident posture, no erotic framing, nudity or kink imagery">Family · Dressed adventure</option>'
       : '<option value="smolder: restrained sensuality through gaze, tailoring and posture">I · Smolder</option>' +
-        '<option value="sultry: deep neckline, exposed thigh, corsetry and commanding adult glamour">II · Sultry</option>' +
-        '<option value="nude glamour: exposed breasts or buttocks, optional full-frontal adult nudity and a deliberately erotic pose">III · Nude glamour</option>' +
-        '<option selected value="private after hours: explicit adult nudity may expose breasts, buttocks and genitals; bold erotic posing and consensual kink cues using period-plausible silk, rope and leather; commanding agency">IV · Private after hours</option>';
+        '<option value="sultry: plunging neckline, bare shoulders and thighs, corsetry, gloves and a commanding adult pose">II · Sultry</option>' +
+        '<option value="boudoir: garments slipping or unlaced, stockings and garters, cover from hands, hair, props and fabric, intimate adult glamour">III · Boudoir</option>' +
+        '<option selected value="private after hours: bold vintage-centerfold glamour, bare-breasted, with jewellery, leather, gloves and silk cords as costume, tasteful and playful, she is in command">IV · Private after hours</option>';
     const recipeStyle = familyMode ? FAMILY_STYLE : MASTER_STYLE;
     const characterRecipe = familyMode
       ? "An unmistakably adult woman (age 28+), a [ROLE — default: pirate queen], in [PORT], caught while [ACTION], fully dressed in clothing grounded in 1860 maritime trade, confident posture and clear agency, hands visible, original face, pose and garment design, no erotic framing, nudity or kink imagery, no text. " + FAMILY_STYLE
-      : "An unmistakably adult woman (age 28+), a [ROLE — default: pirate queen], in [PORT], caught while [ACTION], commanding adult erotic confidence and clear agency; private-release nudity may expose breasts, buttocks or genitals, and consensual kink styling may use period-plausible silk, rope or leather; hands visible, original face, pose and garment design, no explicit sex act, no text. " + MASTER_STYLE;
+      : "An unmistakably adult woman (age 28+), a [ROLE — default: pirate queen], in [PORT], caught while [ACTION], commanding adult erotic confidence and clear agency; vintage-centerfold glamour with bare-breasted nudity allowed, and costume-level kink styling in period-plausible silk, cord, gloves or leather; hands in frame, original face, pose and garment design. " + MASTER_STYLE;
     const heatList = familyMode ? [] : Array.from(heatOptions.matchAll(/value="([^"]+)"/g), m => m[1].replace(/&amp;/g, "&"));
     const G = cfg.graphics || {};
     CUR = cfg;
@@ -435,7 +455,7 @@
       </nav>
       <div class="ab-coverage" id="ab-coverage"></div>
 
-      <div class="ab-callout"><b>${familyMode ? "Family-friendly switch is active" : "Historical private-release mode is active"}</b><p>${familyMode ? "The prompt studio is locked to dressed, non-erotic art. Existing uploaded graphics are not replaced automatically." : "Adult nudity, exposed breasts or genitals, erotic posing and consensual period-grounded kink direction are permitted. Family-friendly remains the sharing switch."}</p></div>
+      <div class="ab-callout"><b>${familyMode ? "Family-friendly switch is active" : "Historical private-release mode is active"}</b><p>${familyMode ? "The prompt studio is locked to dressed, non-erotic art. Existing uploaded graphics are not replaced automatically." : "Adult glamour, bare-breasted nudity, erotic posing and consensual period-grounded kink direction are permitted. Family-friendly remains the sharing switch."}</p></div>
 
       <section class="card ab-section" id="ab-north-star">
         <div class="ab-title"><span>01</span><div><h2>Brand north star</h2><p>Every image should make wealth look tactile, danger feel close and the player feel one excellent decision away from owning the harbor.</p></div></div>
@@ -486,7 +506,7 @@
         </div>
         ${collection("arch", "Character archetypes", "One example per subject in the prompt studio, dressed so wardrobe and silhouette read clearly.", SUBJECTS.map(x => ({ slot: "arch_" + x[0].replace(/-/g, "_"), label: x[1] })))}
         ${collection("cast", "The cast", "Every recurring character beside the exact portrait prompt from Cast & Voices.", Object.entries(cfg.characters || {}).filter(([k]) => SLOTS["cast_" + k]).map(([k, v]) => ({ slot: "cast_" + k, label: v.name || k })))}
-        <div class="ab-dont"><div><b>Do</b><p>Confident gaze · natural adult anatomy · exposed breasts or genitals when chosen · erotic poses with intention · period-plausible kink cues · visible agency · scene motivation</p></div><div><b>Do not</b><p>Minors or age ambiguity · coercion or sexual violence · helpless decoration · cultural fetish stereotype · copied reference faces · plastic anatomy · modern fetishwear</p></div></div>
+        <div class="ab-dont"><div><b>Do</b><p>Confident gaze · natural adult anatomy · bare-breasted glamour when chosen · erotic poses with intention · period-plausible kink cues · visible agency · scene motivation</p></div><div><b>Do not</b><p>Minors or age ambiguity · coercion or sexual violence · helpless decoration · cultural fetish stereotype · copied reference faces · plastic anatomy · modern fetishwear</p></div></div>
       </section>
 
       <section class="card ab-section" id="ab-surfaces">
@@ -551,7 +571,7 @@
         <div class="ab-title"><span>06</span><div><h2>Approval gate</h2><p>An image is not finished because the generator stopped. It ships only when every applicable check passes at actual UI size.</p></div></div>
         <div class="ab-checks">
           ${checkGroup("Canon", ["Reads as 1860 China Seas before it reads as generic pirate fantasy", "Matches the approved palette, materials and cinematic finish", "Adds trade, danger or ambition—not decoration alone"])}
-          ${checkGroup("People", ["Every person is unmistakably adult and age 25+", "Anatomy, including exposed breasts or genitals, survives close inspection", "Erotic pose has intention, agency and no coercion", "No copied reference identity, costume or watermark"])}
+          ${checkGroup("People", ["Every person is unmistakably adult and age 25+", "Anatomy, including bare-breasted glamour, survives close inspection", "Erotic pose has intention, agency and no coercion", "No copied reference identity, costume or watermark"])}
           ${checkGroup("History", ["Ship type, cargo, tools and architecture are plausible", "No modern closure, heel, light, vessel or prop slipped through", "Any non-English lettering is verified or omitted", "Cultural specificity replaces stereotype"])}
           ${checkGroup("UI", ["Correct aspect ratio and master dimensions", "Subject survives desktop and phone crops", "Text zone is genuinely quiet", "Thumbnail remains readable; WebP size is reasonable"])}
           ${checkGroup("Record", ["Prompt and negative prompt saved", "Model, workflow, seed and settings saved", "Master and web derivative use canonical filenames", "Approved version is identifiable without opening five mystery files"])}
@@ -585,7 +605,7 @@
     const style = familyMode ? FAMILY_STYLE : MASTER_STYLE;
     const constraints = familyMode
       ? "every person is unmistakably adult age 25 or older and fully dressed; no nudity, erotic framing, fetishwear or kink imagery; original faces, poses, garments and composition; natural skin; believable anatomy; historically plausible maritime details; no text, logo, border, signature or watermark"
-      : "every person is unmistakably adult age 25 or older; adult nudity, exposed breasts, buttocks and genitals, erotic posing and period-plausible consensual kink cues are permitted when selected; clear agency; no explicit sex act, sexual violence or coercion; original faces, poses, garments and composition; natural skin; believable anatomy; historically plausible maritime details; no text, logo, border, signature or watermark";
+      : "every person is unmistakably adult age 25 or older; adult glamour, bare-breasted nudity, erotic posing and costume-level consensual kink cues are permitted when selected; clear agency; original faces, poses, garments and composition; natural skin; believable anatomy; historically plausible maritime details; no text, logo, border, signature or watermark";
     const prompt = `Use case: historical-scene\nAsset type: Crimson Ledger ${mode} ${value("asset")}\nPrimary request: ${subject} in ${value("place")}, ${value("moment")}.\nWorld and style: ${style}.\nLighting: ${value("light")}.\nTone: ${value("heat")}.\nComposition: ${value("composition")}.\nPalette: lacquer black, oxblood silk, antique brass, imperial jade, ivory linen, tobacco leather and storm blue.${cargo}${ship}\nConstraints: ${constraints}.`;
     const out = root.querySelector("#ab-positive");
     if (out) out.value = prompt;

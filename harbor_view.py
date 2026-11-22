@@ -12,6 +12,7 @@ Visibility (Harbor View decision 1):
 Later slices (port prices, share rings, trades for the zoom popup) are held back at "public" until the finale.
 """
 import engine
+import journal
 
 # Prices at the start of the month, for "movers": kept from the last month's close (module memory; a restart
 # just starts the comparison again from the first prices seen).
@@ -26,7 +27,7 @@ def level(game):
     return "public"
 
 
-def view(game, present=()):
+def view(game, present=(), seat_view=None):
     s = game.s
     houses = {}
     for pid in s["order"]:
@@ -42,7 +43,57 @@ def view(game, present=()):
     lvl = level(game)
     out = {"ok": True, "level": lvl, "game_id": s.get("game_id"), "turn": s["turn"], "houses": houses,
            "ports": ports(game, lvl), "activity": activity(game, lvl)}
+    snapshot = seat_view or game.view(None, present)
+    out["state"] = dict(snapshot, me=None, voice={"news": (snapshot.get("voice") or {}).get("news")})
+    # Only a single-seat game can export a live private scene. An ended multiplayer game is still not a solo seat.
+    if lvl == "open" and len(s["order"]) == 1 and snapshot.get("me"):
+        me = snapshot["me"]
+        fields = ("id", "name", "firm", "port", "home", "dest", "ready", "cash", "bank", "debt", "worth",
+                  "ships", "storm", "battle", "fights", "jail", "legend", "customs", "promotion", "log")
+        out["focus"] = {k: me.get(k) for k in fields}
+        out["voice"] = snapshot.get("voice") or {}
+    out["events"] = story_events(game, lvl)
     return out
+
+
+STORY_TYPES = {"buy", "sell", "bank", "loan", "shares", "estate", "repair", "ship", "guns", "protect",
+               "sail", "stay", "arrived", "depart", "offcourse", "storm", "seized", "ship_lost", "shipwreck",
+               "battle", "round", "won", "retreat", "broke_off", "plundered", "paid", "promotion", "promoted",
+               "band", "patron", "jail", "released", "gift", "customs", "declare", "tax", "legend",
+               "sailed", "storm_report", "battle_result", "customs_open", "customs_declare"}
+
+
+def story_events(game, lvl):
+    if lvl != "open":
+        return []
+    if not journal._cur or journal._cur.get("gid") != game.s.get("game_id"):
+        return []
+    with journal._lock:
+        recent = list(journal._recent)
+    rows = []
+    for e in recent:
+        if e.get("cat") in ("rejected", "dice", "admin") or e.get("type") not in STORY_TYPES:
+            continue
+        if e.get("pid") not in game.s["players"]:
+            continue
+        a = e.get("a") or {}
+        row = {"n": e["n"], "at": e.get("t", 0), "turn": e.get("turn"), "type": e["type"],
+               "pid": e["pid"], "port": e.get("port") or a.get("port"),
+               "dest": e.get("dest") or a.get("dest"), "text": e.get("result") or e.get("msg") or "",
+               "good": e.get("good") or a.get("good"), "qty": e.get("qty") or a.get("qty") or 0}
+        for k in ("cash", "bank", "debt", "total"):
+            if k in e:
+                row[k] = e[k]
+        for k in ("origin", "sea", "ships", "welcome"):
+            if k in e:
+                row[k] = e[k]
+        row["date"] = engine.date_label(e.get("turn") if e.get("turn") is not None else game.s["turn"])
+        if e.get("table_report"):
+            row["report"] = e["table_report"]
+        if e.get("table_focus"):
+            row["focus"] = e["table_focus"]
+        rows.append(row)
+    return rows[-80:]
 
 
 # What counts as a big deal for the Table's zoom: a trade or money move of at least half the cash the captain
@@ -56,11 +107,10 @@ _ACTS = ("buy", "sell", "bank", "loan", "shares", "estate")
 def activity(game, lvl, keep=12):
     if lvl != "open":
         return []                                   # with rivals at the table, nothing about deals leaves the Table
-    try:
-        import journal
-        recent = list(journal._recent)[-300:]
-    except Exception:
+    if not journal._cur or journal._cur.get("gid") != game.s.get("game_id"):
         return []
+    with journal._lock:
+        recent = list(journal._recent)[-300:]
     players = game.s["players"]
     out = []
     for e in recent:
