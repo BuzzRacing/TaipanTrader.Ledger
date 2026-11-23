@@ -35,7 +35,7 @@ def test_three_new_ranks_above_taipan():
         engine.configure(config.defaults())
         ids = _ids()
         assert ids[-4:] == ["taipan", "tai_pan_china_seas", "merchant_lord", "hong_master"]
-        assert [r["worth"] for r in engine.CFG["ranks"][-3:]] == [25_000_000, 50_000_000, 100_000_000]
+        assert [r["worth"] for r in engine.CFG["ranks"][-3:]] == [40_000_000, 100_000_000, 250_000_000]
     finally:
         engine.configure(original)
 
@@ -44,14 +44,14 @@ def test_thresholds_scale_with_game_length():
     original = engine.CFG
     try:
         engine.configure(config.defaults())
-        assert engine.rank_thresholds(10)[-3:] == [25_000_000, 50_000_000, 100_000_000]
-        assert engine.rank_thresholds(5)[-3:] == [12_500_000, 25_000_000, 50_000_000]
-        assert engine.rank_thresholds(1)[-3:] == [2_500_000, 5_000_000, 10_000_000]
+        assert engine.rank_thresholds(10)[-3:] == [40_000_000, 100_000_000, 250_000_000]
+        assert engine.rank_thresholds(5)[-3:] == [20_000_000, 50_000_000, 125_000_000]
+        assert engine.rank_thresholds(1)[-3:] == [4_000_000, 10_000_000, 25_000_000]
         # Ranks up to Taipan never move.
         assert engine.rank_thresholds(1)[:-3] == engine.rank_thresholds(10)[:-3]
-        assert engine.rank_for(3_000_000, 1) == "Tai-Pan of the China Seas"
+        assert engine.rank_for(5_000_000, 1) == "Tai-Pan of the China Seas"
         assert engine.rank_for(3_000_000, 10) == "Taipan"
-        assert engine.rank_for(100_000_000, 10) == "Hong Master"
+        assert engine.rank_for(250_000_000, 10) == "Hong Master"
     finally:
         engine.configure(original)
 
@@ -73,15 +73,15 @@ def test_promotion_to_top_rank_uses_mayor_ceremony_and_top_lines(game10):
     game, p = game10
     pid = p["id"]
     p["rank_id"] = "taipan"
-    p["cash"] = 30_000_000
+    p["cash"] = 45_000_000
     game._check_promotions()
     me = game.view(pid)["me"]
     assert me["rank_id"] == "tai_pan_china_seas"
     award = me["promotion"]
     assert award["port"] == p["home"]
     assert award["text"] and award["record"]["next"]["id"] == "merchant_lord"
-    assert award["record"]["next"]["worth"] == 50_000_000
-    assert me["next_rank"]["worth"] == 50_000_000
+    assert award["record"]["next"]["worth"] == 100_000_000
+    assert me["next_rank"]["worth"] == 100_000_000
     said = {engine.TEXT[k].format(name=p["name"], rank="Tai-Pan of the China Seas", firm=p["firm"],
                                    port=engine.PORTS[p["home"]]["name"])
             for k in engine.TEXT if k.startswith("m.promote_top.")}
@@ -93,11 +93,11 @@ def test_short_game_shows_scaled_goal(game10):
     pid = p["id"]
     game.s["years"] = 5
     p["rank_id"] = "taipan"
-    p["cash"] = 13_000_000
+    p["cash"] = 21_000_000
     game._check_promotions()
     me = game.view(pid)["me"]
     assert me["rank_id"] == "tai_pan_china_seas"
-    assert me["next_rank"]["id"] == "merchant_lord" and me["next_rank"]["worth"] == 25_000_000
+    assert me["next_rank"]["id"] == "merchant_lord" and me["next_rank"]["worth"] == 50_000_000
 
 
 def test_saved_settings_gain_new_ranks_once():

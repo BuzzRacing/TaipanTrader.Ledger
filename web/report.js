@@ -14,7 +14,7 @@
   ];
   const CAT_NAME = Object.fromEntries(CATS);
   const HIDE = new Set(["n", "t", "at", "turn", "cat", "type", "msg", "who", "pid", "firms", "prices", "traceback", "session", "level"]);
-  const TABS = [["live", "Live console"], ["review", "Review a game"], ["server", "Server log"], ["records", "Records kept"]];
+  const TABS = [["live", "Live console"], ["captain", "Captain's review"], ["review", "Review a game"], ["server", "Server log"], ["records", "Records kept"]];
 
   const st = {
     tab: "live", games: [], stats: null, days: [], loaded: false,
@@ -49,7 +49,7 @@
   async function loadGames() {
     const res = await getj("games");
     if (!res.ok) return;
-    st.games = res.games; st.stats = res.stats; st.days = res.days; st.loaded = true;
+    st.games = res.games; st.stats = res.stats; st.days = res.days; st.reviewed = res.reviewed || {}; st.loaded = true;
     if (!st.rev.game || !st.games.some(g => g.id === st.rev.game)) st.rev.game = (st.games[0] || {}).id || "";
   }
   async function pollLive() {
@@ -207,6 +207,19 @@
     const who = (g.players || []).map(p => p.name).join(", ") || "no players";
     return `${new Date((g.started || 0) * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} · ${who} · month ${g.turn || 0}${g.phase === "ended" ? " · finished" : g.current ? " · in progress" : ""}${g.current ? " · current game" : ""}`;
   }
+  /* The captain-friendly one-page report of a game (captain_review.py), with every recorded game in the list. */
+  function captainTab() {
+    if (!st.games.length) return '<section class="card"><p class="muted">No games have been recorded yet.</p></section>';
+    const R = st.rev, seen = st.reviewed || {};
+    const label = x => (seen[x.id] ? "Game " + seen[x.id] + " · " : "") + gameLabel(x) + (x.id in seen ? " · written review" : "");
+    const src = "/api/admin/journal/review?game=" + encodeURIComponent(R.game);
+    return `<section class="card">
+      <p class="help" style="margin-top:0">One page per game: the fortune month by month, where the silver came from and went, every trade, the perils, and the written review where one has been added. Pick any recorded game.</p>
+      <div class="row" style="margin-top:0"><select id="crcgame" style="flex:1 1 22rem" aria-label="Game to review">${st.games.map(x => `<option value="${e(x.id)}" ${x.id === R.game ? "selected" : ""}>${e(label(x))}</option>`).join("")}</select>
+        <a href="${src}" target="_blank" rel="noopener"><button type="button">Open full screen</button></a>
+        <button type="button" data-cropen="${e(R.game)}" title="See this game month by month">Month by month</button></div>
+      <iframe id="crframe" title="Captain's review" src="${src}" style="width:100%;height:calc(100vh - 13rem);min-height:34rem;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:#141211;margin-top:.6rem"></iframe></section>`;
+  }
   function reviewTab() {
     const R = st.rev, g = st.games.find(x => x.id === R.game);
     if (!st.games.length) return '<section class="card"><p class="muted">No games have been recorded yet.</p></section>';
@@ -267,7 +280,7 @@
   }
   function render() {
     const tabs = TABS.map(([id, label]) => `<button type="button" class="cr-tab${st.tab === id ? " on" : ""}" data-crtab="${id}" role="tab" aria-selected="${st.tab === id}">${label}</button>`).join("");
-    const body = st.tab === "live" ? liveTab() : st.tab === "review" ? reviewTab() : st.tab === "server" ? serverTab() : recordsTab();
+    const body = st.tab === "live" ? liveTab() : st.tab === "captain" ? captainTab() : st.tab === "review" ? reviewTab() : st.tab === "server" ? serverTab() : recordsTab();
     return head("Captain's Report", "Everything that happens is written down: every action, every roll of the dice with its odds, every month's standings, every admin change and every error. Read it live, review any game month by month, and replay a month to check it.",
         '<button type="button" data-crrefresh="1">Refresh</button>') +
       `<div class="cr-tabs" role="tablist">${tabs}</div>${body}`;
@@ -300,6 +313,7 @@
     if (el.id === "crpid") { st.pid = el.value; return filtersChanged(); }
     if (el.id === "crproblems") { st.problems = el.checked; return filtersChanged(); }
     if (el.id === "crfollow") { st.live.follow = el.checked; if (el.checked) { const b = document.getElementById("crlist"); b.scrollTop = b.scrollHeight; } return; }
+    if (el.id === "crcgame") { st.rev.game = el.value; st.rev.index = null; st.rev.turn = null; st.pid = ""; st.open.clear(); return redraw(); }
     if (el.id === "crgame") { st.rev.game = el.value; st.rev.index = null; st.rev.turn = null; st.pid = ""; st.open.clear(); return loadReview(); }
     if (el.id === "crturn") { st.rev.turn = el.value === "all" ? "all" : Number(el.value); st.open.clear(); return loadReview(); }
     if (el.id === "crday") { st.srv.day = el.value; st.srv.open.clear(); return loadServer(); }

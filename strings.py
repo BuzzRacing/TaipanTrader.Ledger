@@ -826,6 +826,7 @@ EN = {
     "l.tax_holiday_over": "Your tax holiday is over. The Port Authority is waiting.",
     "contract.reward": "Pays {fee} and +{rep} standing in {home}",
     "contract.offered": "On offer",
+    "port.month.offer": "The Mayor asks",
     "contract.accept": "Take it",
     "contract.decline": "Not now",
     "contract.none": "Nothing on offer just now. The Mayor will have work for you next month.",
@@ -886,6 +887,7 @@ EN = {
     "estate.next": "Build the {stage} for {cost}: +{rep} standing in {home}, robbery ashore here cut by {rob}%.",
     "estate.perk_have": " Its bank pays {bank}% more a month on your deposits{where}, and harbour dues in {home} are {dues}% lower.",
     "estate.perk_where_home": " when the month ends at home",
+    "estate.perk_dock": " Its own dock takes {repair}% off repairs in {home}, and Admiral Li Yue asks {protect}% less for her protection.",
     "estate.perk_next": " It also adds {bank}% to the bank's monthly interest and takes {dues}% off harbour dues in {home}.",
     "estate.done": "The Palace is the finest house in {home}. There is nothing grander to build.",
     "estate.build": "Build the {stage} for {cost}",
@@ -1372,6 +1374,7 @@ EN = {
     "l.customs_caught": "Port Authority of {port}: the officer went through your hold and found the lie. You paid {total}, including a fine of {fine}, and your name suffers there.",
     "n.customs_caught": "{name} of {firm} was caught lying to the Port Authority of {port}.",
     "m.customs_clean": "Stamped and sealed. {tax} on {declared} declared. A pleasure doing business with you, Captain.",
+    "m.customs_nothing": "Nothing to declare, Captain? With a hold riding that low in the water? I'll let you slip it past me this once. I do enjoy a captain with nerve, and I never forget where he keeps it.",
     "m.gift.cool": "{amount} for the coffers of {port}; standing +{gain}. How… thoughtful, Captain. The orphans of the harbour will be grateful. I shall try to remember your name.",
     "m.gift.gracious": "{amount} for the coffers of {port}; standing +{gain}. Generous of you, Captain. {port} notices those who look after her, and so do I.",
     "m.gift.warm": "{amount} for the coffers of {port}; standing +{gain}. Now that is how a captain calls on a lady. My clerks will be told your house is a friend of the city.",
@@ -2168,6 +2171,7 @@ EN = {
 
 # Softer wording used when the content rating is family-friendly.
 FAMILY = {
+    "m.customs_nothing": "Nothing to declare, Captain? With a hold riding that low in the water? I will let it pass this once. Do not make a habit of it.",
     "log.battle_verdict.plundered": "they caught us and carried off cargo",
     "log.battle_verdict.long_fight": "we drove some of them off and the rest gave up",
     "log.battle_verdict.sank_all": "we drove them all off",

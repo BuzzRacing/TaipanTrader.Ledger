@@ -2077,7 +2077,24 @@ function portChit() {
 
 /* The card: her favour over the chit. While her Parlour is open it holds the chit alone. */
 function portMonth(parlour) {
-  return `<section class="card pt-month">${parlour ? "" : portFavour()}${portChit()}</section>`;
+  return `<section class="card pt-month">${parlour ? "" : portFavour()}${portOffer()}${portChit()}</section>`;
+}
+
+/* The Mayor's live commission, in view (Game 7 review, 23 Nov 2026): three games running none was taken
+   from the card down the page, so at home the first one on offer sits here with its Accept and Decline. */
+function portOffer() {
+  const me = S.me, cm = me.commissions;
+  if (!cm || !cm.home || me.ready) return "";
+  const k = Object.values(cm.offers || {}).filter(Boolean)[0];
+  if (!k) return "";
+  const home = portName(myHome());
+  return `<div class="pt-commission offer pt-month-offer">
+    <p class="pt-commission-head"><b>${te("port.month.offer")}</b><span class="tag">${te("contract.slot." + k.slot)}</span></p>
+    <p class="pt-commission-what">${esc(k.text)}</p>
+    <small>${te("contract.due", { date: k.due_date, months: k.months })} · ${te("contract.reward", { fee: money(k.fee), rep: Math.round(k.rep), home })}</small>
+    ${k.perk_text ? `<small class="pt-commission-perk"><b>${esc(k.perk_text)}</b></small>` : ""}
+    <div class="pt-actions">${btn(te("contract.accept"), "contract", `data-op="accept" data-slot="${k.slot}"`, "primary")}
+      ${btn(te("contract.decline"), "contract", `data-op="decline" data-slot="${k.slot}"`, "pt-go")}</div></div>`;
 }
 
 /* BANK THE REST (19 Nov 2026). Thieves work the port where the house is at the month's end (where it
@@ -2661,12 +2678,13 @@ function estateCard(me) {
   const es = me.estate, home = portName(myHome()), locked = me.ready;
   const nxt = es.next ? es.stages[es.next - 1] : null;
   const perk = es.stage && (es.bank_bonus || es.dues_cut)
-    ? te("estate.perk_have", { bank: pct(es.bank_bonus, 2), home, dues: pct(es.dues_cut, 0), where: es.bank_anywhere ? "" : te("estate.perk_where_home") }) : "";
+    ? te("estate.perk_have", { bank: pct(es.bank_bonus, 2), home, dues: pct(es.dues_cut, 0), where: es.bank_anywhere ? "" : te("estate.perk_where_home") })
+      + (es.repair_cut || es.protect_cut ? te("estate.perk_dock", { repair: pct(es.repair_cut, 0), protect: pct(es.protect_cut, 0), home }) : "") : "";
   const info = es.stage ? te("estate.have", { stage: es.title, home, rob: pct(es.rob_cut, 0) }) + perk : te("estate.none", { home });
   const plan = `<ol class="pt-estate-path">${es.stages.map(st =>
     `<li class="${st.stage <= es.stage ? "built" : ""}${st.stage === es.next ? " next" : ""}"><b>${esc(st.title)}</b> <span>${money(st.cost)}</span></li>`).join("")}</ol>`;
   const body = nxt
-    ? `<div class="pt-estate-sell"><p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}${nxt.bank || nxt.dues ? te("estate.perk_next", { bank: pct(nxt.bank, 2), dues: pct(nxt.dues, 0), home }) : ""}</p>
+    ? `<div class="pt-estate-sell"><p>${te("estate.next", { stage: nxt.title, cost: money(nxt.cost), rep: Math.round(nxt.rep), home, rob: pct(nxt.rob, 0) })}${nxt.bank || nxt.dues ? te("estate.perk_next", { bank: pct(nxt.bank, 2), dues: pct(nxt.dues, 0), home }) : ""}${nxt.repair || nxt.protect ? te("estate.perk_dock", { repair: pct(nxt.repair, 0), protect: pct(nxt.protect, 0), home }) : ""}</p>
        <div class="pt-actions">${btn(te("estate.build", { stage: nxt.title, cost: money(nxt.cost) }), "estate", "", "primary", locked || nxt.cost > me.cash)}</div></div>`
     : `<p>${te("estate.done", { home })}</p>`;
   const sell = es.sell

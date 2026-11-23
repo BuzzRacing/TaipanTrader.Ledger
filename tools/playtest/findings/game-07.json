@@ -1,0 +1,238 @@
+{
+ "game_id": "g20261122-121522-44b7",
+ "game": 7,
+ "headline": "A clean, safe run: no debt after the first month, no jail, no ship lost to a storm, never a tribute paid, and every year in profit. It also finished at $1.55 billion, more than seven times Game 6 in half the months, with the top rank in hand by month 23. The danger was handled well; the economy and the late game are where the work is.",
+ "fortune": "Net worth passed $80M in the first 13 months and never had a losing year. The dips are price moves on cargo still in the hold, not losses. From 1865 on, about 85% of the fortune sat in the bank.",
+ "money": "Trading made $1.61B: $2.14B sold on $527M bought. Three wild cargoes (marijuana, opium, gold) made 94% of it, bought near the bottom of their range and sold at four to six times the price. Bank interest added $199M and the Legend $107M. About $506M went out, and the largest single line was gifts to Mayors.",
+ "perils": "14 fights in 120 months (Game 6 had 51 in 240). Every demand was refused: 7 fleets sunk, 3 broke off, 4 outrun. 17 storms, 5 of them savage, and no ship went down in any of them. Robbed ashore twice.",
+ "fixes_intro": "The six changes built after Game 6 were live on the Pi for this game (the journal shows the tiered interest line and the storm-battered odds).",
+ "well": [
+  {
+   "t": "Danger was managed, not just dodged",
+   "d": "14 fights and no tribute paid. The three Li Yue war fleets asked $12.4M, $35.9M and $40.2M; one was outrun, one sunk outright, one beaten off. Three ships lost in ten years, all cheap to replace."
+  },
+  {
+   "t": "Storms hurt but never sank you",
+   "d": "17 storms, 5 savage and 2 heavy. Limp-home held every time. A storm and a fight landed in the same month only twice (9 times in Game 6), so the halved attack odds after a storm are doing their job."
+  },
+  {
+   "t": "Debt-free from month 0",
+   "d": "The $2,000 loan was repaid before the first sailing and never reopened. No collectors, no debtors' prison, no bankruptcy clock. Total loan interest for the game: $1,099."
+  },
+  {
+   "t": "Selling in slices",
+   "d": "Cargo was sold a few hundred to a couple of thousand units at a time across ports. Only 4 of 113 sales over $1M paid under 90% of the market's closing price. In Game 6 it was 98 of 130. The bigger dealers' purse delivers the rush of a big trade you asked for."
+  },
+  {
+   "t": "Tiered bank interest",
+   "d": "The bank paid $199M. Under the old flat 1% a month the same balances would have paid $717M. Interest is now 13% of the final fortune instead of the engine of the game."
+  },
+  {
+   "t": "Standing and the desk",
+   "d": "63 honest declarations, 17 Pay Less, 2 Pay More, never caught. Standing finished at 93 to 100 in seven of ten ports, and Patron of eight ports by month 30."
+  },
+  {
+   "t": "The Legend landed",
+   "d": "The Palace Beneath the Waves: all three answers right, the ninth port share earned, and $107M at the last chapter. Chapters fell at months 58, 72 and 87, nicely spread."
+  },
+  {
+   "t": "Pace",
+   "d": "2 hours 27 minutes at the table for 120 months, about 1.2 minutes a month (Game 6: 1.7). The whole game was played inside one day."
+  }
+ ],
+ "improve": [
+  {
+   "id": "runaway",
+   "sev": "High",
+   "area": "Economy",
+   "title": "The economy runs away: $1.55B in ten years",
+   "what": "Wild cargoes swing from 0.35x to 9x of normal, and since the purse change dealers now pay for nearly all of it. Buying low and selling high has almost no friction left.",
+   "evidence": [
+    "Average buy and sell: marijuana $2,868 to $16,734 (5.8x), gold $5,212 to $23,696 (4.5x), opium $6,115 to $25,101 (4.1x).",
+    "Month 9 to 10: 295 opium bought at $6,876 in Manila, sold at $86,709 in Shanghai. $2.0M became $25.6M in one sailing.",
+    "$7,500 at the start, $80M by month 13, $1B by month 67. No year lost money.",
+    "564 secret runs started in 120 months across the four wild cargoes, almost five new ones a month, so there is always one to find."
+   ],
+   "options": [
+    "Lower the wild ceiling (9x to about 5x)",
+    "Fewer or shorter runs",
+    "Cap how far the purse grows for a boom",
+    "Leave the swings and scale ranks, prices and sinks up to match"
+   ]
+  },
+  {
+   "id": "ranks",
+   "sev": "High",
+   "area": "Late game",
+   "title": "Top rank at month 23, then 97 months with no rung to climb",
+   "what": "Hong Master is set at $100M for a 10-year game. This game crossed it in under two years and finished at fifteen times the mark. Four of the ten ranks were skipped entirely on the way up.",
+   "evidence": [
+    "Trader m5, Senior Merchant m7, Tai-Pan of the China Seas m10, Hong Master m23.",
+    "Merchant, Merchant Prince, Taipan and Merchant Lord were jumped over, so their ceremonies never played.",
+    "Game 6 had the same shape: top rank at month 94 of 240."
+   ],
+   "options": [
+    "Retune rank marks once item 1 is settled",
+    "Add ranks above Hong Master",
+    "Play each skipped ceremony",
+    "A score goal beyond rank (career placing, house legacy)"
+   ]
+  },
+  {
+   "id": "commissions",
+   "sev": "High",
+   "area": "Mayor",
+   "title": "Mayor's commissions: 92 offered, none taken, third game running",
+   "what": "The Game 6 fix scaled jobs with net worth. The fees are now enormous and the jobs often cannot be done, and they were still passed over.",
+   "evidence": [
+    "Median fee offered $43.8M; largest $619M.",
+    "Month 117: sell 36,800 porcelain in Singapore for $234.5M, with a 12,265 hold. Month 61: sell 5,980 gold in Manila for $145.7M.",
+    "Game 4: seen and skipped. Game 6: 173 offers, 0 taken. Game 7: 92 offers, 0 taken.",
+    "No accept or complete event exists in the journal, so I cannot tell whether a card was ever opened."
+   ],
+   "options": [
+    "Cap job size at one hold and fee at a share of that cargo",
+    "Put the live offer on the Arrival card where the eye already goes",
+    "Have the Mayor ask aloud once a year",
+    "Retire commissions and move the perks elsewhere"
+   ]
+  },
+  {
+   "id": "sinks",
+   "sev": "Medium",
+   "area": "Late game",
+   "title": "$1.3 billion in the bank and nothing to spend it on",
+   "what": "The great house stopped at the Townhouse ($10M, month 23). The Mansion and Palace were never bought, so the Game 6 perks on them were never seen. 86% of the final fortune was idle in the bank.",
+   "evidence": [
+    "Bank at the close: $1,334.5M of $1,549.2M.",
+    "Total spent on ships and cannons in ten years: $6.3M. Wages: $8.4M.",
+    "Yearly upkeep, all of it the Townhouse: $600,000."
+   ],
+   "options": [
+    "Bigger things to buy (a second flagship, a private dock, a bank of your own)",
+    "Make Mansion and Palace perks matter at this scale",
+    "Let silver buy standing goals or the tenth share"
+   ]
+  },
+  {
+   "id": "gifts",
+   "sev": "Medium",
+   "area": "Mayor",
+   "title": "Five gifts cost $186M, the largest expense of the game",
+   "what": "Gifts cost $2,300 to $10,500 until month 63, for +1 to +12 standing. From month 79 the same gesture cost $19M to $57.5M for +3 to +8. Worth checking that the jump is intended and that the slider showed the price plainly.",
+   "evidence": [
+    "Month 63, Nagasaki: $10,500. Month 79, Batavia: $57,500,000 for +8.",
+    "Bangkok twice: $36.0M (+8) at month 91, then $19.0M (+3) at month 100.",
+    "Gifts $186.1M; Port Authority tax for the whole game $106.6M."
+   ],
+   "options": [
+    "Confirm the wealth scaling and where it switched on",
+    "Show cost per standing point on the slider",
+    "Cap a gift at a share of silver aboard",
+    "Leave it: it is a sink that worked"
+   ]
+  },
+  {
+   "id": "desk",
+   "sev": "Medium",
+   "area": "Port Authority",
+   "title": "The desk never bites, and Pay Nothing gets the honest line",
+   "what": "154 cargo lines were declared in the scored game and every one ended in plain tax: no buyout, no audit. Pay Nothing went through all three times, and the officer answered with the honest-captain line.",
+   "evidence": [
+    "Pay Less 17 times: odds of trouble were 1% to 10% each, none landed.",
+    "Pay Nothing: $9.1M silk at Calcutta, $33.5M marijuana at Nagasaki, and in free play $166.4M marijuana at Nagasaki with a 75% chance of walking through.",
+    "Her reply to a $0 declaration: \"Honest and well-behaved, Captain. I could get used to you.\"",
+    "The one seizure of the game was Inspector Vane at home in Shanghai: 696 opium and a $208,800 fine, while the crew hid 574."
+   ],
+   "options": [
+    "Give Pay Nothing its own reply lines",
+    "Raise the odds on a $0 declaration of a large hold",
+    "Scale the fine to the hold, as with the standing fines",
+    "Leave Pay Less as it is"
+   ]
+  },
+  {
+   "id": "protection",
+   "sev": "Low",
+   "area": "Pirates",
+   "title": "Protection cost as much as every pirate demand put together",
+   "what": "Seven terms from Li Yue cost $106.8M. The fourteen fleets that did attack asked $103.3M in total, and all were refused for the loss of three ships.",
+   "evidence": [
+    "Price per term rose with net worth: $4.0M at month 23, $28.7M at month 117.",
+    "With the flagship's deterrent, pirates found the fleet 13 times in 120 months.",
+    "Li Yue's fleet was sunk once; the flag needs three."
+   ],
+   "options": [
+    "Leave it as a late-game sink",
+    "Price protection on cargo carried, not net worth",
+    "Make the third Li Yue win reachable in a 10-year game"
+   ]
+  },
+  {
+   "id": "savage",
+   "sev": "Low",
+   "area": "Storms",
+   "title": "Savage storms always land far from a shipyard",
+   "what": "All five savage storms put the fleet ashore at the port ranked 4 of 4, with no yard. Same as Game 6 (5 of 6). It reads as a rule, not as luck.",
+   "evidence": [
+    "Batavia, Foochow, Nagasaki, Manila, Foochow: no shipyard each time.",
+    "The two heavy storms landed at the best-ranked port, with a yard.",
+    "Storms threw 6,505 units overboard and cost 130 cannons across the game."
+   ],
+   "options": [
+    "Let a savage storm pick among the worst two",
+    "Keep it and say so in the Manual",
+    "Leave it"
+   ]
+  },
+  {
+   "id": "journal",
+   "sev": "Low",
+   "area": "Reporting",
+   "title": "Four things the journal does not record yet",
+   "what": "Small additions that would let the next report answer questions this one could not.",
+   "evidence": [
+    "Whether the big-buy confirm or purse confirm opened, and what was chosen.",
+    "Whether a commission card was opened or dismissed.",
+    "Protection months left in the monthly snapshot is there, but not what a fight would have cost against it.",
+    "Settings were changed mid-game at month 35 (forbidden cargo cleared at seven ports); worth a note in the report data."
+   ],
+   "options": [
+    "Add the four events",
+    "Skip"
+   ]
+  }
+ ],
+ "fixes": [
+  {
+   "name": "1. Tiered bank interest",
+   "status": "worked",
+   "note": "$199M paid against $717M at the old flat rate. The bank no longer out-earns trading in any year."
+  },
+  {
+   "name": "2. Bills draw from the bank before debt",
+   "status": "untested",
+   "note": "Never short of silver after month 6, so nothing was drawn. Only $33,000 of shortfalls in the whole game, all in the first six months."
+  },
+  {
+   "name": "3. Big-buy confirm",
+   "status": "unknown",
+   "note": "Not written to the journal. The average big buy lifted the price 1.57 times and every one sold at a profit, so nothing went wrong here either way."
+  },
+  {
+   "name": "4. Storm then raiders: attack odds halved",
+   "status": "worked",
+   "note": "The storm-battered odds show in the dice. Storm and fight in the same month 2 times, against 9 in Game 6."
+  },
+  {
+   "name": "5. Mayor's commissions worth taking",
+   "status": "failed",
+   "note": "92 offers, 0 taken. Scaling with net worth made the fees huge and many jobs larger than the fleet can carry."
+  },
+  {
+   "name": "6. Great house perks on Mansion and Palace",
+   "status": "untested",
+   "note": "The house stayed a Townhouse all game, so the perks were never in play."
+  }
+ ]
+}

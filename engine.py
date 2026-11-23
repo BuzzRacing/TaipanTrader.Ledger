@@ -357,6 +357,8 @@ def reversion_of(good):
 
 def vol_of(good):
     m, spec = R["market"], GOODS[good]
+    if is_wild(good) and m.get("wild_calm"):      # Game 7 review: calm month to month; the runs carry the peaks
+        return float(m.get("wild_calm_vol", 0.12))
     return max(float(spec["vol"]), float(m.get("wild_vol", 0.0))) if is_wild(good) else float(spec["vol"])
 
 
@@ -1764,6 +1766,9 @@ class Game:
             # A crippled escort (Game 4 review): mending her from 1 hull costs cripple_repair of a new one.
             full = max(1, int(SHIPS[sh["type"]]["hull"]) - 1)
             rate = max(rate, float(SHIPS[sh["type"]]["price"]) * float(f.get("cripple_repair", 0.333)) / full)
+        cut = self.house_perk(p, "repair") if p.get("port") == home_of(p) else 0.0
+        if cut > 0:                                # the great house's own dock (Game 7 review, 23 Nov 2026)
+            rate = max(0.01, rate * (1 - min(0.95, cut)))
         return rate
 
     def repair_ceiling(self, p, sh):
@@ -1781,7 +1786,27 @@ class Game:
         return max(0, self.repair_ceiling(p, sh) - int(sh["hull"]))
 
     def protection_cost(self, p):
-        return int(max(R["liyuen"]["cost_min"], R["liyuen"]["cost_share"] * self.worth(p)))
+        ly = R["liyuen"]
+        cut = 1 - min(0.9, self.house_perk(p, "protect"))     # a great house is on good terms with her
+        if ly.get("cost_basis", "fleet") != "fleet":
+            return int(max(ly["cost_min"], ly["cost_share"] * self.worth(p) * cut))
+        return int(max(ly["cost_min"], float(ly.get("cost_share_fleet", 0.06)) * self.guarded_value(p) * cut))
+
+    def guarded_value(self, p):
+        """What Li Yue would be guarding (Game 7 review): the fleet at sea plus the cargo it carries, taken
+        as the average hold of the last few sailings (p["carried"]) or today's hold if that is dearer."""
+        ships = sum(ship_value(sh) for sh in p.get("ships") or ())
+        aboard = sum(self.dealer_value(p, p.get("port"), g, q) for g, q in (p.get("cargo") or {}).items()
+                     if g in GOODS and q > 0)
+        past = [float(x) for x in (p.get("carried") or ())]
+        return ships + max(aboard, sum(past) / len(past) if past else 0.0)
+
+    def _note_carried(self, p):
+        """Remember what the hold was worth as the fleet sails, for Li Yue's price (see guarded_value)."""
+        aboard = sum(self.dealer_value(p, p.get("port"), g, q) for g, q in (p.get("cargo") or {}).items()
+                     if g in GOODS and q > 0)
+        keep = max(1, int(R["liyuen"].get("cost_months", 8)))
+        p["carried"] = ([float(x) for x in (p.get("carried") or ())] + [round(aboard)])[-keep:]
 
     # ----------------------------------------------------- harbour dues --
     # The mayor of each port bills a house as it sails out: anchorage per ship, tonnage on the hold,
@@ -2254,6 +2279,11 @@ class Game:
             gap = 1 - r
             buy = (c["buy_base"] + c["buy_k"] * gap ** c["buy_exp"]) * k
             audit = (c["audit_base"] + c["audit_k"] * gap) * cx["cunning"] * cx["rep"] * cx["diff"] * cx["mood"] * bribe
+            if r < 1e-9 and c.get("zero_audit", True):
+                # Declaring nothing at all (Game 7 review, 23 Nov 2026): she looks harder the more there
+                # plainly is in the hold. +zero_base, and +zero_step for every tenfold of value past zero_from.
+                audit += float(c.get("zero_base", 0.10)) + float(c.get("zero_step", 0.12)) * max(
+                    0.0, math.log10(value / max(1.0, float(c.get("zero_from", 100000)))))
         buy, audit = min(c["buy_cap"], max(0.0, buy)), min(c["audit_cap"], max(0.0, audit))
         if buy + audit > 0.95:
             f = 0.95 / (buy + audit)
@@ -2747,6 +2777,8 @@ class Game:
             return tx("m.customs_bought", goods=names_of([r["good"] for r in bought]), paid=money(paid_in))
         if generous and rep_change > 0:
             return tx("m.customs_over", tax=money(tax_total))
+        if choice == "nothing" and open_lines:    # walked a full hold past her for nothing: not the honest line
+            return tx("m.customs_nothing")
         return tx("m.customs_clean", tax=money(tax_total), declared=money(total_declared))
 
     def _stamp_news(self, admin=False):
@@ -3241,6 +3273,23 @@ class Game:
         headroom = 1.0 if rep <= soft else max(0.0, (100.0 - rep) / (100.0 - soft))
         return float(g["cap"]) * (1 - math.exp(-max(0.0, amount) / self.gift_appetite(port, p))) * headroom
 
+    def gift_useful(self, port, p, lo=None, step=None):
+        """The largest gift worth giving here today (Game 7 review, 23 Nov 2026): the amount that comes
+        within useful_within of a standing point of the most she can give this visit. Past it more silver
+        buys nothing, so the slider stops there. useful_within 0 = no such stop."""
+        g = R["gift"]
+        within = float(g.get("useful_within", 0.5) or 0)
+        appetite = self.gift_appetite(port, p)
+        if within <= 0:
+            return appetite * float(g["max_x"])
+        lo = self.gift_min(p) if lo is None else lo
+        step = self.gift_step(p) if step is None else step
+        most = self.gift_gain(port, p["rep"][port], appetite * 1000.0, p)
+        if most <= within:
+            return float(lo)
+        need = appetite * math.log(most / within)
+        return float(max(lo, math.ceil(need / step) * step))
+
     def gift_tier(self, gain):
         g = R["gift"]
         if gain >= g["delighted_at"]:
@@ -3315,9 +3364,9 @@ class Game:
         whether she has been called on this visit, and the thanks if she has."""
         g, port = R["gift"], p["port"]
         appetite = self.gift_appetite(port, p)
-        top = int(max(0.0, min(p["cash"], appetite * float(g["max_x"]))))
         step = self.gift_step(p)
         lo = self.gift_min(p)
+        top = int(max(0.0, min(p["cash"], appetite * float(g["max_x"]), self.gift_useful(port, p, lo, step))))
         last = p.get("gift_last") if isinstance(p.get("gift_last"), dict) else None
         given = (p.get("tab") or {}).get("gift", 0) > 0
         c, m, d = R["customs"], R["market"], R["dues"]
@@ -4167,6 +4216,12 @@ class Game:
             return 0.0
         return max(0.0, min(1.0, float(e.get("house_dues_{}".format(st), 0.0) or 0.0)))
 
+    def house_perk(self, p, name):
+        """A perk of the great house at its present stage: rules.estates.house_<name>_<stage>, 0 if none.
+        "repair" = share off repairs at home, "protect" = share off Li Yue's price (Game 7 review)."""
+        st = self.house_stage(p)
+        return max(0.0, float(R["estates"].get("house_{}_{}".format(name, st), 0.0) or 0.0)) if st else 0.0
+
     def house_rob_cut(self, p):
         st = self.house_stage(p)
         return float(R["estates"].get("house_rob_{}".format(st), 0.0)) if st else 0.0
@@ -4282,6 +4337,7 @@ class Game:
                 "paid": int(p.get("estate_paid", 0) or 0), "rob_cut": self.house_rob_cut(p),
                 "bank_bonus": float(e.get("house_bank_{}".format(st), 0.0) or 0.0) if st else 0.0,
                 "dues_cut": float(e.get("house_dues_{}".format(st), 0.0) or 0.0) if st else 0.0,
+                "repair_cut": self.house_perk(p, "repair"), "protect_cut": self.house_perk(p, "protect"),
                 "bank_anywhere": bool(e.get("house_bank_anywhere", True)),
                 "sell": bool(e.get("house_sell", True)) and st > 0,
                 "sell_price": self.house_sale_price(p) if st else 0,
@@ -4293,7 +4349,9 @@ class Game:
                 "stages": [{"stage": i, "title": tx("estate.stage.{}".format(i)), "cost": self.house_cost(p, i),
                             "rep": float(e["house_rep_{}".format(i)]), "rob": float(e["house_rob_{}".format(i)]),
                             "bank": float(e.get("house_bank_{}".format(i), 0.0) or 0.0),
-                            "dues": float(e.get("house_dues_{}".format(i), 0.0) or 0.0)}
+                            "dues": float(e.get("house_dues_{}".format(i), 0.0) or 0.0),
+                            "repair": float(e.get("house_repair_{}".format(i), 0.0) or 0.0),
+                            "protect": float(e.get("house_protect_{}".format(i), 0.0) or 0.0)}
                            for i in range(1, self.HOUSE_STAGES + 1)],
                 "next": nxt}
 
@@ -4404,6 +4462,16 @@ class Game:
         offer["rep"] = float(c["rep_year" if year else "rep_short"])
         if c.get("fee_wealth", True) and kind != "standing":    # standing goals already pay by net worth
             offer["fee"] = int(round(float(offer.get("fee", 0)) * self.wealth_mult(p), -2))
+        if kind != "standing" and offer.get("qty"):
+            # Game 7 review (23 Nov 2026): a job the fleet can carry in one go, for a fee that is a fair
+            # share of what that cargo is usually worth (it had reached $619M for 3 holds of porcelain).
+            if c.get("job_one_hold", True) and offer["qty"] > hold >= int(c["min_qty"]):
+                was = offer["qty"]
+                offer["qty"] = max(int(c["min_qty"]), int(hold // 10) * 10)
+                offer["fee"] = int(round(offer["fee"] * offer["qty"] / float(was), -2))
+            cap = float(c.get("fee_cap_share", 0.5) or 0)
+            if cap > 0:
+                offer["fee"] = min(offer["fee"], int(round(cap * offer["qty"] * normal_price(offer["good"]), -2)))
         offer["fee"] = max(100, int(offer.get("fee", 0)))
         if year:
             perk = self._offer_perk(p, rng)
@@ -5498,9 +5566,10 @@ class Game:
                     continue
                 base = spec["base"] * PORTS[port]["mods"].get(g, 1.0)
                 price = s["prices"][port][g]
-                price += reversion_of(g) * (self._target(port, g) - price)
-                price *= math.exp(rng.gauss(0, vol_of(g) * m["vol_mult"]))
                 drift = runs.get((port, g))
+                if not (drift and m.get("runs_pause_reversion")):     # a run is not pulled back while it lasts
+                    price += reversion_of(g) * (self._target(port, g) - price)
+                price *= math.exp(rng.gauss(0, vol_of(g) * m["vol_mult"]))
                 if drift:
                     price *= math.exp(drift)              # a run on a wild cargo: up or down again this month
                 w = self._windfall(port, g)
@@ -5599,6 +5668,7 @@ class Game:
                 risk = max(w["risk_min"], min(w["risk_max"], distance(origin, dest) / float(w["risk_div"])))
                 level = max(actual[PORTS[origin]["region"]], actual[PORTS[dest]["region"]])
                 v["risk"], v["level"] = risk, level
+                self._note_carried(p)
                 log.append(tx("l.sailed", origin=PORTS[origin]["name"], dest=PORTS[dest]["name"],
                               weather=tx("l.sea.{}".format(level))))
                 self._ev("voyage", "sailed", "{} sailed {} -> {}: {} ship{}, {} guns, hold {}/{}, orders {}, sea {}, "

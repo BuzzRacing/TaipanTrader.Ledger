@@ -51,6 +51,7 @@ import dashboard_brief
 import harbor_view
 import imagegen
 import journal
+import captain_review
 import manual_feed
 import media
 import recipes
@@ -2144,7 +2145,7 @@ class Handler(BaseHTTPRequestHandler):
         gid = one("game") or journal.current() or ""
         if what == "games":
             return self._send(200, {"ok": True, "games": journal.games(), "stats": journal.stats(),
-                                    "days": journal.server_days()})
+                                    "days": journal.server_days(), "reviewed": captain_review.reviewed()})
         if what == "index":
             idx = journal.index(gid)
             if idx is None:
@@ -2158,6 +2159,15 @@ class Handler(BaseHTTPRequestHandler):
         if what == "server":
             res = journal.server_log(one("day") or None, one("level") or None, one("q"))
             return self._send(200, dict(res, ok=True, days=journal.server_days()))
+        if what == "review":          # the Captain's review page of one game (captain_review.py)
+            try:
+                page = captain_review.page(gid, one("pid") or None)
+            except Exception as e:
+                journal.log("ERROR", "admin", "Captain's review failed for {}: {!r}".format(gid, e), **self._via())
+                return self._send(500, "The review could not be built: {!r}".format(e), "text/plain; charset=utf-8")
+            if page is None:
+                return self._send(404, "That game has no journal to review yet.", "text/plain; charset=utf-8")
+            return self._send(200, page, "text/html; charset=utf-8")
         if what == "download":
             if one("as") == "txt":
                 text = journal.report_text(gid)

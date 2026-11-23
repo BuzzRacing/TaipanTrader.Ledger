@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crimson Ledger: Captain's Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Almendra+SC&family=MedievalSharp&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141211; --surface:#1a1a19; --panel:#211e1c; --line:#3a332e; --grid:#2c2824;
+  --ink:#f0efec; --ink2:#c3c2b7; --ink3:#8f8b80;
+  --crimson:#b3262c; --gold:#d9b25f; --gold2:#f3dc9c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#e66767;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 Alegreya,Georgia,serif}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+header.top{padding:34px 0 18px;border-bottom:1px solid var(--line)}
+.kicker{font-family:"Almendra SC",Georgia,serif;color:var(--gold);letter-spacing:.08em;font-size:15px}
+h1{font-family:"Uncial Antiqua",Georgia,serif;font-weight:400;font-size:clamp(28px,4.4vw,46px);line-height:1.1;margin:6px 0 10px;
+  background:linear-gradient(180deg,var(--gold2),var(--gold) 55%,#9a742c);-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-family:MedievalSharp,Georgia,serif;font-weight:400;font-size:26px;color:var(--gold2);margin:0 0 4px}
+h3{font-family:MedievalSharp,Georgia,serif;font-weight:400;font-size:19px;margin:0 0 6px;color:var(--ink)}
+.sub{color:var(--ink2);margin:0 0 14px;max-width:78ch}
+.lede{font-size:19px;color:var(--ink);max-width:80ch;margin:0}
+nav{position:sticky;top:0;z-index:5;background:rgba(20,18,17,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);margin:0 -20px;padding:8px 20px;display:flex;gap:6px;overflow-x:auto}
+nav a{color:var(--ink2);text-decoration:none;font-family:"Almendra SC",Georgia,serif;font-size:15px;padding:5px 11px;border-radius:6px;white-space:nowrap}
+nav a:hover{background:var(--panel);color:var(--gold2)}
+section{padding:34px 0 6px;scroll-margin-top:48px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:20px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.tile .k{font-family:"Almendra SC",Georgia,serif;color:var(--ink3);font-size:14px;letter-spacing:.04em}
+.tile .v{font-size:30px;font-weight:700;line-height:1.15;margin-top:2px}
+.tile .n{color:var(--ink2);font-size:15px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 18px 14px;margin:14px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 10px}
+.chip,button.btn,select,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.chip{padding:3px 12px;cursor:pointer;font-size:15px}
+.chip[aria-pressed=true]{border-color:var(--gold);color:var(--gold2)}
+button.btn{padding:6px 14px;cursor:pointer}
+button.btn:hover,.chip:hover{border-color:var(--gold)}
+select{padding:5px 8px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:15px;color:var(--ink2)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.legend i.sq{height:11px;width:11px;border-radius:3px}
+svg{display:block;width:100%;overflow:visible}
+svg text{font-family:Alegreya,Georgia,serif;fill:var(--ink2);font-size:13px}
+.axis{stroke:var(--line)} .gridl{stroke:var(--grid)}
+table{border-collapse:collapse;width:100%;font-size:15.5px}
+th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--grid);white-space:nowrap}
+th:first-child,td:first-child,td.l,th.l{text-align:left}
+th{font-family:"Almendra SC",Georgia,serif;font-weight:400;color:var(--ink3);cursor:default;position:sticky;top:0;background:var(--surface)}
+th[data-s]{cursor:pointer} th[data-s]:hover{color:var(--gold2)}
+.scroll{max-height:420px;overflow:auto;border:1px solid var(--grid);border-radius:8px}
+.pos{color:var(--ink)} .muted{color:var(--ink3)}
+#tip{position:fixed;pointer-events:none;z-index:20;background:#0d0c0b;border:1px solid var(--gold);border-radius:8px;padding:8px 11px;font-size:14.5px;line-height:1.35;max-width:300px;display:none;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+#tip b{color:var(--gold2);font-weight:500}
+.well{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.well .card{margin:0;border-left:4px solid var(--good)}
+.imp{border-left:4px solid var(--ink3)}
+.imp[data-sev=High]{border-left-color:var(--crit)} .imp[data-sev=Medium]{border-left-color:var(--warn)} .imp[data-sev=Low]{border-left-color:var(--s1)}
+.imp .head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.badge{font-family:"Almendra SC",Georgia,serif;font-size:13.5px;border:1px solid var(--line);border-radius:20px;padding:1px 10px;color:var(--ink2);white-space:nowrap}
+.imp ul{margin:6px 0 8px;padding-left:20px} .imp li{margin:2px 0}
+.imp .opts{color:var(--ink2)}
+.imp .mine{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;border-top:1px solid var(--grid);padding-top:10px;margin-top:8px}
+.imp textarea{flex:1;min-width:220px;min-height:38px;padding:6px 9px;resize:vertical}
+.imp.hide{display:none}
+.st{white-space:nowrap}
+.foot{color:var(--ink3);font-size:14.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+.copied{color:var(--good);margin-left:8px}
+</style>
+</head>
+<body>
+<div id="tip"></div>
+<div class="wrap">
+<header class="top">
+  <div class="kicker">Crimson Ledger · Captain's Review</div>
+  <h1 id="title"></h1>
+  <p class="lede" id="lede"></p>
+  <div class="tiles" id="tiles"></div>
+</header>
+<nav>
+  <a href="#fortune">Fortune</a><a href="#money">Money in and out</a><a href="#trades">Trades</a><a href="#perils">Perils</a>
+  <a href="#well">What went well</a><a href="#improve">To improve</a><a href="#fixes">Last game's fixes</a><a href="#history">Game over game</a>
+</nav>
+
+<section id="fortune">
+  <h2>The fortune, month by month</h2>
+  <p class="sub" id="fortune-sub"></p>
+  <div class="card">
+    <div class="row">
+      <span class="legend" id="f-legend"></span>
+      <span style="flex:1"></span>
+      <button class="chip" id="f-log" aria-pressed="false">Log scale</button>
+      <button class="chip" id="f-marks" aria-pressed="true">Event marks</button>
+    </div>
+    <div id="f-chart"></div>
+  </div>
+</section>
+
+<section id="money">
+  <h2>Money in and out</h2>
+  <p class="sub" id="money-sub"></p>
+  <div class="grid2">
+    <div class="card"><h3>Trading profit by cargo</h3><div id="cargo-chart"></div><div class="scroll" style="margin-top:10px;max-height:none"><table id="cargo-table"></table></div></div>
+    <div class="card"><h3>Where the silver went</h3><div id="out-chart"></div></div>
+  </div>
+  <div class="card"><h3>Trading profit and bank interest, by year</h3><div class="legend" id="y-legend" style="margin-bottom:6px"></div><div id="year-chart"></div></div>
+</section>
+
+<section id="trades">
+  <h2>Every trade</h2>
+  <p class="sub">Click a column to sort. "Moved" is how far that one trade pushed the port's price.</p>
+  <div class="card">
+    <div class="row" id="t-filters"></div>
+    <div class="scroll"><table id="t-table"></table></div>
+  </div>
+</section>
+
+<section id="perils">
+  <h2>Perils</h2>
+  <p class="sub" id="perils-sub"></p>
+  <div class="card"><div class="legend" id="p-legend" style="margin-bottom:8px"></div><div id="p-chart"></div></div>
+  <div class="grid2">
+    <div class="card"><h3>Sea fights</h3><div class="scroll"><table id="b-table"></table></div></div>
+    <div class="card"><h3>Storms</h3><div class="scroll"><table id="s-table"></table></div></div>
+  </div>
+</section>
+
+<section id="well">
+  <h2>What went well</h2>
+  <p class="sub">Things to keep as they are.</p>
+  <div class="well" id="well-list"></div>
+</section>
+
+<section id="improve">
+  <h2>Areas to improve</h2>
+  <p class="sub">Biggest first. Set a status and jot a note on each as we work through them; your marks are remembered in this browser. "Copy my decisions" puts them on the clipboard to bring back to the chat.</p>
+  <div class="row" id="i-filters"></div>
+  <div id="imp-list"></div>
+  <div class="row"><button class="btn" id="copy">Copy my decisions</button><span id="copied" class="copied"></span></div>
+</section>
+
+<section id="fixes">
+  <h2>Did last game's fixes work?</h2>
+  <p class="sub" id="fixes-sub"></p>
+  <div class="card"><table id="fix-table"></table></div>
+</section>
+
+<section id="history">
+  <h2>Game over game</h2>
+  <p class="sub">Final net worth of every finished game on record.</p>
+  <div class="card"><div id="h-chart"></div></div>
+</section>
+
+<p class="foot" id="foot"></p>
+</div>
+
+<script>
+const D=/*__DATA__*/null;
+const $=s=>document.querySelector(s), el=(t,h)=>{const e=document.createElement(t);if(h!=null)e.innerHTML=h;return e};
+const F=D.findings||{}, M=D.meta, S=D.series, css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const usd=v=>{const a=Math.abs(v),s=v<0?'−':'';return a>=1e9?s+'$'+(a/1e9).toFixed(2)+'B':a>=1e6?s+'$'+(a/1e6).toFixed(a>=1e8?0:1)+'M':a>=1e3?s+'$'+(a/1e3).toFixed(a>=1e5?0:1)+'k':s+'$'+Math.round(a)};
+const full=v=>'$'+Math.round(v).toLocaleString('en-US');
+const cap=s=>s?({hongkong:'Hong Kong'}[s]||s[0].toUpperCase()+s.slice(1)):'';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dateOf=t=>{const s=S.find(x=>x.t===t);return s?s.date:MON[t%12]+' '+(1860+Math.floor(t/12))};
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const tip=$('#tip');
+function showTip(ev,html){tip.innerHTML=html;tip.style.display='block';const w=tip.offsetWidth,h=tip.offsetHeight;let x=ev.clientX+14,y=ev.clientY+14;if(x+w>innerWidth-8)x=ev.clientX-w-14;if(y+h>innerHeight-8)y=ev.clientY-h-14;tip.style.left=Math.max(6,x)+'px';tip.style.top=Math.max(6,y)+'px'}
+function hideTip(){tip.style.display='none'}
+function hover(node,fn){node.addEventListener('mousemove',e=>showTip(e,fn(e)));node.addEventListener('mouseleave',hideTip);node.addEventListener('click',e=>showTip(e,fn(e)))}
+const svgNS='http://www.w3.org/2000/svg';
+function sv(tag,a,txt){const e=document.createElementNS(svgNS,tag);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e}
+function niceTicks(max,n){const raw=max/n,p=Math.pow(10,Math.floor(Math.log10(raw))),m=[1,2,2.5,5,10].find(x=>x*p>=raw)*p;const t=[];for(let v=0;v<=max*1.001;v+=m)t.push(v);return t}
+
+/* ---------- header ---------- */
+const span=M.months%12?M.months+' months':(M.months/12)+' years';
+$('#title').textContent=(M.game?'Game '+M.game+': ':'')+usd(M.final)+' in '+span;
+$('#lede').textContent=F.headline||(M.captain+' of House '+M.house+', out of '+cap(M.start_port)+'. '+(M.finished?'A finished '+M.years+'-year game.':'Not finished: '+M.months+' months played of a '+M.years+'-year game.')+' No written review has been added for this game yet, so this page shows the numbers only.');
+const paid=D.perils.battles.filter(b=>/paid/i.test(b.result)).length;
+const tradeNet=D.totals.sold-D.totals.bought;
+[['Final net worth',usd(M.final),M.rank],
+ ['Trading profit',usd(tradeNet),usd(D.totals.sold)+' sold on '+usd(D.totals.bought)+' bought'],
+ ['Bank interest',usd(D.totals.interest),(M.final>0?Math.round(100*D.totals.interest/M.final)+'% of the final fortune':'')],
+ ['Last promotion',M.top_rank_t==null?'None':'Month '+M.top_rank_t,M.top_rank_t==null?'':Math.round(100*M.top_rank_t/M.months)+'% of the way through'],
+ ['Sea fights',D.perils.battles.filter(b=>!b.free).length,D.perils.lost.length+' ships lost, '+paid+' tributes paid'],
+ ['Time at the table',Math.floor(M.active_min/60)+'h '+(M.active_min%60)+'m',(M.active_min/M.months).toFixed(1)+' minutes a month']
+].forEach(([k,v,n])=>{$('#tiles').appendChild(el('div','<div class="k">'+k+'</div><div class="v">'+v+'</div><div class="n">'+n+'</div>')).className='tile'});
+
+/* ---------- fortune chart ---------- */
+const FS=[['worth','Net worth','--s1'],['bank','In the bank','--s2'],['cash','Silver aboard','--s3']];
+const MK={rank:['Promotion','▲'],storm:['Heavy or savage storm','☁'],fight:['Sea fight','⚔'],robbed:['Robbed ashore','✖'],legend:['Legend','✦'],house:['Great house','⌂']};
+$('#f-legend').innerHTML=FS.map(f=>'<span><i style="background:var('+f[2]+')"></i>'+f[1]+'</span>').join('');
+let fLog=false,fMarks=true;
+function drawFortune(){
+  const box=$('#f-chart');box.innerHTML='';const W=box.clientWidth||900,H=380,m={l:58,r:96,t:14,b:fMarks?74:30};
+  const svg=sv('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':'Net worth, bank balance and silver aboard for every month of the game'});box.appendChild(svg);
+  const tmax=S[S.length-1].t,x=t=>m.l+(W-m.l-m.r)*t/tmax,vmax=Math.max(...S.map(s=>s.worth));
+  const lo=1e4,y=v=>fLog?(H-m.b)-(H-m.b-m.t)*(Math.log10(Math.max(v,lo))-Math.log10(lo))/(Math.log10(vmax*1.15)-Math.log10(lo)):(H-m.b)-(H-m.b-m.t)*v/(vmax*1.05);
+  const ticks=fLog?[1e4,1e5,1e6,1e7,1e8,1e9].filter(v=>v<=vmax*1.15):niceTicks(vmax*1.05,5);
+  ticks.forEach(v=>{svg.appendChild(sv('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),class:'gridl'}));svg.appendChild(sv('text',{x:m.l-8,y:y(v)+4,'text-anchor':'end'},usd(v)))});
+  for(let t=0;t<=tmax;t+=12){svg.appendChild(sv('line',{x1:x(t),x2:x(t),y1:H-m.b,y2:H-m.b+5,class:'axis'}));svg.appendChild(sv('text',{x:x(t),y:H-m.b+19,'text-anchor':'middle'},String(1860+t/12)))}
+  if(M.finished&&tmax>M.months){svg.appendChild(sv('rect',{x:x(M.months),y:m.t,width:x(tmax)-x(M.months),height:H-m.b-m.t,fill:css('--gold'),opacity:.07}));
+    svg.appendChild(sv('line',{x1:x(M.months),x2:x(M.months),y1:m.t,y2:H-m.b,stroke:css('--gold'),'stroke-dasharray':'4 4'}));
+    svg.appendChild(sv('text',{x:x(M.months)-6,y:m.t+12,'text-anchor':'end',style:'fill:'+css('--gold2')},'Books closed'))}
+  svg.appendChild(sv('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,class:'axis'}));
+  let ly=[];
+  FS.forEach(f=>{svg.appendChild(sv('path',{d:S.map((s,i)=>(i?'L':'M')+x(s.t).toFixed(1)+' '+y(s[f[0]]).toFixed(1)).join(''),fill:'none',stroke:css(f[2]),'stroke-width':2,'stroke-linejoin':'round'}));
+    let yy=y(S[S.length-1][f[0]]);ly.forEach(p=>{if(Math.abs(p-yy)<14)yy=p+14});ly.push(yy);
+    svg.appendChild(sv('circle',{cx:x(tmax),cy:y(S[S.length-1][f[0]]),r:4,fill:css(f[2]),stroke:css('--surface'),'stroke-width':2}));
+    svg.appendChild(sv('text',{x:x(tmax)+9,y:yy+4,style:'fill:'+css('--ink')},f[1]))});
+  if(fMarks){const kinds=Object.keys(MK);svg.appendChild(sv('text',{x:m.l-8,y:H-m.b+44,'text-anchor':'end'},'Events'));
+    D.marks.forEach(k=>{const row=kinds.indexOf(k.k)%2,g=sv('text',{x:x(k.t),y:H-m.b+42+row*17,'text-anchor':'middle',style:'font-size:15px;cursor:default;fill:'+css(k.k==='rank'||k.k==='legend'||k.k==='house'?'--gold':'--ink2')},MK[k.k][1]);
+      hover(g,()=>'<b>'+dateOf(k.t)+'</b> (month '+k.t+')<br>'+esc(k.label));svg.appendChild(g)})}
+  const cross=sv('line',{y1:m.t,y2:H-m.b,stroke:css('--ink3'),'stroke-dasharray':'3 3',visibility:'hidden'});svg.appendChild(cross);
+  const dots=FS.map(f=>svg.appendChild(sv('circle',{r:4,fill:css(f[2]),stroke:css('--surface'),'stroke-width':2,visibility:'hidden'})));
+  const hit=sv('rect',{x:m.l,y:m.t,width:W-m.l-m.r,height:H-m.b-m.t,fill:'transparent'});svg.appendChild(hit);
+  const move=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width,t=Math.round((px-m.l)/(W-m.l-m.r)*tmax);const s=S.reduce((a,b)=>Math.abs(b.t-t)<Math.abs(a.t-t)?b:a);
+    cross.setAttribute('x1',x(s.t));cross.setAttribute('x2',x(s.t));cross.setAttribute('visibility','visible');
+    dots.forEach((d,i)=>{d.setAttribute('cx',x(s.t));d.setAttribute('cy',y(s[FS[i][0]]));d.setAttribute('visibility','visible')});
+    const mk=D.marks.filter(k=>k.t===s.t).map(k=>'<br>'+MK[k.k][1]+' '+esc(k.label)).join('');
+    showTip(e,'<b>'+s.date+'</b> · month '+s.t+' · '+cap(s.port)+(s.free?' · free play':'')+'<br>Net worth '+full(s.worth)+'<br>Bank '+full(s.bank)+'<br>Silver '+full(s.cash)+'<br>'+s.ships+' ships, hold '+s.used.toLocaleString()+' of '+s.hold.toLocaleString()+'<br>'+s.rank+mk)};
+  hit.addEventListener('mousemove',move);hit.addEventListener('click',move);hit.addEventListener('mouseleave',()=>{hideTip();cross.setAttribute('visibility','hidden');dots.forEach(d=>d.setAttribute('visibility','hidden'))});
+}
+$('#f-log').onclick=e=>{fLog=!fLog;e.target.setAttribute('aria-pressed',fLog);drawFortune()};
+$('#f-marks').onclick=e=>{fMarks=!fMarks;e.target.setAttribute('aria-pressed',fMarks);drawFortune()};
+$('#fortune-sub').textContent=F.fortune||'';
+
+/* ---------- horizontal bars ---------- */
+function hbars(box,rows,opt){
+  box.innerHTML='';const W=box.clientWidth||500,rh=30,m={l:opt.left||130,r:78,t:4,b:4},H=m.t+m.b+rows.length*rh;
+  const svg=sv('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':opt.label});box.appendChild(svg);
+  const max=Math.max(...rows.map(r=>Math.abs(r.v)),1),min=Math.min(0,...rows.map(r=>r.v)),span=max-min,x=v=>m.l+(W-m.l-m.r)*(v-min)/span;
+  rows.forEach((r,i)=>{const y=m.t+i*rh,g=sv('g',{});svg.appendChild(g);
+    g.appendChild(sv('rect',{x:0,y:y,width:W,height:rh,fill:'transparent'}));
+    g.appendChild(sv('text',{x:m.l-9,y:y+rh/2+4,'text-anchor':'end',style:'font-size:15px;fill:'+css('--ink')},r.k));
+    const x0=x(0),x1=x(r.v),w=Math.max(2,Math.abs(x1-x0));
+    g.appendChild(sv('rect',{x:Math.min(x0,x1),y:y+7,width:w,height:rh-14,rx:4,fill:css(r.v<0?'--s2':(opt.color||'--s1'))}));
+    g.appendChild(sv('text',{x:Math.max(x0,x1)+7,y:y+rh/2+4,style:'font-size:14.5px'},usd(r.v)));
+    if(r.tip)hover(g,()=>r.tip)});
+  svg.appendChild(sv('line',{x1:x(0),x2:x(0),y1:0,y2:H,class:'axis'}));
+}
+const GN=g=>cap(g);
+function drawMoney(){
+  hbars($('#cargo-chart'),D.cargo.map(c=>({k:GN(c.good),v:c.net,tip:'<b>'+GN(c.good)+'</b><br>Bought '+c.qb.toLocaleString()+' for '+full(c.bought)+'<br>Sold '+c.qs.toLocaleString()+' for '+full(c.sold)+'<br>Average buy '+full(c.avg_buy)+', sell '+full(c.avg_sell)+(c.avg_buy?' ('+(c.avg_sell/c.avg_buy).toFixed(1)+'×)':'')})),{left:92,label:'Net trading profit by cargo'});
+  const tot=D.out.reduce((a,o)=>a+o.v,0);
+  hbars($('#out-chart'),D.out.map(o=>({k:o.k,v:o.v,tip:'<b>'+o.k+'</b><br>'+full(o.v)+'<br>'+(100*o.v/tot).toFixed(1)+'% of everything spent'})),{left:160,color:'--s4',label:'Spending by kind'});
+  // years grouped
+  const box=$('#year-chart');box.innerHTML='';const W=box.clientWidth||900,H=250,m={l:58,r:10,t:10,b:26},Y=D.years;
+  const svg=sv('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':'Trading profit and bank interest for each year'});box.appendChild(svg);
+  const max=Math.max(...Y.map(y=>Math.max(y.net,y.interest))),min=Math.min(0,...Y.map(y=>y.net)),yy=v=>(H-m.b)-(H-m.b-m.t)*(v-min)/(max*1.08-min),bw=(W-m.l-m.r)/Y.length;
+  niceTicks(max*1.08,4).forEach(v=>{svg.appendChild(sv('line',{x1:m.l,x2:W-m.r,y1:yy(v),y2:yy(v),class:'gridl'}));svg.appendChild(sv('text',{x:m.l-8,y:yy(v)+4,'text-anchor':'end'},usd(v)))});
+  Y.forEach((y,i)=>{const g=sv('g',{});svg.appendChild(g);const x0=m.l+i*bw,w=Math.min(26,bw*.32);
+    g.appendChild(sv('rect',{x:x0,y:m.t,width:bw,height:H-m.t-m.b,fill:'transparent'}));
+    [['net','--s1'],['interest','--s2']].forEach((s,j)=>{const v=y[s[0]],top=Math.min(yy(v),yy(0)),h=Math.max(2,Math.abs(yy(v)-yy(0)));g.appendChild(sv('rect',{x:x0+bw/2-w-1+j*(w+2),y:top,width:w,height:h,rx:4,fill:css(s[1])}))});
+    svg.appendChild(sv('text',{x:x0+bw/2,y:H-8,'text-anchor':'middle'},String(y.year)));
+    hover(g,()=>'<b>'+y.year+'</b><br>Bought '+full(y.bought)+'<br>Sold '+full(y.sold)+'<br>Trading profit '+full(y.net)+'<br>Bank interest '+full(y.interest))});
+  svg.appendChild(sv('line',{x1:m.l,x2:W-m.r,y1:yy(0),y2:yy(0),class:'axis'}));
+}
+$('#y-legend').innerHTML='<span><i class="sq" style="background:var(--s1)"></i>Trading profit</span><span><i class="sq" style="background:var(--s2)"></i>Bank interest</span>';
+$('#money-sub').textContent=F.money||'';
+$('#cargo-table').innerHTML='<tr><th>Cargo</th><th>Buys</th><th>Sells</th><th>Avg buy</th><th>Avg sell</th><th>Net</th></tr>'+D.cargo.map(c=>'<tr><td>'+GN(c.good)+'</td><td>'+c.nb+'</td><td>'+c.ns+'</td><td>'+full(c.avg_buy)+'</td><td>'+full(c.avg_sell)+'</td><td>'+usd(c.net)+'</td></tr>').join('');
+
+/* ---------- trades ---------- */
+let tSide='all',tGood='all',tSort='total',tDir=-1;
+function drawTrades(){
+  const goods=[...new Set(D.trades.map(t=>t.good))];
+  $('#t-filters').innerHTML=['all','buy','sell'].map(s=>'<button class="chip" data-side="'+s+'" aria-pressed="'+(tSide===s)+'">'+({all:'Buys and sells',buy:'Buys',sell:'Sells'}[s])+'</button>').join('')+
+   '<select id="t-good" aria-label="Cargo"><option value="all">All cargo</option>'+goods.map(g=>'<option value="'+g+'"'+(tGood===g?' selected':'')+'>'+GN(g)+'</option>').join('')+'</select><span class="muted" id="t-count"></span>';
+  document.querySelectorAll('#t-filters [data-side]').forEach(b=>b.onclick=()=>{tSide=b.dataset.side;drawTrades()});
+  $('#t-good').onchange=e=>{tGood=e.target.value;drawTrades()};
+  let rows=D.trades.filter(t=>(tSide==='all'||t.side===tSide)&&(tGood==='all'||t.good===tGood)).map(t=>Object.assign({moved:t.m1/t.m0-1},t));
+  rows.sort((a,b)=>(a[tSort]>b[tSort]?1:a[tSort]<b[tSort]?-1:0)*tDir);
+  $('#t-count').textContent=rows.length+' trades, '+usd(rows.reduce((a,t)=>a+(t.side==='sell'?t.total:-t.total),0))+' net';
+  const cols=[['t','Month'],['side','Side'],['good','Cargo'],['port','Port'],['qty','Units'],['unit','Each'],['total','Total'],['moved','Moved']];
+  $('#t-table').innerHTML='<tr>'+cols.map(c=>'<th data-s="'+c[0]+'"'+(c[0]==='side'||c[0]==='good'||c[0]==='port'?' class="l"':'')+'>'+c[1]+(tSort===c[0]?(tDir<0?' ▾':' ▴'):'')+'</th>').join('')+'</tr>'+
+   rows.map(t=>'<tr><td>'+dateOf(t.t)+(t.free?' <span class="muted">(free play)</span>':'')+'</td><td class="l">'+(t.side==='buy'?'Buy':'Sell')+'</td><td class="l">'+GN(t.good)+'</td><td class="l">'+cap(t.port)+'</td><td>'+t.qty.toLocaleString()+'</td><td>'+full(t.unit)+'</td><td>'+full(t.total)+'</td><td>'+(t.moved>=0?'+':'−')+Math.abs(100*t.moved).toFixed(0)+'%</td></tr>').join('');
+  document.querySelectorAll('#t-table th').forEach(h=>h.onclick=()=>{const k=h.dataset.s;if(tSort===k)tDir=-tDir;else{tSort=k;tDir=-1}drawTrades()});
+}
+
+/* ---------- perils ---------- */
+const P=D.perils;
+function drawPerils(){
+  const box=$('#p-chart');box.innerHTML='';const W=box.clientWidth||900,rows=['Protection','Storms','Sea fights','Ashore'],rh=34,m={l:100,r:14,t:6,b:24},H=m.t+m.b+rows.length*rh,tmax=S[S.length-1].t,x=t=>m.l+(W-m.l-m.r)*t/tmax;
+  const svg=sv('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':'Timeline of protection, storms, sea fights and robberies'});box.appendChild(svg);
+  rows.forEach((r,i)=>{svg.appendChild(sv('line',{x1:m.l,x2:W-m.r,y1:m.t+i*rh+rh/2,y2:m.t+i*rh+rh/2,class:'gridl'}));svg.appendChild(sv('text',{x:m.l-10,y:m.t+i*rh+rh/2+4,'text-anchor':'end',style:'font-size:15px;fill:'+css('--ink')},r))});
+  for(let t=0;t<=tmax;t+=12)svg.appendChild(sv('text',{x:x(t),y:H-6,'text-anchor':'middle'},String(1860+t/12)));
+  const cy=i=>m.t+i*rh+rh/2;
+  // protection cover from snapshots is not stored month by month, so draw each paid term as 8 months
+  P.protection.forEach(p=>{const r=sv('rect',{x:x(p.t),y:cy(0)-6,width:Math.max(3,x(Math.min(tmax,p.t+8))-x(p.t)-2),height:12,rx:4,fill:css('--s1')});hover(r,()=>'<b>'+dateOf(p.t)+'</b><br>Paid Li Yue '+full(p.paid)+' for 8 months');svg.appendChild(r)});
+  const SB={rough:['--s3',5],heavy:['--s4',7],savage:['--s2',9]};
+  P.storms.forEach(s=>{const c=sv('circle',{cx:x(s.t),cy:cy(1),r:SB[s.band][1],fill:css(SB[s.band][0]),stroke:css('--surface'),'stroke-width':2});
+    hover(c,()=>'<b>'+dateOf(s.t)+'</b> · '+s.band+' storm<br>Hull lost '+s.hull.toLocaleString()+'<br>Cargo overboard '+s.cargo.toLocaleString()+'<br>Cannons lost '+s.cannons+(s.landed?'<br>Landed in '+cap(s.landed)+(s.yard?' (shipyard)':' (no shipyard)'):''));svg.appendChild(c)});
+  const seen={};P.battles.forEach(b=>{seen[b.t]=(seen[b.t]||0)+1;const li=b.kind.indexOf('Li Yue')===0,sz=li?9:b.kind==='raiders'?7:5,xx=x(b.t)+(seen[b.t]-1)*8;
+    const g=sv('rect',{x:xx-sz,y:cy(2)-sz,width:sz*2,height:sz*2,rx:3,transform:`rotate(45 ${xx} ${cy(2)})`,fill:css(li?'--s2':'--s1'),stroke:css('--surface'),'stroke-width':2});
+    hover(g,()=>'<b>'+dateOf(b.t)+'</b><br>'+b.n+' '+b.kind+'<br>They asked '+(b.ask?full(b.ask):'nothing')+'<br>'+b.result);svg.appendChild(g)});
+  P.robbed.forEach(r=>{const c=sv('circle',{cx:x(r.t),cy:cy(3),r:8,fill:css('--s4'),stroke:css('--surface'),'stroke-width':2});hover(c,()=>'<b>'+dateOf(r.t)+'</b><br>Robbed ashore of '+full(r.lost));svg.appendChild(c)});
+  P.seized.forEach(r=>{const c=sv('rect',{x:x(r.t)-7,y:cy(3)-7,width:14,height:14,rx:3,fill:css('--s2'),stroke:css('--surface'),'stroke-width':2});hover(c,()=>'<b>'+dateOf(r.t)+'</b><br>'+esc(r.msg));svg.appendChild(c)});
+}
+$('#p-legend').innerHTML='<span><i class="sq" style="background:var(--s1);width:22px"></i>Protection paid (8 months)</span><span><i class="sq" style="background:var(--s3);border-radius:50%"></i>Rough</span><span><i class="sq" style="background:var(--s4);border-radius:50%"></i>Heavy</span><span><i class="sq" style="background:var(--s2);border-radius:50%"></i>Savage storm</span><span><i class="sq" style="background:var(--s1);transform:rotate(45deg)"></i>Pirates</span><span><i class="sq" style="background:var(--s2);transform:rotate(45deg)"></i>Li Yue war fleet</span><span><i class="sq" style="background:var(--s4);border-radius:50%"></i>Robbed</span><span><i class="sq" style="background:var(--s2)"></i>Cargo seized</span>';
+$('#perils-sub').textContent=F.perils||'';
+$('#b-table').innerHTML='<tr><th>Month</th><th class="l">Enemy</th><th>They asked</th><th class="l">Outcome</th></tr>'+P.battles.map(b=>'<tr><td>'+dateOf(b.t)+'</td><td class="l">'+b.n+' '+b.kind+'</td><td>'+(b.ask?usd(b.ask):'')+'</td><td class="l">'+b.result+'</td></tr>').join('');
+$('#s-table').innerHTML='<tr><th>Month</th><th class="l">Storm</th><th>Hull</th><th>Cargo lost</th><th>Cannons</th><th class="l">Landed</th></tr>'+P.storms.map(s=>'<tr><td>'+dateOf(s.t)+'</td><td class="l">'+cap(s.band)+'</td><td>−'+s.hull.toLocaleString()+'</td><td>'+(s.cargo?s.cargo.toLocaleString():'')+'</td><td>'+(s.cannons||'')+'</td><td class="l">'+cap(s.landed||'')+(s.band!=='rough'?(s.yard?'':' (no yard)'):'')+'</td></tr>').join('');
+
+/* ---------- findings ---------- */
+(F.well||[]).forEach(w=>{const c=el('div','<h3>'+esc(w.t)+'</h3><div>'+esc(w.d)+'</div>');c.className='card';$('#well-list').appendChild(c)});
+const KEY='crimson-ledger-playtest-'+M.id;let mine={};try{mine=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(mine))}catch(e){}};
+const STAT=['Open','Decided','Built','Skip'];let iFilter='All';
+function drawImprove(){
+  const list=$('#imp-list');list.innerHTML='';
+  $('#i-filters').innerHTML=['All','High','Medium','Low'].concat(STAT).map(s=>'<button class="chip" aria-pressed="'+(iFilter===s)+'">'+s+'</button>').join('');
+  document.querySelectorAll('#i-filters .chip').forEach(b=>b.onclick=()=>{iFilter=b.textContent;drawImprove()});
+  (F.improve||[]).forEach((it,i)=>{const st=(mine[it.id]||{}).status||'Open';
+    if(iFilter!=='All'&&iFilter!==it.sev&&iFilter!==st)return;
+    const c=el('div','<div class="head"><h3>'+(i+1)+'. '+esc(it.title)+'</h3><span class="badge">'+({High:'▲ High',Medium:'◆ Medium',Low:'● Low'}[it.sev]||it.sev)+'</span>'+(it.area?'<span class="badge">'+esc(it.area)+'</span>':'')+'</div>'+
+      '<div>'+esc(it.what)+'</div><ul>'+it.evidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>'+
+      (it.options?'<div class="opts"><b style="color:var(--ink)">Ways to go:</b> '+it.options.map(esc).join(' · ')+'</div>':'')+
+      '<div class="mine"><select aria-label="Status">'+STAT.map(s=>'<option'+(s===st?' selected':'')+'>'+s+'</option>').join('')+'</select><textarea placeholder="Your call or note" aria-label="Note"></textarea></div>');
+    c.className='card imp';c.dataset.sev=it.sev;c.querySelector('textarea').value=(mine[it.id]||{}).note||'';
+    c.querySelector('select').onchange=e=>{(mine[it.id]=mine[it.id]||{}).status=e.target.value;save()};
+    c.querySelector('textarea').oninput=e=>{(mine[it.id]=mine[it.id]||{}).note=e.target.value;save()};
+    list.appendChild(c)});
+}
+$('#copy').onclick=()=>{const txt='Game '+M.game+' playtest decisions\n'+(F.improve||[]).map((it,i)=>(i+1)+'. '+it.title+' ['+((mine[it.id]||{}).status||'Open')+']'+((mine[it.id]||{}).note?': '+mine[it.id].note:'')).join('\n');
+  const done=ok=>{$('#copied').textContent=ok?'Copied':'Could not copy here; select the notes by hand';setTimeout(()=>$('#copied').textContent='',3000)};
+  try{navigator.clipboard.writeText(txt).then(()=>done(true),()=>done(false))}catch(e){done(false)}};
+const FIX={worked:['✔','--good','Worked'],partly:['◐','--warn','Partly'],untested:['○','--ink3','Not tested'],unknown:['?','--ink3','Cannot tell'],failed:['✖','--crit','Not working']};
+$('#fixes-sub').textContent=F.fixes_intro||'';
+$('#fix-table').innerHTML='<tr><th>Fix</th><th class="l">Result</th><th class="l">What this game showed</th></tr>'+(F.fixes||[]).map(f=>{const s=FIX[f.status]||FIX.unknown;return '<tr><td style="white-space:normal">'+esc(f.name)+'</td><td class="l st"><span style="color:var('+s[1]+')">'+s[0]+'</span> '+s[2]+'</td><td class="l" style="white-space:normal">'+esc(f.note)+'</td></tr>'}).join('');
+
+/* ---------- history ---------- */
+function drawHistory(){const H=(D.history||[]).slice();if(M.finished&&!H.find(h=>h.id===M.id||(M.game&&h.game===M.game)))H.push({id:M.id,game:M.game,label:M.game?'':M.real_start.slice(0,10),years:M.years,final:M.final,note:''});
+  const nm=h=>h.label||('Game '+h.game);
+  hbars($('#h-chart'),H.map(h=>({k:nm(h)+' ('+h.years+' yr)'+(h.id===M.id?' ◀':''),v:h.final,tip:'<b>'+nm(h)+'</b>, '+h.years+' years<br>Final '+full(h.final)+(h.note?'<br>'+esc(h.note):'')})),{left:190,label:'Final net worth by game'})}
+
+$('#foot').textContent='Game '+M.id+' · '+M.captain+', House '+M.house+', home port '+cap(M.start_port)+' · played '+M.real_start+' to '+M.real_end+' over '+M.sessions+' sessions · '+M.events.toLocaleString()+' journal events'+(M.free_months?' · totals cover the '+M.months+' scored months; '+M.free_months+' months of free play after the books closed are shown but not counted':'')+'.';
+function drawAll(){drawFortune();drawMoney();drawPerils();drawHistory()}
+[['well',F.well],['improve',F.improve],['fixes',F.fixes]].forEach(([id,v])=>{if(!(v&&v.length)){$('#'+id).style.display='none';const a=document.querySelector('nav a[href="#'+id+'"]');if(a)a.style.display='none'}});
+if(!(D.history&&D.history.length)&&!M.finished){$('#history').style.display='none';document.querySelector('nav a[href="#history"]').style.display='none'}
+drawAll();drawTrades();drawImprove();
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(drawAll,150)});
+</script>
+</body>
+</html>

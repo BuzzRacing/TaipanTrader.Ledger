@@ -125,9 +125,10 @@ DEFAULTS = {
         {"id": "taipan", "worth": 1000000, "title": "Taipan"},
         # Ranks above Taipan (19 Nov 2026). "scales": the worth is for a game of rules.game.rank_years
         # years and grows or shrinks with the game's length (a 5-year game halves it).
-        {"id": "tai_pan_china_seas", "worth": 25000000, "title": "Tai-Pan of the China Seas", "scales": True},
-        {"id": "merchant_lord", "worth": 50000000, "title": "Merchant Lord", "scales": True},
-        {"id": "hong_master", "worth": 100000000, "title": "Hong Master", "scales": True},
+        # Game 7 review (23 Nov 2026): the top rank sits at $250M for a 10-year game (was $100M).
+        {"id": "tai_pan_china_seas", "worth": 40000000, "title": "Tai-Pan of the China Seas", "scales": True},
+        {"id": "merchant_lord", "worth": 100000000, "title": "Merchant Lord", "scales": True},
+        {"id": "hong_master", "worth": 250000000, "title": "Hong Master", "scales": True},
     ],
     "rules": {
         "game": {"start_year": 1860, "home": "hongkong", "max_players": 8,
@@ -157,10 +158,17 @@ DEFAULTS = {
                    # port may start a run: its price climbs or falls runs_drift_min..max a month for runs_min..max
                    # months, on top of a bigger monthly swing (wild_vol), a weaker pull back (wild_reversion) and a
                    # much wider floor and ceiling (wild_floor..wild_ceiling x usual). No signal: no News, no arrow.
-                   "wild_goods": ["porcelain"], "wild_vol": 0.35, "wild_reversion": 0.08,
+                   "wild_goods": ["porcelain"], "wild_vol": 0.35, "wild_reversion": 0.25,
                    "wild_floor": 0.15, "wild_ceiling": 6.0,
-                   "runs_chance": 0.15, "runs_min": 2, "runs_max": 4, "runs_drift_min": 0.15, "runs_drift_max": 0.35,
-                   "review4_v1": False},
+                   "runs_chance": 0.03, "runs_min": 3, "runs_max": 5, "runs_drift_min": 0.30, "runs_drift_max": 0.60,
+                   "review4_v1": False,
+                   # Game 7 review (23 Nov 2026): the everyday swing of a wild cargo was the whole story (a
+                   # 50% move every month put prices at 3x a quarter of the time, runs or no runs). Now a wild
+                   # cargo is calm month to month (wild_calm_vol in place of its own swing and of wild_vol) and
+                   # the rare, strong runs carry the peaks. The pull back to the usual price waits while a run
+                   # is on (runs_pause_reversion), so a run really climbs. wild_calm off = the old behaviour.
+                   "wild_calm": True, "wild_calm_vol": 0.12, "runs_pause_reversion": True,
+                   "game7_v1": False},
         "bank": {"bank_rate": 0.01, "tiered": True, "tier_years": 20, "tier1_to": 25_000_000, "tier2_rate": 0.005,
                  "tier2_to": 100_000_000, "tier3_rate": 0.0025, "bills_from_bank": True, "loan_rate": 0.03, "loan_base": 5000, "loan_per_rep": 100,
                  "loan_asset_share": 0.5, "debt_warn_mult": 2.5, "debt_worth_share": 0.08, "debt_rep_penalty": 1,
@@ -233,7 +241,7 @@ DEFAULTS = {
                   "heavy_cargo_max": 0.25, "heavy_guns": 0.33,
                   "savage_hull_min": 0.25, "savage_hull_max": 0.45, "savage_cargo_min": 0.15,
                   "savage_cargo_max": 0.35, "savage_guns": 0.33,
-                  "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4,
+                  "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4, "savage_worst": 0.67,
                   "w_price": 0.5, "w_yard": 0.35, "w_standing": 0.15, "ban_penalty": 0.25,
                   "patch_max": 0.5, "limp_home": True, "after_attack": 0.5},
         # Legends (legend.py, 20 Nov 2026; project doc "SeaTrader Legends Library"). Big stories that break
@@ -254,6 +262,10 @@ DEFAULTS = {
         "liyuen": {"chance": 0.06, "fleet_base": 6, "fleet_per_hold": 25, "fleet_max": 60,
                    "hit": 0.40, "dmg_min": 8, "dmg_max": 20, "protect_months": 8,
                    "protect_save": 0.5, "cost_share": 0.02, "cost_min": 500, "renew_at": 2,
+                   # Game 7 review (23 Nov 2026): her price follows what she guards, the fleet and the cargo it
+                   # has been carrying (the average hold of the last cost_months sailings, so an empty hold on
+                   # the day does not make her cheap), not the bank balance. cost_basis "worth" = the old rule.
+                   "cost_basis": "fleet", "cost_share_fleet": 0.06, "cost_months": 8,
                    "tribute": True, "tribute_mult": 1.5},
         "wreck": {"cash_loss": 0.5, "debt": 1500, "ship": "junk", "hull": 100, "guns": 2},
         # The crew hides a share before it is taken (owner's decision, 19 Nov 2026): whenever customs
@@ -369,7 +381,7 @@ DEFAULTS = {
         # Standing gained = cap x (1 - e^(-gift / appetite)) x headroom, once per visit. Appetite is
         # appetite x the port's harbour dues level; headroom is 1 up to soft_from, falling to 0 at 100.
         "gift": {"enabled": True, "cap": 15, "appetite": 1500, "soft_from": 50, "min_gift": 100,
-                 "max_x": 5, "step": 50, "worth_ref": 10000, "worth_max": 10000, "gracious_at": 3, "warm_at": 7, "delighted_at": 11,
+                 "max_x": 5, "step": 50, "worth_ref": 150000, "worth_max": 10000, "useful_within": 0.5, "gracious_at": 3, "warm_at": 7, "delighted_at": 11,
                  "greet_cold_below": 40, "greet_warm_from": 70},
         # The Registrar (Mrs. Evelyn Marlowe, cast key "taxlady"), found only in a captain's own home port:
         # she meets the house when it comes home and gives one fresh price from her register
@@ -405,6 +417,10 @@ DEFAULTS = {
                     # of the deposit, and a share off harbour dues at home. (Townhouse gets neither.)
                     "house_bank_1": 0.0, "house_bank_2": 0.001, "house_bank_3": 0.0025, "house_bank_anywhere": True,
                     "house_dues_1": 0.0, "house_dues_2": 0.2, "house_dues_3": 0.4,
+                    # Game 7 review (23 Nov 2026): a private dock (share off repairs at home) and good terms with
+                    # Li Yue (share off her price) for the Mansion and the Palace.
+                    "house_repair_1": 0.0, "house_repair_2": 0.5, "house_repair_3": 0.9,
+                    "house_protect_1": 0.0, "house_protect_2": 0.15, "house_protect_3": 0.3,
                     # Selling back (19 Nov 2026): the top stage of the great house can be sold at home for
                     # house_sell_back of what was paid for it. Its standing and robbery cut go with it.
                     "house_sell": True, "house_sell_back": 0.5,
@@ -424,7 +440,7 @@ DEFAULTS = {
                       "rep_short": 3, "rep_year": 8, "fee_wealth": True,
                       # Game 6 review (22 Nov 2026): jobs grow with net worth, and a yearly goal also carries a perk.
                       "job_scale": True, "job_ref": 5_000_000, "job_exp": 0.5, "job_max": 10.0,
-                      "job_cap_short": 1.0, "job_cap_year": 3.0,
+                      "job_cap_short": 1.0, "job_cap_year": 3.0, "job_one_hold": True, "fee_cap_share": 0.5,
                       "perks": True, "perk_tax_months": 6, "perk_protect_months": 6, "perk_share": True},
         # Under the Counter (counter.py, 20 Nov 2026): the port's tax lady sells a tip. Her price is a share
         # of the tip's worth, from fee_min at the lowest rank to fee_max at the top.
@@ -443,7 +459,7 @@ DEFAULTS = {
         # arrival, or buys it at that value, or catches the lie (engine.Game, "port authority").
         # Each port's base rate, officer and mood are in the Ports table.
         "customs": {"enabled": True, "home_free": True, "spot_home": 0.05, "spot_shares": 0.05, "bond": True, "drift": 0.005, "range": 0.0125, "min_rate": 0.0, "max_rate": 0.5,
-                    "buy_base": 0.003, "buy_k": 0.3, "buy_exp": 1.8, "buy_cap": 0.9,
+                    "zero_audit": True, "zero_base": 0.10, "zero_step": 0.12, "zero_from": 100000, "buy_base": 0.003, "buy_k": 0.3, "buy_exp": 1.8, "buy_cap": 0.9,
                     "audit_base": 0.006, "audit_k": 0.12, "audit_cap": 0.9,
                     "appetite_power": 1.0, "greed_weight": 0.08, "cunning_weight": 0.08, "rep_audit": 0.8, "rep_buy": 0.6,
                     "mood_swing": 0.15, "fine_mult": 2.0, "caught_rep": 6,
@@ -618,6 +634,12 @@ SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
 # Game 3 review (19 Nov 2026): the swingiest cargoes are calmed once to at most these monthly swings.
 CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
 # Game 5 review (20 Nov 2026): the old shipped Savage storm numbers and what they become (see load_config).
+# Game 7 review (23 Nov 2026): what saved settings move to, once (see the game7_v1 step below).
+GAME7_MARKET = {"wild_calm": True, "wild_calm_vol": 0.12, "runs_pause_reversion": True, "wild_reversion": 0.25,
+                "runs_chance": 0.03, "runs_min": 3, "runs_max": 5, "runs_drift_min": 0.30, "runs_drift_max": 0.60}
+GAME7_RANKS = {"merchant_prince": (5_000_000, 6_000_000), "taipan": (10_000_000, 15_000_000),
+               "tai_pan_china_seas": (25_000_000, 40_000_000), "merchant_lord": (50_000_000, 100_000_000),
+               "hong_master": (100_000_000, 250_000_000)}
 STORM_R5 = {"savage_hull_min": (0.45, 0.25), "savage_hull_max": (0.75, 0.45), "savage_cargo_min": (0.25, 0.15),
             "savage_cargo_max": (0.55, 0.35), "savage_guns": (0.67, 0.33)}
 
@@ -2112,6 +2134,22 @@ def validate(raw):
         if abs(float(bk.get("bank_rate", 0)) - 0.005) < 1e-9:
             bk["bank_rate"] = DEFAULTS["rules"]["bank"]["bank_rate"]
         mk["review4_v1"] = True
+
+    # Game 7 review (23 Nov 2026), once: saved settings take the calm wild-cargo market (rare, strong runs
+    # on a quiet everyday swing) and the respaced top ranks. Rank marks move only from the values they had
+    # (shipped or the ones in play for Game 7); anything set by hand to something else stays.
+    if not mk.get("game7_v1"):
+        for key, value in GAME7_MARKET.items():
+            mk[key] = value
+        for rank in cfg["ranks"]:
+            old_new = GAME7_RANKS.get(rank.get("id"))
+            if old_new and int(rank.get("worth", 0)) == old_new[0]:
+                rank["worth"] = old_new[1]
+        cfg["ranks"].sort(key=lambda r: r["worth"])
+        gf = cfg["rules"]["gift"]              # a Mayor's appetite is 1% of net worth, not 15% (worth_ref)
+        if int(gf.get("worth_ref", 0) or 0) == 10000:
+            gf["worth_ref"] = DEFAULTS["rules"]["gift"]["worth_ref"]
+        mk["game7_v1"] = True
 
     # Game 5 review (20 Nov 2026), once: Savage storms soften from 45-75% hull, 25-55% cargo and 0.67 of the
     # guns to 25-45%, 15-35% and 0.33, and ships limp home at 1 hull instead of foundering. A value set by

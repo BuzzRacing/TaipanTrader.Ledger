@@ -41,7 +41,7 @@ DEFAULTS = {
     # Game 5 review (20 Nov 2026): Savage softened from 45-75% hull, 25-55% cargo and two thirds of the guns.
     "savage_hull_min": 0.25, "savage_hull_max": 0.45, "savage_cargo_min": 0.15, "savage_cargo_max": 0.35,
     "savage_guns": 0.33,
-    "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4,
+    "divert_heavy": 1.0, "divert_savage": 1.0, "candidates": 4, "savage_worst": 0.67,
     "w_price": 0.5, "w_yard": 0.35, "w_standing": 0.15, "ban_penalty": 0.25,
     "patch_max": 0.5,
     # Limp home (Game 5 review): a storm never sinks a ship. One that would founder is left at 1 hull.
@@ -190,12 +190,18 @@ def rank_ports(g, p, origin, dest, goods):
     return out, vals, best
 
 
-def pick_port(ranked, band):
-    """Savage: the worst one with no shipyard (the worst of all if every one has a yard).
+def pick_port(ranked, band, roll=0.0):
+    """Savage: the worst one with no shipyard (the worst of all if every one has a yard), savage_worst of
+    the time; otherwise the next one up the list from it, so a yard is sometimes in reach (Game 7 review,
+    23 Nov 2026: it had been the worst every single time). `roll` is the storm's own dice, 0..1.
     Heavy: the middle one of those that have a shipyard (the middle of all if none does)."""
     if band == "savage":
         pool = [x for x in ranked if not x["yard"]] or ranked
-        return pool[-1]
+        worst = pool[-1]
+        if roll >= float(rules().get("savage_worst", 0.67)) and len(ranked) > 1:
+            i = ranked.index(worst)
+            return ranked[i - 1] if i > 0 else ranked[1]
+        return worst
     pool = [x for x in ranked if x["yard"]] or ranked
     return pool[len(pool) // 2]
 
@@ -332,7 +338,7 @@ def hit(g, p, v, level, risk, news):
     diverted = band != "rough" and own.random() < chance
     if diverted:
         ranked, vals, best = rank_ports(g, p, origin, dest0, p["cargo"])
-        pick = pick_port(ranked, band)
+        pick = pick_port(ranked, band, own.random() if band == "savage" else 0.0)
         dest = v["dest"] = pick["port"]
         yard_port, _d = nearest_yard(p, dest)
         best_port = max(vals, key=lambda k: vals[k]) if vals else dest
