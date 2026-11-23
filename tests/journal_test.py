@@ -59,7 +59,7 @@ def play(seed, years=2):
                 journal.open_game(game, "resumed after a server restart", cfg, None)
             if turn == 5 and i == 0:
                 game.admin("adjust", {"op": "adjust", "pid": order[1], "cash": "50000"})
-                game.admin("price", {"op": "price", "port": "manila", "good": "tea", "value": "400"})
+                game.admin("price", {"op": "price", "port": "manila", "good": "rice", "value": "400"})
             if turn == 7 and i == 2:
                 old, cfg = cfg, copy.deepcopy(cfg)
                 cfg["rules"]["pirates"]["chance"] = 0.6

@@ -557,7 +557,7 @@ def tier_prompt(cid, tier, mood=None):
 LINE_DEFAULTS = {}
 for _who, _keys in {
     "narrator": ["l.arrive", "l.anchor", "l.collectors", "l.collectors_warn", "l.sailed", "l.anchored",
-                 "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.unsail", "m.forced", "m.years"],
+                 "l.ship_lost", "l.cargo_lost", "l.wrecked", "m.unsail", "m.forced"],
     # Silent (owner's decision, 17 Nov 2026): giving orders can turn the month at once, so "Orders given:
     # sail for ..." was heard after the voyage had already begun, over the sea battle or the captain's log.
     # The words still show on screen. Admin > Cast & Voices can hand them back to a reader.
@@ -598,7 +598,7 @@ for _who, _keys in {
     "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_home", "l.customs_empty", "l.customs_paid", "l.customs_bought",
                 "l.customs_caught", "m.customs_clean", "m.customs_over", "m.customs_bought", "m.customs_caught",
                 "m.customs_bribe_refused", "m.customs_buyback", "e.customs_first", "e.customs_bribe_cost",
-                "e.customs_nothing_back"] + [k for k in strings.EN if k.startswith("l.customs_welcome.")]
+                "e.customs_nothing_back"] + [k for k in strings.EN if k.startswith(("l.customs_welcome.", "m.customs_clean."))]
                # A hot tip from a port's own officer (engine _hot_tip), read by the officer of that port.
                + [k for k in strings.EN if k.startswith("l.officer_hot.")]
                # Under the Counter (counter.py): her paid tips, read by the officer of the port the house is in.
@@ -628,6 +628,8 @@ for _k in strings.EN:
 for _k in strings.EN:
     if _k.startswith("gm."):
         LINE_DEFAULTS[_k] = "gamemaster"
+# "Game length set to N years" is said on the Set the terms screen, so Madame Anahit says it, not the First Mate.
+LINE_DEFAULTS["m.years"] = "gamemaster"
 # The comprador's buy and sell banks (trade_text.py): all hers.
 for _k in trade_text.KEYS:
     LINE_DEFAULTS[_k] = "comprador"

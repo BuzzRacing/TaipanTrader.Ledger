@@ -3,7 +3,9 @@
    On arrival in a port the house meets that port's tax officer before anything else. Four buttons
    decide the declaration for the whole hold (19 Nov 2026): Pay Nothing, Pay Less (a hidden share of
    each line's worth, drawn by the engine and shown only in her ruling), Pay Correct and Pay More (both
-   fully safe). No odds are shown at any difficulty; her face and tell react to the button chosen.
+   fully safe). No odds are shown at any difficulty; her face and tell react to the button the captain
+   hovers over (or has chosen): Pay Nothing sly, Pay Less sad/hungry, Pay Correct idle, Pay More happy.
+   The ruling is revealed on her face (happy, or angry when caught) before the desk clears (22 Nov 2026).
    Any line can still be kept sealed in bond.
 
    Portraits belong to the active officer, including the Registrar at the house's home port.
@@ -38,7 +40,8 @@ function hotTipHtml(tp, atDesk) {
 
 const Customs = (() => {
   const pick = {};          // role -> id of the picture last shown
-  let shownState = null;    // the mood her picture is showing now
+  let shownState = null;    // the mood her tell and the desk's colours show now
+  let shownMood = null;     // the expression her picture shows now
   const onScreen = { art: "", greet: "", stage: "" };   // picture URLs showing now, so none repeat
   const stagePick = {};     // visit key -> URL of her picture on the stage
   const srcOf = h => { const m = /src="([^"]+)"/.exec(h || ""); return m ? m[1].replace(/&amp;/g, "&") : ""; };
@@ -52,6 +55,10 @@ const Customs = (() => {
   const PAYS = ["nothing", "less", "correct", "more"];
   const PAY_STATE = { nothing: "hungry", less: "curious", correct: "bored", more: "over" };
   const payOf = () => (PAYS.includes(ui.cxPay) ? ui.cxPay : null);
+  /* The face follows the button under the captain's pointer (or the one chosen): sly for Pay Nothing, sad or
+     hungry for Pay Less, idle for Pay Correct, happy for Pay More. */
+  const FACE_MOOD = { nothing: "sly", less: "sad", correct: "idle", more: "happy" };
+  const feel = () => (PAYS.includes(ui.cxHover) ? ui.cxHover : payOf());
 
   /* A cargo left sealed in bond: no tax and no risk on it, and none of it sold here this visit. */
   const sealedOn = (c, g) => !!c.bond && ui.vals["cxs_" + g] === "1";
@@ -68,10 +75,12 @@ const Customs = (() => {
     const pay = payOf();
     // The cargo she would like best (for "eyeing your {good}"): the dearest line not sealed.
     const hungry = open.slice().sort((a, b) => b.ln.value * (b.ln.appetite || 1) - a.ln.value * (a.ln.appetite || 1))[0] || null;
-    const state = pay ? PAY_STATE[pay] : "bored";
+    const fe = feel();
+    const state = fe ? PAY_STATE[fe] : "bored";
+    const mood = fe ? FACE_MOOD[fe] : "idle";
     // "less" owes less than the correct tax, by a share the player does not see; "due" is what is sure.
     const due = pay === "less" ? null : pay ? tax[pay] : null;
-    return { lines, open, worth, tax, pay, due, state, hungry, more,
+    return { lines, open, worth, tax, pay, due, state, mood, hungry, more,
              total: pay === "less" ? tax.correct : due || 0 };
   }
 
@@ -80,12 +89,29 @@ const Customs = (() => {
   function inMood(i, mood) {
     return i.r.includes(mood) || (i.g || []).some(t => String(t).toLowerCase().split(/[^a-z]+/).includes(mood));
   }
+  /* Which pictures say which mood. A mood is matched by a persona role or a tag word; a missing mood falls
+     back (sly -> hungry, a wolfish smile) and then to any picture of her. */
+  const MOOD_SETS = { sly: ["sly"], sad: ["sad", "hungry"], idle: ["idle", "bored"], happy: ["happy"], over: ["bored"] };
+  const MOOD_FALLBACK = { sly: ["hungry"] };
   function moodPictures(c, state) {
     const list = herPictures(c);
     if (state === "welcome") return list;
-    const [mood, role] = RULING[state] || [state === "over" ? "bored" : state, "taxlady_" + (state === "over" ? "bored" : state)];
-    const matching = list.filter(i => inMood(i, mood) || i.r.includes(role));
-    return matching.length ? matching : list;
+    const pool = (words, roles) => list.filter(i => words.some(w => inMood(i, w)) || roles.some(r => i.r.includes(r)));
+    let m;
+    if (RULING[state]) m = pool([RULING[state][0]], [RULING[state][1]]);
+    else {
+      const words = MOOD_SETS[state] || [state];
+      m = pool(words, words.map(w => "taxlady_" + w));
+      if (!m.length && MOOD_FALLBACK[state]) m = pool(MOOD_FALLBACK[state], MOOD_FALLBACK[state].map(w => "taxlady_" + w));
+    }
+    return m.length ? m : list;
+  }
+  const loaded = new Set();
+  /* Fetch her expression pictures when the desk opens, so a hover swaps at once. */
+  function preload(c) {
+    ["sly", "sad", "idle", "happy"].forEach(st => moodPictures(c, st).forEach(i => {
+      if (i.t !== "video" && !loaded.has(i.u)) { loaded.add(i.u); new Image().src = i.u; }
+    }));
   }
   /* Take turns through a pool: every picture is shown once before any repeats, never the one she wore
      last, never the one the stage is showing. */
@@ -222,7 +248,7 @@ const Customs = (() => {
 
   function declareHtml(c) {
     const n = numbers(c);
-    shownState = n.state;
+    shownState = n.state; shownMood = n.mood;
     const short = Math.max(0, n.total - S.me.cash);
     return `<div class="cx-body">
       ${head(c)}
@@ -243,7 +269,7 @@ const Customs = (() => {
 
   function verdictHtml(c) {
     const res = c.result;
-    const state = res.caught ? "caught" : res.lines.some(r => r.units && !r.back) ? "buyout" : "tax";
+    const state = verdictState(c);
     shownState = state;
     const rows = res.lines.map(r => {
       const g = r.good, name = esc(D.goods[g].name);
@@ -273,6 +299,32 @@ const Customs = (() => {
     </div>`;
   }
 
+  const verdictState = c => (c.result.caught ? "caught" : c.result.lines.some(r => r.units && !r.back) ? "buyout" : "tax");
+  const tl = (k, fb, v) => (T[k] != null ? te(k, v)
+    : esc(String(fb).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] != null ? v[x] : m))));
+
+  /* The reveal: her ruling is shown on her face, big, before anything else. Happy when she is paid or
+     buys your cargo, angry when you are caught. A tap skips it. */
+  const REVEAL_MS = 2600;
+  let revealed = "", revealTimer = null;
+  const revealing = c => !!(c && c.status === "verdict" && c.result && !S.me.ready && revealed !== key(c));
+  function revealHtml(c) {
+    const res = c.result, state = verdictState(c), total = Math.round(res.tax + res.fine);
+    shownState = state;
+    const line = state === "caught" ? tl("customs.reveal.caught", "Caught! {amount}", { amount: money(total) })
+      : state === "buyout" ? tl("customs.reveal.buyout", "She buys your cargo")
+      : total ? tl("customs.reveal.tax", "Tax paid: {amount}", { amount: money(total) }) : tl("customs.reveal.none", "Nothing to pay");
+    return `<div class="veil cx-veil"><section class="modal cx-desk reveal ${state}" role="dialog" aria-label="${esc(c.name)}" data-state="${state}" data-key="${esc(key(c))}" data-act="cx_reveal">
+      <div class="cx-art" aria-hidden="true">${face(c, state, "cl-art-media")}</div>
+      <div class="cx-reveal-banner" role="status"><small>${esc(c.name)}</small><b>${line}</b></div>
+    </section></div>`;
+  }
+  function endReveal(c) {
+    clearTimeout(revealTimer); revealTimer = null;
+    revealed = key(c);
+    render();
+  }
+
   function welcomeHtml(c) {
     shownState = "welcome";
     return `<div class="cx-body">${head(c)}${greeting(c)}${tipHtml(c)}</div>`;
@@ -282,16 +334,18 @@ const Customs = (() => {
     const c = cu();
     if (!c || S.me.ready) return "";
     // Nothing to decide: no stop (auto() lets her speak or flashes the receipt, and clears the desk).
-    if (c.status === "welcome" || plainVerdict(c)) return "";
+    if (revealing(c)) return revealHtml(c);
+    if (c.status === "welcome" || autoVerdict(c)) return "";
     if (ui.cxKey !== key(c)) {            // a new visit: start honest, no sweetener
       ui.cxKey = key(c);
       Object.keys(ui.vals).filter(k => k.startsWith("cx_") || k.startsWith("cxs_")).forEach(k => delete ui.vals[k]);
-      ui.cxBribe = false; ui.cxPay = null; ui.cxTell = null; ui.cxSpoken = null;
+      ui.cxBribe = false; ui.cxPay = null; ui.cxHover = null; ui.cxTell = null; ui.cxSpoken = null;
     }
+    if (c.status === "declare") preload(c);
     const body = c.status === "declare" ? declareHtml(c) : c.status === "verdict" ? verdictHtml(c) : welcomeHtml(c);
     const label = c.status === "declare" ? "customs.declare_btn" : c.status === "verdict" ? "customs.continue" : "customs.welcome_btn";
     return `<div class="veil cx-veil"><section class="modal cx-desk ${c.status}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}" data-key="${esc(key(c))}">
-      <div class="cx-art" aria-hidden="true">${face(c, shownState, "cl-art-media")}</div>
+      <div class="cx-art" aria-hidden="true">${face(c, c.status === "declare" ? shownMood : shownState, "cl-art-media")}</div>
       <div class="cx-panel">${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary", c.status === "declare" && !payOf() && c.lines.some(ln => !sealedOn(c, ln.good)))}</footer></div>
     </section></div>`;
   }
@@ -310,10 +364,10 @@ const Customs = (() => {
     set("short", short ? te("customs.debt", { amount: money(short) }) : "");
     const was = shownState;
     set("tell", esc(tell(c, n)));
-    if (n.state !== was) {
-      shownState = n.state;
-      box.dataset.state = n.state;
-      box.querySelector(".cx-art").innerHTML = face(c, n.state, "cl-art-media");
+    if (n.state !== was) { shownState = n.state; box.dataset.state = n.state; }
+    if (n.mood !== shownMood) {
+      shownMood = n.mood;
+      box.querySelector(".cx-art").innerHTML = face(c, n.mood, "cl-art-media");
       showOnStage();
     }
   }
@@ -348,12 +402,28 @@ const Customs = (() => {
     return true;
   }
 
+  /* Hover (or keyboard focus) on a pay button changes her face; leaving puts it back to the chosen one. */
+  function hover(e, on) {
+    const b = e.target && e.target.closest && e.target.closest(".cx-pay-btn");
+    if (!b || b.disabled) return;
+    if (!on && e.relatedTarget && b.contains(e.relatedTarget)) return;
+    const next = on ? b.dataset.pay : null;
+    if ((ui.cxHover || null) === next) return;
+    ui.cxHover = next;
+    live();
+  }
+  document.addEventListener("mouseover", e => hover(e, true));
+  document.addEventListener("mouseout", e => hover(e, false));
+  document.addEventListener("focusin", e => hover(e, true));
+  document.addEventListener("focusout", e => hover(e, false));
+
   async function click(d) {
     const c = cu();
     if (!c) return false;
     switch (d.act) {
+      case "cx_reveal": endReveal(c); return true;
       case "cx_pay":
-        if (PAYS.includes(d.pay)) ui.cxPay = d.pay;
+        if (PAYS.includes(d.pay)) { ui.cxPay = d.pay; ui.cxHover = d.pay; }
         render();
         return true;
       case "cx_seal":
@@ -465,8 +535,9 @@ const Customs = (() => {
      The server still gets customs_done, so the cargo she bought is sold on and the books settle as before. */
   const otherScreenUp = () => (typeof Battle !== "undefined" && Battle.busy())
     || (typeof Jail !== "undefined" && Jail.busy()) || (typeof Storm !== "undefined" && Storm.busy());
-  const plainVerdict = c => !!(c && c.status === "verdict" && c.result && !c.result.caught
-    && !c.result.lines.some(r => r.units));
+  /* A ruling with nothing left to decide (no cargo bought) clears itself after the reveal, caught or not;
+     the jail's plea, if any, is its own card. */
+  const autoVerdict = c => !!(c && c.status === "verdict" && c.result && !c.result.lines.some(r => r.units));
   let closing = "";              // the visit being cleared now, so a redraw never sends it twice
   let receiptTimer = null;
 
@@ -474,9 +545,13 @@ const Customs = (() => {
   function auto() {
     const c = cu();
     if (!c || S.me.ready || closing === key(c)) return;
+    if (revealing(c)) {                    // her face first; then the desk clears (or the verdict shows)
+      if (!revealTimer) revealTimer = setTimeout(() => endReveal(c), REVEAL_MS);
+      return;
+    }
     if (document.querySelector(".captains-log") || otherScreenUp()) return;   // wait for the log, a fight, a storm
     if (c.status === "welcome") { speak(); release(c, null); }
-    else if (plainVerdict(c)) release(c, receiptOf(c));
+    else if (autoVerdict(c)) release(c, receiptOf(c));
   }
 
   async function release(c, flash) {
@@ -492,15 +567,14 @@ const Customs = (() => {
   /* What the receipt says, taken from the ruling before the desk is cleared. */
   function receiptOf(c) {
     const res = c.result, sealed = res.lines.filter(r => r.outcome === "sealed").length;
-    return { name: c.name, port: c.port, key: key(c), art: face(c, "tax", "cx-rc-img"),
+    return { name: c.name, port: c.port, key: key(c), art: face(c, verdictState(c), "cx-rc-img"), caught: !!res.caught,
              paid: Math.round(res.tax + res.fine), owed: res.owed || 0, rep: res.rep || 0, sealed,
              bribe: res.bribe && res.bribe.taken ? res.bribe.cost : 0 };
   }
 
   function showReceipt(r) {
     hideReceipt();
-    if (r.paid) coin(r.key);
-    const tl = (k, fb, v) => (T[k] == null ? esc(t(fb, v)) : te(k, v));
+    if (r.paid && !r.caught) coin(r.key);
     const chips = [];
     if (r.rep) chips.push(`<span class="${r.rep > 0 ? "up" : "dn"}">${te("customs.standing", { port: esc(portName(r.port)) })} <b>${r.rep > 0 ? "+" : ""}${Math.round(r.rep * 10) / 10}</b></span>`);
     if (r.sealed) chips.push(`<span>${tl("customs.flash.sealed", "{n} kept sealed in bond", { n: r.sealed })}</span>`);
@@ -512,7 +586,7 @@ const Customs = (() => {
     el.setAttribute("role", "status");
     el.innerHTML = `<span class="cx-rc-art" aria-hidden="true">${r.art}</span>
       <div><small>${esc(r.name)}</small>
-      <b>${r.paid ? tl("customs.flash.paid", "Tax paid: {amount}", { amount: money(r.paid) }) : tl("customs.flash.none", "Nothing to pay")}</b>
+      <b>${r.caught ? tl("customs.flash.caught", "Caught! {amount}", { amount: money(r.paid) }) : r.paid ? tl("customs.flash.paid", "Tax paid: {amount}", { amount: money(r.paid) }) : tl("customs.flash.none", "Nothing to pay")}</b>
       ${chips.length ? `<p>${chips.join("")}</p>` : ""}</div>`;
     el.addEventListener("click", hideReceipt);
     document.body.appendChild(el);
@@ -525,5 +599,5 @@ const Customs = (() => {
   }
 
   return { html, live, keep, click, speak, stage, markSpeaking, auto, hideReceipt,
-           isOpen: () => !!(cu() && cu().status !== "welcome" && !plainVerdict(cu()) && !S.me.ready) };
+           isOpen: () => !!(cu() && cu().status !== "welcome" && (revealing(cu()) || !autoVerdict(cu())) && !S.me.ready) };
 })();

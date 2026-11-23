@@ -8,6 +8,8 @@ Nothing is saved and the live game is not touched. Each choice is sent to legend
 it; "Ring the bell" sails the throwaway fleet about until the next chapter opens. No voices (the preview has no
 voice plan), so each line stays up for its reading time; tap to go on sooner."""
 import json
+import argparse
+from urllib.request import urlopen
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import sys
@@ -84,7 +86,7 @@ class Table:
 
 PAGE = '''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Legend preview</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/deck.css">
-<link rel="stylesheet" href="/battle.css"><link rel="stylesheet" href="/legend.css"><link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/battle.css"><link rel="stylesheet" href="/legend.css?v=20261122epic"><link rel="stylesheet" href="/theme.css">
 <link rel="stylesheet" href="/fonts.css"></head><body class="player"><div id="app"></div>
 <script src="/common.js"></script><script src="/media.js"></script>
 <script>const fixture=FIXTURE;T=fixture.strings;Media.setup(fixture.media);
@@ -96,11 +98,27 @@ let S=fixture.state;
 async function refresh(){S=await (await fetch('/state')).json();draw();}
 function draw(){if(S.told){document.querySelector('#app').innerHTML='<p style="padding:3rem;font:1.4rem serif;color:#f1e3c5">The Legend is told. Reload to hear it again.</p>';}Legend.sync();}
 async function act(type,data){const r=await (await fetch('/act',{method:'POST',body:JSON.stringify(data)})).json();await refresh();return r.ok;}
-</script><script src="/legend.js"></script><script>draw();</script></body></html>'''
+</script><script src="/legend.js?v=20261122epic"></script><script>draw();</script></body></html>'''
 
 
 def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--gallery", default="", help="Read an existing game's public artwork catalog")
+    args = ap.parse_args()
     cfg = config.load()
+    gallery = None
+    if args.gallery:
+        with urlopen(args.gallery.rstrip("/") + "/api/info", timeout=10) as response:
+            gallery = json.load(response)
+        for subjects in gallery["media"]["items"].values():
+            for items in subjects.values():
+                for item in items:
+                    for key in ("u", "po"):
+                        if item.get(key, "").startswith("/"):
+                            item[key] = args.gallery.rstrip("/") + item[key]
+        for person in gallery["voice"]["cast"].values():
+            if person.get("portrait", "").startswith("/"):
+                person["portrait"] = args.gallery.rstrip("/") + person["portrait"]
     tables = {}
 
     def table(teller):
@@ -133,7 +151,7 @@ def main():
                 tb = current["t"] = table(teller)
                 live = engine.CFG if hasattr(engine, "CFG") else cfg
                 fixture = json.dumps({"strings": strings.resolve(live), "ports": live["ports"], "goods": live["goods"],
-                                      "cast": cast.public_cast(live), "media": media.public(live), "state": tb.state()},
+                                      "cast": gallery["voice"]["cast"] if gallery else cast.public_cast(live), "media": gallery["media"] if gallery else media.public(live), "state": tb.state()},
                                      ensure_ascii=True).replace("</", "<\\/")
                 return self._send(PAGE.replace("FIXTURE", fixture), "text/html")
             if url.path == "/state":

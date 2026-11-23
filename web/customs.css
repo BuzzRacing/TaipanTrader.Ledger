@@ -270,3 +270,24 @@
 @keyframes cx-rc-out { to { opacity: 0; transform: translate(-50%, .6rem); } }
 @media (prefers-reduced-motion: reduce) { .cx-receipt { animation: none; } }
 @media (max-width: 600px) { .cx-receipt { bottom: 4.6rem; } }
+
+/* Her face follows the pay button under the pointer: a quick fade on each swap (22 Nov 2026). */
+.cx-desk .cx-art .cl-art-media { animation: cxFace .22s ease-out both; }
+@keyframes cxFace { from { opacity: .35; transform: scale(1.015); } }
+
+/* The reveal: her face fills the desk with the ruling on it, then the desk clears. */
+.deck .modal.cx-desk.reveal { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); cursor: pointer; }
+.cx-desk.reveal .cx-art { border: 0; }
+.cx-desk.reveal .cx-art .cl-art-media { object-position: 50% 20%; animation: cxReveal .5s cubic-bezier(.2, .9, .3, 1) both; }
+.cx-desk.reveal.caught .cx-art .cl-art-media { animation: cxReveal .5s cubic-bezier(.2, .9, .3, 1) both, cxShake .45s .15s linear 2; }
+.cx-reveal-banner { position: absolute; inset: auto 0 0 0; z-index: 2; padding: 2.2rem 1.4rem 1.4rem; text-align: center;
+  background: linear-gradient(180deg, transparent, #000c 70%); animation: cxBanner .5s .35s ease-out both; }
+.cx-reveal-banner small { display: block; color: var(--muted); font-size: .85rem; }
+.cx-reveal-banner b { display: block; color: var(--jade-hi); font: 400 clamp(2rem, 6vw, 3.6rem)/1.1 var(--title); text-shadow: 0 2px 14px #000; }
+.cx-desk.reveal.caught .cx-reveal-banner b { color: var(--blood-hi); text-transform: uppercase; }
+.cx-desk.reveal.buyout .cx-reveal-banner b { color: var(--brass-hi); }
+.cx-desk.reveal.caught { box-shadow: 0 0 0 2px var(--blood-hi), 0 0 60px -10px var(--blood-hi); }
+@keyframes cxReveal { from { opacity: 0; transform: scale(1.08); filter: brightness(2); } }
+@keyframes cxBanner { from { opacity: 0; transform: translateY(14px); } }
+@keyframes cxShake { 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+@media (prefers-reduced-motion: reduce) { .cx-desk .cx-art .cl-art-media, .cx-reveal-banner { animation: none !important; } }

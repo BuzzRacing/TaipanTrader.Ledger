@@ -35,6 +35,7 @@ def no_spot(cfg):
     cfg["rules"]["customs"]["spot_home"] = cfg["rules"]["customs"]["spot_shares"] = 0.0
     # The desk's own odds and payouts, before reputation swings (those are checked in standing_test.py).
     cfg["rules"]["standing"]["enabled"] = False
+    cfg["rules"]["forbidden"]["enabled"] = False     # every port trades everything here; tests/forbidden_test.py covers the map
     return cfg
 
 

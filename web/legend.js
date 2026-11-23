@@ -108,7 +108,8 @@ const Legend = (() => {
     screen.innerHTML = `
       <div class="sf-bg" aria-hidden="true"><div class="sf-pic"></div><div class="sf-pic"></div><div class="sf-shade"></div></div>
       <div class="lg-who left" hidden></div><div class="lg-who right" hidden></div>
-      <header class="lg-top"><div class="lg-where"><small></small><b></b><em></em></div><div class="lg-ticks"></div></header>
+      <figure class="lg-hero"><div class="lg-hero-media"></div><figcaption><small></small><h1></h1></figcaption></figure>
+      <header class="lg-top"><div class="lg-ticks" aria-label="${esc(t("legend.tile.chapter"))}"></div><div class="lg-chapter"><span class="lg-chapter-number" aria-hidden="true"></span><div class="lg-where"><small></small><b id="lg-title" role="heading" aria-level="2"></b><em></em></div></div></header>
       <div class="lg-mid"><div class="lg-deed" hidden></div><p class="lg-name"></p><p class="lg-line" aria-live="polite"></p><div class="lg-roads" hidden></div></div>
       <footer class="lg-foot"><p class="lg-hint"></p><div class="lg-dots"></div></footer>
       <div class="sf-result lg-result" hidden></div>
@@ -118,7 +119,7 @@ const Legend = (() => {
     screen.addEventListener("click", e => {
       const b = e.target.closest(".lg-go");
       if (b) { if (!b.disabled) press(b); return; }
-      if (e.target.closest(".sf-card") || gift) return;
+      if (e.target.closest(".sf-card, .lg-epilogue") || gift) return;
       tapOn();
     });
     document.body.appendChild(screen);
@@ -136,19 +137,34 @@ const Legend = (() => {
     if (gift) { gift = null; $(".lg-share").hidden = true; $(".lg-deed").hidden = true; }
     if (!story || story.L.id !== L.id) seat("right", "", "");      // a new chapter: its people have yet to arrive
     story = { key, L, i: 0, t0: 0, timer: null, started: false, lastEnd: 0, mode: "line", armedAt: 0 };
+    screen.classList.add("lg-epic");
     drawTop(L);
+    drawHero(L);
     setBg(sceneUrl(L));
     // a step this page has already told (a reload) goes straight to where it waits
     if (told.has(key) || !L.beats.length) return hold();
     enter();
   }
 
+  const chapterMark = n => ["I", "II", "III", "IV"][n - 1] || String(n);
+  let heroKey = "";
+  function drawHero(L) {
+    const key = [S.game_id || "", L.id].join("|");
+    if (heroKey === key && $(".lg-hero-media").childElementCount) return;
+    heroKey = key;
+    const own = Media.choose("scene", "legend_" + L.tale + "_" + L.chapter_id, "background", { strict: true, slot: "legend-epic" });
+    const item = own || faceItem((L.cast || [])[0] || L.teller, "epic:" + L.id);
+    $(".lg-hero-media").innerHTML = item ? Media.faceMarkup(item, "lg-hero-face") : "";
+    $(".lg-hero small").textContent = t("legend.epic.eyebrow");
+    $(".lg-hero h1").textContent = L.title;
+  }
   function drawTop(L) {
-    $(".lg-where small").innerHTML = te("legend.eyebrow");
-    $(".lg-where b").textContent = L.title;
-    $(".lg-where em").textContent = L.chapter;
+    $(".lg-where small").textContent = L.title;
+    $(".lg-where b").textContent = L.chapter;
+    $(".lg-where em").textContent = t("legend.chapter", { n: L.n, of: L.of });
+    $(".lg-chapter-number").textContent = chapterMark(L.n);
     $(".lg-ticks").innerHTML = Array.from({ length: L.of }, (_, i) =>
-      `<span class="lg-tick${i < L.n - 1 ? " done" : ""}${i === L.n - 1 ? " now" : ""}"></span>`).join("");
+      `<span class="lg-tick${i < L.n - 1 ? " done" : ""}${i === L.n - 1 ? " now" : ""}"${i === L.n - 1 ? ' aria-current="step"' : ""}>${chapterMark(i + 1)}</span>`).join("");
   }
 
   function enter() {
@@ -227,7 +243,8 @@ const Legend = (() => {
     me.mode = L.done ? "reckon" : "roads";
     me.armedAt = Date.now();
     screen.dataset.mode = me.mode;
-    $(".lg-hint").hidden = true;
+    $(".lg-hint").textContent = t("legend.reck.lead");
+    $(".lg-hint").hidden = false;
     $(".lg-dots").innerHTML = "";
     seat("left", L.teller, me.key);
     screen.dataset.speaker = "left";
@@ -244,7 +261,7 @@ const Legend = (() => {
       line.classList.add("asked");
       const roads = $(".lg-roads");
       roads.innerHTML = `<p class="lg-ask">${te("legend.choose")}</p>` + L.choices.map((c, i) =>
-        `<button type="button" class="lg-go lg-road" data-choice="${esc(c.key)}" style="--entry:${i}" disabled>${esc(c.label)}</button>`).join("");
+        `<button type="button" class="lg-go lg-road" data-choice="${esc(c.key)}" style="--entry:${i}" disabled><span class="lg-road-mark" aria-hidden="true">${chapterMark(i + 1)}</span><span>${esc(c.label)}</span><span class="lg-road-arrow" aria-hidden="true">&rarr;</span></button>`).join("");
       roads.hidden = false;
     }
     clearTimeout(armTimer);
@@ -283,31 +300,21 @@ const Legend = (() => {
     });
     const signed = (n, fmt) => (n > 0 ? "+" : n < 0 ? "−" : "") + fmt(Math.abs(n));
     const num = n => Math.round(n).toLocaleString("en-US");
-    const cls = n => (n > 0 ? "up" : n < 0 ? "dn" : "");
-    const tile = (label, value, c) => `<div class="${c || ""}"><small>${label}</small><b>${value}</b></div>`;
-    const list = rows => (rows.length ? rows.map(r => `<li><span>${r}</span></li>`).join("") : `<li class="none">${te("legend.reck.none")}</li>`);
-    const who = castOf(L.teller), face = faceItem(L.teller, "reckon");
-    const good = silver >= 0 && !costs.length, bad = !gains.length && costs.length;
-    return `<figure class="sf-rwho lg-rwho${face ? "" : " nopic"}">${face ? Media.faceMarkup(face, "") : ""}
-        <figcaption class="sf-rline"><header><span>${esc(who.name || "")}${who.title ? " · " + esc(who.title) : ""}</span></header>
-          ${who.catchphrase ? `<p>“${esc(who.catchphrase)}”</p>` : ""}</figcaption></figure>
-      <section class="sf-card lg-card ${good ? "o-good" : bad ? "o-bad" : ""}" role="dialog" aria-modal="true" aria-labelledby="lg-title">
-        <header><p class="eyebrow">${te("legend.reck.eyebrow", { title: L.title })}</p>
-          <div class="sf-rheading"><span class="sf-remblem" aria-hidden="true">${BELL}</span><h2 id="lg-title">${esc(L.chapter)}</h2></div>
-          <p class="sf-rreason">${te("legend.reck.lead")} ${te(L.more ? "legend.reck.more" : "legend.reck.over")}</p></header>
-        <div class="sf-rows">${tile(tl("legend.tile.chapter", "Chapter"), L.n + " / " + L.of, "gold")
-          + tile(tl("legend.tile.silver", "Silver"), signed(silver, money), cls(silver))
-          + tile(tl("legend.tile.cargo", "Cargo"), signed(cargo, num), cls(cargo))
-          + tile(tl("legend.tile.standing", "Standing"), signed(standing, num), cls(standing))}</div>
-        <div class="sf-cols">
-          <div><h3>${te("legend.reck.gain")}</h3><ul class="sf-rcargo">${list(gains)}</ul></div>
-          <div class="sf-rledger"><h3>${te("legend.reck.cost")}</h3><ul class="sf-rcargo">${list(costs)}</ul></div>
-        </div>
-        <footer>
-          <p class="sf-net ${cls(silver)}"><span>${te("legend.reck.net")}</span><b>${signed(silver, money)}</b></p>
-          <button type="button" class="primary lg-go" data-done="1" disabled>${te(L.more ? "legend.btn_done_more" : "legend.btn_done")} <span aria-hidden="true">&rarr;</span></button>
-        </footer>
-      </section>`;
+    const list = rows => rows.map(r => `<li>${r}</li>`).join("");
+    const last = (L.beats || []).slice(-1)[0];
+    const cargoGift = (L.tally || []).find(x => x.kind === "cargo" && x.qty > 0);
+    const gift = cargoGift ? `<strong>${esc(num(cargoGift.qty))} <em>${esc(goodName(cargoGift.good))}</em></strong>`
+      : silver > 0 ? `<strong>${esc(signed(silver, money))}</strong>` : "";
+    const effect = (label, value) => `<div><small>${te(label)}</small><span>${esc(value)}</span></div>`;
+    return `<section class="lg-epilogue" role="dialog" aria-modal="true" aria-labelledby="lg-title">
+      ${last ? `<p class="lg-ending-text">${esc(last.text)}</p>` : ""}
+      <div class="lg-boon"><span class="lg-boon-seal" aria-hidden="true">${BELL}</span><div><h3>${te("legend.reck.gain")}</h3>${gift}
+        <ul>${gains.length ? list(gains) : `<li>${te("legend.reck.none")}</li>`}</ul></div></div>
+      ${costs.length ? `<div class="lg-price"><h3>${te("legend.reck.cost")}</h3><ul>${list(costs)}</ul></div>` : ""}
+      <div class="lg-consequences">${effect("legend.tile.silver", signed(silver, money))}${effect("legend.tile.cargo", signed(cargo, num))}${effect("legend.tile.standing", signed(standing, num))}</div>
+      <p class="lg-continues">${te(L.more ? "legend.reck.more" : "legend.reck.over")}</p>
+      <button type="button" class="lg-go lg-ring" data-done="1" disabled>${te(L.more ? "legend.btn_done_more" : "legend.btn_done")} <span aria-hidden="true">&rarr;</span></button>
+    </section>`;
   }
 
   async function press(btn) {
@@ -322,6 +329,7 @@ const Legend = (() => {
   }
 
   function teardown() {
+    heroKey = "";
     if (story) { clearInterval(story.timer); if (typeof Voice !== "undefined") Voice.drop("legend"); }
     clearTimeout(armTimer);
     story = null;
@@ -363,6 +371,7 @@ const Legend = (() => {
   }
 
   function startShare(H) {
+    screen.classList.remove("lg-epic");
     if (story) { clearInterval(story.timer); if (typeof Voice !== "undefined") Voice.drop("legend"); }
     clearTimeout(armTimer);
     story = null;

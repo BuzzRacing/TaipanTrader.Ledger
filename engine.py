@@ -44,6 +44,10 @@ TEXT = {}     # wording, key -> template
 TOKENS = {}   # names available in every template
 CFG = {}
 HOME = "hongkong"
+# Forbidden cargo (22 Nov 2026): port key -> the cargoes that port does not trade at all. Not a ban: a ban is a
+# crackdown event (dearer, searched, in the news). A forbidden cargo does not exist in that port: it has no
+# price, no market row, no tip, no news, no declaration line, no search. One helper decides: sold_here().
+FORBIDDEN = {}
 
 
 MONEY_CAP = 10 ** 15                    # bank and lender amounts (cargo keeps its 10 million cap)
@@ -171,6 +175,13 @@ def configure(cfg=None, text=None):
     _defaults_rules = _config.DEFAULTS["rules"]
     for _group in ("estates", "contracts"):
         R[_group] = dict(_defaults_rules[_group], **(cfg["rules"].get(_group) or {}))
+    FORBIDDEN.clear()
+    R["forbidden"] = dict(_defaults_rules["forbidden"], **(cfg["rules"].get("forbidden") or {}))
+    if R["forbidden"].get("enabled", True):
+        for _key, _p in cfg["ports"].items():
+            _gone = set(g for g in (_p.get("forbidden") or ()) if g in GOODS)
+            if _gone and len(_gone) < len(GOODS):          # a port always keeps at least one cargo
+                FORBIDDEN[_key] = _gone
     HOME = R["game"]["home"]
     MULT.clear()
     MULT.update(cfg["difficulty"]["presets"][cfg["difficulty"]["level"]])
@@ -183,6 +194,16 @@ def configure(cfg=None, text=None):
     TOKENS.update({"lender": b["lender"], "pirate": b["pirate"], "bank": b["bank"], "winner": b["winner"],
                    "title": b["title_a"] + b["title_b"], "home": PORTS[HOME]["name"],
                    "Contraband": joined, "contraband": joined.lower()})
+
+
+def sold_here(port, good):
+    """True when this port trades the cargo. A cargo the port forbids is simply not there (FORBIDDEN)."""
+    return good not in FORBIDDEN.get(port, ())
+
+
+def goods_of(port):
+    """The cargoes this port trades, in the cargo table's order."""
+    return [g for g in GOODS if sold_here(port, g)]
 
 
 def contraband():
@@ -311,7 +332,8 @@ def normal_price(good):
     spec = GOODS.get(good)
     if not spec or not PORTS:
         return 0.0
-    return sum(spec["base"] * PORTS[k]["mods"].get(good, 1.0) for k in PORTS) / float(len(PORTS))
+    ports = [k for k in PORTS if sold_here(k, good)] or list(PORTS)      # forbidden ports are not in the average
+    return sum(spec["base"] * PORTS[k]["mods"].get(good, 1.0) for k in ports) / float(len(ports))
 
 
 # Wild cargoes (Game 4 review, 20 Nov 2026): Maijiuana (porcelain) runs in trends and swings far wider than
@@ -625,7 +647,8 @@ class Game:
         self.s = s
         s["tax_rates"] = {k: float(p.get("tax_rate", 0.0) or 0.0) for k, p in PORTS.items()}
         for port in PORTS:
-            s["prices"][port] = {g: self._opening(port, g) for g in GOODS}
+            opening = {g: self._opening(port, g) for g in GOODS}       # every cargo draws its dice, as before
+            s["prices"][port] = {g: v for g, v in opening.items() if sold_here(port, g)}
         self._roll_weather()
         s["news"] = [tx("n.opening")]
         return s
@@ -640,17 +663,22 @@ class Game:
         if port not in self.s["crackdown"]:
             return []
         extra = self.s.get("ban_goods", {}).get(port, [])
-        return contraband() + [g for g in extra if g in GOODS and g not in contraband()]
+        return [g for g in contraband() + [g for g in extra if g in GOODS and g not in contraband()]
+                if sold_here(port, g)]
 
     def at_risk(self, port):
         """Cargo customs will seize if they search a ship arriving in this port."""
-        return self.banned(port) if port in self.s["crackdown"] else contraband()
+        return self.banned(port) if port in self.s["crackdown"] else [g for g in contraband() if sold_here(port, g)]
+
+    def _can_ban(self, port):
+        """A crackdown needs something to ban: a port that forbids all the contraband has nothing to say."""
+        return any(sold_here(port, g) for g in list(contraband()) + list(sometimes_contraband()))
 
     def _roll_ban_goods(self, port):
         """Decide which sometimes-contraband goods a new ban in this port also covers."""
-        extra = sometimes_contraband()
+        extra = {g: odds for g, odds in sometimes_contraband().items() if sold_here(port, g)}
         picked = [g for g, odds in extra.items() if self.rng.random() < odds]
-        if not picked and not contraband() and extra:
+        if not picked and not [g for g in contraband() if sold_here(port, g)] and extra:
             # nothing is always contraband, so a ban must cover something
             picked = [self.rng.choice(sorted(extra))]
         self.s.setdefault("ban_goods", {})[port] = picked
@@ -720,7 +748,10 @@ class Game:
         used_ports = set(w["port"] for w in s["windfalls"])
         for kind in kinds:
             ports = [k for k in PORTS if k not in used_ports] or list(PORTS)
-            port, good = rng.choice(ports), rng.choice(list(GOODS))
+            port = rng.choice(ports)
+            good = rng.choice(list(GOODS))
+            if not sold_here(port, good):                 # not on this port's books: another draw, from what it trades
+                good = rng.choice(goods_of(port))
             used_ports.add(port)
             lo, hi = (ev["crash_min"], ev["crash_max"]) if kind == "crash" else (ev["boom_min"], ev["boom_max"])
             lo, hi = min(lo, hi), max(lo, hi)
@@ -773,13 +804,13 @@ class Game:
         s.setdefault("price_hist", [])          # the keepers' price book: month-start prices, newest last
         if "news_meta" not in s:                # games saved before news heat: old headlines start cold
             s["news_meta"] = {n: {"turn": s.get("turn", 0), "heat": 0} for n in s["news"]}
-        s["prices"] = {port: {g: (s["prices"].get(port, {}).get(g) or self._opening_safe(port, g)) for g in GOODS}
+        s["prices"] = {port: {g: (s["prices"].get(port, {}).get(g) or self._opening_safe(port, g)) for g in goods_of(port)}
                        for port in PORTS}
-        s["shocks"] = [sh for sh in s["shocks"] if sh["port"] in PORTS and sh["good"] in GOODS]
-        s["windfalls"] = [w for w in s["windfalls"] if w["port"] in PORTS and w["good"] in GOODS]
+        s["shocks"] = [sh for sh in s["shocks"] if sh["port"] in PORTS and sh["good"] in GOODS and sold_here(sh["port"], sh["good"])]
+        s["windfalls"] = [w for w in s["windfalls"] if w["port"] in PORTS and w["good"] in GOODS and sold_here(w["port"], w["good"])]
         if s.get("phase") != "lobby":
             self._note_history()
-        s["forecasts"] = [f for f in s["forecasts"] if f["port"] in PORTS and f["good"] in GOODS]
+        s["forecasts"] = [f for f in s["forecasts"] if f["port"] in PORTS and f["good"] in GOODS and sold_here(f["port"], f["good"])]
         s["crackdown"] = {k: v for k, v in s["crackdown"].items() if k in PORTS}
         extra = sometimes_contraband()
         s["ban_goods"] = {k: [g for g in v if g in extra] for k, v in (s.get("ban_goods") or {}).items()
@@ -815,7 +846,14 @@ class Game:
             p["depots"] = {port: {"goods": {g: int(q) for g, q in (d.get("goods") or {}).items() if g in GOODS and q > 0},
                                   "level": max(0, int(d.get("level", 0) or 0))}
                            for port, d in depots_of(p).items() if port in PORTS and isinstance(d, dict)}
-            p["known"] = {k: v for k, v in p.get("known", {}).items() if k in PORTS}
+            p["known"] = {k: (dict(v, prices={g: x for g, x in (v.get("prices") or {}).items() if sold_here(k, g)})
+                              if isinstance(v, dict) else v) for k, v in p.get("known", {}).items() if k in PORTS}
+            if isinstance(p.get("tips"), dict):
+                p["tips"] = {k: {g: t for g, t in (v or {}).items() if sold_here(k, g)}
+                             for k, v in p["tips"].items() if k in PORTS}
+            if p.get("hot_tips"):
+                p["hot_tips"] = [t for t in p["hot_tips"] if sold_here(t.get("port"), t.get("good"))
+                                 and sold_here(t.get("home"), t.get("good"))]
             tab = p.get("tab") if isinstance(p.get("tab"), dict) else {}
             tg = tab.get("goods") if isinstance(tab.get("goods"), dict) else {}
             p["tab"] = {k: float(tab.get(k, 0) or 0) for k in self._new_tab() if k != "goods"}
@@ -1070,6 +1108,8 @@ class Game:
     def quote(self, p, good, qty, side):
         """Total silver for buying or selling qty units where the player is."""
         port = p["port"]
+        if not sold_here(port, good):
+            raise GameError(tx("e.unknown_cargo"))       # never reached from a screen: there is no row to press
         mid = self.s["prices"][port][good]
         k = R["market"]["impact"] * qty / GOODS[good]["depth"]
         if side == "buy":
@@ -1117,7 +1157,7 @@ class Game:
         s["purse_lift"] = {}
         for port in PORTS:
             row = s["purse_lift"][port] = {}
-            for g in GOODS:
+            for g in goods_of(port):
                 base = GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)
                 row[g] = round(max(1.0, self._lift(port, g), s["prices"][port][g] / base if base else 1.0), 4)
 
@@ -1147,7 +1187,7 @@ class Game:
         """{good: [left, size]} for the screen (None with no purse rule)."""
         if not R["market"].get("purse_enabled", True):
             return None
-        return {g: [round(self.purse_left(port, g), 2), int(self.purse_size(port, g))] for g in GOODS}
+        return {g: [round(self.purse_left(port, g), 2), int(self.purse_size(port, g))] for g in goods_of(port)}
 
     # ---- selling into a boom uses it up (Game 3 review, 19 Nov 2026) -------------------------------
     def _eat_boom(self, p, good, qty):
@@ -1233,8 +1273,8 @@ class Game:
 
     def dealer_value(self, p, port, good, qty):
         """What qty units would fetch from the dealers in port today (as quote, for any port)."""
-        if port not in PORTS or qty <= 0:
-            return qty * normal_price(good)
+        if port not in PORTS or qty <= 0 or not sold_here(port, good):
+            return qty * normal_price(good)                # a port that forbids it has no price for it
         mid = self.s["prices"][port][good]
         k = R["market"]["impact"] * qty / GOODS[good]["depth"]
         end = mid / (1 + k)
@@ -2231,9 +2271,9 @@ class Game:
         at_home = self.home_free(p, port)
         mids = self.s["prices"][port]
         lines = []
-        for g in sorted(p["cargo"], key=lambda k: -p["cargo"][k] * mids[k]):
+        for g in sorted(p["cargo"], key=lambda k: -p["cargo"][k] * mids.get(k, 0.0)):
             q = int(p["cargo"][g])
-            if q <= 0:
+            if q <= 0 or g not in mids:                 # a cargo this port forbids is not on its books
                 continue
             app = max(0.3, min(3.0, float(PORTS[port]["mods"].get(g, 1.0)) ** c["appetite_power"]))
             lines.append({"good": g, "qty": q, "unit": round(mids[g], 2), "value": int(round(q * mids[g])),
@@ -2310,12 +2350,15 @@ class Game:
         held = [g for g in GOODS if p["cargo"].get(g, 0) > 0] if r.get("held_first", True) else []
         pool = []
         for goods in ([held] if held else []) + [list(GOODS)]:
-            pool = [(port, g) for port in ports for g in goods if age(port, g) is None or age(port, g) >= stale]
+            pool = [(port, g) for port in ports for g in goods
+                    if sold_here(here, g) and sold_here(port, g) and (age(port, g) is None or age(port, g) >= stale)]
             if pool:
                 break
         if not pool:                              # every price is fresh: the oldest one she has
-            oldest = max((age(port, g) or 0) for port in ports for g in (held or list(GOODS)))
-            pool = [(port, g) for port in ports for g in (held or list(GOODS)) if (age(port, g) or 0) == oldest]
+            every = [(port, g) for port in ports for g in (held or list(GOODS)) if sold_here(here, g) and sold_here(port, g)] \
+                or [(port, g) for port in ports for g in GOODS if sold_here(here, g) and sold_here(port, g)]
+            oldest = max((age(port, g) or 0) for port, g in every)
+            pool = [(port, g) for port, g in every if (age(port, g) or 0) == oldest]
         pool.sort()
         rng = random.Random("registrar:{}:{}:{}:{}".format(self.s.get("game_id", ""), p.get("name", ""), seed_firm(p), turn))
         port, g = rng.choice(pool)
@@ -2376,11 +2419,11 @@ class Game:
         home_bans = set(self.banned(here))
         # Cheap here: this month's price against its normal price here; the cheaper half of the cargoes.
         normal = {g: GOODS[g]["base"] * PORTS[here]["mods"].get(g, 1.0) for g in GOODS}
-        goods = sorted((g for g in GOODS if g not in home_bans),
+        goods = sorted((g for g in GOODS if g not in home_bans and sold_here(here, g)),
                        key=lambda g: (s["prices"][here][g] / max(0.01, normal[g]), g))
         goods = goods[:max(1, (len(goods) + 1) // 2)]
         pairs = sorted((port, g) for port in PORTS if port != here for g in goods
-                       if (port, g) not in busy and g not in self.banned(port))
+                       if (port, g) not in busy and g not in self.banned(port) and sold_here(port, g))
         if not pairs:
             return None
         port, g = rng.choice(pairs)
@@ -3159,15 +3202,44 @@ class Game:
     # soft_from, falling in a straight line to 0 at standing 100. web/player.js mirrors gift_gain.
     GIFT_TIERS = ("cool", "gracious", "warm", "delighted")
 
-    def gift_appetite(self, port):
+    def gift_wealth(self, p):
+        """How much bigger her appetite is for a house of this net worth: net worth / worth_ref, never under
+        1 (a small house sees the base numbers) and never over worth_max. 1 when p is None or worth_ref is 0."""
         g = R["gift"]
-        return max(1.0, float(g["appetite"]) * float(PORTS.get(port, {}).get("dues", 1.0) or 1.0))
+        ref = float(g.get("worth_ref", 0) or 0)
+        if p is None or ref <= 0:
+            return 1.0
+        return min(max(1.0, float(g.get("worth_max", 10000))), max(1.0, self.worth(p) / ref))
 
-    def gift_gain(self, port, rep, amount):
+    def gift_appetite(self, port, p=None):
+        g = R["gift"]
+        return max(1.0, float(g["appetite"]) * float(PORTS.get(port, {}).get("dues", 1.0) or 1.0) * self.gift_wealth(p))
+
+    def gift_nice(self, x):
+        """x rounded to a round figure (1, 2 or 5 x a power of ten) so a scaled slider reads cleanly."""
+        x = max(1.0, float(x))
+        mag = 10 ** math.floor(math.log10(x))
+        for m in (1, 2, 5, 10):
+            if x <= m * mag * 1.0001:
+                return int(m * mag)
+        return int(10 * mag)
+
+    def gift_min(self, p):
+        """The smallest gift, grown with net worth like her appetite."""
+        g = R["gift"]
+        f = self.gift_wealth(p)
+        return int(g["min_gift"]) if f <= 1.0 else self.gift_nice(float(g["min_gift"]) * f)
+
+    def gift_step(self, p):
+        g = R["gift"]
+        f = self.gift_wealth(p)
+        return max(1, int(g["step"])) if f <= 1.0 else self.gift_nice(float(g["step"]) * f)
+
+    def gift_gain(self, port, rep, amount, p=None):
         g = R["gift"]
         soft = min(99.0, max(0.0, float(g["soft_from"])))
         headroom = 1.0 if rep <= soft else max(0.0, (100.0 - rep) / (100.0 - soft))
-        return float(g["cap"]) * (1 - math.exp(-max(0.0, amount) / self.gift_appetite(port))) * headroom
+        return float(g["cap"]) * (1 - math.exp(-max(0.0, amount) / self.gift_appetite(port, p))) * headroom
 
     def gift_tier(self, gain):
         g = R["gift"]
@@ -3242,9 +3314,10 @@ class Game:
         """What the Parlour on the Port tab needs: the rule's numbers (the slider works them out live),
         whether she has been called on this visit, and the thanks if she has."""
         g, port = R["gift"], p["port"]
-        appetite = self.gift_appetite(port)
+        appetite = self.gift_appetite(port, p)
         top = int(max(0.0, min(p["cash"], appetite * float(g["max_x"]))))
-        step = max(1, int(g["step"]))
+        step = self.gift_step(p)
+        lo = self.gift_min(p)
         last = p.get("gift_last") if isinstance(p.get("gift_last"), dict) else None
         given = (p.get("tab") or {}).get("gift", 0) > 0
         c, m, d = R["customs"], R["market"], R["dues"]
@@ -3253,7 +3326,7 @@ class Game:
         return {"enabled": bool(g["enabled"]), "given": given, "thanks": last if given and last and last.get("port") == port else None,
                 "greet": greet,
                 "appetite": round(appetite, 2), "cap": float(g["cap"]), "soft_from": float(g["soft_from"]),
-                "min": int(g["min_gift"]), "max": top - top % step if top >= g["min_gift"] else 0, "step": step,
+                "min": lo, "max": top - top % step if top >= lo else 0, "step": step, "wealth": round(self.gift_wealth(p), 2),
                 "tiers": [float(g["gracious_at"]), float(g["warm_at"]), float(g["delighted_at"])],
                 "rep": round(p["rep"][port], 2), "earned": round(self.earned_rep(p, port), 2), "home": port == home_of(p),
                 "rules": {"rep_discount": d["rep_discount"], "rep_audit": c["rep_audit"], "rep_buy": c.get("rep_buy", 0.0),
@@ -3269,15 +3342,15 @@ class Game:
             amount = int(a.get("amount", 0))
         except (TypeError, ValueError):
             raise GameError(tx("e.whole_number"))
-        if amount < int(g["min_gift"]):
-            raise GameError(tx("e.gift_small", amount=money(g["min_gift"])))
-        top = self.gift_appetite(port) * float(g["max_x"])
+        if amount < self.gift_min(p):
+            raise GameError(tx("e.gift_small", amount=money(self.gift_min(p))))
+        top = self.gift_appetite(port, p) * float(g["max_x"])
         if amount > top:
             raise GameError(tx("e.gift_big", amount=money(top)))
         if amount > p["cash"]:
             raise GameError(tx("e.cost"))
         before = p["rep"][port]
-        gain = self.gift_gain(port, before, amount)
+        gain = self.gift_gain(port, before, amount, p)
         tier = self.gift_tier(gain)
         p["cash"] -= amount
         self._gain_rep(p, port, gain, "gift")
@@ -3515,6 +3588,11 @@ class Game:
             raise GameError(tx("e.unknown_cargo"))
         return g
 
+    def _need_here(self, p, g):
+        """A cargo this port forbids is not there to manage: no buying, selling or storing it here."""
+        if not sold_here(p["port"], g):
+            raise GameError(tx("e.unknown_cargo"))
+
     def _trade_detail(self, p, g, q, total, end):
         mid, margin = self.s["prices"][p["port"]][g], self.spread(p, p["port"])
         self._detail = {"good": g, "qty": q, "total": total, "unit": round(total / float(q), 2),
@@ -3557,7 +3635,8 @@ class Game:
 
     # A private lot (rules.standing, decision 10): a house Favoured in a port is now and then offered a lot
     # below market by one of its dealers on arrival, sized and priced by the band's gain roll. It stands
-    # for that visit only and never moves the market.
+    # for that visit only and never moves the market. The discount is fixed at arrival; the price follows the
+    # market (lot_view), so it is always that far below the market price as it stands.
     def _offer_lot(self, p, port):
         p.pop("lot", None)
         st = R.get("standing") or {}
@@ -3584,8 +3663,18 @@ class Game:
             p["name"], PORTS[port]["name"], qty, GOODS[g]["name"], money(unit), pct(off)), p, lot=dict(p["lot"]))
 
     def lot_view(self, p):
+        """The private lot on offer here, priced live. The discount is fixed at arrival, but the price it comes off is
+        the port's market price right now, so the card's "X% below market" stays true after the house trades and the
+        market moves (22 Nov 2026: a lot priced at arrival was 30-50% dearer than the market once the hold was sold)."""
         lot = p.get("lot")
-        return dict(lot) if lot and lot.get("port") == p["port"] and lot.get("qty", 0) > 0 else None
+        if not (lot and lot.get("port") == p["port"] and lot.get("qty", 0) > 0):
+            return None
+        out = dict(lot)
+        mid = (self.s["prices"].get(p["port"]) or {}).get(lot["good"])
+        if mid is not None:
+            out["price"] = round(float(mid), 2)
+            out["unit"] = round(float(mid) * (1 - float(lot.get("off", 0.0))), 2)
+        return out
 
     def _act_buy_lot(self, p, a):
         lot = self.lot_view(p)
@@ -3645,7 +3734,7 @@ class Game:
         keep = {}
         for port, goods in (s.get("pushes") or {}).items():
             for g, (fresh, carry) in goods.items():
-                if port not in PORTS or g not in GOODS:
+                if port not in PORTS or g not in GOODS or g not in s["prices"].get(port, {}):
                     continue
                 back = fade * fresh + carry
                 if back:
@@ -3657,6 +3746,7 @@ class Game:
 
     def _act_buy(self, p, a):
         g, q = self._good(a), self._qty(a)
+        self._need_here(p, g)
         if self.used(p) + q > self.capacity(p):
             raise GameError(tx("e.no_room", free=self.capacity(p) - self.used(p)))
         cost, end = self.quote(p, g, q, "buy")
@@ -3677,6 +3767,7 @@ class Game:
         if a.get("src") in ("wh", "all"):
             return self._sell_store(p, a)
         g, q = self._good(a), self._qty(a)
+        self._need_here(p, g)
         if p["cargo"].get(g, 0) < q:
             raise GameError(tx("e.only_have", qty=p["cargo"].get(g, 0), good=GOODS[g]["name"]))
         held = self.sealed(p, g)
@@ -3707,6 +3798,7 @@ class Game:
         """Sell straight out of this port's warehouse (src "wh"), or everything of one cargo held here,
         hold and warehouse together (src "all", sealed cargo stays aboard), as one lot at the market."""
         g = self._good(a)
+        self._need_here(p, g)
         store = self._store_here(p)
         if store is None:
             raise GameError(tx("e.no_warehouse_here", port=PORTS[p["port"]]["name"]))
@@ -4293,7 +4385,8 @@ class Game:
             else:
                 kind = offer["kind"] = "delivery"
         if kind == "delivery":
-            port, good = rng.choice(others), rng.choice(legal)
+            port = rng.choice(others)
+            good = rng.choice([g for g in legal if sold_here(port, g)] or [g for g in GOODS if sold_here(port, g)])
             share = float(c["hold_share_year" if year else "hold_share_short"])
             share *= self.job_grow(p, share, float(c.get("job_cap_year" if year else "job_cap_short", 1.0)))
             qty = max(int(c["min_qty"]), int(round(hold * share / 10.0)) * 10)
@@ -4613,6 +4706,7 @@ class Game:
             raise GameError(tx("e.no_warehouse_here", port=PORTS[p["port"]]["name"]))
         wh = store["goods"]
         g, q = self._good(a), self._qty(a)
+        self._need_here(p, g)
         if a.get("op") == "store":
             q = min(q, p["cargo"].get(g, 0) - self.sealed(p, g), store["cap"] - sum(wh.values()))
             if q <= 0:
@@ -4935,7 +5029,7 @@ class Game:
         if target and op == "adjust":
             was = {"cash": int(target["cash"]), "bank": int(target["bank"]), "debt": int(math.ceil(target["debt"])),
                    "protect": target["protect"], "port": target["port"]}
-        elif op == "price" and a.get("port") in PORTS and a.get("good") in GOODS:
+        elif op == "price" and a.get("port") in PORTS and a.get("good") in GOODS and sold_here(a["port"], a["good"]):
             was = {"value": round(s["prices"][a["port"]][a["good"]], 2)}
         elif op == "weather":
             was = {"level": s["weather"].get(a.get("region"))}
@@ -5054,6 +5148,8 @@ class Game:
         if op == "price":
             if a.get("port") not in PORTS or a.get("good") not in GOODS:
                 raise GameError("No such port or cargo.")
+            if not sold_here(a["port"], a["good"]):
+                raise GameError("That port forbids this cargo: it has no price there.")
             s["prices"][a["port"]][a["good"]] = number("value", 0.01, 1e9)
             for p in s["players"].values():
                 if p["port"] == a["port"]:
@@ -5364,7 +5460,10 @@ class Game:
                          port=port, goods=goods)
         before = {port: dict(row) for port, row in s["prices"].items()}
         if self._chance(ev["shock_chance"], "shock", "Glut or shortage this month"):
-            port, good = rng.choice(list(PORTS)), rng.choice(list(GOODS))
+            port = rng.choice(list(PORTS))
+            good = rng.choice(list(GOODS))
+            if not sold_here(port, good):
+                good = rng.choice(goods_of(port))
             mult = rng.choice(ev["shock_mults"])
             s["shocks"].append({"port": port, "good": good, "mult": mult,
                                 "turns": rng.randint(ev["shock_min_turns"], ev["shock_max_turns"])})
@@ -5379,7 +5478,7 @@ class Game:
         self._roll_windfalls(news)
         self._land_forecasts(news)
         if (contraband() or sometimes_contraband()) and self._chance(ev["ban_chance"], "ban", "A port bans contraband this month"):
-            open_ports = [k for k in PORTS if not PORTS[k].get("no_ban") and k not in s["crackdown"]]
+            open_ports = [k for k in PORTS if not PORTS[k].get("no_ban") and k not in s["crackdown"] and self._can_ban(k)]
             if open_ports:
                 port = rng.choice(open_ports)
                 s["crackdown"][port] = rng.randint(ev["ban_min_turns"], ev["ban_max_turns"])
@@ -5394,6 +5493,9 @@ class Game:
         runs = self._runs_month()
         for port in PORTS:
             for g, spec in GOODS.items():
+                if not sold_here(port, g):
+                    rng.gauss(0, 0)                       # the dice it would have drawn, so nothing else shifts
+                    continue
                 base = spec["base"] * PORTS[port]["mods"].get(g, 1.0)
                 price = s["prices"][port][g]
                 price += reversion_of(g) * (self._target(port, g) - price)
@@ -5445,6 +5547,9 @@ class Game:
                 if g not in wild:
                     row.pop(g)
             for g in wild:
+                if not sold_here(port, g):
+                    row.pop(g, None)
+                    continue
                 own = random.Random("runs:{}:{}:{}:{}".format(s.get("game_id", ""), s["turn"], port, g))
                 run = row.get(g)
                 if run and int(run.get("left", 0)) > 0:
@@ -6215,6 +6320,8 @@ class Game:
             if port in (dest, origin):
                 continue
             for g in sorted(GOODS):
+                if not sold_here(port, g):
+                    continue
                 usual = GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)
                 ratio = self.s["prices"][port][g] / max(0.01, usual)
                 if best is None or ratio > best[0]:

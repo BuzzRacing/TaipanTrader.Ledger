@@ -166,13 +166,13 @@ def best_run(g, p):
     best = None
     banned_here = set(g.banned(here))
     for good in e.GOODS:
-        if good in banned_here:
+        if good in banned_here or not e.sold_here(here, good):      # a cargo this port forbids is not on her counter
             continue
         top = _max_buy(g, p, good, room, cash)
         if top <= 0:
             continue
         for port in e.PORTS:
-            if port == here or good in g.banned(port):
+            if port == here or good in g.banned(port) or not e.sold_here(port, good):
                 continue
             mid = arrival_mid(g, port, good)
             odds = fight_odds(g, p, here, port)
@@ -212,7 +212,7 @@ def best_hold(g, p):
     it, so there it counts for nothing too."""
     e, r = E(), rules()
     here = p["port"]
-    aboard = {gd: int(q) for gd, q in p["cargo"].items() if int(q) > 0}
+    aboard = {gd: int(q) for gd, q in p["cargo"].items() if int(q) > 0 and e.sold_here(here, gd)}   # this port knows nothing of a forbidden cargo
     if not aboard:
         return None
     sealed = g.sealed(p) or {}
@@ -220,7 +220,7 @@ def best_hold(g, p):
     here_total = 0
     for gd, q in aboard.items():
         q_free = max(0, q - int(sealed.get(gd, 0) or 0))
-        if q_free and gd not in banned_here:
+        if q_free and gd not in banned_here and e.sold_here(here, gd):
             here_total += g.quote(p, gd, q_free, "sell")[0]
     best = None
     for port in e.PORTS:
@@ -229,6 +229,8 @@ def best_hold(g, p):
         odds = fight_odds(g, p, here, port)
         lines, sale, tax = [], 0, 0
         for gd, q in sorted(aboard.items()):
+            if not e.sold_here(port, gd):               # that port does not trade it: no line, no sale
+                continue
             if gd in g.banned(port):
                 lines.append({"good": gd, "qty": q, "sale": 0, "banned": True})
                 continue

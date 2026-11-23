@@ -213,6 +213,14 @@ def main():
     assert p["cargo"][lot["good"]] == have + 3
     assert cash0 - p["cash"] == int(-(-3 * lot["unit"] // 1))
     assert g.s["prices"][p["port"]][lot["good"]] == price0
+    # The lot follows the market (22 Nov 2026): after the house sells and the price falls, the lot is still its
+    # discount below the price as it now stands, never dearer than the market.
+    port, good = p["port"], lot["good"]
+    g.s["prices"][port][good] = price0 * 0.5
+    low = g.view("p1", ["p1"])["me"]["lot"]
+    assert abs(low["price"] - price0 * 0.5) < 0.01 and low["unit"] < low["price"], low
+    assert abs(low["unit"] - low["price"] * (1 - lot["off"])) < 0.01, low
+    g.s["prices"][port][good] = price0
     p["rep"][p["port"]] = 50.0
     g._offer_lot(p, p["port"])
     assert g.view("p1", ["p1"])["me"]["lot"] is None          # only Favoured houses are offered one

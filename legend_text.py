@@ -8,6 +8,7 @@ import legend_tales
 EN = {
     # ---- the story screen ---------------------------------------------------------------------------------
     "legend.eyebrow": "A Legend",
+    "legend.epic.eyebrow": "A Legend of the China Seas",
     "legend.chapter": "Chapter {n} of {of}",
     "legend.choose": "What do you do, Captain?",
     "legend.hint": "Tap to go on",

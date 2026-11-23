@@ -97,3 +97,9 @@ body.manual #app { height: 100%; }
   .mn-book::after { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .mn-turning .mn-page { animation: none; } .mn-tab { transition: none; } }
+
+/* Forbidden cargo table (22 Nov 2026): the Market chapter's list of what each port does not trade. */
+.mn-forbid { border-collapse: collapse; width: 100%; margin: .4rem 0 .2rem; font-size: .92em; }
+.mn-forbid th { text-align: left; font-weight: 600; padding: .22rem .8rem .22rem 0; white-space: nowrap; vertical-align: top; }
+.mn-forbid td { padding: .22rem 0; border-bottom: 1px solid rgba(120, 90, 40, .25); }
+.mn-forbid tr:last-child td { border-bottom: 0; }

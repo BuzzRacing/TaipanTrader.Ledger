@@ -11,7 +11,9 @@ import engine  # noqa: E402
 from engine import Game, GameError, R, PORTS  # noqa: E402
 
 
-def fresh(port="shanghai", rep=34.0, cash=20000.0):
+def fresh(port="shanghai", rep=34.0, cash=20000.0, wealth=False):
+    # wealth=False tests the base rule (her appetite not scaled by net worth); wealth=True switches the scaling on.
+    R["gift"]["worth_ref"] = 10000 if wealth else 0
     game = Game(seed=11)
     pid = game.pid_for_token(game.join("Tester", ""))
     game.act(pid, {"type": "start"})
@@ -184,6 +186,49 @@ def test_her_lines_are_banked_and_never_repeat_too_soon():
                 assert cast.speaker_for(cfg, k) == "mayor" and "$1,800" not in spoken and "+9" not in spoken, (k, spoken)
             else:
                 assert cast.speaker_for(cfg, k) == "", k
+
+
+def test_appetite_grows_with_net_worth():
+    # A house worth no more than worth_ref sees the base numbers.
+    game, pid, p = fresh(cash=3000.0, wealth=True)
+    assert game.worth(p) <= R["gift"]["worth_ref"] and game.gift_wealth(p) == 1.0
+    assert game.gift_appetite("shanghai", p) == 1800
+    # A rich house finds everything scaled by net worth / worth_ref: appetite, smallest gift, slider step.
+    game, pid, p = fresh(cash=2000000.0, wealth=True)
+    f = game.worth(p) / R["gift"]["worth_ref"]
+    assert f > 100 and abs(game.gift_wealth(p) - f) < 1e-9
+    assert abs(game.gift_appetite("shanghai", p) - 1800 * f) < 1e-6
+    v = game.view(pid)["me"]["gift"]
+    assert abs(v["appetite"] - 1800 * f) < 0.01 and v["wealth"] == round(f, 2)
+    assert v["min"] >= 100 * f and v["step"] >= 50 * f and v["max"] > v["min"]
+    # The old $1,800 is a pittance to her now; a gift of her scaled appetite buys what 1,800 bought before.
+    assert game.gift_gain("shanghai", 34, 1800, p) < 0.5
+    assert abs(game.gift_gain("shanghai", 34, 1800 * f, p) - game.gift_gain("shanghai", 34, 1800)) < 1e-6
+    try:
+        game.act(pid, {"type": "gift", "amount": 1800})
+        assert False, "a gift under the scaled smallest gift should be refused"
+    except GameError:
+        pass
+    amount = v["min"] * 20
+    game.act(pid, {"type": "gift", "amount": amount})
+    assert p["rep"]["shanghai"] > 34 and p["cash"] == 2000000.0 - amount
+
+
+def test_net_worth_scaling_can_be_capped_or_switched_off():
+    game, pid, p = fresh(cash=2000000.0, wealth=True)
+    R["gift"]["worth_max"] = 5
+    assert game.gift_wealth(p) == 5 and game.gift_appetite("shanghai", p) == 1800 * 5
+    R["gift"]["worth_max"] = 10000
+    R["gift"]["worth_ref"] = 0
+    assert game.gift_wealth(p) == 1.0 and game.gift_appetite("shanghai", p) == 1800
+    R["gift"]["worth_ref"] = 10000
+
+
+def test_scaled_slider_figures_are_round():
+    game, _, _ = fresh()
+    for x in (1, 1.3, 7, 130, 4999, 5000, 5001, 123456):
+        n = game.gift_nice(x)
+        assert n >= x and str(n).strip("0") in ("1", "2", "5"), (x, n)
 
 
 if __name__ == "__main__":

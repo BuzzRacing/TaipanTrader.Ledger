@@ -53,6 +53,8 @@ EN = {
     "man.chapter_soon": "This chapter is still being written. Its persona is here already; the lessons follow.",
     "man.e_seat": "Take your seat in the game first, Captain. The Manual is for captains at the table: open the game on this device, join, then come back to this page.",
     "man.e_gate": "The Manual could not open just now. Try again in a moment.",
+    "man.forbid.title": "Cargoes a port does not trade",
+    "man.forbid.note": "Some ports do not trade some cargoes at all. Nobody there will ever mention it: the cargo is simply not on the market, and it is never a tip, a headline or a line on the tax desk. Cargo you already carry stays in your hold until you reach a port that trades it.",
 
     # ---- tabs, titles, kickers ----
     "man.cover.tab": "Start here", "man.cover.title": "How to win in one page", "man.cover.kicker": "From the First Mate",

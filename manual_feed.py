@@ -25,7 +25,14 @@ def view(game, token):
         return {"ok": False, "seat": True, "error": engine.tx("man.e_seat")}
     me = game.s["players"].get(pid) or {}
     return {"ok": True, "seated": True, "name": me.get("name", ""), "firm": me.get("firm", ""),
-            "chapters": manual_text.chapters()}
+            "chapters": manual_text.chapters(), "forbidden": forbidden_table()}
+
+
+def forbidden_table():
+    """[{port, goods}] for every port that does not trade some cargo (Forbidden Cargo, 22 Nov 2026). It is the
+    only place the game ever says so: outside the game world, in the Manual, never from a port."""
+    return [{"port": engine.PORTS[k]["name"], "goods": [engine.GOODS[g]["name"] for g in engine.GOODS if g in gone]}
+            for k, gone in engine.FORBIDDEN.items() if k in engine.PORTS and gone]
 
 
 def say(game, token, key, family=False):

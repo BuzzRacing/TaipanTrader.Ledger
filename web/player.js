@@ -590,6 +590,7 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "market.all_cargo": "Trade all cargo", "market.all_cargo_lined": "{n} trades lined up", "market.all_cargo_lined_1": "1 trade lined up",
     "market.all_cargo_sell": "Sell everything aboard", "market.all_cargo_tip_lined": "Make every trade lined up on the bars now: sales first, then purchases.",
     "market.all_cargo_tip_sell": "Sell every cargo aboard at this market (anything sealed in bond stays).", "market.all_cargo_done": "{n} trades done.",
+    "market.cancel": "Cancel trade", "market.cancel_none": "Nothing lined up", "market.cancel_tip": "Clear every bar back to what is aboard now. Nothing is bought or sold.",
     "market.pl_tip_up": "Profit of {profit} on this sale, against the {paid} a unit you paid on average.",
     "market.pl_tip_down": "Loss of {profit} on this sale, against the {paid} a unit you paid on average.",
     "dealer.pay": "You pay", "dealer.get": "You get", "dealer.units": "{n} units", "dealer.cut": "Dealer's cut",
@@ -1242,6 +1243,7 @@ function linedUp() {
 function sellAllList() {
   const me = S.me, out = [];
   Object.keys(D.goods).forEach(g => {
+    if (!Number.isFinite(me.prices[g])) return;          // a cargo this port forbids cannot be sold here
     const have = me.cargo[g] || 0, sealed = Math.min(have, (me.bond || {})[g] || 0);
     if (have - sealed > 0) out.push({ g, side: "sell", qty: have - sealed });
   });
@@ -1252,7 +1254,14 @@ function tradeAllCargoButton() {
   const sub = lined.length ? ten("market.all_cargo_lined", lined.length) : te("market.all_cargo_sell");
   const tip = te(lined.length ? "market.all_cargo_tip_lined" : "market.all_cargo_tip_sell");
   return `<button type="button" class="mk-allcargo${lined.length ? " lined" : list.length && !S.me.ready ? " sell" : ""}" data-act="trade_all_cargo" title="${tip}"${list.length && !S.me.ready ? "" : " disabled"}>
-    <b>${te("market.all_cargo")}</b><small>${sub}</small></button>`;
+    <b>${te("market.all_cargo")}</b><small>${sub}</small></button>${cancelTradeButton(lined.length)}`;
+}
+/* CANCEL TRADE (22 Nov 2026): puts every bar back to what is aboard (drops every lined-up trade, buys and
+   sales alike). Nothing is sent to the server. Greyed out while no bar has been moved. */
+function cancelTradeButton(n) {
+  const on = n > 0 && !S.me.ready;
+  return `<button type="button" class="mk-cancel${on ? " lined" : ""}" data-act="trade_cancel" title="${te("market.cancel_tip")}"${on ? "" : " disabled"}>
+    <b>${te("market.cancel")}</b></button>`;
 }
 async function runTrades(list) {
   if (ui.busy || !list.length) return;
@@ -1398,8 +1407,11 @@ function goodsByPrice(keys) {
 function marketTab() {
   const me = S.me;
   const banned = S.crackdown.includes(me.port);
-  const rows = goodsByPrice(Object.keys(D.goods)).map(marketRow).join("");
-  return `<section class="card mk" style="--n:${Object.keys(D.goods).length}">
+  /* Only the cargoes this port trades have a price, so only those have a row. A cargo it forbids is not here
+     at all (Forbidden Cargo, 22 Nov 2026): no row, not even for cargo already aboard. */
+  const here = Object.keys(D.goods).filter(g => Number.isFinite(me.prices[g]));
+  const rows = goodsByPrice(here).map(marketRow).join("");
+  return `<section class="card mk" style="--n:${here.length}">
     <header class="mk-head"><h2>${te("market.title", { port: portName(me.port) })}</h2>
       <span class="mk-hold">${te("market.hold_short", { used: pending().used, cap: me.capacity })}</span>
       <span class="mk-allslot">${tradeAllCargoButton()}</span></header>
@@ -1734,8 +1746,9 @@ function portArrival() {
   const todo = `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>`;
   const mayor = mayorOpen() ? mayorParlour() : "";
   const month = portMonth(!!mayor);
-  if (!hasServices()) return todo + mayor + month;
-  return `<div class="pt-col pt-col-port">${todo}${mayor}${month}</div>
+  // The Parlour takes the full width of the screen (above the columns) so it can be read easily.
+  if (!hasServices()) return mayor + todo + month;
+  return `${mayor}<div class="pt-col pt-col-port">${todo}${month}</div>
     <div class="pt-col pt-col-svc">${portServiceCards()}</div>`;
 }
 
@@ -1794,10 +1807,12 @@ function mayorAmount(gv) {
   const raw = +(ui.vals.gift || 0) || Math.min(gv.max, Math.round(gv.appetite / gv.step) * gv.step);
   return Math.max(gv.min, Math.min(gv.max, raw));
 }
+/* "What another purse would add": $500 for a small house, growing with the slider step (net worth) for a rich one. */
+const mayorBump = gv => Math.max(500, gv.step * 10);
 function mayorNumbers(gv, amount) {
   const s0 = Math.round(gv.rep), gain = mayorGain(gv, gv.rep, amount);
   const s1 = Math.min(100, Math.round(gv.rep + gain)), add = s1 - s0;
-  const more = Math.min(gv.max, amount + 500);
+  const more = Math.min(gv.max, amount + mayorBump(gv));
   const next = more > amount ? mayorGain(gv, gv.rep, more) - gain : 0;
   return { s0, s1, add, tier: mayorTier(gv, gain), next, after: S.me.cash - amount, now: mayorPerks(gv, gv.rep), then: mayorPerks(gv, gv.rep + gain) };
 }
@@ -1826,12 +1841,13 @@ function mayorParlour() {
     }
     const row = (label, value, cls) => `<tr><td>${label}</td><td class="n"><span class="pt-amt ${cls || ""}">${value}</span></td></tr>`;
     return `<section class="card pt-mayor">${head(te("port.mayor.called"))}
+      <div class="mp-body"><div class="mp-left">
       ${th_ ? mayorGauge(th_.from, th_.to, th_.to - th_.from, "grown") : ""}
-      ${th_ ? `<div class="mp-thanks"><span class="mp-lbl">${te("port.mayor.thanks")} · ${te("port.mayor.tier." + th_.tier)}</span><p>“${words}”</p></div>
+      ${th_ ? `<div class="mp-thanks"><span class="mp-lbl">${te("port.mayor.thanks")} · ${te("port.mayor.tier." + th_.tier)}</span><p>“${words}”</p></div></div><div class="mp-right">
       <table class="pt-table">${row(te("port.mayor.paid"), "−" + money(th_.amount), "down")}
         ${row(te("port.mayor.standing", { port }), th_.from + " → " + th_.to, "up")}
         ${row(te("port.mayor.dues"), esc(mayorPerks(gv, gv.rep).dues))}
-        ${row(te("port.mayor.after"), money(me.cash))}</table>` : ""}
+        ${row(te("port.mayor.after"), money(me.cash))}</table>` : ""}</div></div>
       <div class="pt-actions mp-actions"><span class="muted">${te("port.mayor.closed", { port })}</span>
         ${btn(te("port.mayor.back") + ' <span aria-hidden="true">&rsaquo;</span>', "mayor_close", "", "pt-go")}</div></section>`;
   }
@@ -1848,22 +1864,24 @@ function mayorParlour() {
   const amount = mayorAmount(gv), n = mayorNumbers(gv, amount), locked = me.ready;
   const perk = (label, k) => `<tr><td>${te(label)}</td><td class="n" data-mp="now_${k}">${esc(n.now[k])}</td><td class="n up" data-mp="then_${k}">${esc(n.then[k])}</td></tr>`;
   return `<section class="card pt-mayor">${head(te("port.mayor.once"))}${greet}
+    <div class="mp-body"><div class="mp-left">
     ${mayorGauge(n.s0, n.s1, n.add)}
     <div class="mp-gift">
       <div class="mp-gift-head"><label for="mpGift">${te("port.mayor.gift")}</label><output for="mpGift" class="mp-amount" data-mp="amount">${money(amount)}</output></div>
       <input id="mpGift" type="range" class="mk-range pt-range mp-range" data-k="gift" min="${gv.min}" max="${gv.max}" step="${gv.step}" value="${amount}"
         aria-valuetext="${esc(money(amount))}" ${locked ? "disabled" : ""}>
       <div class="mp-ends"><span>${te("port.mayor.end_lo", { amount: money(gv.min) })}</span><span>${te("port.mayor.end_hi", { amount: money(gv.max) })}</span></div>
-    </div>
+    </div></div><div class="mp-right">
     <div class="mp-boxes">
       <div class="mp-box"><span class="mp-lbl">${te("port.mayor.after")}</span><b class="mp-fig" data-mp="after">${money(n.after)}</b>
-        <small data-mp="next">${n.next >= 0.05 ? te("port.mayor.next", { amount: money(500), gain: n.next.toFixed(1) }) : te("port.mayor.next_none")}</small></div>
+        <small data-mp="next">${n.next >= 0.05 ? te("port.mayor.next", { amount: money(mayorBump(gv)), gain: n.next.toFixed(1) }) : te("port.mayor.next_none")}</small></div>
       <div class="mp-box"><span class="mp-lbl">${te("port.mayor.take")}</span><b class="mp-tier" data-mp="tier">${te("port.mayor.tier." + n.tier)}</b>
         <small data-mp="hint">${te("port.mayor.hint." + n.tier)}</small></div>
     </div>
     <table class="pt-table mp-perks"><caption>${te("port.mayor.buys")}</caption>
       ${perk("port.mayor.dues", "dues")}${perk("port.mayor.search", "search")}${perk("port.mayor.buyout", "buyout")}${perk("port.mayor.margin", "margin")}</table>
     ${gv.home ? `<p class="mp-note">${te("port.mayor.home")}</p>` : ""}
+    </div></div>
     <div class="pt-actions mp-actions"><span class="muted">${te("port.mayor.fine")}</span>${close}
       ${btn(te("port.mayor.give", { amount: money(amount) }), "mayor_give", "", "primary mp-give", locked)}</div>
   </section>`;
@@ -1875,7 +1893,7 @@ function mayorLive(range) {
   const amount = Math.max(gv.min, Math.min(gv.max, +range.value)), n = mayorNumbers(gv, amount);
   const set = (k, v) => { const el = card.querySelector(`[data-mp="${k}"]`); if (el) el.textContent = v; };
   set("amount", money(amount)); set("s1", n.s1); set("add", "+" + n.add); set("after", money(n.after));
-  set("next", n.next >= 0.05 ? t("port.mayor.next", { amount: money(500), gain: n.next.toFixed(1) }) : t("port.mayor.next_none"));
+  set("next", n.next >= 0.05 ? t("port.mayor.next", { amount: money(mayorBump(gv)), gain: n.next.toFixed(1) }) : t("port.mayor.next_none"));
   set("tier", t("port.mayor.tier." + n.tier)); set("hint", t("port.mayor.hint." + n.tier));
   ["dues", "search", "buyout", "margin"].forEach(k => set("then_" + k, n.then[k]));
   const bar = card.querySelector('[data-mp="bar"]');
@@ -3380,6 +3398,11 @@ app.addEventListener("click", async e => {
       const list = [{ g: d.good, side: a.side, qty: a.qty }];
       if (askPurse(list, true)) return;
       return runTrades(list);
+    }
+    case "trade_cancel": {
+      Object.keys(ui.vals).filter(k => k.startsWith("t_")).forEach(k => delete ui.vals[k]);
+      ui.purseAsk = null;
+      return render();
     }
     case "trade_all_cargo": {
       const lined = linedUp(), list = lined.length ? lined : sellAllList();

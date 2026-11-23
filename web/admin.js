@@ -368,6 +368,29 @@ function matrixHtml(m) {
       `value="${v == null ? "" : v}" data-m="${m.path}" data-r="${esc(p)}" data-c="${esc(g)}" title="Usual price here: ${money(price)}"></td>`;
   }).join("") + "</tr>").join("");
   return `<section class="card"><h2>${esc(m.title)}</h2><p class="help">${esc(m.help)} Green is cheap there, red is dear. Hover over a cell for the resulting price.</p>
+    <div class="scroll"><table class="matrix"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></section>` +
+    (m.forbid ? forbidHtml(m) : "");
+}
+
+/* Forbidden cargo (22 Nov 2026): a tick means that port does not trade the cargo at all. The warning is only
+   advice: it never blocks a save (the server only insists that a port keeps at least one cargo). */
+function forbidWarn() {
+  const rows = get(CFG, "ports"), goods = get(CFG, "goods"), ports = Object.keys(rows), low = [];
+  Object.keys(goods).forEach(g => {
+    const n = ports.filter(p => !(rows[p].forbidden || []).includes(g)).length;
+    if (n < Math.min(5, ports.length)) low.push(`${esc(goods[g].name)} is traded in only ${n} of ${ports.length} ports`);
+  });
+  return low.length ? `<p class="note bad">Careful: ${low.join("; ")}. It can hardly be sold.</p>` : "";
+}
+function forbidHtml(m) {
+  const rows = get(CFG, m.path), cols = get(CFG, m.cols_from);
+  const colKeys = m.cols_from === "goods" ? goodsByPrice(Object.keys(cols)) : Object.keys(cols);
+  const head = "<th>Port</th>" + colKeys.map(g => `<th class="n">${esc(cols[g].name)}</th>`).join("");
+  const body = Object.keys(rows).map(p => `<tr><td><b>${esc(rows[p].name)}</b></td>` + colKeys.map(g =>
+    `<td class="c"><input type="checkbox" data-fb="${m.path}" data-r="${esc(p)}" data-c="${esc(g)}" ` +
+    `${(rows[p].forbidden || []).includes(g) ? "checked" : ""} title="${esc(rows[p].name)} does not trade ${esc(cols[g].name)}"></td>`).join("") + "</tr>").join("");
+  return `<section class="card"><h2>${esc(m.forbid.title)}</h2><p class="help">${esc(m.forbid.help)}</p>
+    <div id="fbwarn">${forbidWarn()}</div>
     <div class="scroll"><table class="matrix"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></section>`;
 }
 
@@ -618,6 +641,13 @@ function edited(e) {
     if (!ok) return;
     if (raw === "" || n === 1) delete row.mods[d.c]; else row.mods[d.c] = n;
     el.parentNode.className = raw === "" || n === 1 ? "" : n < 1 ? "lo" : "hi";
+  } else if (d.fb) {
+    const row = get(CFG, d.fb)[d.r];
+    const list = (row.forbidden || []).filter(x => x !== d.c);
+    if (el.checked) list.push(d.c);
+    row.forbidden = list;
+    const w = $("#fbwarn");
+    if (w) w.innerHTML = forbidWarn();
   } else if (d.lang) {
     const L = LANGS[lv.code], part = lv.family ? "family" : "strings";
     if (el.value.trim()) L[part][d.lang] = el.value; else delete L[part][d.lang];

@@ -70,7 +70,7 @@ def test_boom_never_lowers_and_crash_never_raises():
 def test_own_price_moves_fade():
     fresh()
     g, pid, p = one_house()
-    port, good = p["port"], "tea"
+    port, good = p["port"], "silk"          # silk sells in every port
     p["ships"] = [g._new_ship("indiaman", guns=0)]
     p["cash"] = 10 ** 9
     mid = g.s["prices"][port][good]

@@ -41,7 +41,7 @@ def rig_run(game, p, good="silk", where=None):
     here = p["port"]
     where = where or next(k for k in PORTS if k != here)
     for port in PORTS:
-        for g in GOODS:
+        for g in list(game.s["prices"][port]):            # only what the port trades has a price
             base = GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)
             game.s["prices"][port][g] = base
     base_here = GOODS[good]["base"] * PORTS[here]["mods"].get(good, 1.0)

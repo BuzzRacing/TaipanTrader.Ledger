@@ -111,6 +111,11 @@ function leftPage(c) {
   for (let i = 0; i < c.how; i++) h += `<li>${esc(t("man." + c.id + ".how." + i))}</li>`;
   h += `</ol><p class="mn-tip"><b>${esc(t("man.win"))}.</b> ${esc(t("man." + c.id + ".win"))}</p>
         <p class="mn-warn"><b>${esc(t("man.watch"))}.</b> ${esc(t("man." + c.id + ".watch"))}</p>`;
+  const fb = (M.book.forbidden || []);
+  if (c.id === "market" && fb.length) {
+    h += `<h3>${esc(t("man.forbid.title"))}</h3><p class="mn-note">${esc(t("man.forbid.note"))}</p>
+      <table class="mn-forbid"><tbody>${fb.map(r => `<tr><th>${esc(r.port)}</th><td>${r.goods.map(esc).join(", ")}</td></tr>`).join("")}</tbody></table>`;
+  }
   return h;
 }
 

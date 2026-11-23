@@ -97,7 +97,7 @@ def test_she_favours_cargo_held_and_ports_not_seen():
 
 def test_every_price_fresh_gives_the_oldest():
     setup(stale_months=6)
-    game, p = anchor()
+    game, p = anchor(cargo=(("silk", 10),))          # silk sells in every port (Manila forbids tea)
     game.s["turn"] = 10
     p["known"] = {k: {"turn": 9, "prices": {}} for k in PORTS if k != "singapore"}
     p["known"]["manila"]["turn"] = 7
@@ -174,8 +174,8 @@ def test_hot_tip_names_a_boom_elsewhere_in_a_cargo_cheap_at_home():
         assert "{" not in tip["text"] and GOODS[tip["good"]]["name"] in tip["text"] and PORTS[tip["port"]]["name"] in tip["text"]
         assert tip["key"].startswith("l.registrar_hot."), tip["key"]
         # cheap at home: in the cheaper half of the cargoes, by price against its normal price here
-        ratio = {g: game.s["prices"][home][g] / (GOODS[g]["base"] * PORTS[home]["mods"].get(g, 1.0)) for g in GOODS}
-        assert sorted(ratio, key=lambda g: (ratio[g], g)).index(tip["good"]) < (len(GOODS) + 1) // 2
+        ratio = {g: game.s["prices"][home][g] / (GOODS[g]["base"] * PORTS[home]["mods"].get(g, 1.0)) for g in game.s["prices"][home]}
+        assert sorted(ratio, key=lambda g: (ratio[g], g)).index(tip["good"]) < (len(ratio) + 1) // 2
         f = game.s["forecasts"][-1]
         assert (f["port"], f["good"], f["pid"]) == (tip["port"], tip["good"], p["id"])
         assert any("hot tip" in line and GOODS[tip["good"]]["name"] in line for line in p["log"])
@@ -280,8 +280,9 @@ def test_a_port_officer_gives_a_hot_tip_away_from_home():
         assert tip["officer"] == cu["officer"] and tip["home"] == port and tip["port"] != port
         assert tip["key"].startswith("l.officer_hot."), tip["key"]
         assert "{" not in tip["text"] and GOODS[tip["good"]]["name"] in tip["text"]
-        ratio = {g: game.s["prices"][port][g] / (GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)) for g in GOODS}
-        assert sorted(ratio, key=lambda g: (ratio[g], g)).index(tip["good"]) < (len(GOODS) + 1) // 2
+        ratio = {g: game.s["prices"][port][g] / (GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0))
+                 for g in game.s["prices"][port]}
+        assert sorted(ratio, key=lambda g: (ratio[g], g)).index(tip["good"]) < (len(ratio) + 1) // 2
         assert game.s["forecasts"][-1]["pid"] == p["id"]
         assert any("hot tip" in line and GOODS[tip["good"]]["name"] in line for line in p["log"])
         assert game.customs_view(p)["tip"]["by"] == "officer"

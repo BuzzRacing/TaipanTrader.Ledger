@@ -416,6 +416,8 @@
    "min_gift": 100,
    "max_x": 5.0,
    "step": 50,
+   "worth_ref": 10000,
+   "worth_max": 10000.0,
    "gracious_at": 3.0,
    "warm_at": 7.0,
    "delighted_at": 11.0,

@@ -94,5 +94,7 @@ const Thresholds = (() => {
   }
   function retry() { failed = false; ensure(); redraw(); }
   function retryBook() { bookFailed = false; loadBook(); redraw(); }
+  /* Her own panel shows who is talking, since the floating speaker card is hidden on these screens. */
+  if (typeof Voice !== "undefined" && Voice.onChange) Voice.onChange(item => document.querySelectorAll(".threshold .persona").forEach(p => p.classList.toggle("speaking", !!item)));
   return {join,lobby,end,clean,retry,retryBook};
 })();

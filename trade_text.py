@@ -270,5 +270,45 @@ for _i, (_wink, _say, _fwink, _fsay) in enumerate(_SOLD_MARIJUANA):
 
 KEYS = list(EN)
 
+# Port Authority, tax paid with nothing wrong: 15 new receipts so the officer stops saying the same one
+# ("too repetitive", owner, 22 Nov 2026). The first ten are suggestive (innuendo, never explicit) and each has its own
+# clean wording for family-friendly screens; the last five are clean on every screen.
+_CUSTOMS_CLEAN_PREFIX = "{tax} on {declared} declared. "
+_CUSTOMS_CLEAN = [
+    ("Paid in full and nothing hidden. I do admire someone with nothing to conceal.",
+     "Paid in full and nothing hidden. A captain with nothing to conceal, how refreshing."),
+    ("Not one false figure. Pity. I had my gloves on.",
+     "Not one false figure. The Port Authority is pleased."),
+    ("Everything in order, Captain. Such a shame. I cleared the desk and everything.",
+     "Everything in order, Captain. The Port Authority has nothing more to ask."),
+    ("You declared it all and paid it on time. I do like someone who finishes what they start.",
+     "You declared it all and paid it on time. I do like a captain who finishes what she starts."),
+    ("Clean hold, clean conscience. I only wish I'd been allowed to look a little closer.",
+     "Clean hold, clean conscience. Nothing for me to find today."),
+    ("Nothing to find, nothing to fine. Come back soon, Captain. I get so bored when I can't be thorough.",
+     "Nothing to find, nothing to fine. Come back soon, Captain."),
+    ("Settled to the last coin. You leave me nothing to chase, and I do so enjoy a chase.",
+     "Settled to the last coin. You leave me nothing to chase, Captain."),
+    ("A full declaration, nothing held back. You do know how to satisfy a Port Authority, Captain.",
+     "A full declaration, nothing held back. The Port Authority is satisfied, Captain."),
+    ("My stamp is warm and my ink is wet, and you've been very good. Off you go, before I forget my duties.",
+     "My stamp is ready and my ink is fresh, and you've been very good. Off you go, Captain."),
+    ("No lies, no fines, no fun. Unless you'd like to go back and lie a little, Captain. I'd search you gladly.",
+     "No lies, no fines, Captain. The Port Authority thanks you for your honesty."),
+    ("Paid and recorded, Captain. The Port Authority thanks you.",) * 2,
+    ("Everything declared, everything paid. A tidy ledger is a pleasure to keep.",) * 2,
+    ("Your papers are in order. Fair winds and good trading, Captain.",) * 2,
+    ("Receipt issued, Captain. Don't spend it all in one port.",) * 2,
+    ("Duty paid in full. Mind the tide on your way out, Captain.",) * 2,
+]
+# loop: clean customs
+for _i, (_wink, _fwink) in enumerate(_CUSTOMS_CLEAN):
+    _k = "m.customs_clean.{}".format(_i)
+    EN[_k] = _CUSTOMS_CLEAN_PREFIX + _wink
+    FAMILY[_k] = _CUSTOMS_CLEAN_PREFIX + _fwink
+    SAY[_k] = _wink
+    SAY_FAMILY[_k] = _fwink
+
+
 # Below this share of what the cargo cost, a sale counts as "at a loss" (a sale about even gets a sale line).
 LOSS_BELOW = 0.98

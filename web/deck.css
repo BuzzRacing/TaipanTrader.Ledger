@@ -1595,7 +1595,15 @@ body.player .pt .pt-actions button.primary { flex: none; display: inline-flex; a
 /* ================================================================ THE MAYOR'S PARLOUR == */
 /* player.js mayorParlour(): opened from Call on the Mayor in Port business; takes At a Glance's place on
    Arrival while the stage shows the port's Mayor. Same Art Bible rules as the rest of the Port screen. */
-.pt-view.pt-arrival:has(> .pt-mayor) { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+/* The Parlour takes the whole width of the Port screen (above the columns) and lays itself out in two
+   columns: the standing gauge and the purse on the left, what the gift buys on the right. */
+.pt-view.pt-arrival > .pt-mayor { grid-column: 1 / -1; padding: 1.1rem 1.4rem 1.2rem; gap: 1rem; }
+.pt-mayor .mp-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem 1.8rem; align-items: start; }
+.pt-mayor .mp-left, .pt-mayor .mp-right { display: flex; flex-direction: column; gap: .9rem; min-width: 0; }
+.pt-mayor .mp-greet { font-size: 1.15rem; }
+.pt-mayor .mp-perks { font-size: 1rem; }
+.pt-mayor .mp-actions { justify-content: flex-end; }
+@container pane (max-width: 760px) { .pt-mayor .mp-body { grid-template-columns: minmax(0, 1fr); } }
 .pt-mayor { display: flex; flex-direction: column; gap: .8rem; border-color: var(--edge-hi) !important;
   background: linear-gradient(115deg, color-mix(in srgb, var(--deck-oxblood) 26%, transparent), var(--glass-2) 55%) !important; }
 .pt-mayor .pt-cardhead { margin-bottom: 0; }
@@ -1830,6 +1838,11 @@ body.player button.mk-all:disabled, body.player button.mk-allcargo:disabled { ba
 body.player button.mk-allcargo { padding: .22rem .8rem; min-height: 0; color: var(--brass-hi); }
 /* Selling the whole hold wears the same oxblood as a row's "Trade all / Sell" (19 Nov 2026). */
 body.player button.mk-allcargo.sell { color: #fff6e3; border-color: var(--blood-hi); background: color-mix(in srgb, var(--deck-oxblood) 55%, transparent); }
+/* Cancel trade (22 Nov 2026): sits right of "Trade all cargo", clears every lined-up bar. */
+body.player button.mk-cancel { padding: .22rem .8rem; min-height: 0; margin-left: .35rem; color: #fff6e3; border-color: var(--blood-hi);
+  background: color-mix(in srgb, var(--deck-oxblood) 55%, transparent); }
+body.player button.mk-cancel b { font: 700 .72rem/1.05 var(--special); letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+body.player button.mk-cancel:disabled { background: transparent; box-shadow: none; border-style: dashed; border-color: var(--edge); color: var(--brass-hi); opacity: .55; }
 body.player button.mk-allcargo.lined { color: #fff6e3; border-color: var(--brass-hi);
   background: linear-gradient(180deg, color-mix(in srgb, var(--deck-brass) 55%, #000 10%), color-mix(in srgb, var(--deck-brass) 30%, #000)); }
 @container pane (max-width: 620px) {

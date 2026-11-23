@@ -7,6 +7,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import engine  # noqa: E402
 from engine import Game, GameError, GOODS, PORTS, SHIPS  # noqa: E402
 import jail  # noqa: E402
 
@@ -22,7 +23,10 @@ def check(game):
         assert all(0 <= v <= 100 for v in p["rep"].values())
     for port in PORTS:
         for g in GOODS:
-            assert game.s["prices"][port][g] > 0
+            if engine.sold_here(port, g):
+                assert game.s["prices"][port][g] > 0
+            else:
+                assert g not in game.s["prices"][port], (port, g)     # a forbidden cargo has no price at all
     json.dumps(game.s)  # must always be saveable
 
 
@@ -93,7 +97,7 @@ def trader_bot(game, pid, rng):
         return
     here = p["port"]
     for g, q in list(p["cargo"].items()):
-        if game.s["prices"][here][g] > GOODS[g]["base"] * 1.05:
+        if g in game.s["prices"][here] and game.s["prices"][here][g] > GOODS[g]["base"] * 1.05:
             try_act(game, pid, {"type": "sell", "good": g, "qty": q})
     if here == "hongkong":
         if p["debt"] > 0 and p["cash"] > 6000:
@@ -108,6 +112,8 @@ def trader_bot(game, pid, rng):
             try_act(game, pid, {"type": "buy_gun", "index": i})
     best = None
     for g, spec in GOODS.items():
+        if g not in game.s["prices"][here]:
+            continue
         ratio = game.s["prices"][here][g] / spec["base"]
         if best is None or ratio < best[1]:
             best = (g, ratio)

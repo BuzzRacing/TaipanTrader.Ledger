@@ -369,7 +369,7 @@ DEFAULTS = {
         # Standing gained = cap x (1 - e^(-gift / appetite)) x headroom, once per visit. Appetite is
         # appetite x the port's harbour dues level; headroom is 1 up to soft_from, falling to 0 at 100.
         "gift": {"enabled": True, "cap": 15, "appetite": 1500, "soft_from": 50, "min_gift": 100,
-                 "max_x": 5, "step": 50, "gracious_at": 3, "warm_at": 7, "delighted_at": 11,
+                 "max_x": 5, "step": 50, "worth_ref": 10000, "worth_max": 10000, "gracious_at": 3, "warm_at": 7, "delighted_at": 11,
                  "greet_cold_below": 40, "greet_warm_from": 70},
         # The Registrar (Mrs. Evelyn Marlowe, cast key "taxlady"), found only in a captain's own home port:
         # she meets the house when it comes home and gives one fresh price from her register
@@ -432,6 +432,8 @@ DEFAULTS = {
         # Admin > Rules > Under the Counter switches it back on.
         "counter": {"enabled": False, "fee_min": 0.10, "fee_max": 0.30, "fee_floor": 25, "min_worth": 150,
                     "risk_loss": 0.4},
+        # Forbidden cargo (22 Nov 2026): off means every port trades every cargo, as before.
+        "forbidden": {"enabled": True},
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
                       "hot_enabled": True, "hot_home_chance": 0.25, "hot_away_chance": 0.1,
                       "hot_every": 3, "hot_lead": 1, "hot_months": 2, "hot_hold": True,
@@ -523,27 +525,29 @@ DEFAULTS = {
                    "seasons": [{"months": [4, 5, 10, 11], "typhoon": 0.15, "squalls": 0.30}]},
     },
     # mods = local price multipliers (below 1 = made here, above 1 = in demand).
+    # forbidden = cargoes this port does not trade at all (Forbidden Cargo, 22 Nov 2026): not a ban, the cargo simply
+    # does not exist there. Admin > Ports > "Forbidden cargo".
     "ports": {
         "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "officer_hongkong", "mood": 0.15, "purse": 1.4,
-                      "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}},
+                      "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}, "forbidden": []},
         "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15, "purse": 1.3,
-                      "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}},
+                      "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}, "forbidden": ["porcelain", "rice"]},
         "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.025, "officer": "officer_nagasaki", "mood": 0.1, "purse": 0.8,
-                      "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}},
+                      "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}, "forbidden": ["opium", "tea"]},
         "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.015, "officer": "officer_manila", "mood": 0.15, "purse": 0.9,
-                      "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}},
+                      "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}, "forbidden": ["arms", "tea"]},
         "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.025, "officer": "officer_foochow", "mood": 0.15, "purse": 0.9,
-                      "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}},
+                      "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}, "forbidden": ["gold", "spices"]},
         "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.02, "officer": "officer_saigon", "mood": 0.5, "purse": 0.8,
-                      "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}},
+                      "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}, "forbidden": ["opium", "gold"]},
         "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.03, "officer": "officer_bangkok", "mood": 0.12, "purse": 0.9,
-                      "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}},
+                      "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}, "forbidden": ["porcelain", "opium"]},
         "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.01, "officer": "officer_singapore", "mood": 0.1, "purse": 1.2,
-                      "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}},
+                      "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}, "forbidden": ["rice", "gold"]},
         "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.035, "officer": "officer_batavia", "mood": 0.1, "purse": 1.0,
-                      "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}},
+                      "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}, "forbidden": ["general", "porcelain"]},
         "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2, "purse": 1.2,
-                      "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}},
+                      "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}, "forbidden": ["arms"]},
     },
     # hold = cargo units; hull = damage it can take; slots = guns it can mount (a cannon takes
     # rules.fleet.cannon_slots of them); cannons = whether her deck can carry cannons at all.
@@ -1218,6 +1222,10 @@ SECTIONS = [
              F("rules.gift.min_gift", "Smallest gift", "int", min=1, max=10**8),
              F("rules.gift.max_x", "Largest gift (x her appetite, never more than the silver on hand)", "num", min=1, max=100, step=0.5),
              F("rules.gift.step", "Slider step", "int", min=1, max=10**6),
+             F("rules.gift.worth_ref", "Net worth that counts as 1x (appetite, smallest gift and slider step grow with net worth / this)", "int",
+               "A house worth this much or less sees the base numbers; a house worth ten times as much finds her appetite, "
+               "smallest gift and slider step ten times bigger. 0 switches it off.", min=0, max=10**10),
+             F("rules.gift.worth_max", "Most her appetite can grow with net worth (x)", "num", min=1, max=10**6, step=1),
              F("rules.gift.gracious_at", "Gracious thanks from (standing gained)", "num",
                "Below this she is Cool. Cool and Gracious thanks are text only.", min=0, max=100, step=0.5),
              F("rules.gift.warm_at", "Warm thanks from (standing gained)", "num",
@@ -1271,6 +1279,12 @@ SECTIONS = [
              _pct("rules.counter.risk_loss", "Share of the profit a pirate fight is reckoned to cost",
                   "Her figure of a tip's worth takes this share of the profit off, times the chance of a fight on "
                   "the way, so a dangerous run must pay more to come top.")]},
+         {"title": "Forbidden cargo (cargoes a port does not trade at all)", "fields": [
+             F("rules.forbidden.enabled", "Ports forbid the cargoes set in Admin > Ports > Forbidden cargo", "bool",
+               "On: a cargo a port forbids does not exist there. No market row, no price, no tip, no news, no tax "
+               "line and no customs search for it, and nothing can be bought, sold or stored in that port. Cargo "
+               "already in the hold just stays aboard. Off: every port trades every cargo. A ban is different: "
+               "that is a crackdown event, and the cargo stays on the market.")]},
          {"title": "The Registrar (Mrs. Marlowe, at each captain's home port)", "fields": [
              F("rules.registrar.enabled", "The Registrar meets each house in its home port with a price tip", "bool",
                "On: a house coming home is met by the Registrar (cast key taxlady) instead of the port's officer, "
@@ -1470,6 +1484,10 @@ SECTIONS = [
                         "bigger, a small one smaller. Selling past it pays far less.", min=0.05, max=20, step=0.05, default=1.0)]},
      ],
      "matrix": {"path": "ports", "sub": "mods", "cols_from": "goods", "title": "Local prices",
+                "forbid": {"title": "Forbidden cargo",
+                           "help": "Tick a cargo a port does not trade at all. In that port it has no price, no market row, "
+                                   "no tip and no news, and nothing can be bought, sold or stored there; cargo already in "
+                                   "the hold just stays aboard. This is not a ban (a ban is a crackdown event)."},
                 "help": "Each cell multiplies the cargo's usual price in that port. Below 1 it is made there and cheap; "
                         "above 1 it is in demand. Blank means 1.", "min": 0.05, "max": 20}},
     {"id": "ships", "title": "Ships", "intro": "What the shipyards sell. A ship type removed during a game is replaced by the shipwreck ship.",
@@ -2029,7 +2047,7 @@ def validate(raw):
                         errors.append("{}: key '{}' must be lower-case letters, digits or _ and start with a letter".format(title, key))
                         continue
                     row = row if isinstance(row, dict) else {}
-                    new = {k: v for k, v in row.items() if k in ("mods",)}
+                    new = {k: v for k, v in row.items() if k in ("mods", "forbidden")}
                     for col in tb["columns"]:
                         if col["key"] not in row and "default" in col:
                             # a column added later: settings saved before it get the shipped value, or the default
@@ -2170,6 +2188,17 @@ def validate(raw):
             elif abs(v - 1.0) > 1e-9:
                 mods[g] = v
         p["mods"] = mods
+        fb = p.get("forbidden")
+        if fb is None:                       # settings saved before Forbidden Cargo get the shipped map
+            fb = (DEFAULTS["ports"].get(key) or {}).get("forbidden", [])
+        if not isinstance(fb, list):
+            errors.append("Forbidden cargo / {}: must be a list of cargoes".format(key))
+            fb = []
+        fb = [g for g in dict.fromkeys(fb) if g in goods]
+        if goods and len(fb) >= len(goods):
+            errors.append("Forbidden cargo / {}: a port must trade at least one cargo".format(key))
+            fb = fb[:-1]
+        p["forbidden"] = fb
     g = cfg["rules"]["game"]
     if cfg["rules"]["start"].get("where") not in ("random", "home"):
         errors.append("Game Setup: 'Where players start' must be random or home")
