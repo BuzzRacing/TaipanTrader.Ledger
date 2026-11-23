@@ -1327,8 +1327,10 @@ body.player .pt-seg button[aria-pressed="true"] { color: var(--deck-night);
 /* ---- Newspaper (20 Nov 2026): Log and News together. The news fills the left column; the right column is
    the weather glass, then this voyage's log and the earlier voyages (21 Nov 2026: the forecast moved off the
    full-width band at the top, and the bans row was dropped from this tab). */
-.pt-view.pt-paper { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "news glass" "news log"; }
-.pt-paper > .pt-newscard { grid-area: news; }
+/* 23 Nov 2026: Arrival and Newspaper share one column split, a third and two thirds (--pt-split). */
+.pt-view { --pt-split: minmax(17rem, 1fr) minmax(0, 2fr); }
+.pt-view.pt-paper { grid-template-columns: var(--pt-split); grid-template-rows: auto 1fr; grid-template-areas: "news glass" "news log"; }
+.pt-paper > .pt-newscard, .pt-paper > .pt-col-news { grid-area: news; }
 .pt-paper > .pt-wxboard { grid-area: glass; }
 .pt-paper > .pt-col-log { grid-area: log; }
 @container pane (max-width: 720px) {
@@ -1366,7 +1368,7 @@ body.player .pt button.pt-voy:hover:not(:disabled) { background: color-mix(in sr
 /* ---- Port services, part of Arrival (20 Nov 2026) */
 /* Arrival has two columns when the port has services: the port (Port business, At a Glance or the Mayor's
    Parlour) on the left, the house's affairs here on the right. One column on narrow panes. */
-.pt-view.pt-arrival:has(> .pt-col) { grid-template-columns: minmax(17rem, .95fr) minmax(0, 1.8fr); align-items: start; }
+.pt-view.pt-arrival:has(> .pt-col) { grid-template-columns: var(--pt-split); align-items: start; }
 .pt-view.pt-arrival > .pt-todo:only-child { grid-column: 1 / -1; }
 @container pane (max-width: 900px) { .pt-view.pt-arrival:has(> .pt-col) { grid-template-columns: minmax(0, 1fr); } }
 .pt-col { display: flex; flex-direction: column; gap: var(--pt-gap); min-width: 0; }
@@ -1379,6 +1381,9 @@ body.player .pt button.pt-voy:hover:not(:disabled) { background: color-mix(in sr
 .pt-col-port .pt-list li > button, .pt-col-port .pt-list li > b { grid-column: 2; justify-self: start; }
 .pt-col-port .pt-list li > b { display: none; }
 body.player .pt .pt-col-port .pt-list li > button.pt-go { min-width: 0; height: 1.8rem; padding: 0 .8rem; font-size: .8rem; }
+/* A long label ("Services in <a long port name>") wraps inside its button instead of running into the next column (23 Nov 2026). */
+body.player .pt .pt-col-port button.pt-go, body.player .pt .pt-col-port .pt-list li > button.pt-go { max-width: 100%; height: auto; min-height: 1.8rem; padding-block: .3rem; line-height: 1.2;
+  white-space: normal; overflow-wrap: anywhere; text-align: left; border-radius: 1rem; }
 .deck .pt .pt-service { container-type: inline-size; min-width: 0; padding: 0; overflow: hidden; border-color: var(--edge-hi); }
 .pt-service.attn { border-left: 3px solid var(--deck-brass); }
 .pt-service.attn.down { border-left-color: var(--deck-oxblood); }

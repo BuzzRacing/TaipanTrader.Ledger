@@ -124,9 +124,9 @@ function brandMark() {
   if ($("#favicon").getAttribute("href") !== url) $("#favicon").href = url;
   const logo = CFG?.graphics?.logo || "";
   const name = [CFG.brand.title_a, CFG.brand.title_b].filter(Boolean).join(" ");
-  $("#glogo").hidden = !logo;
-  $("#gname").hidden = !!logo;
-  $("#gmark").hidden = !!logo;
+  $("#glogo").hidden = true;
+  $("#gname").hidden = false;
+  $("#gmark").hidden = false;
   $("#glogo").alt = name;
   if (logo && $("#glogo").getAttribute("src") !== logo) $("#glogo").src = logo;
 }

@@ -2779,7 +2779,7 @@ class Game:
             return tx("m.customs_over", tax=money(tax_total))
         if choice == "nothing" and open_lines:    # walked a full hold past her for nothing: not the honest line
             return tx("m.customs_nothing")
-        return tx("m.customs_clean", tax=money(tax_total), declared=money(total_declared))
+        return tx(self._trade_say(p, "m.customs_clean"), tax=money(tax_total), declared=money(total_declared))
 
     def _stamp_news(self, admin=False):
         """Give every headline not yet stamped its month and heat (from the headline it was worded from),

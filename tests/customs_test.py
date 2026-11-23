@@ -413,6 +413,22 @@ def main():
     for k in ("customs.pay.nothing", "customs.pay.less", "customs.pay.correct", "customs.pay.more",
               "customs.pay_sub.less", "customs.pay_warn.nothing", "customs.share"):
         assert str(engine.TEXT.get(k, "")).strip(), k
+    # Her clean receipt comes from the bank (trade_text m.customs_clean.N), not the one old line
+    # ("I could get used to you"), and no receipt comes round again until every one has been heard.
+    bank = sorted(k for k in engine.TEXT if k.startswith("m.customs_clean."))
+    assert len(bank) >= 15, bank
+    g, p = arrive(0, "calcutta")
+    assert sorted(g._trade_say(p, "m.customs_clean") for _ in bank) == bank
+    receipts = 0
+    for seed in range(40):
+        g, p = arrive(seed, "calcutta")
+        if not (p.get("customs") and p["customs"]["status"] == "declare"):
+            continue
+        msg = g.act("p1", {"type": "customs_declare", "choice": "correct"}, present=["p1"])
+        assert msg and not msg.startswith("Stamped and sealed"), msg
+        assert (p.get("decks") or {}).get("m.customs_clean", {}).get("last") in bank, p.get("decks")
+        receipts += 1
+    assert receipts > 5, receipts
     print("OK: Port Authority checks passed")
 
 
