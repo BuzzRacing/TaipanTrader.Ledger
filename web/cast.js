@@ -236,7 +236,7 @@
             ${area("quirk", "Quirk", 2)}${area("vice", "Weakness", 2)}${area("secret", "Secret", 2, "Shown only here, on the Admin page.")}
           </div></section>
           <section class="card"><h2>Portrait prompt</h2>
-            <p class="help">Written to the Art Bible and sent directly to the AI farm on .213. Historical prompts may use adult nudity and consensual period-grounded kink; build shared-release art with the Family-friendly rating active.</p>
+            <p class="help">This is the one place her look is edited. It is sent directly to the AI farm on .213, and her identity (everything before her costume: face, age, origin, setting) also carries into her clean, nude, boudoir and wallpaper pictures. The Art Bible only displays it. Historical prompts may use adult nudity and consensual period-grounded kink; build shared-release art with the Family-friendly rating active.</p>
             <textarea data-cf="portrait_prompt" rows="5" class="code">${e(c.portrait_prompt)}</textarea>
             <div class="row"><button type="button" class="cv-generate" data-cvgenerate="1" ${st.generating ? "disabled" : ""}>
               ${st.generating === cid ? "Painting portrait…" : "Generate new portrait"}</button>

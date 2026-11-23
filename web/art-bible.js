@@ -385,14 +385,8 @@
       current: (G.ships || {})[key], apply: setGroup("ships", key), negative: neg,
       notes: "Full vessel silhouette, bow three-quarter view, weather conveys role.",
       prompt: "Full portrait of a historically plausible " + (v.name || key) + " underway in the China Seas, 1860, bow three-quarter view, entire hull and rig visible, purposeful weather and sea state expressing its role, no modern fittings, no crew close-up, no text. " + recipeStyle }));
-    Object.entries(cfg.characters || {}).forEach(([key, v]) => {
-      if (!v || !(v.portrait_prompt || v.portrait)) return;
-      define("cast_" + key, { title: (v.name || key), aspect: "3:4", size: "1536 × 2048 WebP", kicker: v.title || "Cast portrait",
-        current: v.portrait || "", apply: (c, url) => { if (c.characters && c.characters[key]) c.characters[key].portrait = url; },
-        locked: (v.portrait_prompt || "").trim().length < 20 ? "Write this character's portrait prompt under Cast & Voices" : "",
-        notes: "Uses the portrait prompt from Cast & Voices, so the image here is exactly what that character's prompt produces.",
-        prompt: (v.portrait_prompt || "").trim() || "(No portrait prompt yet.)" });
-    });
+    /* Personas are NOT defined here any more (25 Nov 2026). Cast & Voices is the only place a persona is edited, so the
+       Art Bible only shows a read-only sample of the live cast (castGallery below): no saved copies, no generate button. */
 
     LIGHTS.forEach(([light, label, note], i) => define("light_" + (i + 1), { title: label, aspect: "16:9", size: "Mood reference", kicker: "Lighting", negative: neg, notes: note,
       prompt: "Victoria Harbour, Hong Kong, 1860: a three-masted clipper at anchor among junks and lorchas beside a teak wharf stacked with tea chests and silk bales, hills behind, environment only, no foreground character. Lighting: " + light + ". Composition: wide 16:9 with strong depth. No text. " + recipeStyle }));
@@ -405,6 +399,32 @@
       notes: "A wide wallpaper master shot of this tier: the woman dominates a dramatic scene. The persona looks in persona_prompts_v2.py use the same wording.",
       prompt: "An unmistakably adult woman (age 34), a pirate queen in her full glory: a dramatic wide 16:9 wallpaper master shot, alone on the stern deck of her great war junk at night with the harbor fleet glittering below and a storm-lit sky behind her, low heroic camera angle, cinematic depth, lantern light with a strong rim light, hair and silk lifting in the wind, confident direct gaze, hands in frame, original face, pose and garment design. Tone: " + heat + ". " + MASTER_STYLE }));
     define("studio", { title: "Prompt studio preview", aspect: "16:9", size: "From composition", kicker: "Live brief", negative: neg, noAuto: true, prompt: "" });
+  }
+
+  /* The cast, read-only: up to 10 random personas, straight from Cast & Voices (name, title, portrait and the live
+     portrait prompt). Nothing here is saved, generated or edited; change a persona under Cast & Voices. */
+  const GALLERY_SIZE = 10;
+  function castGallery(cfg) {
+    const all = Object.entries((cfg && cfg.characters) || {}).filter(([, v]) => v && (v.portrait || (v.portrait_prompt || "").trim()));
+    const pool = all.filter(([, v]) => v.portrait);
+    const list = (pool.length >= GALLERY_SIZE ? pool : all).slice();
+    for (let i = list.length - 1; i > 0; i--) {   // Fisher-Yates shuffle
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    const tiles = list.slice(0, GALLERY_SIZE).map(([key, v]) => {
+      const name = v.name || key;
+      const art = v.portrait
+        ? `<img src="${e(v.portrait)}" alt="${e(name)}" loading="lazy" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;display:block">`
+        : `<div style="width:100%;aspect-ratio:3/4;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.06)"><small>No portrait yet</small></div>`;
+      return `<article class="ab-rule" style="padding:8px">${art}<h4 style="margin:8px 0 0">${e(name)}</h4>
+        <small>${e(v.title || "")}${v.origin ? " · " + e(v.origin) : ""}${v.age ? " · " + e(v.age) : ""}</small>
+        <details><summary><small>Portrait prompt (live)</small></summary><p style="font-size:.8em">${e((v.portrait_prompt || "").trim() || "(No portrait prompt yet.)")}</p></details></article>`;
+    }).join("");
+    return `<div class="ab-coll"><div class="ab-coll-head"><div><h3>The cast</h3>
+      <p>${list.length ? Math.min(GALLERY_SIZE, list.length) + " of " + all.length + " personas, picked at random, shown exactly as they are in Cast &amp; Voices. Read-only: to change a persona, her prompt or her picture, edit her card under Cast &amp; Voices." : "No personas yet. Add them under Cast &amp; Voices."}</p></div>
+      ${all.length > GALLERY_SIZE ? `<button type="button" class="ab-copy" data-ab-shuffle="1">Show others</button>` : ""}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">${tiles}</div></div>`;
   }
 
   function render(cfg) {
@@ -504,8 +524,8 @@
           <div><h3>Cast direction</h3><ul class="ab-list"><li>Use adult women and men of varied East Asian, South Asian, Southeast Asian, European and mixed heritage appropriate to cosmopolitan trade ports.</li><li>Give each recurring figure a distinct silhouette, face, palette and status signal.</li><li>Favor merchants, captains, financiers, smugglers, performers and officials with agency.</li><li>Pose from intention: negotiating, surveying, concealing, commanding or celebrating—not merely standing near a ship.</li></ul></div>
           <div><h3>Cultural line</h3><ul class="ab-list"><li>No “mystic East” shorthand, racial caricature or generic pan-Asian costume.</li><li>No qipao/cheongsam in 1860 scenes; use Qing-era garments or clearly framed fantasy couture.</li><li>No fake Chinese text. Omit lettering unless a verified inscription is supplied verbatim.</li><li>Do not make every Asian character a servant or every European character the owner.</li></ul></div>
         </div>
-        ${collection("arch", "Character archetypes", "One example per subject in the prompt studio, dressed so wardrobe and silhouette read clearly.", SUBJECTS.map(x => ({ slot: "arch_" + x[0].replace(/-/g, "_"), label: x[1] })))}
-        ${collection("cast", "The cast", "Every recurring character beside the exact portrait prompt from Cast & Voices.", Object.entries(cfg.characters || {}).filter(([k]) => SLOTS["cast_" + k]).map(([k, v]) => ({ slot: "cast_" + k, label: v.name || k })))}
+        ${collection("arch", "Style examples (not cast members)", "Generic wardrobe and silhouette studies for the prompt studio. They are not personas; the real characters are in Cast & Voices.", SUBJECTS.map(x => ({ slot: "arch_" + x[0].replace(/-/g, "_"), label: x[1] })))}
+        <div id="ab-cast-gallery">${castGallery(cfg)}</div>
         <div class="ab-dont"><div><b>Do</b><p>Confident gaze · natural adult anatomy · bare-breasted glamour when chosen · erotic poses with intention · period-plausible kink cues · visible agency · scene motivation</p></div><div><b>Do not</b><p>Minors or age ambiguity · coercion or sexual violence · helpless decoration · cultural fetish stereotype · copied reference faces · plastic anatomy · modern fetishwear</p></div></div>
       </section>
 
@@ -666,6 +686,11 @@
   document.addEventListener("click", event => {
     const t = event.target;
     if (!t.closest || !t.closest("#art-bible, #ab-queue")) return;
+    if (t.closest("[data-ab-shuffle]")) {
+      const box = document.getElementById("ab-cast-gallery");
+      if (box && CUR) box.innerHTML = castGallery(CUR);
+      return;
+    }
     const gen = t.closest("[data-ab-gen]");
     if (gen) return enqueue(gen.dataset.abGen);
     const all = t.closest("[data-ab-genall]");

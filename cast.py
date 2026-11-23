@@ -548,10 +548,12 @@ if _pp:
             _c["portrait_prompt"] = _pp.build(_cid, PORTRAIT_TIER)
 
 
-def tier_prompt(cid, tier, mood=None):
-    """Her prompt at one look (sultry, boudoir, topless, nude, clean) from persona_prompts_v2, else her default."""
+def tier_prompt(cid, tier, mood=None, saved=None):
+    """Her prompt at one look (sultry, boudoir, topless, nude, clean) from persona_prompts_v2, else her default.
+    saved is her portrait prompt as edited on her Cast & Voices card (cfg["characters"][cid]["portrait_prompt"]):
+    her identity is taken from it, so an edit on the card reaches every look. The costume wording stays in code."""
     if _pp and cid in _pp.LOOKS:
-        return _pp.build(cid, tier, mood)
+        return _pp.build(cid, tier, mood, saved=saved)
     return CHARACTERS.get(cid, {}).get("portrait_prompt", "")
 
 LINE_DEFAULTS = {}

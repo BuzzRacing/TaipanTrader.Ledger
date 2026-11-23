@@ -286,21 +286,45 @@ for _k, (_pose, _outfit) in SULTRY.items():
 TAIL["sultry"] = (", romanticized 1860 China Seas glamour photograph, sultry pin-up styling, caught mid-movement, "
                   "shallow depth of field, glossy highlights on bare skin, 3:4 portrait")
 
-def _who(look, tier):
-    """Her identity line. In the clean tier a body-emphasis phrase is softened so a modest costume stays modest."""
-    who = look["who"].format(adult=ADULT)
+def _who(look, tier, identity=None):
+    """Her identity line. In the clean tier a body-emphasis phrase is softened so a modest costume stays modest.
+    identity is her identity as edited in Cast & Voices (see identity_from_prompt); without it the code's own is used."""
+    who = identity or look["who"].format(adult=ADULT)
     return who.replace(" with an imposing bosom", " with an imposing presence") if tier == "clean" else who
 
 
-def build(key, tier="boudoir", mood=None):
-    """A full prompt for one persona. mood is a key of SPICE_MOODS or your own words for her expression."""
+def identity_from_prompt(key, saved):
+    """Her identity as written in her Cast & Voices portrait prompt (25 Nov 2026: the Cast card is the one place a
+    persona is edited). The saved prompt is her default look: "An <identity>, <topless costume>, <light><tail>".
+    Everything between the leading "An " and her costume is her identity, so editing her face, age, origin or
+    setting on the Cast card carries into every look (nude, clean, boudoir, master shots). Returns None, and the
+    code's own identity is used, when the prompt has been rewritten beyond recognition (no costume boundary found,
+    or the adult anchor and age are missing), so a look can never lose its adult anchor."""
+    text = str(saved or "").strip()
+    if key not in LOOKS or not text.startswith("An "):
+        return None
+    cut = text.find(", " + LOOKS[key]["topless"])
+    if cut < 0:
+        cut = text.find(", completely topless")
+    if cut < 0:
+        return None
+    ident = text[3:cut].strip()
+    if len(ident) < 40 or ADULT not in ident or "(age " not in ident:
+        return None
+    return ident
+
+
+def build(key, tier="boudoir", mood=None, saved=None):
+    """A full prompt for one persona. mood is a key of SPICE_MOODS or your own words for her expression.
+    saved is her Cast & Voices portrait prompt; her identity is taken from it (identity_from_prompt)."""
     if tier not in ALL_TIERS:
         raise ValueError("tier must be one of " + ", ".join(ALL_TIERS))
     look = LOOKS[key]
+    ident = identity_from_prompt(key, saved) if saved else None
     if tier == "sultry":      # pose-first: genre, her, her pose, her costume coming undone, then light
-        parts = ["Vintage glamour photograph of an " + _who(look, tier), look["pose"], look["sultry"], look["light"]]
+        parts = ["Vintage glamour photograph of an " + _who(look, tier, ident), look["pose"], look["sultry"], look["light"]]
     else:
-        parts = ["An " + _who(look, tier), look[tier], look["light"]]
+        parts = ["An " + _who(look, tier, ident), look[tier], look["light"]]
     if mood:
         parts.append(SPICE_MOODS.get(mood, mood))
     return ", ".join(parts) + TAIL[tier]
@@ -588,15 +612,17 @@ LOOKS["mayor"]["who"] = ("{adult} Black Swahili woman from Zanzibar (age 47), ta
 
 ALL_TIERS = ("sultry", "boudoir", "topless", "nude", "clean")
 
-def build_master(key, tier="boudoir", mood=None):
-    """A wide 16:9 wallpaper master shot of one persona: her look + her own epic scene. Same ladder as build()."""
+def build_master(key, tier="boudoir", mood=None, saved=None):
+    """A wide 16:9 wallpaper master shot of one persona: her look + her own epic scene. Same ladder as build().
+    saved is her Cast & Voices portrait prompt; her identity is taken from it (identity_from_prompt)."""
     if tier not in ALL_TIERS:
         raise ValueError("tier must be one of " + ", ".join(ALL_TIERS))
     look = LOOKS[key]
+    ident = identity_from_prompt(key, saved) if saved else None
     if tier == "sultry":
-        parts = ["An " + _who(look, tier), look["pose"], look["sultry"], MASTER[key], look["light"]]
+        parts = ["An " + _who(look, tier, ident), look["pose"], look["sultry"], MASTER[key], look["light"]]
     else:
-        parts = ["An " + _who(look, tier), look[tier], MASTER[key], look["light"]]
+        parts = ["An " + _who(look, tier, ident), look[tier], MASTER[key], look["light"]]
     if mood:
         parts.append(SPICE_MOODS.get(mood, mood))
     return ", ".join(parts) + MASTER_TAIL[tier]

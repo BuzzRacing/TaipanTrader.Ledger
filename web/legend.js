@@ -47,12 +47,14 @@ const Legend = (() => {
   const tl = (key, fb, vars) => (T[key] == null ? esc(t(fb, vars)) : te(key, vars));
 
   /* ---- pictures ----------------------------------------------------------------------------------- */
-  /* Her picture: a speaking one while she talks if she has one, else any portrait; a fresh draw per line. */
+  /* Her picture: drawn from every picture and clip she has in the library, whatever its role (portrait, speaking,
+     sly...), as the Captain screen's speaker is. fresh: a new draw, never the one showing now (22 Nov 2026: the
+     Legend's picture changes with every line; before, one was drawn for the chapter and stayed). */
   /* A clip of her is chosen as often as the persona rule's video chance allows (video: true, as the Captain
-     screen asks); "Images only" leaves the clips out. Returns the markup: a clip, a picture, or her cast portrait. */
-  function faceItem(cid, seed) {
-    const item = Media.choose("persona", cid, "speaking", { video: true, slot: "legend-" + cid + "-" + seed })
-      || Media.choose("persona", cid, "portrait", { video: true, slot: "legend-" + cid });
+     screen asks); "Images only" leaves the clips out. Returns the item: a clip, a picture, or her cast portrait. */
+  function faceItem(cid, slot, fresh) {
+    if (!cid) return null;
+    const item = Media.choose("persona", cid, "", { video: true, fresh: !!fresh, slot: "legend-" + slot });
     if (item) return item;
     const portrait = castOf(cid).portrait;
     return portrait ? { t: "image", u: portrait, id: "cast-portrait" } : null;
@@ -91,7 +93,7 @@ const Legend = (() => {
     if (!cid) { el.hidden = true; el.innerHTML = ""; seats[side] = ""; return; }
     if (seats[side] === cid) return;
     seats[side] = cid;
-    const who = castOf(cid), face = faceItem(cid, seed);
+    const who = castOf(cid), face = faceItem(cid, "seat-" + cid, true);
     el.style.setProperty("--who", who.color || "var(--deck-brass)");
     el.classList.toggle("nopic", !face);
     el.innerHTML = `${face ? `<div class="sf-frame">${Media.faceMarkup(face, "sf-face on")}</div>` : ""}
@@ -136,7 +138,8 @@ const Legend = (() => {
     const key = keyOf(L);
     if (gift) { gift = null; $(".lg-share").hidden = true; $(".lg-deed").hidden = true; }
     if (!story || story.L.id !== L.id) seat("right", "", "");      // a new chapter: its people have yet to arrive
-    story = { key, L, i: 0, t0: 0, timer: null, started: false, lastEnd: 0, mode: "line", armedAt: 0 };
+    const opening = !story || story.L.id !== L.id;                 // the chapter's first lines on this screen
+    story = { key, L, i: 0, t0: 0, timer: null, started: false, lastEnd: 0, mode: "line", armedAt: 0, opening };
     screen.classList.add("lg-epic");
     drawTop(L);
     drawHero(L);
@@ -147,16 +150,51 @@ const Legend = (() => {
   }
 
   const chapterMark = n => ["I", "II", "III", "IV"][n - 1] || String(n);
-  let heroKey = "";
+  /* The big picture on the left. It follows the story: the chapter's own scene as the chapter opens, then
+     whoever is speaking, in a fresh picture of hers for every line (22 Nov 2026). Two pictures crossfade. */
+  let heroKey = "", heroId = "";
   function drawHero(L) {
     const key = [S.game_id || "", L.id].join("|");
-    if (heroKey === key && $(".lg-hero-media").childElementCount) return;
-    heroKey = key;
-    const own = Media.choose("scene", "legend_" + L.tale + "_" + L.chapter_id, "background", { strict: true, slot: "legend-epic" });
-    const item = own || faceItem((L.cast || [])[0] || L.teller, "epic:" + L.id);
-    $(".lg-hero-media").innerHTML = item ? Media.faceMarkup(item, "lg-hero-face") : "";
+    if (heroKey !== key) { heroKey = key; heroId = ""; $(".lg-hero-media").innerHTML = ""; }
     $(".lg-hero small").textContent = t("legend.epic.eyebrow");
     $(".lg-hero h1").textContent = L.title;
+  }
+  const heroScene = L => Media.choose("scene", "legend_" + L.tale + "_" + L.chapter_id, "background", { strict: true, slot: "legend-epic" });
+  function heroShow(item) {
+    const box = $(".lg-hero-media");
+    if (!item) return false;
+    const id = item.id + "|" + item.u;
+    if (id === heroId && box.childElementCount) return true;
+    heroId = id;
+    const old = Array.from(box.children);
+    box.insertAdjacentHTML("beforeend", Media.faceMarkup(item, "lg-hero-face lg-wait"));
+    const el = box.lastElementChild;
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      el.classList.remove("lg-wait");
+      if (old.length) el.classList.add("lg-in");
+      setTimeout(() => old.forEach(o => o.remove()), 750);
+    };
+    if (el.tagName === "IMG") { if (el.complete && el.naturalWidth) go(); else el.addEventListener("load", go, { once: true }); }
+    else el.addEventListener("loadeddata", go, { once: true });
+    setTimeout(go, 1500);
+    return true;
+  }
+  /* The picture for the line now being said. */
+  function heroLine(b) {
+    const L = story.L;
+    if (story.opening && story.i === 0 && heroShow(heroScene(L))) return;
+    if (heroShow(faceItem(b.who, "hero-" + b.who, true))) return;
+    heroRest(L);
+  }
+  /* Nothing on yet (a reload that lands on the question, or a speaker with no picture): the storyteller, else
+     the Legend's first character, else the chapter's scene. */
+  function heroRest(L) {
+    if ($(".lg-hero-media").childElementCount) return;
+    const first = (L.cast || [])[0];
+    heroShow(faceItem(L.teller, "hero-" + L.teller, false)) || heroShow(faceItem(first, "hero-" + first, false)) || heroShow(heroScene(L));
   }
   function drawTop(L) {
     $(".lg-where small").textContent = L.title;
@@ -221,6 +259,7 @@ const Legend = (() => {
     seat("left", L.teller, story.key);
     if (b.side === "right") seat("right", b.who, story.key);
     screen.dataset.speaker = b.side;
+    heroLine(b);
     const who = castOf(b.who);
     const name = $(".lg-name");
     name.textContent = who.name || "";
@@ -248,6 +287,7 @@ const Legend = (() => {
     $(".lg-dots").innerHTML = "";
     seat("left", L.teller, me.key);
     screen.dataset.speaker = "left";
+    heroRest(L);
     if (L.done) {
       const result = $(".lg-result");
       result.innerHTML = reckonHtml(L);
@@ -329,7 +369,7 @@ const Legend = (() => {
   }
 
   function teardown() {
-    heroKey = "";
+    heroKey = ""; heroId = "";
     if (story) { clearInterval(story.timer); if (typeof Voice !== "undefined") Voice.drop("legend"); }
     clearTimeout(armTimer);
     story = null;

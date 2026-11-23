@@ -10,11 +10,15 @@ Visibility follows harbor_view.level() (Harbor View decision 1):
   public  rivals at the table: only what anyone looking at the harbour could see. Worth, port, ship count and
           hull wear, the voyages sailed, storms and fights, and the news. Never silver, bank, debt, cargo or
           prices. Blocks that need more are left out and the screen stamps them "locked until the finale".
+
+The Command Center (22 Nov 2026) adds: "context" (the context bar, below), "weather" (public) and, for an open
+solo game only, "atlas", "routes", "trade", "fleet", "treasury" and "career" from dashboard_suites.py.
 """
 import os
 import threading
 import time
 
+import dashboard_suites
 import engine
 import harbor_view
 import journal
@@ -116,6 +120,35 @@ def _ghost(game, gid, pid, months_total):
     return val
 
 
+def context(game, lvl, rows):
+    """The Command Center's context bar (plan 4.2): the few facts every tab shows. Table-wide facts are public:
+    the date, the months left, each sea's forecast and how often a forecast holds. The "captain" block is the
+    one house's own position and is sent only for an open solo game; with rivals at the table it is None.
+    Reads only; rows are the houses view() has already built from this same snapshot."""
+    s = game.s
+    total = int(s.get("years") or 0) * 12
+    seas = {r: int((s.get("weather") or {}).get(r, 0)) for r in engine.REGIONS}
+    worst = max(seas, key=lambda r: seas[r]) if seas else None
+    out = {"date": engine.date_label(s["turn"]), "turn": s["turn"], "phase": s["phase"],
+           "months_total": total, "months_left": max(0, total - s["turn"]) if total else None,
+           "seas": seas, "worst_sea": {"region": worst, "level": seas[worst]} if worst else None,
+           "forecast_accuracy": float((engine.R.get("weather") or {}).get("forecast_accuracy", 1.0)),
+           "houses": len(rows), "captain": None}
+    if lvl == "open" and len(s["order"]) == 1 and s["phase"] != "lobby" and rows:
+        pid = s["order"][0]
+        p, row = s["players"][pid], rows[0]
+        months, hull = row["months"], row["hull"]
+        out["captain"] = {
+            "id": pid, "firm": row["firm"], "port": p.get("port"), "dest": p.get("dest") or None,
+            "at_sea": s["phase"] == "sea", "worth": row["worth"],
+            # this month so far: worth now less the worth the last month closed on (None in the first month)
+            "worth_change": months[-1]["worth"] - months[-2]["worth"] if len(months) >= 2 else None,
+            "rank": game.commissioned_rank(p)["title"],
+            "fleet": {"ships": len(hull), "crippled": sum(1 for sh in hull if sh["crippled"]),
+                      "hull": round(sum(sh["hull"] for sh in hull) / len(hull), 2) if hull else None}}
+    return out
+
+
 def view(game, present=()):
     s = game.s
     lvl = harbor_view.level(game)
@@ -140,6 +173,15 @@ def view(game, present=()):
                      "lanes": [{"origin": r["origin"], "dest": r["dest"], "count": r["count"],
                                 "wrecks": r["wrecks"]} for r in stats._routes(h)] if h else []})
     out["houses"] = rows
+    out["context"] = context(game, lvl, rows)
+    # The Command Center's suites (dashboard_suites.py). The weather glass is public. One Captain's own position
+    # (atlas, routes, trade, fleet, treasury, career) is built only for an open solo game: with rivals at the table
+    # the builder is not called at all, so those sections cannot be in the response.
+    out["weather"] = dashboard_suites.weather(game)
+    read = stats._read(gid) if gid else None
+    out["weather"]["history"] = dashboard_suites.weather_history(game, read["events"] if read else None, lvl)
+    if lvl == "open" and len(s["order"]) == 1 and s["phase"] != "lobby":
+        out.update(dashboard_suites.private(game, s["order"][0]))
 
     months_total = int(s.get("years") or 0) * 12 or max([len(r["months"]) for r in rows] or [0])
     if open_ and len(s["order"]) == 1 and s["phase"] != "lobby":

@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="/wordmark.css?v=20261118text1">
 <link rel="stylesheet" href="/ranks.css?v=20261119ranks">
 <link rel="stylesheet" href="/sail-intel.css?v=20261119a">
-<link rel="stylesheet" href="/dashboard.css?v=20261122whisper2">
+<link rel="stylesheet" href="/dashboard.css?v=20261123atlas1">
 </head>
 
 <body class="board dashboard">
@@ -22,8 +22,17 @@
     <div class="pw-lounge" id="pw-lounge" aria-hidden="true"></div>
     <div class="pw-brand" id="pw-brand"></div>
     <div class="pw-clock"><b id="pw-date"></b><span id="pw-sub"></span></div>
-    <nav class="pw-tabs" id="pw-tabs" aria-label="Pages of the book"></nav>
+    <div class="pw-context" id="pw-context" role="group" aria-label="The voyage at a glance"></div>
   </header>
+  <div class="pw-tabrow">
+    <nav class="pw-tabs" id="pw-tabs" role="tablist" aria-label="Command Center tabs"></nav>
+    <div class="pw-watch">
+      <span id="pw-connection" role="status"></span>
+      <button id="pw-watch" type="button" aria-pressed="true"><span id="pw-watch-label">Watch Mode</span><small id="pw-watch-note" role="status"></small></button>
+      <button id="pw-pause" type="button" aria-pressed="false">Pin tab</button>
+      <button id="pw-all" type="button" aria-haspopup="dialog">All tabs</button>
+    </div>
+  </div>
   <div class="pw-side"><aside class="pw-tower" id="pw-tower" aria-label="Timing tower"></aside>
   <aside class="pw-host" id="pw-host" aria-label="On the line"></aside><div id="pw-whisper" class="pw-whisper" hidden></div></div>
   <section class="pw-book" id="pw-book" aria-live="off">
@@ -43,15 +52,17 @@
     <div class="pw-chalk" id="pw-chalk"></div>
   </aside>
   <footer class="pw-tape" id="pw-tape" aria-label="Telegraph tape"><div class="pw-tape-track" id="pw-tape-track"></div></footer>
-  <nav class="pw-controls" aria-label="Dashboard controls">
-    <span id="pw-connection" role="status"></span>
-    <button id="pw-pause" type="button" aria-pressed="false">Hold page</button>
-    <button id="pw-next" type="button">Next page</button>
-    <button id="pw-spots" type="button" aria-pressed="true">Spotlights</button>
-    <button id="pw-sound" type="button" aria-pressed="false">Clicks</button>
-    <button id="pw-voices" type="button" aria-pressed="false">Voices</button>
-    <button id="pw-quit" type="button">Quit</button>
-  </nav>
+  <dialog id="pw-drawer" aria-labelledby="drawer-title">
+    <button type="button" id="drawer-close" autofocus>Close</button>
+    <div id="drawer-body"></div>
+    <nav class="pw-controls" aria-label="Dashboard controls">
+      <button id="pw-next" type="button">Next tab</button>
+      <button id="pw-spots" type="button" aria-pressed="true">Spotlights</button>
+      <button id="pw-sound" type="button" aria-pressed="false">Clicks</button>
+      <button id="pw-voices" type="button" aria-pressed="false">Voices</button>
+      <button id="pw-quit" type="button">Quit</button>
+    </nav>
+  </dialog>
 </main></div>
 <script src="/ranks.js?v=20261119ranks"></script>
 <script src="/wordmark.js?v=20261118text1"></script>
@@ -61,6 +72,7 @@
 <script src="/audio.js?v=20261120snd"></script>
 <script src="/voice.js?v=20261120brief"></script>
 <script src="/dashboard-whisper.js?v=20261122whisper2"></script>
-<script src="/dashboard.js?v=20261122whisper2"></script>
+<script src="/dashboard-tabs.js?v=20261123atlas1"></script>
+<script src="/dashboard.js?v=20261123atlas1"></script>
 </body>
 </html>

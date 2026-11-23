@@ -8,10 +8,14 @@
    Wording: every label is a key "dash.*" that Admin > Language & Text can override; DEF below is the fallback. */
 "use strict";
 
-const TURN_MS = 25000;       // how long a page stays open before the book turns
+/* The Command Center (22 Nov 2026, dashboard-tabs.js): the book's three pages have become eight tabs, with a context
+   bar and Watch Mode. Without that file (the older tests load this one alone) the book is the three pages it was. */
+const TABS = typeof DashTabs !== "undefined" ? DashTabs : null;
+const TURN_MS = TABS ? TABS.TURN_MS : 25000;       // how long a page stays open before the book turns
+const IDLE_MS = TABS ? TABS.IDLE_MS : 0;           // after a touch, how long Watch Mode waits before turning again
 const FEED_MS = 5000;        // how often the history is fetched when nothing else asks for it
 const TAPE_SHOW = 14;
-const PAGES = [{ k: "race", n: "I" }, { k: "lanes", n: "II" }, { k: "markets", n: "III" }];
+const PAGES = TABS ? TABS.PAGES : [{ k: "race", n: "I" }, { k: "lanes", n: "II" }, { k: "markets", n: "III" }];
 
 const DEF = {
   "mk.intel": "Port intelligence", "mk.layer": "Map data layer", "mk.price": "Cargo prices", "mk.change": "Monthly change", "mk.weather": "Weather", "mk.active": "Active market effects", "mk.noactive": "No active booms or crashes.", "mk.history": "Recent market history", "mk.expired": "Recorded event", "mk.left": "{n} months remaining", "mk.leftone": "1 month remaining", "mk.all": "All ports", "mk.quote": "Posted quote", "mk.cargos": "Cargo at this port", "mk.status": "Trade status", "mk.banned": "Banned cargo", "mk.open": "No ban on this cargo", "mk.customs": "Customs crackdown", "mk.pricekey": "Ring fill compares current quotes. More ring fill = higher price. ✦ Active market effect.", "mk.changekey": "Ring fill compares the size of this month’s change. Jade = rising; crimson = falling. ✦ Active market effect.", "mk.weatherkey": "Ring fill shows weather severity at each port. Weather is current; it is not a voyage forecast.", "mk.inspect": "Select a port for its cargo, weather and market effects.", "mk.legal": "Comparison excludes banned ports. Posted quotes exclude dealer margins, tax and voyage costs.",
@@ -61,7 +65,11 @@ function W(key, vars) {
 const We = (key, vars) => esc(W(key, vars));
 
 let D = null, S = null, F = null, reloading = false, retryInfo, online = true;
-let page = "race", pageAt = Date.now(), held = false, lastFeed = 0, feeding = false, feedTimer = 0;
+let page = TABS ? "now" : "race", pageAt = Date.now(), held = false, lastFeed = 0, feeding = false, feedTimer = 0;
+/* Watch Mode: on unless this screen turned it off; lastTouch is when the Captain last touched the screen;
+   watchSkip is the tabs unticked in the drawer (kept on this device only). */
+let watchOn = store("seatrader_dash_watch") !== "0", lastTouch = 0, watchSkip = TABS ? TABS.readSkip() : new Set();
+const tabTitle = k => TABS ? TABS.tabName(k) : W("tab." + k);
 let marketPort = null, marketLens = "price", detailKind = null;
 let seenFights = null, seenBooms = null, tapeSeen = null, marketGood = null;
 let clicksOn = store("seatrader_dash_clicks") === "1", actx = null;
@@ -112,6 +120,7 @@ function renderHead() {
   const lobby = S.phase === "lobby", ended = S.phase === "ended";
   document.getElementById("pw-date").textContent = lobby ? W("date.lobby") : S.date || F.date || "";
   document.getElementById("pw-sub").textContent = lobby ? W("sub.lobby") : ended ? W("sub.ended") : W("sub.left", { n: S.turns_left });
+  if (TABS) update("pw-context", TABS.contextHtml());
   renderLounge();
 }
 
@@ -137,6 +146,11 @@ function renderLounge() {
 }
 
 function renderTabs() {
+  if (TABS) {
+    const el = update("pw-tabs", TABS.tabsHtml(page, F.locked));
+    if (el) el.querySelector(".pw-tab.on")?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    return;
+  }
   update("pw-tabs", PAGES.map(p => {
     const sealed = p.k === "markets" && F.locked;
     return `<button type="button" class="pw-tab${p.k === page ? " on" : ""}${sealed ? " sealed" : ""}" data-page="${p.k}"><i>${p.n}</i>${We("tab." + p.k)}<span class="pw-prog"></span></button>`;
@@ -260,6 +274,13 @@ const detailDialog = document.getElementById("pw-detail");
 function renderDetail() {
   if (!detailKind || !F || !S || !D) return;
   let body = "";
+  const own = TABS ? TABS.detail(detailKind) : null;       // an explanation a Command Center page owns (a route's odds)
+  if (own) {
+    update("detail-body", `<h2 id="detail-title">${esc(own.title)}</h2>${own.body}`);
+    document.getElementById("detail-close").textContent = W("detail.close");
+    return;
+  }
+  if (TABS && String(detailKind).includes(":")) { detailDialog.close(); return; }    // what it explained is gone
   if (detailKind === "weather") {
     body = `<p class="pw-note">${We("detail.scale")}</p><ul class="instrument-list">${Object.entries(S.weather || {}).sort((a, b) => b[1] - a[1]).map(([r, level]) => `<li><b>${esc((D.regions[r] || {}).name || r)}</b><span>${esc((D.weather || [])[level] || level)}</span><meter min="0" optimum="0" low="${Math.max(1, (D.weather || []).length - 1) / 3}" high="${Math.max(1, (D.weather || []).length - 1) * 2 / 3}" max="${Math.max(1, (D.weather || []).length - 1)}" value="${level}">${level}</meter></li>`).join("")}</ul>`;
   } else if (detailKind === "fleet") {
@@ -588,10 +609,11 @@ function pageMarkets() {
   return { left, right, fit: "dash-chart" };
 }
 
-const BUILDERS = { race: pageRace, lanes: pageLanes, markets: pageMarkets };
+const BUILDERS = Object.assign({ race: pageRace, lanes: pageLanes, markets: pageMarkets }, TABS ? TABS.BUILDERS : {});
 function renderPage(flip) {
   const scrolls = ["pw-left", "pw-right"].map(id => document.getElementById(id).querySelector(".pg")?.scrollTop || 0);
   document.getElementById("pw-book").dataset.page = page;
+  document.getElementById("pw-book").dataset.sub = TABS ? TABS.subOf(page) : "";
   const b = BUILDERS[page]();
   const l = update("pw-left", b.left), r = update("pw-right", b.right);
   if (!flip) ["pw-left", "pw-right"].forEach((id,i) => { const pg = document.getElementById(id).querySelector(".pg"); if (pg) pg.scrollTop = scrolls[i]; });
@@ -603,25 +625,42 @@ function renderPage(flip) {
 }
 
 /* ---------------------------------------------------------------- turning the book -- */
-function available() { return PAGES.map(p => p.k).filter(k => !(k === "markets" && F && F.locked)); }
+/* Every tab stays in the bar with rivals at the table; a page that needs private figures shows the Sealed stamp. */
+function available() { return PAGES.map(p => p.k).filter(k => TABS || !(k === "markets" && F && F.locked)); }
+const dashBusy = () => !!detailKind || (typeof DashWhisper !== "undefined" && DashWhisper.isOpen()) || !!document.getElementById("pw-drawer")?.open;
+const watchState = () => ({ on: watchOn, held, busy: dashBusy(), hidden: !!document.hidden, pageAt, lastTouch });
+const touching = () => !!TABS && Date.now() - lastTouch < IDLE_MS;
 function goto(k, why) {
   if (!BUILDERS[k] || !F) return;
   if (k === "markets") marketGood = null;          // a fresh cargo each time the page comes round
   const changed = k !== page;
   page = k; pageAt = Date.now();
-  document.title = brandName(D.brand) + " · " + W("tab." + page);
+  document.title = brandName(D.brand) + " · " + tabTitle(page);
   renderTabs(); renderHost();
   renderPage(changed);
 }
-function turnPage(step) {
-  const list = available(), i = list.indexOf(page);
-  goto(list[(i + (step || 1) + list.length) % list.length]);
+/* auto: Watch Mode's own turn, which tours only the tabs left ticked in the drawer. A turn by hand visits them all. */
+function turnPage(step, auto) {
+  const list = auto && TABS ? TABS.tour(watchSkip) : available(), i = list.indexOf(page);
+  const next = list[((i < 0 ? -1 : i) + (step || 1) + list.length) % list.length];
+  if (auto && TABS) TABS.lap(next);          // a tab with pages of its own shows the next of them on each lap
+  goto(next);
 }
 setInterval(() => {
   if (!F) return;
-  const bar = document.querySelector(".pw-tab.on .pw-prog");
-  if (bar) bar.style.width = held ? "100%" : Math.min(100, (Date.now() - pageAt) / TURN_MS * 100) + "%";
-  if (!held && !detailKind && !(typeof DashWhisper !== "undefined" && DashWhisper.isOpen()) && Date.now() - pageAt >= TURN_MS) turnPage(1);
+  const bar = document.querySelector(".pw-tab.on .pw-prog"), now = Date.now();
+  if (!TABS) {
+    if (bar) bar.style.width = held ? "100%" : Math.min(100, (now - pageAt) / TURN_MS * 100) + "%";
+    if (!held && !dashBusy() && now - pageAt >= TURN_MS) turnPage(1);
+    return;
+  }
+  /* Watch Mode: a touch holds the page for IDLE_MS; a dialog, a pinned tab or a hidden window holds it for as long
+     as it lasts. Nothing is redrawn or turned while the window is hidden. */
+  const st = watchState(), due = TABS.dueAt(st), pr = TABS.progress(st, now);
+  if (bar) bar.style.width = (pr.frac * 100).toFixed(1) + "%";
+  const note = document.getElementById("pw-watch-note");
+  if (note && note.textContent !== pr.note) note.textContent = pr.note;
+  if (due !== null && now >= due) turnPage(1, true);
 }, 500);
 
 /* A fight, a boom or a crash that was not there a moment ago pulls the book to the page that shows it. */
@@ -630,8 +669,8 @@ function watchJumps() {
   if (seenFights === null) { seenFights = fights; seenBooms = booms; return; }
   const newFight = [...fights].some(id => !seenFights.has(id)), newBoom = [...booms].some(k => !seenBooms.has(k));
   seenFights = fights; seenBooms = booms;
-  if (held || detailKind || typeof DashWhisper !== "undefined" && DashWhisper.isOpen()) return;
-  if (newFight) goto("lanes");                       // a battle first: the game itself holds for fights
+  if (held || dashBusy() || touching()) return;     // never pulls the page from under a Captain who is reading it
+  if (newFight) goto(TABS ? "fleet" : "lanes");                       // a battle first: the game itself holds for fights
   else if (newBoom && !F.locked) goto("markets");
 }
 
@@ -713,8 +752,9 @@ function art(cid, roles, cls, slot) {
 
 function renderHost() {
   const ended = S.phase === "ended";
-  const host = HOSTS[ended ? "race" : page] || HOSTS.race;
-  const w = who(withArt([ended ? "gamemaster" : host], HOST_FB[ended ? "race" : page] || HOST_FB.race)[0]);
+  const tab = TABS && !ended ? PAGES.find(p => p.k === page) : null;
+  const host = tab ? tab.host : HOSTS[ended ? "race" : page] || HOSTS.race;
+  const w = who(withArt([ended ? "gamemaster" : host], tab ? tab.fb : HOST_FB[ended ? "race" : page] || HOST_FB.race)[0]);
   const pic = art(w.cid, [F.brief?.mood || "portrait", "portrait", "speaking"], "ho-pic", "dash-host");
   document.getElementById("pw-host").setAttribute("aria-label", w.name);
   update("pw-host", `<div class="ho-art" style="--who:${w.color}">${pic || `<span class="ho-mono">${esc(monogram(w.name))}</span>`}</div><div class="ho-shade"></div>`);
@@ -847,14 +887,14 @@ async function refreshInfo() {
     if (typeof DashWhisper !== "undefined") {
       Voice.setup(info.voice);
       DashWhisper.setup({ closed: () => { pageAt = Date.now(); }, navigate: target => {
-        if (target.page === "fleet") document.querySelector('[data-detail="fleet"]').click();
+        if (target.page === "fleet" && !TABS) document.querySelector('[data-detail="fleet"]').click();
         else {
           goto(target.page);
           if (target.page === "markets" && !F.locked) { marketPort = target.port; marketGood = target.good; marketLens = "price"; renderPage(false); }
         }
       } });
     }
-    document.title = brandName(D.brand) + " · " + W("tab.race");
+    document.title = brandName(D.brand) + " · " + tabTitle(page);
     labelButtons();
   } catch (e) {
     console.warn("The Dashboard could not load settings", e);
@@ -866,8 +906,15 @@ async function refreshInfo() {
 /* ---------------------------------------------------------------- the small controls -- */
 function labelButtons() {
   const pause = document.getElementById("pw-pause");
-  pause.textContent = held ? W("btn.held") : W("btn.hold"); pause.setAttribute("aria-pressed", String(held));
-  document.getElementById("pw-next").textContent = W("btn.next");
+  pause.textContent = TABS ? TABS.t(held ? "cc.pinned" : "cc.pin") : held ? W("btn.held") : W("btn.hold"); pause.setAttribute("aria-pressed", String(held));
+  document.getElementById("pw-next").textContent = TABS ? TABS.t("cc.next") : W("btn.next");
+  if (TABS) {
+    document.getElementById("pw-watch-label").textContent = TABS.t("cc.watch"); document.getElementById("pw-watch").setAttribute("aria-pressed", String(watchOn));
+    document.getElementById("pw-all").textContent = TABS.t("cc.all");
+    document.getElementById("pw-tabs").setAttribute("aria-label", TABS.t("cc.tabs"));
+    document.getElementById("pw-context").setAttribute("aria-label", TABS.t("cc.bar"));
+    document.getElementById("drawer-close").textContent = TABS.t("cc.drawer.close");
+  }
   const sp = document.getElementById("pw-spots"); sp.textContent = W("btn.spots"); sp.setAttribute("aria-pressed", String(spotsOn));
   const snd = document.getElementById("pw-sound"); snd.textContent = W("btn.clicks"); snd.setAttribute("aria-pressed", String(clicksOn));
   document.getElementById("pw-quit").textContent = W("btn.quit");
@@ -880,6 +927,61 @@ document.getElementById("pw-spots").addEventListener("click", () => {
 document.getElementById("pw-sound").addEventListener("click", () => {
   clicksOn = !clicksOn; store("seatrader_dash_clicks", clicksOn ? "1" : null); labelButtons(); if (clicksOn) tapeClick();
 });
+/* ---- the Command Center's own controls: Watch Mode, the drawer of all tabs, a swipe, and what counts as a touch ---- */
+if (TABS) {
+  const drawer = document.getElementById("pw-drawer");
+  const renderDrawer = () => { previous.delete("drawer-body"); update("drawer-body", TABS.drawerHtml(page, watchSkip)); };
+  document.getElementById("pw-watch").addEventListener("click", () => {
+    watchOn = !watchOn; store("seatrader_dash_watch", watchOn ? null : "0");
+    if (watchOn) { lastTouch = 0; pageAt = Date.now(); }      // switched on by hand: start touring now, not in a minute
+    labelButtons();
+  });
+  document.getElementById("pw-all").addEventListener("click", () => { renderDrawer(); drawer.showModal(); });
+  document.getElementById("drawer-close").addEventListener("click", () => drawer.close());
+  drawer.addEventListener("close", () => { pageAt = Date.now(); });
+  drawer.addEventListener("click", e => {
+    if (e.target === drawer) return drawer.close();             // a tap on the dimmed backdrop
+    const go = e.target.closest(".drawer-go");
+    if (go) { drawer.close(); goto(go.dataset.page); }
+  });
+  drawer.addEventListener("change", e => {
+    const k = e.target.dataset.watch;
+    if (!k) return;
+    if (e.target.checked) watchSkip.delete(k); else watchSkip.add(k);
+    TABS.writeSkip(watchSkip);
+  });
+  /* A fact card or a context chip opens the tab that explains it. */
+  const jump = e => { const b = e.target.closest("button[data-page]"); if (b && BUILDERS[b.dataset.page]) goto(b.dataset.page); };
+  document.getElementById("pw-context").addEventListener("click", jump);
+  document.getElementById("pw-book").addEventListener("click", e => {
+    const sb = e.target.closest("button[data-sub]"), rt = e.target.closest("button[data-route]"), pt = e.target.closest("[data-port]");
+    if (sb) { TABS.setSub(page, sb.dataset.sub); renderPage(true); }
+    else if (pt && page === "lanes") { TABS.setPort(pt.dataset.port); renderPage(false); }      // the Atlas: a port's dossier, or back to the list
+    else if (rt) { detailKind = "route:" + rt.dataset.route; renderDetail(); detailDialog.showModal(); }
+    else if (e.target.closest(".cc-fact")) jump(e);
+  });
+  /* A port on the Atlas's chart is a button drawn in the chart: Enter or Space presses it. */
+  document.getElementById("pw-book").addEventListener("keydown", e => {
+    const pin = (e.key === "Enter" || e.key === " ") && e.target instanceof Element ? e.target.closest("g[data-port]") : null;
+    if (pin && page === "lanes") { e.preventDefault(); TABS.setPort(pin.dataset.port); renderPage(false); }
+  });
+  /* Any touch, key or scroll is the Captain reading: Watch Mode stands back. Switching Watch Mode on is not one. */
+  const touched = e => { if (!(e.target instanceof Element && e.target.closest("#pw-watch"))) lastTouch = Date.now(); };
+  ["pointerdown", "keydown", "wheel", "touchstart"].forEach(ev => document.addEventListener(ev, touched, { capture: true, passive: true }));
+  /* A sideways swipe across the book turns to the next or the previous tab. */
+  let swipe = null;
+  const book = document.getElementById("pw-book");
+  book.addEventListener("pointerdown", e => { swipe = e.isPrimary ? { x: e.clientX, y: e.clientY, at: Date.now() } : null; });
+  book.addEventListener("pointerup", e => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, quick = Date.now() - swipe.at < 700;
+    swipe = null;
+    if (quick && Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2 && !spotNow) turnPage(dx < 0 ? 1 : -1);
+  });
+  book.addEventListener("pointercancel", () => { swipe = null; });
+  /* Back from a hidden window: the open tab gets its full time again instead of turning at once. */
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { pageAt = Date.now(); if (D && S) pullFeed(); } });
+}
 function quitDash() { window.close(); setTimeout(() => { if (!window.closed) document.getElementById("pw-quit").textContent = "Close this window"; }, 300); }
 document.getElementById("pw-quit").addEventListener("click", quitDash);
 document.addEventListener("keydown", e => {
@@ -894,7 +996,14 @@ document.addEventListener("keydown", e => {
    it by the same factor so it fills the whole browser at any shape (no bars). The grid's flexible middle column and rows take up the slack. */
 let refitTimer = 0;
 function fit() {
-  const w = window.innerWidth, h = window.innerHeight, s = Math.min(w / 1920, h / 1080);
+  const w = window.innerWidth, h = window.innerHeight;
+  /* A tall screen (a tablet held upright) gets a narrower stage in one column; --touch is 44 real pixels measured on
+     the stage, so buttons stay finger-sized however far the stage is scaled down, and --boost lifts the Command
+     Center's own type on small screens. */
+  const tall = !!TABS && h > w * 1.05, s = tall ? w / 1080 : Math.min(w / 1920, h / 1080);
+  app.classList.toggle("portrait", tall);
+  app.style.setProperty("--touch", (44 / s).toFixed(1) + "px");
+  app.style.setProperty("--boost", Math.max(1, Math.min(1.5, 0.92 / s)).toFixed(3));
   app.style.width = (w / s) + "px"; app.style.height = (h / s) + "px";
   app.style.transform = `scale(${s})`; app.style.left = "0px"; app.style.top = "0px";
 }
@@ -909,4 +1018,4 @@ listen(null, state => {
   if (!D || state.cfg !== cfgSeen) return refreshInfo();
   if (!F || Date.now() - lastFeed > 1500) pullFeed(); else renderAll();
 }, showConnection);
-feedTimer = setInterval(() => { if (D && S && Date.now() - lastFeed > FEED_MS) pullFeed(); }, 1000);
+feedTimer = setInterval(() => { if (D && S && !document.hidden && Date.now() - lastFeed > FEED_MS) pullFeed(); }, 1000);
