@@ -153,11 +153,32 @@ Checked: all eight dashboard tests pass. In a browser at 1366x1024, 1920x1080 an
 rivals fixtures, the layers, list, dossier and back button worked with no errors and no sideways overflow.
 
 Still open in Phase 4:
-- The figures on the chart are small on the iPad, because the tower and the instruments still take a third of
-  the width. Folding those into the tabs (decision C) is what gives the map room.
+- (Done in the full-width stage below.) The figures on the chart were small on the iPad while the tower and
+  the instruments took a third of the width.
 - The dossier does not yet show that port's own Mayor; the page's host is the generic Mayor.
 - The layers cannot be combined (the plan allows one comparison layer).
 - Best sale, visits and route profit by port are not in the dossier.
+
+## The full-width stage (23 Nov 2026)
+
+Decisions: do this before Trade; the persona blends into the stage; the dials are retired.
+
+- The stage now takes the width the timing tower and the instruments held. On the iPad the book went from
+  about 1,100 to about 1,560 of the stage's 1,920 units.
+- The timing tower stands on the Career tab's right leaf, above the lead changes.
+- The chalkboard of month times is on the Now tab, under the latest wire.
+- The three dials and their pop-ups are retired. The date in the masthead opens Now; the weather and fleet
+  chips open their tabs. The dial code remains for the older tests and is not run with the Command Center.
+- The host keeps a 300-unit column at the right edge. Her picture runs under the stage's edge and fades out,
+  and her Read / Hear more line sits at the foot of that column.
+- The Now page's fact cards are three across.
+
+Checked: all eight dashboard tests pass. In a browser at 1366x1024, 1920x1080 and 768x1024, on the late and
+rivals fixtures, every tab drew with no sideways overflow.
+
+Not checked: how the fade looks over a real portrait. The test copy has no Media Library, so only her
+monogram was seen. The persona's line is in her column, not along the whole foot of the stage as first
+described.
 
 ## Next
 

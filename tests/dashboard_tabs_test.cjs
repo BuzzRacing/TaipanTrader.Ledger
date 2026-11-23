@@ -228,9 +228,20 @@ DT.setPort('b'); at = api.BUILDERS.lanes();
 assert(at.right.includes('pw-stamp') && at.right.includes('Banned here') && !at.right.includes('Standing'), 'a public dossier holds only public facts');
 DT.setPort(''); DT.setSub('lanes','standing');
 
+// ---- the full-width stage: the tower stands on Career, the chalkboard on Now, the dials are retired
+api.data(d,state,solo);
+const career = api.BUILDERS.race();
+assert(career.right.includes('cc-tower') && career.right.includes('tw-row') && career.right.includes('House &lt;One&gt;') && career.right.includes('Standings'), 'the timing tower is on Career');
+const nowPage = api.BUILDERS.now();
+assert(nowPage.right.includes('cc-chalk') && nowPage.right.includes('Mar 1860') && nowPage.right.includes('-$1500'), 'the month times are on Now');
+vm.runInContext('renderTower(); renderChalk(); renderDials();', ctx);
+assert.equal(node('pw-tower').innerHTML, '', 'the side tower is not drawn');
+assert.equal(node('pw-chalk').innerHTML, '', 'the side chalkboard is not drawn');
+assert.equal(node('pw-dials').innerHTML, '', 'the dials are not drawn');
+
 // ---- the drawer
 const drawer = DT.drawerHtml('weather', new Set(['wire']));
 assert.equal((drawer.match(/data-watch=/g)||[]).length, 8);
 assert.equal((drawer.match(/ checked/g)||[]).length, 7);
 assert(/drawer-go on" data-page="weather"/.test(drawer));
-console.log('PASS eight tabs, Watch Mode timing and tour, context bar, five new pages, the Observatory (now, routes, explanations, history), the Atlas (six layers, lists, dossiers), sealed pages with rivals, empty lobby, escaping and the drawer');
+console.log('PASS eight tabs, Watch Mode timing and tour, context bar, five new pages, the Observatory (now, routes, explanations, history), the Atlas (six layers, lists, dossiers), the full-width stage, sealed pages with rivals, empty lobby, escaping and the drawer');

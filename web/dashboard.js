@@ -75,6 +75,7 @@ let seenFights = null, seenBooms = null, tapeSeen = null, marketGood = null;
 let clicksOn = store("seatrader_dash_clicks") === "1", actx = null;
 let spotsOn = store("seatrader_dash_spots") !== "0";
 const app = document.getElementById("app"), loading = document.getElementById("db-loading");
+if (typeof DashTabs !== "undefined") app.classList.add("cc");      // the Command Center's full-width stage (dashboard.css)
 const previous = new Map();
 
 /* ---------------------------------------------------------------- helpers -- */
@@ -184,9 +185,8 @@ function statusOf(h) {
   return { text: W("status.port", { port: (D.ports[h.port] || {}).name || "" }) };
 }
 
-function renderTower() {
+function towerHtml() {
   const hs = ranked(), lead = hs.length ? hs[0].worth : 0, rows = [];
-  document.getElementById("pw-tower").classList.toggle("solo", solo());
   const g = ghostNow();
   const entries = hs.map(h => ({ h, worth: h.worth }));
   if (g != null) entries.push({ ghost: true, worth: g });
@@ -209,9 +209,15 @@ function renderTower() {
       <div class="tw-spark">${spark(vals, hcol(h))}</div></div>`);
   });
   const foot = solo() ? (F.ghost && F.ghost.kind === "best" ? "" : W("tower.foot.par")) : W("tower.foot.n", { n: hs.length });
-  update("pw-tower", `<div class="tw-title"><span>${We("tower")}</span><b>${esc(S.date || "")}</b></div>
+  return `<div class="tw-title"><span>${We("tower")}</span><b>${esc(S.date || "")}</b></div>
     <div class="tw-rows${hs.length > 5 ? " dense" : ""}">${rows.join("") || `<p class="pw-note" style="color:#bfa77a;padding:10px">${We("date.lobby")}</p>`}</div>
-    ${foot ? `<div class="tw-foot">${esc(foot)}</div>` : ""}`);
+    ${foot ? `<div class="tw-foot">${esc(foot)}</div>` : ""}`;
+}
+/* The Command Center keeps the tower on the Career tab and the chalkboard on Now (the stage has the full width),
+   so with it loaded the two side panels are not drawn. */
+function renderTower() {
+  document.getElementById("pw-tower").classList.toggle("solo", solo());
+  if (!TABS) update("pw-tower", towerHtml());
 }
 
 /* ---------------------------------------------------------------- dials -- */
@@ -255,6 +261,7 @@ function setDial(i, frac, value, title, sub) {
   document.getElementById("ds" + i).textContent = sub;
 }
 function renderDials() {
+  if (TABS) return;                 // retired: the context bar carries months left, the worst sea and the fleet's hull
   buildDials();
   // months left
   const total = monthsTotal(), left = S.turns_left == null ? 0 : S.turns_left, lobby = S.phase === "lobby";
@@ -323,9 +330,9 @@ document.getElementById("pw-book").addEventListener("click", e => {
 });
 
 /* ---------------------------------------------------------------- chalkboard -- */
-function renderChalk() {
+function chalkHtml() {
   const hs = ranked(), turns = [...new Set(hs.flatMap(h => gainsOf(h).map(g => g.turn)))].sort((a, b) => a - b).slice(-2);
-  if (!turns.length) { update("pw-chalk", `<div class="chalk"><h4>${We("chalk")}</h4><p class="none">${We("chalk.none")}</p><footer></footer></div>`); return; }
+  if (!turns.length) return `<div class="chalk"><h4>${We("chalk")}</h4><p class="none">${We("chalk.none")}</p><footer></footer></div>`;
   let champ = null;
   hs.forEach(h => gainsOf(h).forEach(g => { if (!champ || g.gain > champ.gain) champ = { ...g, firm: h.firm }; }));
   const head = `<tr><th></th>${turns.map(t => `<th>${esc(dateOfTurn(t))}</th>`).join("")}</tr>`;
@@ -333,8 +340,9 @@ function renderChalk() {
     const g = gainsOf(h).find(g => g.turn === t);
     return `<td class="${g && g.gain > 0 ? "pos" : g && g.gain < 0 ? "worst" : ""}">${g ? signed(g.gain) : "—"}</td>`;
   }).join("")}</tr>`).join("");
-  update("pw-chalk", `<div class="chalk"><h4>${We("chalk")}</h4><div class="chalk-scroll"><table>${head}${body}</table></div><footer>${champ ? We("chalk.best", { date: champ.date, firm: champ.firm, gain: signed(champ.gain) }) : ""}</footer></div>`);
+  return `<div class="chalk"><h4>${We("chalk")}</h4><div class="chalk-scroll"><table>${head}${body}</table></div><footer>${champ ? We("chalk.best", { date: champ.date, firm: champ.firm, gain: signed(champ.gain) }) : ""}</footer></div>`;
 }
+function renderChalk() { if (!TABS) update("pw-chalk", chalkHtml()); }
 
 /* ---------------------------------------------------------------- the telegraph -- */
 function tapeText(e) {
@@ -458,6 +466,7 @@ function pageRace() {
   const left = `<h2>${We("race.title")}<small>${We("race.sub")}</small></h2>
     <div class="pg"><div>${raceChart(520, 410)}</div>
     <ul class="pw-list">${legend}${F.ghost ? `<li><span class="pw-dot" style="background:transparent;border:2px dotted #6b452d"></span><b>${esc(F.ghost.kind === "best" ? W("ghost.best") : W("ghost.par"))}</b><span class="num">${money(F.ghost.final)}</span></li>` : ""}</ul></div>`;
+  const tower = TABS ? `<div class="pw-tower cc-tower${solo() ? " solo" : ""}">${towerHtml()}</div>` : "";
   const lc = leadChanges().slice(0, 6);
   const changes = lc.length ? `<ul class="pw-list">${lc.map(c => `<li style="grid-template-columns:1fr auto"><b class="${c.up ? "up" : "down"}">${c.text}</b><small>${esc(c.date)}</small></li>`).join("")}</ul>`
     : `<p class="pw-note">${We("race.nolead")}</p>`;
@@ -465,7 +474,7 @@ function pageRace() {
   if (F.locked) deals = `<div class="pw-block-locked">${stamp(W("sealed"), W("race.sealed"))}</div>`;
   else if (!(F.deals || []).length) deals = `<p class="pw-note">${We("race.nodeals")}</p>`;
   else deals = `<table><tbody>${F.deals.slice(0, 5).map(d => `<tr><td><span class="pw-dot" style="--house:${house(d.pid) ? hcol(house(d.pid)) : "#888"}"></span>${d.qty} ${gn(d.good)}<br><small class="pw-note">${pn(d.port)} &middot; ${esc(d.date)}</small></td><td class="num up">${signed(d.profit)}</td></tr>`).join("")}</tbody></table>`;
-  const right = `<h2>${We("race.lead")}</h2><div class="pg">${changes}<h3 style="margin-top:8px">${We("race.deals")}</h3>${deals}</div>`;
+  const right = `<h2>${TABS ? esc(TABS.t("cc.race.stand")) : We("race.lead")}</h2><div class="pg">${tower}${tower ? `<h3 style="margin-top:8px">${We("race.lead")}</h3>` : ""}${changes}<h3 style="margin-top:8px">${We("race.deals")}</h3>${deals}</div>`;
   return { left, right };
 }
 
@@ -888,6 +897,7 @@ async function refreshInfo() {
       Voice.setup(info.voice);
       DashWhisper.setup({ closed: () => { pageAt = Date.now(); }, navigate: target => {
         if (target.page === "fleet" && !TABS) document.querySelector('[data-detail="fleet"]').click();
+        else if (TABS && (target.page === "weather" || target.page === "fleet")) goto(target.page);
         else {
           goto(target.page);
           if (target.page === "markets" && !F.locked) { marketPort = target.port; marketGood = target.good; marketLens = "price"; renderPage(false); }
@@ -953,6 +963,13 @@ if (TABS) {
   /* A fact card or a context chip opens the tab that explains it. */
   const jump = e => { const b = e.target.closest("button[data-page]"); if (b && BUILDERS[b.dataset.page]) goto(b.dataset.page); };
   document.getElementById("pw-context").addEventListener("click", jump);
+  /* The date in the masthead opens Now (the months-left dial it replaces used to open a pop-up). */
+  const clock = document.querySelector(".pw-clock");
+  if (clock) {
+    clock.setAttribute("role", "button"); clock.tabIndex = 0;
+    clock.addEventListener("click", () => goto("now"));
+    clock.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goto("now"); } });
+  }
   document.getElementById("pw-book").addEventListener("click", e => {
     const sb = e.target.closest("button[data-sub]"), rt = e.target.closest("button[data-route]"), pt = e.target.closest("[data-port]");
     if (sb) { TABS.setSub(page, sb.dataset.sub); renderPage(true); }

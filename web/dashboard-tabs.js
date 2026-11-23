@@ -49,6 +49,7 @@ const DashTabs = (() => {
     "cc.bar.month": "this month", "cc.bar.fleet": "Fleet", "cc.bar.ships": "{n} ships", "cc.bar.ship": "1 ship",
     "cc.bar.crippled": "{n} crippled", "cc.bar.nofleet": "No ships", "cc.bar.weather": "Worst sea", "cc.bar.rank": "Rank",
     "cc.bar.houses": "Houses", "cc.bar.leader": "Leader",
+    "cc.race.stand": "Standings",
     "cc.now.title": "Now", "cc.now.sub": "Where the voyage stands",
     "cc.now.months": "Months left", "cc.now.of": "of {n}", "cc.now.ended": "The voyage is over", "cc.now.lobby": "Waiting for captains",
     "cc.now.worth": "Net worth", "cc.now.first": "First month", "cc.now.position": "Position",
@@ -248,7 +249,8 @@ const DashTabs = (() => {
     const banned = (S.crackdown || []).map(k => pn(k)).filter(Boolean);
     if (!lobby) facts.push(fact("lanes", t("cc.now.bans"), String(banned.length), banned.length ? banned.join(", ") : te("cc.now.noban"), banned.length ? "warn" : ""));
     const left = leaf(t("cc.now.title"), lobby ? t("cc.now.lobby") : (S.date || F.date || "") + " · " + t("cc.now.sub"), `<div class="cc-facts">${facts.join("")}</div>`);
-    const right = leaf(t("cc.now.latest"), "", wireRows(told().slice(-7).reverse(), t("cc.now.nothing")));
+    /* the chalkboard of month times, which used to hang beside the stage */
+    const right = leaf(t("cc.now.latest"), "", wireRows(told().slice(-6).reverse(), t("cc.now.nothing")) + (lobby ? "" : `<div class="pw-chalk cc-chalk">${chalkHtml()}</div>`));
     return { left, right };
   }
 
