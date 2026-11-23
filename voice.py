@@ -612,7 +612,7 @@ class Planner:
         """{c: who, u: the clip} for a line. When the clean wording differs, also f: the clean clip,
         which a Family-friendly screen plays instead (web/voice.js); a table that is Family-friendly
         throughout gets the clean clip as u."""
-        ch = self.cfg["characters"].get(cid)
+        ch = self.cfg["characters"].get(cast.played_by(self.cfg, cid))   # a Brand role speaks as whoever is cast
         if not ch or not ch.get("voice_id") or not speech_text(text):
             return None
         if key:

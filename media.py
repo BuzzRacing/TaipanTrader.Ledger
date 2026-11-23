@@ -1014,12 +1014,24 @@ def is_blocked(url, cfg):
     return url in blocked_urls(cfg)
 
 
+def _casting(cfg):
+    """{role: cast member} for the Brand roles someone else plays (cast.played_by; kept here to avoid an import loop)."""
+    brand, chars = (cfg or {}).get("brand") or {}, (cfg or {}).get("characters") or {}
+    out = {}
+    for role in ("lender", "pirate"):
+        who = brand.get(role + "_cast") or role
+        if who != role and who in chars:
+            out[role] = who
+    return out
+
+
 def public(cfg):
     """The library as the player screens and harbor board need it, with NSFW removed when family-friendly."""
     lib = load(cfg)
     fam = family(cfg)
     have_family, have_nsfw = _family_rules(lib, cfg)
-    key = (_cache["mtime"], fam)
+    casting = _casting(cfg)
+    key = (_cache["mtime"], fam, tuple(sorted(casting.items())))
     if key in _public_cache:
         return _public_cache[key]
     items = {}
@@ -1045,6 +1057,13 @@ def public(cfg):
                 frm = e.pop("from", "")
                 if frm and frm in shown:
                     e["po"] = shown[frm]
+    # A Brand role played by someone else (Admin > Brand) shows that cast member's pictures and clips.
+    for role, who in casting.items():
+        mine = (items.get("persona") or {}).get(who)
+        if mine:
+            items["persona"][role] = mine
+        else:
+            (items.get("persona") or {}).pop(role, None)
     out = {"items": items, "rules": lib["rules"], "options": lib["options"], "family": fam,
            "fallback": {k: v["default_role"] for k, v in KINDS.items()}}
     _public_cache.clear()
@@ -1090,8 +1109,9 @@ def safe_graphics(graphics, cfg):
 def safe_cast(public_cast, cfg):
     """Swap NSFW cast portraits for family-friendly ones (or none)."""
     out = copy.deepcopy(public_cast or {})
+    casting = _casting(cfg)
     for cid, c in out.items():
-        c["portrait"] = safe_url(c.get("portrait") or "", "persona", cid, cfg, "portrait")
+        c["portrait"] = safe_url(c.get("portrait") or "", "persona", casting.get(cid, cid), cfg, "portrait")
     return out
 
 

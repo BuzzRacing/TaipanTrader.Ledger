@@ -24,7 +24,10 @@
   const S = () => A.cast;
   function shown(cid) {
     const c = C()[cid] || {};
-    return c.brand_link && CFG.brand[c.brand_link] ? CFG.brand[c.brand_link] : (c.name || cid);
+    // Her Brand name applies while the role is still hers; once Admin > Brand casts someone else as the
+    // moneylender or pirate queen, the name there is the other woman's, so this card shows her own.
+    const played = c.brand_link ? CFG.brand[c.brand_link + "_cast"] : "";
+    return c.brand_link && CFG.brand[c.brand_link] && (!played || played === c.brand_link) ? CFG.brand[c.brand_link] : (c.name || cid);
   }
   function speaker(key) {
     const lines = V().lines, grp = key.split(".")[0];

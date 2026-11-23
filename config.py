@@ -38,6 +38,8 @@ DEFAULTS = {
         "currency": "$",
         "lender": "Madam Wu Lian",
         "pirate": "Admiral Li Yue",
+        "lender_cast": "lender",     # who plays each role (a key from Cast & Voices); cast.apply_casting
+        "pirate_cast": "pirate",
         "bank": "Merchants' Bank of Hong Kong",
         "winner": "Taipan",
     },
@@ -685,7 +687,7 @@ _DECK_LABELS = [
 ]
 
 SECTIONS = [
-    {"id": "brand", "title": "Brand", "intro": "The game's name and the names of its characters. "
+    {"id": "brand", "title": "Brand", "intro": "The game's name and who plays its leading roles. "
      "These names are also dropped into the game's wording wherever {lender}, {pirate}, {bank} and {winner} appear.",
      "groups": [
          {"title": "Name", "fields": [
@@ -694,10 +696,13 @@ SECTIONS = [
              F("brand.tagline", "Tagline", "text", "Under the title on the join and lobby screens.", max=80),
              F("brand.currency", "Currency symbol", "text", "Put before every amount of money.", max=4)]},
          {"title": "Characters and places", "fields": [
-             F("brand.lender", "Moneylender", "text", max=40),
-             F("brand.pirate", "Pirate queen", "text", "Sells protection and hunts those who do not pay.", max=40),
-             F("brand.bank", "Bank", "text", max=60),
-             F("brand.winner", "Winner's title", "text", "What the richest house is called at the end.", max=30)]},
+             F("brand.lender_cast", "Moneylender", "select", "Pick any cast member. Her name, portrait, pictures "
+               "and voice appear wherever the moneylender does.", options_from="characters", role="lender"),
+             F("brand.pirate_cast", "Pirate queen", "select", "Sells protection and hunts those who do not pay. "
+               "Pick any cast member to play her.", options_from="characters", role="pirate"),
+             F("brand.bank", "Bank", "text", "Pick a bank, or choose Another name to type your own.", max=60, pick="bank"),
+             F("brand.winner", "Winner's title", "text", "What the richest house is called at the end. Pick a rank "
+               "title, or choose Another title to type your own.", max=30, pick="winner")]},
      ]},
     {"id": "theme", "title": "Look & Style", "intro": "Colours, lettering and shape for the player screens and the harbor board. "
      "Saved changes reach every open screen at once.",
@@ -2317,6 +2322,7 @@ def validate(raw):
     lang = str(cfg["language"].get("active") or "en")
     cfg["language"] = {"active": lang if re.match(r"^[a-z]{2,3}(-[a-z0-9]{2,8})?$", lang) else "en"}
     cast.clean(cfg, URL_RE, errors)
+    cast.apply_casting(cfg)
     return cfg, errors
 
 

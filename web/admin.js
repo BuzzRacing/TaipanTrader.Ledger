@@ -249,12 +249,40 @@ async function boot() {
 function optionsFor(spec) {
   if (spec.options) return spec.options;
   const src = get(CFG, spec.options_from) || {};
+  // Brand casting (23 Nov 2026): who plays a role. Each cast member is listed by her own name and title.
+  if (spec.role) return Object.keys(src).map(k => [k, (src[k].name || k) + (src[k].title ? " · " + src[k].title : "")]);
   return Object.keys(src).map(k => [k, src[k].name || k]);
+}
+
+/* A text setting offered as a dropdown (Brand > Bank and Winner's title): ready-made choices, the shipped
+   name, and "Another…", which opens the text box so any name can still be typed. */
+const PICK_OTHER = "__other__";
+function pickChoices(spec) {
+  const out = [];
+  const add = s => { s = String(s || "").trim(); if (s && !out.includes(s)) out.push(s); };
+  add(get(A.defaults, spec.path));
+  if (spec.pick === "bank") {
+    const ports = CFG.ports || {};
+    Object.keys(ports).filter(k => ports[k].bank).forEach(k => add("Merchants' Bank of " + ports[k].name));
+  } else if (spec.pick === "winner") {
+    Object.values(CFG.ranks || {}).forEach(r => add(r && r.title));
+  }
+  return out;
+}
+function pickControl(spec, v, attrs) {
+  const list = pickChoices(spec), other = !list.includes(v);
+  return `<select data-pickfor="${esc(spec.path)}">` +
+    list.map(o => `<option value="${esc(o)}" ${o === v ? "selected" : ""}>${esc(o)}</option>`).join("") +
+    `<option value="${PICK_OTHER}" ${other ? "selected" : ""}>Another ${spec.pick === "winner" ? "title" : "name"}…</option></select>` +
+    `<input type="text" ${attrs} value="${esc(v)}" maxlength="${spec.max || 200}" placeholder="Type it here" ` +
+    `style="margin-top:6px;${other ? "" : "display:none"}">`;
 }
 
 function control(spec, v, attrs) {
   switch (spec.type) {
-    case "text": return `<input type="text" ${attrs} value="${esc(v)}" maxlength="${spec.max || 200}">`;
+    case "text":
+      if (spec.pick && spec.path) return pickControl(spec, v, attrs);
+      return `<input type="text" ${attrs} value="${esc(v)}" maxlength="${spec.max || 200}">`;
     case "code": return `<textarea ${attrs} class="code" rows="9" spellcheck="false">${esc(v)}</textarea>`;
     case "int": case "num":
       return `<input type="number" ${attrs} value="${esc(v)}" step="${spec.type === "int" ? 1 : (spec.step || "any")}"` +
@@ -668,6 +696,16 @@ main.addEventListener("input", edited);
 main.addEventListener("change", async e => {
   const el = e.target, d = el.dataset;
   if (d.langactive) { CFG.language.active = el.value; refreshDirty(); return; }
+  if (d.pickfor) {
+    // A dropdown over a text setting: a ready-made choice fills the text box; "Another…" opens it for typing.
+    const box = el.closest(".f"), input = box && box.querySelector("input[data-path]");
+    if (!input) return;
+    const other = el.value === PICK_OTHER;
+    input.style.display = other ? "" : "none";
+    if (other) { input.focus(); input.select(); return; }
+    input.value = el.value;
+    return edited({ target: input });
+  }
   if (d.langedit) { lv.code = el.value; return draw(); }
   if (d.langgroup) { lv.group = el.value; return draw(); }
   if (d.langchanged) { lv.changed = el.checked; return draw(); }

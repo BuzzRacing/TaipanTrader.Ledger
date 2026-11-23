@@ -869,18 +869,71 @@ def speaker_for(cfg, key):
     return fallback if fallback in chars else ""
 
 
-def display_name(cfg, cid):
+# Casting (23 Nov 2026): Admin > Brand picks which cast member plays the moneylender and the pirate queen
+# (brand.lender_cast, brand.pirate_cast). The game still asks for the role ("lender", "pirate"); whoever is
+# cast answers with her own name, title, portrait, pictures and voice.
+ROLES = ("lender", "pirate")
+
+
+def played_by(cfg, cid):
+    """The cast member who plays a role just now (the role's own character unless Brand cast someone else)."""
+    if cid in ROLES:
+        who = (cfg.get("brand") or {}).get(cid + "_cast") or cid
+        if who in (cfg.get("characters") or {}):
+            return who
+    return cid
+
+
+def _own_role(cfg, link):
+    """True while a Brand role is still played by its own character, so its Brand name applies."""
+    return link not in ROLES or ((cfg.get("brand") or {}).get(link + "_cast") or link) == link
+
+
+def actor_name(cfg, cid):
+    """A cast member's own name, whatever role she is playing."""
     c = cfg["characters"].get(cid) or {}
     link = c.get("brand_link") or ""
-    if link and cfg["brand"].get(link):
+    if c.get("name"):
+        return c["name"]
+    return cfg["brand"].get(link) or cid if link else cid
+
+
+def display_name(cfg, cid):
+    who = played_by(cfg, cid)
+    if who != cid:
+        return actor_name(cfg, who)
+    c = cfg["characters"].get(cid) or {}
+    link = c.get("brand_link") or ""
+    if link and cfg["brand"].get(link) and _own_role(cfg, link):
         return cfg["brand"][link]
     return c.get("name") or cid
 
 
+def apply_casting(cfg):
+    """Tidies brand.<role>_cast and, when someone else is cast, makes the Brand name hers, so the wording's
+    {lender} and {pirate} follow the choice. Called by config.validate after the cast is cleaned."""
+    brand, chars = cfg["brand"], cfg["characters"]
+    for role in ROLES:
+        who = brand.get(role + "_cast")
+        if not isinstance(who, str) or who not in chars:
+            who = role if role in chars else ""
+        brand[role + "_cast"] = who
+    for role in ROLES:
+        who = brand[role + "_cast"]
+        if who and who != role:
+            brand[role] = (chars[who].get("name") or brand.get(role) or who)[:60]
+        elif who and chars[who].get("name") and any(
+                k != role and c.get("name") == brand.get(role) for k, c in chars.items()):
+            brand[role] = chars[who]["name"][:60]      # handed back: the stand-in's name goes, her own returns
+
+
 def public_cast(cfg):
-    """What the player screens need to show who is speaking."""
-    return {cid: {"name": display_name(cfg, cid), "title": c["title"], "portrait": c["portrait"], "color": c["color"]}
-            for cid, c in cfg["characters"].items()}
+    """What the player screens need to show who is speaking. A Brand role shows whoever is cast in it."""
+    out = {}
+    for cid in cfg["characters"]:
+        c = cfg["characters"][played_by(cfg, cid)]
+        out[cid] = {"name": display_name(cfg, cid), "title": c["title"], "portrait": c["portrait"], "color": c["color"]}
+    return out
 
 
 def _text(v, n):
