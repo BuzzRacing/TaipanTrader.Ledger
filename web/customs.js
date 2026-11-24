@@ -207,7 +207,7 @@ const Customs = (() => {
       rate = `<div class="cx-rate free"><b>${te(c.home_free ? "port.glance.home_free" : "customs.free")}</b></div>`;
     }
     return `<header class="cx-head"><div><p class="eyebrow">${te("customs.authority", { port })}</p>
-      <h2 id="cx-title">${esc(c.name)}</h2><p class="cx-title">${esc(c.title)}</p></div>${rate}</header>`;
+      <p class="cx-title" id="cx-title">${esc(c.title)}</p></div>${rate}</header>`;
   }
 
   function greeting(c) {

@@ -1,7 +1,8 @@
 "use strict";
 
 const SailIntel = (() => {
-  let key = "", rows = null, pending = "", error = false, zoom = .82;
+  let key = "", rows = null, pending = "", error = false;
+  const zoom = .82;
   const clamp = n => Math.max(0, Math.min(1, n || 0));
   const signed = n => (n > 0 ? "+" : "") + money(n);
   const compact = n => {
@@ -66,8 +67,7 @@ const SailIntel = (() => {
     return `<div class="si-stage">
       ${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: S.me.port, dest, clickable: !S.me.ready, mine: S.me.id, intel, intelRoutes: true, focusPort: focus, focusScale: zoom, hideRose: true })}
       <div class="si-map-head"><small>THE CAPTAIN'S CHART</small><h3>${esc(D.ports[focus].name)} orbit</h3><p>${esc(status)}</p></div>
-      <div class="si-controls" aria-label="Chart controls"><button type="button" data-intel-zoom="out" aria-label="Zoom out" ${zoom >= 1 ? "disabled" : ""}>−</button><button type="button" data-intel-zoom="focus">Focus port</button><button type="button" data-intel-zoom="in" aria-label="Zoom in" ${zoom <= .65 ? "disabled" : ""}>+</button><button type="button" data-intel-refresh ${pending ? "disabled" : ""}>↻ Refresh</button></div>
-      ${summary(focus, intel)}${legend()}</div>`;
+      ${focus === S.me.port ? summary(focus, intel) : ""}${legend()}</div>`;
   }
   function paint() {
     const root = document.querySelector(".sail-intel");
@@ -95,16 +95,5 @@ const SailIntel = (() => {
       paint();
     }
   }
-  document.addEventListener("click", e => {
-    const destination = e.target.closest('[data-act="dest"]');
-    if (destination) { zoom = .82; return; }
-    const button = e.target.closest("[data-intel-zoom], [data-intel-refresh]");
-    if (!button) return;
-    if (button.dataset.intelZoom === "in") zoom = Math.max(.65, +(zoom - .12).toFixed(2));
-    else if (button.dataset.intelZoom === "out") zoom = Math.min(1, +(zoom + .12).toFixed(2));
-    else if (button.dataset.intelZoom === "focus") zoom = .82;
-    else { load(true); paint(); return; }
-    paint();
-  });
   return { html(dest) { queueMicrotask(() => load()); return `<div class="sail-map sail-intel">${body(dest)}</div>`; } };
 })();

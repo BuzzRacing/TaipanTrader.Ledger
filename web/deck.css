@@ -570,7 +570,7 @@ body.ingame #speaking { display: none !important; }
   .cl-art::after { background: linear-gradient(to top, var(--deck-night), transparent 76%); }
 }
 @media (orientation: portrait) {
-  .dk-over:has(:is(.cl-veil, .cx-veil, .pg-veil)) { grid-row: side-start / main-end; }
+  .dk-over:has(:is(.cl-veil, .cx-veil, .pg-veil, .mp-veil)) { grid-row: side-start / main-end; }
 }
 @keyframes veilIn { from { opacity: 0; } }
 .deck .veil.no-fade { animation: none; }
@@ -1602,7 +1602,12 @@ body.player .pt .pt-actions button.primary { flex: none; display: inline-flex; a
    Arrival while the stage shows the port's Mayor. Same Art Bible rules as the rest of the Port screen. */
 /* The Parlour takes the whole width of the Port screen (above the columns) and lays itself out in two
    columns: the standing gauge and the purse on the left, what the gift buys on the right. */
-.pt-view.pt-arrival > .pt-mayor { grid-column: 1 / -1; padding: 1.1rem 1.4rem 1.2rem; gap: 1rem; }
+/* 23 Nov 2026: the Parlour is a popup in the middle of the deck (player.js mayorPopup(), in the "over" region), not a
+   card in the Port column, so it can never open out of sight above the pane. */
+.deck .veil.mp-veil { display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.mp-veil > .pt-mayor { width: min(100%, 56rem); max-height: 100%; overflow-y: auto; margin: 0; padding: 1.1rem 1.4rem 1.2rem; gap: 1rem;
+  scrollbar-width: thin; background-color: var(--deck-night) !important;
+  box-shadow: 0 30px 70px -20px #000, 0 0 40px -10px color-mix(in srgb, var(--deck-brass) 35%, transparent); }
 .pt-mayor .mp-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem 1.8rem; align-items: start; }
 .pt-mayor .mp-left, .pt-mayor .mp-right { display: flex; flex-direction: column; gap: .9rem; min-width: 0; }
 .pt-mayor .mp-greet { font-size: 1.15rem; }
@@ -1700,11 +1705,11 @@ body.player .pt button.pt-sellall:hover:not(:disabled) { filter: brightness(1.08
 body.player .pt button.pt-sellall:disabled { opacity: .45; cursor: default; }
 
 /* ------------------------------------------------------------ the race (player.js standings()) --
-   One ledger line per House: medal · crest · House and captain · net worth. Gold, silver and bronze
-   for the top three, a plain engraved ring below that. Used beside the port art and on the end screen. */
+   One compact ledger line per House: place · crest · identity · net worth. Used beside the port art
+   and on the end screen. */
 ol.race { list-style: none; margin: 0 0 .55rem; padding: 0; display: grid; gap: .4rem; }
-.race-row { position: relative; display: grid; grid-template-columns: 2.3rem 3.2rem minmax(0, 1fr) auto; align-items: center; gap: .65rem;
-  padding: .5rem .7rem .5rem .6rem; border: 1px solid var(--rule); border-radius: 6px;
+.race-row { position: relative; display: grid; grid-template-columns: 1.75rem 2.2rem minmax(0, 1fr) auto; align-items: center; gap: .55rem;
+  min-height: 3.8rem; padding: .38rem .65rem .38rem .5rem; border: 1px solid var(--rule); border-radius: 6px;
   background: color-mix(in srgb, var(--deck-night) 45%, transparent); }
 .race-row.gold { border-color: color-mix(in srgb, #e9c25a 55%, transparent);
   background: linear-gradient(90deg, color-mix(in srgb, #e9c25a 16%, transparent), color-mix(in srgb, var(--deck-night) 45%, transparent) 70%); }
@@ -1712,49 +1717,49 @@ ol.race { list-style: none; margin: 0 0 .55rem; padding: 0; display: grid; gap: 
 .race-row.bronze { border-color: color-mix(in srgb, #c27a45 40%, transparent); }
 .race-row.me { box-shadow: inset 3px 0 0 var(--brass-hi); }
 
-/* The medal: a struck disc on a short ribbon. Places 4+ get a plain ring with no ribbon. */
-.medal { box-sizing: border-box; position: relative; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 50%; flex: none;
-  margin-top: .45rem; color: var(--deck-ivory); border: 2px solid color-mix(in srgb, var(--deck-brass) 45%, transparent);
+/* A small struck place coin; the row border carries the podium colour without a space-hungry ribbon. */
+.medal { box-sizing: border-box; position: relative; display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; flex: none;
+  color: var(--deck-ivory); border: 1px solid color-mix(in srgb, var(--deck-brass) 45%, transparent);
   background: color-mix(in srgb, var(--deck-night) 70%, transparent); }
-.medal b { font: 700 1.05rem/1 var(--serif); position: relative; z-index: 1; }
+.medal b { font: 700 .88rem/1 var(--serif); position: relative; z-index: 1; }
 .medal.gold, .medal.silver, .medal.bronze { border: 0; color: #2a1a0c;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), inset 0 0 0 4px rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.55); }
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), inset 0 0 0 3px rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.55); }
 .medal.gold   { background: radial-gradient(circle at 32% 28%, #fff4c2, #f0c84a 38%, #b98617 75%, #7d5608); }
 .medal.silver { background: radial-gradient(circle at 32% 28%, #ffffff, #d9dee3 38%, #9aa3ab 75%, #5f676e); }
 .medal.bronze { background: radial-gradient(circle at 32% 28%, #ffd9b5, #d08a4f 38%, #9a5a2a 75%, #5e3315); color: #2a1206; }
-.medal.gold::before, .medal.silver::before, .medal.bronze::before { content: ""; position: absolute; left: 50%; top: -.75rem; width: 1.3rem; height: 1rem;
-  transform: translateX(-50%); z-index: -1; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 55%, 0 100%);
-  background: linear-gradient(90deg, var(--deck-oxblood) 0 33%, var(--deck-ivory) 33% 66%, var(--deck-oxblood) 66%); }
-.medal.silver::before { background: linear-gradient(90deg, var(--deck-storm) 0 33%, var(--deck-ivory) 33% 66%, var(--deck-storm) 66%); }
-.medal.bronze::before { background: linear-gradient(90deg, var(--deck-jade) 0 33%, var(--deck-ivory) 33% 66%, var(--deck-jade) 66%); }
 .race-row { isolation: isolate; }
 
-.race-crest .crest { display: block; width: 3.2rem; height: 3.2rem; margin: 0; border-radius: 50%; }
+.race-crest .crest { display: block; width: 2.2rem; height: 2.2rem; margin: 0; border-radius: 50%; }
 .race-crest { display: grid; place-items: center; }
-.race-crest .chip { display: block; width: 1.4rem; height: 2.6rem; margin: 0; border-radius: 2px 2px 50% 50% / 2px 2px 22% 22%; }
-.race-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.race-who .hname { font: 400 1.08rem/1.15 var(--serif); color: var(--deck-ivory); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-crest .chip { display: block; width: 1.1rem; height: 2rem; margin: 0; border-radius: 2px 2px 50% 50% / 2px 2px 22% 22%; }
+.race-who { display: flex; flex-direction: column; gap: .18rem; min-width: 0; line-height: 1.2; }
+.race-name { display: flex; align-items: center; gap: .4rem; min-width: 0; }
+.race-who .hname { min-width: 0; font: 400 1rem/1.15 var(--serif); color: var(--deck-ivory); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .race-row.gold .race-who .hname { color: #f6dc8a; }
-.race-you { display: inline-block; align-self: flex-start; margin: .15rem 0 .05rem; padding: .05rem .45rem; border-radius: 999px; font: 600 .66rem/1.3 var(--sans);
+.race-you { display: inline-block; flex: none; padding: .04rem .38rem; border-radius: 999px; font: 600 .62rem/1.3 var(--sans);
   font-style: normal; letter-spacing: .08em; text-transform: uppercase; color: var(--deck-night); background: var(--brass-hi); }
-.race-capt { font-size: .86rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.race-meta { display: flex; align-items: baseline; gap: .28rem; min-width: 0; color: var(--muted); }
+.race-meta > i { flex: none; font-style: normal; }
+.race-capt { min-width: 0; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .race-capt .rankname { font-variant: small-caps; }
-.race-where { font-size: .78rem; color: color-mix(in srgb, var(--deck-ivory) 72%, transparent); margin-top: .1rem; }
+.race-where { flex: none; font-size: .75rem; color: color-mix(in srgb, var(--deck-ivory) 72%, transparent); }
 .race-worth { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; white-space: nowrap; }
 .race-worth > small:first-child { font-family: var(--special); font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
   color: color-mix(in srgb, var(--deck-brass) 80%, var(--deck-ivory)); }
-.race-worth b { font: 700 1.2rem/1.2 var(--serif); color: var(--deck-ivory); font-variant-numeric: tabular-nums; }
+.race-worth b { font: 700 1.08rem/1.2 var(--serif); color: var(--deck-ivory); font-variant-numeric: tabular-nums; }
 .race-worth b.down { color: var(--blood-hi); }
 .race-worth > small:last-child { font-size: .74rem; color: var(--muted); }
 .race-row.gold .race-worth > small:last-child { color: #f0d27a; }
 
-/* Tight side column: drop the crest size and the worth caption a touch. */
+/* Tight side column: the compact row remains readable without dropping identity details. */
 .pt-race-side ol.race { gap: .35rem; }
-.pt-race-side .race-row { gap: .55rem; padding: .45rem .6rem .45rem .5rem; }
+.pt-race-side .race-row { gap: .45rem; padding-inline: .45rem .55rem; }
 @container pane (max-width: 340px) {
-  .race-row { grid-template-columns: 2.3rem 2.6rem minmax(0, 1fr) auto; }
-  .race-crest .crest { width: 2.6rem; height: 2.6rem; }
+  .race-row { grid-template-columns: 1.65rem 1.9rem minmax(0, 1fr) auto; gap: .4rem; }
+  .medal { width: 1.65rem; height: 1.65rem; }
+  .race-crest .crest { width: 1.9rem; height: 1.9rem; }
   .race-worth > small:first-child { display: none; }
+  .race-capt .rankname { display: none; }
 }
 
 /* ------------------------------------------------------------------ voyage ribbon -- */

@@ -408,7 +408,7 @@ function region(name, html) {
   if (el && drawn[name] !== html) {
     // An overlay that is only changing its contents does not fade in again.
     const veil = name === "over" && el.querySelector(".veil");
-    const kind = veil && ["cl-veil", "cx-veil", "pg-veil"].find(c => veil.classList.contains(c));
+    const kind = veil && ["cl-veil", "cx-veil", "pg-veil", "mp-veil"].find(c => veil.classList.contains(c));
     el.innerHTML = html; drawn[name] = html; Chart.fit(el);
     const next = kind && el.querySelector(".veil." + kind);
     if (next) next.classList.add("no-fade");
@@ -456,7 +456,7 @@ function render() {
     deck.classList.toggle("locked", !!S.me.ready);
     deck.dataset.tab = ui.tab;
     ["top", "nav", "pane", "side", "over"].forEach(k => {
-      if (ui.drag && k === "pane") return;
+      if (ui.drag && (k === "pane" || (k === "over" && mayorOpen()))) return;   // the purse slider in the Mayor's popup is held still too
       // The Port Authority's declaration desk is updated in place while it stays open.
       if (k === "over" && parts.over.includes("cx-desk declare") && Customs.keep()) { drawn.over = null; return; }
       region(k, parts[k]);
@@ -814,15 +814,14 @@ function standings() {
     const me = p.id === S.me.id;
     const gap = lead - p.worth;
     const sub = place === 1
-      ? (list.length > 1 && list[1].worth < p.worth ? te("race.lead_by", { gap: money(p.worth - list[1].worth) }) : te("race.leader"))
-      : te("race.behind", { gap: money(gap) });
+      ? (list.length > 1 && list[1].worth < p.worth ? te("race.lead_by", { gap: moneyShort(p.worth - list[1].worth) }) : te("race.leader"))
+      : te("race.behind", { gap: moneyShort(gap) });
     return `<li class="race-row${medal ? " " + medal : ""}${me ? " me" : ""}">
       <span class="medal${medal ? " " + medal : ""}" title="${esc(ordinal(place))}" aria-label="${esc(ordinal(place))}"><b>${place}</b></span>
       <span class="race-crest">${houseMark(p)}</span>
-      <span class="race-who"><b class="hname">${esc(p.firm)}</b>${me ? `<em class="race-you">${te("race.you")}</em>` : ""}
-        <span class="race-capt">${esc(p.name)} ${Ranks.label(p)}</span>
-        <small class="race-where">${esc(portName(p.port))} · ${esc(ten("race.ships", p.ships))}</small></span>
-      <span class="race-worth"><small>${te("col.worth")}</small><b class="${p.worth < 0 ? "down" : ""}">${money(p.worth)}</b><small>${sub}</small></span>
+      <span class="race-who"><span class="race-name"><b class="hname">${esc(p.firm)}</b>${me ? `<em class="race-you">${te("race.you")}</em>` : ""}</span>
+        <span class="race-meta"><span class="race-capt">${esc(p.name)} ${Ranks.label(p)}</span><i aria-hidden="true">·</i><small class="race-where">${esc(portName(p.port))} · ${esc(ten("race.ships", p.ships))}</small></span></span>
+      <span class="race-worth"><small>${te("col.worth")}</small><b class="${p.worth < 0 ? "down" : ""}" title="${esc(money(p.worth))}">${moneyShort(p.worth)}</b><small>${sub}</small></span>
     </li>`;
   }).join("");
   return `<ol class="race">${rows}</ol>`;
@@ -970,7 +969,7 @@ function gameScreen() {
     : ui.tab === "fleet" ? captainCommission(me)
     : ui.tab === "port" ? `<section class="card pt-race pt-race-side"><h2>${te("port.race.title")}</h2>${portRace()}</section>` : "";
   // The Port Authority's desk comes first in a new port (after the month's log is read).
-  return { top, nav, pane, side, over: fighting ? "" : purseAskHtml() || report || Customs.html() };
+  return { top, nav, pane, side, over: fighting ? "" : purseAskHtml() || report || mayorPopup() || Customs.html() };
 }
 
 function rankSeal(rankId) {
@@ -1758,11 +1757,11 @@ function portArrival() {
   // The "Welcome to (port)" banner lives in the header (portPlate); the month's result is under
   // Accounts and the full voyage log is under the Log sub-tab.
   const todo = `<section class="card pt-todo"><h2>${te("port.todo.title")}</h2>${portTodo()}</section>`;
-  const mayor = mayorOpen() ? mayorParlour() : "";
-  const month = portMonth(!!mayor);
-  // The Parlour takes the full width of the screen (above the columns) so it can be read easily.
-  if (!hasServices()) return mayor + todo + month;
-  return `${mayor}<div class="pt-col pt-col-port">${todo}${month}</div>
+  // The Mayor's Parlour is no longer drawn here: it opens as a popup in the middle of the screen (mayorPopup(),
+  // 23 Nov 2026), because when the port column was thin the full-width Parlour opened above the visible pane.
+  const month = portMonth(false);
+  if (!hasServices()) return todo + month;
+  return `<div class="pt-col pt-col-port">${todo}${month}</div>
     <div class="pt-col pt-col-svc">${portServiceCards()}</div>`;
 }
 
@@ -1801,6 +1800,11 @@ function hotPin() {
    Standing gained = cap x (1 - e^(-gift / appetite)) x headroom (engine.py Game.gift_gain, mirrored
    here so the slider shows the result as it moves). me.gift carries the rule's numbers. */
 const mayorOpen = () => !!(ui.mayor && ui.tab === "port" && ui.portView === "arrival" && S.me.gift && S.me.gift.enabled);
+/* Call on the Mayor: the Parlour as a popup over the middle of the deck (the "over" region, like the purse
+   confirmation and the captain's log). Clicking outside it or pressing Escape closes it. */
+function mayorPopup() {
+  return mayorOpen() ? `<div class="veil mp-veil">${mayorParlour().replace('<section class="card pt-mayor"', '<section class="card pt-mayor" role="dialog" aria-modal="true" aria-label="' + esc(te("port.mayor.title")) + '"')}</div>` : "";
+}
 function mayorGain(gv, rep, amount) {
   const soft = Math.min(99, Math.max(0, gv.soft_from));
   const head = rep <= soft ? 1 : Math.max(0, (100 - rep) / (100 - soft));
@@ -3342,6 +3346,10 @@ const endDrag = () => { ui.sealWarned = null; if (ui.drag) { ui.drag = false; re
 app.addEventListener("change", e => { if (e.target.classList.contains("mk-range") || e.target.classList.contains("cx-range")) endDrag(); });
 window.addEventListener("pointerup", endDrag);
 window.addEventListener("pointercancel", endDrag);
+
+/* The Mayor's popup closes on a click on the dark margin around it, or on Escape. */
+app.addEventListener("click", e => { if (e.target.classList && e.target.classList.contains("mp-veil")) { ui.mayor = false; render(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S && S.me && mayorOpen()) { ui.mayor = false; render(); } });
 
 app.addEventListener("keydown", e => {
   if (e.key !== "Enter" || !e.target.dataset.k) return;
