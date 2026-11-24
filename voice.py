@@ -608,11 +608,42 @@ class Planner:
                 text = re.sub(r"(?<!\w){}(?!\w)".format(re.escape(x)), lambda _m, y=y: y, text)
         return text
 
-    def _clip(self, text, cid, key=None):
+    def port_voice(self, role, port):
+        """The cast key of this port's own woman for a role (cast.PORT_VOICES: the Mayor, the Market keeper for
+        the comprador, the Ship master for the shipwright) when she has a voice, else None: the shared cast
+        member's voice is used. The clip still names the role as its speaker (c) and adds her as v, so the
+        stage keeps her port's picture and shows her name (web/deck.js, web/player.js stageFace)."""
+        prefix = getattr(cast, "PORT_VOICES", {}).get(role)
+        cid = prefix + str(port) if prefix and port else ""
+        ch = (self.cfg.get("characters") or {}).get(cid) if cid else None
+        return cid if ch and ch.get("voice_id") else None
+
+    def mayor_voice(self, port):
+        """This port's own Mayor (mayor_<port>) when she has a voice, else None."""
+        return self.port_voice("mayor", port)
+
+    def _mayor_port(self, fields, port):
+        """Which port's Mayor is speaking: the port her line names (a fine for slipping out, word of your
+        standing somewhere else), else the port the house is in."""
+        named = (fields or {}).get("port")
+        if named:
+            for pid, p in (self.cfg.get("ports") or {}).items():
+                if p.get("name") == named:
+                    return pid
+        return port
+
+    def _clip(self, text, cid, key=None, voice=None):
         """{c: who, u: the clip} for a line. When the clean wording differs, also f: the clean clip,
         which a Family-friendly screen plays instead (web/voice.js); a table that is Family-friendly
-        throughout gets the clean clip as u."""
+        throughout gets the clean clip as u.
+        voice: another cast member whose voice (and speed, and delivery) reads it, while the screens still
+        show cid (a port's own Mayor speaking as "the Mayor")."""
         ch = self.cfg["characters"].get(cast.played_by(self.cfg, cid))   # a Brand role speaks as whoever is cast
+        own = self.cfg["characters"].get(voice) if voice else None
+        if own and own.get("voice_id"):
+            ch = own
+        else:
+            voice = None
         if not ch or not ch.get("voice_id") or not speech_text(text):
             return None
         if key:
@@ -623,29 +654,34 @@ class Planner:
         clean = self.clean(text)
         if ((self.cfg.get("content") or {}).get("rating") == "family"):
             text = clean
-        out = {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, vcfg), cid, key or ""))}
+        by = voice or cid            # the Clips page files a recording under whoever's voice it is
+        out = {"c": cid, "u": "/voice/{}.mp3".format(register(_params(text, ch, vcfg), by, key or ""))}
+        if voice:
+            out["v"] = voice         # whose voice it is, when not c's own: the stage shows her
         if clean != text:
-            out["f"] = "/voice/{}.mp3".format(register(_params(clean, ch, vcfg), cid, key or ""))
+            out["f"] = "/voice/{}.mp3".format(register(_params(clean, ch, vcfg), by, key or ""))
         return out
 
-    def _who(self, key, port):
-        """Who reads a line: the Port Authority's lines go to the officer of the player's port."""
+    def _who(self, key, port, officer=None):
+        """Who reads a line: the Port Authority's lines go to the officer of the player's port, or to
+        `officer` when the caller knows who is at the desk (the Registrar at a house's home port)."""
         cid = cast.speaker_for(self.cfg, key)
         # The jail: read by the warden of the port the house is in (falls back to the stand-in).
         if port and key in getattr(cast, "WARDEN_KEYS", ()) and cid == cast.LINE_DEFAULTS.get(key):
             ch = self.cfg["characters"].get("warden_" + port)
             if ch and ch.get("voice_id"):
                 return "warden_" + port
-        if port and key in cast.OFFICER_KEYS and cid == cast.LINE_DEFAULTS.get(key):
-            officer = ((self.cfg.get("ports") or {}).get(port) or {}).get("officer")
+        if (port or officer) and key in cast.OFFICER_KEYS and cid == cast.LINE_DEFAULTS.get(key):
+            officer = officer or ((self.cfg.get("ports") or {}).get(port) or {}).get("officer")
             ch = self.cfg["characters"].get(officer) if officer else None
             if ch and ch.get("voice_id"):
                 return officer
         return cid
 
-    def line(self, text, kind, port=None):
+    def line(self, text, kind, port=None, officer=None):
         """kind: 'log' (captain's log), 'news', 'msg' (an answer to something the player did).
-        port: where the player is, so the Port Authority's lines go to that port's officer."""
+        port: where the player is, so the Port Authority's lines go to that port's officer.
+        officer: who is at the desk right now, when known (she reads them instead)."""
         v = self.cfg["voice"]
         if kind == "news":
             text = DATE_PREFIX.sub("", str(text))
@@ -655,26 +691,31 @@ class Planner:
                 return None
             if key in ROUTINE_LOG and not v.get("read_routine_log"):
                 return None
-            cid = self._who(key, port) if key else cast.speaker_for(self.cfg, "l.?")
+            cid = self._who(key, port, officer) if key else cast.speaker_for(self.cfg, "l.?")
         elif kind == "news":
             cid = cast.speaker_for(self.cfg, key) if key else v["custom_news"]
         else:
             if not key or (key.startswith("m.") and not v["read_confirmations"]) or \
                     (key.startswith("e.") and not v["read_errors"]):
                 return None
-            cid = self._who(key, port)
-        return self._clip(self.spoken(key, fields, str(text).strip()), cid, key) if cid else None
+            cid = self._who(key, port, officer)
+        if not cid:
+            return None
+        own = None
+        if cid in getattr(cast, "PORT_VOICES", {}) and cast.LINE_DEFAULTS.get(key) == cid:
+            own = self.port_voice(cid, self._mayor_port(fields, port) if cid == "mayor" else port)
+        return self._clip(self.spoken(key, fields, str(text).strip()), cid, key, voice=own)
 
-    def lines(self, texts, kind, limit=None, port=None):
+    def lines(self, texts, kind, limit=None, port=None, officer=None):
         if not self.ready():
             return None
         texts = list(texts or [])[:limit] if limit else list(texts or [])
-        return [self.line(t, kind, port) for t in texts]
+        return [self.line(t, kind, port, officer) for t in texts]
 
-    def msg(self, text, port=None):
+    def msg(self, text, port=None, officer=None):
         if not self.ready():
             return None
-        return self.line(text, "msg", port)
+        return self.line(text, "msg", port, officer)
 
     # ------------------------------------------------ the Captain's Log --
     def _t(self, key, default, **kw):

@@ -278,7 +278,9 @@
   const roleHit = (i, r) => i.roles.some(x => x === r || x.startsWith(r + "_")) || i.tags.some(t => String(t).toLowerCase() === r);
   // Wallpapers, weather pictures and storm pictures belong to a woman's scenery, not to her port. With a Port or Job
   // chosen and no Role picked, they stay out of the way; pick the Role (Wallpaper, Weather, Storm) to see them.
-  const SCENERY = ["wallpaper", "weather", "storm"];
+  const SCENERY = ["wallpaper", "weather", "storm", "tax_good", "tax_bad"];
+  // A persona's scene roles with prompts of their own (the tax ladies' wide result pictures, tax_results.py).
+  const scenePrompt = (kind, subject, role) => (kind === "persona" && role && (((M.lib || {}).scene_prompts || {})[subject] || {})[role]) || null;
   const isScenery = i => i.kind === "persona" && ((i.roles.length && i.roles.every(r => SCENERY.includes(r)))
     || i.tags.some(t => /^(weather|master-shot|wallpaper)/i.test(String(t))));
   // Only a Port on its own hides scenery: a whole port's cast has hundreds of wallpapers and weather pictures. Once
@@ -668,6 +670,8 @@
   function roleStart(kind, subject, role) {
     let prompt = defaultPrompt(kind, subject, role || undefined), aspect = ASPECT_FOR[kind] || "3:4";
     if (kind === "persona" && role && PERSONA_MOODS[role]) prompt = personaPrompt(subject, role);
+    const sp = scenePrompt(kind, subject, role);
+    if (sp) { prompt = sp.nsfw; aspect = sp.aspect || "16:9"; }
     if (kind === "port" && role && (["keeper", "shipmaster", "mayor", "taxlady"].includes(role) || role.startsWith("mayor_"))) aspect = "3:4";
     if (kind === "ship" && role) aspect = role === "card" ? "3:2" : "16:9";
     if (kind === "scene" && BATTLE_ENEMY[subject] && role) aspect = "16:9";
@@ -771,6 +775,9 @@
   }
   // The prompts for one target: personas use their own cast prompt (pair rule), everything else copies its own pictures.
   function recPrompts(r, t) {
+    // Her wide result pictures are not portraits: they have their own prompts and shape, the same ones the batch used.
+    const sp = scenePrompt(r.kind, t.s, t.role);
+    if (sp) return { nsfwP: sp.nsfw, cleanP: sp.clean, plainP: sp.clean, aspect: sp.aspect || "16:9", person: false };
     const pics = recPics(r, t).filter(i => i.prompt && i.prompt.length >= 20).sort(byAdded);
     const loose = pics.length ? pics : items().filter(i => i.type === "image" && !i.missing && i.kind === r.kind && i.subject === t.s && i.prompt && i.prompt.length >= 20).sort(byAdded);
     const persona = r.kind === "persona" && CFG.characters[t.s] && CFG.characters[t.s].portrait_prompt;

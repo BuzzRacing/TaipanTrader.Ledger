@@ -1,33 +1,71 @@
-.si-head, .si-detail header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem .9rem; }
-.si-head small, .si-detail header small { color: var(--brass-hi); font: 700 .65rem var(--special); letter-spacing: .12em; }
-.si-head h3, .si-detail h3 { margin: .15rem 0 0; font: 700 1.55rem var(--serif); }
-.si-head button { font-size: .75rem; }
-.si-lenses { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0 .9rem .6rem; }
-.si-lenses button { min-height: 40px; padding: .5rem .85rem; border-radius: 2rem; font: 700 .8rem var(--sans); }
-.si-lenses button[aria-pressed="true"] { background: var(--deck-oxblood); color: var(--deck-ivory); border-color: var(--blood-hi); box-shadow: inset 0 0 15px #0004; }
-.si-key { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin: 0; padding: .2rem .9rem; color: var(--deck-ivory); font: .8rem/1.5 var(--sans); }
-.si-key-ring { width: .9rem; height: .9rem; border: 3px solid var(--deck-brass); border-left-color: var(--deck-oxblood); border-radius: 50%; flex: none; }
-.si-hot-key { color: var(--brass-hi); white-space: nowrap; }
-.si-status { margin: .3rem .9rem .7rem; color: var(--muted); font-size: .75rem; }
-.si-detail { margin: .7rem; background: color-mix(in srgb, var(--deck-night) 85%, transparent); border: 1px solid var(--edge-hi); border-top: 3px solid var(--deck-oxblood); border-radius: .5rem; }
-.si-detail header > span { font: .8rem var(--sans); color: var(--brass-hi); text-align: right; }
-.si-detail dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .8rem; margin: 0; padding: .3rem .9rem .9rem; }
-.si-detail dt { font: .7rem var(--sans); color: var(--muted); }
-.si-detail dd { margin: .25rem 0 0; font: 700 1.25rem var(--sans); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.si-profit { color: var(--jade-hi); } .si-loss { color: var(--blood-hi); }
-.si-tip, .si-trade { margin: 0; padding: .65rem .9rem; border-top: 1px solid var(--edge); font: .8rem/1.5 var(--sans); }
-.si-tip { background: color-mix(in srgb, var(--deck-oxblood) 35%, transparent); }
-.si-tip b { color: var(--brass-hi); margin-right: .4rem; }
-.chart .intel-track { fill: var(--deck-night); fill-opacity: .85; stroke: #e4c98b55; stroke-width: 5; }
-.chart .intel-arc { fill: none; stroke: var(--deck-brass); stroke-width: 5; stroke-linecap: round; transform: rotate(-90deg); transform-box: fill-box; transform-origin: center; animation: si-reveal 1.2s cubic-bezier(.16,1,.3,1) both; }
+.sail-intel { padding: 0; overflow: hidden; }
+.si-stage { position: relative; height: clamp(430px, 58vw, 600px); overflow: hidden; border-radius: var(--radius); background: var(--deck-night); }
+.si-stage > .chart { width: 100%; height: 100%; border: 0; border-radius: 0; }
+.si-map-head { position: absolute; z-index: 6; top: 1rem; left: 1rem; padding: .5rem .65rem; border-radius: .45rem; background: color-mix(in srgb, var(--deck-night) 84%, transparent); box-shadow: 0 8px 24px #0006; backdrop-filter: blur(8px); pointer-events: none; }
+.si-map-head small, .si-summary small { color: var(--brass-hi); font: 700 .62rem var(--special); letter-spacing: .13em; }
+.si-map-head h3 { margin: .12rem 0 0; font: 700 1.5rem/1 var(--serif); }
+.si-map-head p { margin: .35rem 0 0; color: var(--deck-ivory); font: .7rem/1.25 var(--sans); }
+.si-controls { position: absolute; z-index: 7; top: 1rem; right: 1rem; display: flex; gap: .35rem; }
+.si-controls button { min-height: 34px; padding: .38rem .65rem; border-radius: .45rem; background: color-mix(in srgb, var(--deck-night) 88%, transparent); font: 700 .68rem var(--sans); backdrop-filter: blur(8px); box-shadow: 0 5px 18px #0005; }
+.si-controls button:first-child, .si-controls button:nth-child(3) { width: 34px; padding: 0; font-size: 1rem; }
+.si-summary { position: absolute; z-index: 6; top: 4.6rem; right: 1rem; width: min(20rem, calc(100% - 2rem)); padding: .8rem; border: 1px solid var(--edge-hi); border-radius: .65rem; background: color-mix(in srgb, var(--deck-night) 88%, transparent); box-shadow: 0 14px 34px #0008, inset 0 0 20px #0003; backdrop-filter: blur(10px); }
+.si-summary header { display: flex; justify-content: space-between; align-items: start; gap: .8rem; padding-bottom: .55rem; border-bottom: 1px solid var(--edge); }
+.si-summary h3 { margin: .14rem 0 0; font: 700 1.35rem/1 var(--serif); }
+.si-summary header > span { max-width: 11rem; color: var(--brass-hi); font: 700 .68rem/1.25 var(--sans); text-align: right; }
+.si-summary dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; margin: .65rem 0 0; }
+.si-summary dt { color: var(--muted); font: .62rem var(--sans); }
+.si-summary dd { margin: .2rem 0 0; color: var(--deck-ivory); font: 700 .88rem var(--sans); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.si-summary dd.si-profit { color: var(--jade-hi); }
+.si-summary dd.si-loss { color: var(--blood-hi); }
+.si-summary p { margin: .65rem -.8rem -.8rem; padding: .55rem .8rem; border-top: 1px solid var(--edge); color: var(--deck-ivory); background: color-mix(in srgb, var(--deck-brass) 8%, transparent); font: .68rem/1.35 var(--sans); }
+.si-legend { position: absolute; z-index: 6; left: 1rem; bottom: 1rem; display: flex; align-items: center; gap: .72rem; padding: .5rem .65rem; border: 1px solid var(--edge-hi); border-radius: .5rem; color: color-mix(in srgb, var(--deck-ivory) 78%, transparent); background: color-mix(in srgb, var(--deck-night) 88%, transparent); box-shadow: 0 8px 24px #0006; backdrop-filter: blur(8px); font: .6rem var(--sans); }
+.si-legend b { color: var(--brass-hi); font: 700 .58rem var(--special); letter-spacing: .08em; }
+.si-legend span { display: inline-flex; align-items: center; gap: .25rem; white-space: nowrap; }
+.si-legend i { width: .65rem; height: .65rem; border: 2px solid; border-radius: 50%; }
+.si-legend i.visits { border-color: var(--deck-brass); }
+.si-legend i.profit { border-color: #53c7e8; }
+.si-legend i.shares { border-color: var(--jade-hi); }
+.si-legend i.standing { border-color: #b48ee8; }
+.si-legend i.route { width: 1rem; height: 2px; border: 0; border-radius: 0; background: var(--jade-hi); }
+.chart .intel-track { fill: none; stroke: color-mix(in srgb, var(--deck-night) 78%, #fff); stroke-width: 4.5; }
+.chart .intel-arc { fill: none; stroke: var(--deck-brass); stroke-width: 4.5; stroke-linecap: round; transform: rotate(-90deg); transform-box: fill-box; transform-origin: center; animation: si-reveal 1.2s cubic-bezier(.16,1,.3,1) both; }
+.chart .intel-arc.intel-visits { stroke: var(--deck-brass); }
+.chart .intel-arc.intel-profit { stroke: #53c7e8; }
+.chart .intel-arc.intel-shares { stroke: var(--jade-hi); }
+.chart .intel-arc.intel-standing { stroke: #b48ee8; }
 .chart .intel-arc.negative { stroke: var(--blood-hi); }
-.chart .intel-arc.positive { stroke: var(--jade-hi); }
-.sail-intel .chart .port .intel-value { fill: var(--brass-hi); font: 700 15px var(--sans); letter-spacing: .02em; }
-.chart .intel-beacon { fill: none; stroke: var(--deck-oxblood); stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: si-beacon 3.8s ease-out infinite; pointer-events: none; }
-.chart .port.click:focus-visible .label-bg { stroke: var(--brass-hi); stroke-width: 4; }
+.chart .intel-risk { fill: none; stroke-width: 2.5; opacity: .78; }
+.chart .intel-risk.risk-0 { stroke: var(--jade-hi); }
+.chart .intel-risk.risk-1 { stroke: var(--deck-brass); }
+.chart .intel-risk.risk-2 { stroke: #e79b45; }
+.chart .intel-risk.risk-3 { stroke: var(--blood-hi); }
+.chart .intel-route { stroke: var(--jade-hi); stroke-width: 2.3; stroke-dasharray: 5 10; stroke-linecap: round; opacity: .48; animation: si-route 3.4s linear infinite; }
+.chart .intel-route.risk-1 { stroke: var(--deck-brass); }
+.chart .intel-route.risk-2 { stroke: #e79b45; }
+.chart .intel-route.risk-3 { stroke: var(--blood-hi); }
+.chart .intel-route.selected { stroke-width: 4; opacity: .95; filter: url(#chart-shadow); }
+.chart .intel-heat { fill: var(--jade-hi); opacity: calc(.08 + var(--intel-heat) * .22); filter: url(#intel-heat-blur); animation: si-heat 4.8s ease-in-out infinite alternate; pointer-events: none; }
+.chart .intel-beacon { fill: none; stroke: var(--brass-hi); stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: si-beacon 3.8s ease-out infinite; pointer-events: none; }
+.sail-intel .chart .port .intel-value { fill: var(--brass-hi); font: 700 12px var(--sans); letter-spacing: .01em; }
 .sail-intel .chart .port .current-flag { display: none; }
+.sail-intel .chart .port.click:focus-visible .label-bg { stroke: var(--brass-hi); stroke-width: 4; }
 @keyframes si-reveal { from { stroke-dasharray: 0 100; } }
-@keyframes si-beacon { 0%, 20% { opacity: .85; transform: scale(1); } 85%, 100% { opacity: 0; transform: scale(1.6); } }
-.si-chart-scroll { overflow-x: auto; border-radius: var(--radius); }
-@media (max-width: 600px) { .si-head { align-items: start; } .si-head h3 { font-size: 1.25rem; } .si-lenses { gap: .3rem; } .si-lenses button { flex: 1 0 auto; } .sail-intel .chart { min-width: 760px; } }
-@media (prefers-reduced-motion: reduce) { .chart .intel-arc, .chart .intel-beacon { animation: none; } .chart .intel-beacon { display: none; } }
+@keyframes si-route { to { stroke-dashoffset: -60; } }
+@keyframes si-heat { to { transform: scale(1.12); opacity: .32; } }
+@keyframes si-beacon { 0%, 20% { opacity: .85; transform: scale(1); } 85%, 100% { opacity: 0; transform: scale(1.45); } }
+@media (max-width: 760px) {
+  .si-stage { height: clamp(430px, 72vw, 540px); }
+  .si-map-head { top: .55rem; left: .55rem; }
+  .si-map-head h3 { font-size: 1.15rem; }
+  .si-map-head p { display: none; }
+  .si-controls { top: .55rem; right: .55rem; }
+  .si-controls button:nth-child(2), .si-controls button:last-child { display: none; }
+  .si-summary { top: 3.7rem; right: .55rem; width: min(20rem, calc(100% - 1.1rem)); padding: .65rem; }
+  .si-summary dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .si-summary p { margin: .55rem -.65rem -.65rem; padding: .5rem .65rem; }
+  .si-legend { left: .55rem; bottom: .55rem; max-width: calc(100% - 1.1rem); flex-wrap: wrap; gap: .38rem .6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart .intel-arc, .chart .intel-route, .chart .intel-heat, .chart .intel-beacon { animation: none; }
+  .chart .intel-beacon { display: none; }
+}

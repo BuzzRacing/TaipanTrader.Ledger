@@ -46,11 +46,15 @@ const Media = (() => {
        "weather"    role weather or tagged
                     weather / weather-<kind>          -> behind the Newspaper's forecast only (opts.scene = "weather";
                                                          weather-glass.js picks the kind by its tag)
+       "ruling"     role tax_good / tax_bad or tagged
+                    tax-result (23 Nov 2026)          -> the Port Authority's full-width result screen only
+                                                         (customs.js resultArt asks with scene "ruling")
      A slot that wants one asks for it by name with opts.scene; every other request leaves all of them out,
      whatever role it asks for and however far it falls back. */
   function sceneOf(i) {
     const marks = [...(i.g || []), ...(i.r || [])].map(x => String(x).toLowerCase());
     if (marks.includes("certificate")) return "certificate";
+    if (marks.some(x => x === "tax_good" || x === "tax_bad" || x === "tax-result")) return "ruling";
     if (marks.some(x => x === "reclining" || x.startsWith("masthead"))) return "masthead";
     if (marks.some(x => x === "wallpaper" || x === "master-shot")) return "wallpaper";
     if (marks.some(x => x === "weather" || x.startsWith("weather-"))) return "weather";

@@ -609,7 +609,7 @@ class Hub:
             # The Port Authority officer's greeting, read by the officer of that port. At a captain's home
             # port the Registrar reads her welcome home and then her price tip (her own lines, cast.py).
             said = [cu["welcome"]] + ([cu["tip"]["text"]] if (cu.get("tip") or {}).get("text") else [])
-            plans = voice.PLAN.lines(said, "log", port=cu.get("port"))
+            plans = voice.PLAN.lines(said, "log", port=cu.get("port"), officer=cu.get("officer"))
             if plans and not cu.get("aloud", True):
                 plans[0] = None                  # a quiet landing: her greeting is shown, not read (her tip still is)
             v["voice"]["customs"] = plans
@@ -1133,7 +1133,8 @@ class Handler(BaseHTTPRequestHandler):
                     elif kind == "customs_declare" and report and report.get("line"):
                         event["clips"] = [voice.PLAN._clip(report["line"], report["officer"])]
                     elif kind == "arrived" and event.get("welcome"):
-                        event["clips"] = [voice.PLAN._clip(event["welcome"], "mayor")]
+                        event["clips"] = [voice.PLAN._clip(event["welcome"], "mayor",
+                                                           voice=voice.PLAN.mayor_voice(event.get("port")))]
                     else:
                         key, _fields = voice.PLAN.matcher.match(event["text"])
                         if key:
@@ -1171,6 +1172,7 @@ class Handler(BaseHTTPRequestHandler):
     def _post(self):
         url = urlparse(self.path)
         path = url.path
+        at_port = at_desk = None     # where the acting house is and who is at its desk: a refusal is read by her too
         try:
             if path.startswith("/api/admin/"):
                 return self._admin_post(path[len("/api/admin/"):], parse_qs(url.query))
@@ -1207,6 +1209,11 @@ class Handler(BaseHTTPRequestHandler):
                         return self._send(200, {"ok": False, "error": engine.tx("e.not_in_game"),
                                                 "rejoin": True})
                     present = HUB.present() | {pid}
+                    # Noted before the action (it may clear the desk): the port, and the officer at the desk there.
+                    seat = HUB.game.s["players"].get(pid) or {}
+                    at_port = seat.get("port")
+                    desk = seat.get("customs") or {}
+                    at_desk = desk.get("officer") if desk.get("port") == at_port else None
                     if body.get("type") == "new_game":
                         if HUB.game.host_id(present) != pid:
                             raise GameError(engine.tx("e.host_new_game"))
@@ -1222,7 +1229,8 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         msg = HUB.game.act(pid, body, present)
                         HUB.changed()
-                    said = voice.PLAN.msg(msg, port=HUB.game.s["players"].get(pid, {}).get("port"))
+                    said = voice.PLAN.msg(msg, port=HUB.game.s["players"].get(pid, {}).get("port") or at_port,
+                                          officer=at_desk)
                 return self._send(200, {"ok": True, "msg": msg, "voice": said})
             if path == "/api/shutdown":
                 if not self._local():
@@ -1235,7 +1243,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
         except GameError as e:
             with HUB.cond:
-                said = voice.PLAN.msg(str(e))
+                said = voice.PLAN.msg(str(e), port=at_port, officer=at_desk)
             return self._send(200, {"ok": False, "error": str(e), "voice": said})
         self._send(404, {"ok": False, "error": "Not found"})
 

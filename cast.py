@@ -525,10 +525,23 @@ _OFFICERS = {
 _OFFICERS.update(jail_cast.WARDENS)
 # The Legends (legend.py, 20 Nov 2026): the three storytellers and each Legend's own characters (legend_cast.py).
 _OFFICERS.update(legend_cast.TELLERS)
+# RETIRED (23 Nov 2026): the thirty extra port women (mayor_<port>, keeper_<port>, shipmaster_<port>) were a
+# second Mayor, Market keeper and Ship master on top of the shared Mayor, Lau Siu-wah and Tang Wai-lin, who
+# already speak for every port. They are no longer in the cast; config.validate drops them from a saved cast.
+_PORT_KEYS = ("hongkong", "shanghai", "nagasaki", "manila", "foochow", "saigon", "bangkok", "singapore",
+              "batavia", "calcutta")
+RETIRED = tuple(_p + "_" + _k for _p in ("mayor", "keeper", "shipmaster") for _k in _PORT_KEYS)
 for _cid, _o in _OFFICERS.items():
     _o["brand_link"], _o["portrait"] = "", ""
     _o["portrait_prompt"] = _o.pop("prompt")
     CHARACTERS[_cid] = _o
+# Voices Inworld does not have (Elizabeth, Julia, Priya) are replaced by the Easy-pass casting voices, so every
+# default persona has a voice that exists. Only the defaults: a voice set in Voice Library is never touched.
+for _cid, _v in {"officer_singapore": "Wendy", "officer_manila": "Marta", "officer_bangkok": "Liwa",
+                 "warden_singapore": "Tala", "warden_manila": "Rocio", "warden_bangkok": "Minji",
+                 "warden_calcutta": "Winifred", "teller_tavern": "Dalisay", "teller_drowned": "Rosalind"}.items():
+    if _cid in CHARACTERS:
+        CHARACTERS[_cid]["voice_id"] = _v
 # Added after games were already saved: config.validate adds these to a saved cast once.
 SEEDED = list(_OFFICERS) + ["bookkeeper", "gamemaster", "thieves"]
 for _c in CHARACTERS.values():
@@ -600,7 +613,9 @@ for _who, _keys in {
     "taxlady": ["l.customs_welcome", "l.customs_free", "l.customs_home", "l.customs_empty", "l.customs_paid", "l.customs_bought",
                 "l.customs_caught", "m.customs_clean", "m.customs_over", "m.customs_bought", "m.customs_caught",
                 "m.customs_bribe_refused", "m.customs_buyback", "e.customs_first", "e.customs_bribe_cost",
-                "e.customs_nothing_back"] + [k for k in strings.EN if k.startswith(("l.customs_welcome.", "m.customs_clean."))]
+                "e.customs_nothing_back",
+                # Hers too (23 Nov 2026): these fell to the First Mate, who read them over the officer's face.
+                "l.customs_spot_home", "l.customs_spot_shares", "m.customs_nothing", "m.customs_done"] + [k for k in strings.EN if k.startswith(("l.customs_welcome.", "m.customs_clean."))]
                # A hot tip from a port's own officer (engine _hot_tip), read by the officer of that port.
                + [k for k in strings.EN if k.startswith("l.officer_hot.")]
                # Under the Counter (counter.py): her paid tips, read by the officer of the port the house is in.
@@ -636,6 +651,11 @@ LINE_DEFAULTS["m.years"] = "gamemaster"
 for _k in trade_text.KEYS:
     LINE_DEFAULTS[_k] = "comprador"
 WARDEN_KEYS = frozenset(jail_text.WARDEN_KEYS)
+# The Mayor's lines: in a port whose own Mayor (mayor_<port>) has a voice, they are read with hers.
+MAYOR_KEYS = frozenset(_k for _k, _w in LINE_DEFAULTS.items() if _w == "mayor")
+# Cast members who are a different woman in every port: while a line is still theirs by default, it is read in
+# the voice of that port's own woman (cast key <prefix><port>) once she has one (voice.Planner.port_voice).
+PORT_VOICES = {}      # emptied 23 Nov 2026: the thirty port women are retired (see RETIRED); one Mayor, comprador, shipwright
 OFFICER_KEYS = frozenset(LINE_DEFAULTS_KEYS for LINE_DEFAULTS_KEYS, _w in LINE_DEFAULTS.items() if _w == "taxlady")
 # The Registrar's own lines (Mrs. Marlowe, at each captain's home port). Set after OFFICER_KEYS so they
 # are always hers, never handed to the officer of the port she is standing in.
@@ -680,6 +700,9 @@ SAY = {
     "l.registrar_tip.7": "A gift from the register, Captain, and it's worth more than brandy: this month's price for {goods} in {where}.",
     "l.registrar_tip.8": "Everyone's talking about {where}, Captain, but only I know the figure for {goods}. I've written it down for you.",
     "l.registrar_tip.9": "I keep a second column for my favourite captains, Captain. In it: {goods}, {where}, this month. The figure's on your papers.",
+    # The spot-check greetings, said without the month's rate (23 Nov 2026; house_voice.SPOKEN has the new wording).
+    "l.customs_spot_home": "{line} Welcome home, Captain, but not so fast. Spot check today: even our own houses are looked over now and then. {port}'s full rate on whatever you declare.",
+    "l.customs_spot_shares": "{line} Your shares in {port} buy you a great deal of goodwill, Captain, but not today. Spot check: the full rate on whatever you declare.",
     "l.customs_paid": "Your papers are stamped, Captain. Welcome to {port}.",
     "l.customs_bought": "I bought your {goods} at your own price, Captain. You did say that was what it was worth.",
     "l.customs_caught": "I went through your hold, Captain. Every last corner. You paid in full, plus a fine, and {port} will talk.",

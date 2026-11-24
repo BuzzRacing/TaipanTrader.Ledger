@@ -5,6 +5,9 @@
    and follows the Jail Story (jail.js) and the Sea Battle: large-screen story screens, one idea each, the figures
    only at the end on the Reckoning's own card.
 
+   (23 Nov 2026: screen 4 is now a certificate from the Mayor, with her name in white on her picture, parchment,
+   lettering, a personal word from her, a wax seal and the Key to the Port, filling only the right half.)
+
    A promotion is four screens:
      1. SUMMONED: the Mayor of the port where the commission is given, big on the left over the port's picture,
         and a large caption about being sent for.
@@ -182,57 +185,82 @@ const Promotion = (() => {
     return beats;
   }
 
+  /* A wavy-edged wax seal, so the stamp does not look like a plain circle. */
+  function waxPath() {
+    let d = "";
+    for (let i = 0; i <= 90; i++) {
+      const a = i / 90 * Math.PI * 2, r = 55 + 2.3 * Math.sin(a * 11) + 1.3 * Math.sin(a * 5 + 1);
+      d += (i ? "L" : "M") + (60 + r * Math.cos(a)).toFixed(1) + " " + (60 + r * Math.sin(a)).toFixed(1);
+    }
+    return d + "Z";
+  }
+  /* Her bedroom key: a brass key on a red ribbon, drawn in SVG (decorative, there is no key in the rules). */
+  const KEY_SVG = `<svg class="pm-key" viewBox="0 0 170 64" aria-hidden="true"><defs>
+      <linearGradient id="pmBrassKey" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e2a0"/><stop offset=".5" stop-color="#c0902f"/><stop offset="1" stop-color="#7a5416"/></linearGradient></defs>
+    <g fill="url(#pmBrassKey)" stroke="#5b3d0e" stroke-width="1.6" stroke-linejoin="round">
+      <circle cx="28" cy="32" r="22"/><circle cx="28" cy="32" r="10" fill="#eadcb8"/><circle cx="14" cy="32" r="5"/><circle cx="42" cy="32" r="5"/><circle cx="28" cy="18" r="5"/><circle cx="28" cy="46" r="5"/>
+      <rect x="50" y="28" width="108" height="8" rx="2"/><rect x="62" y="22" width="8" height="20" rx="2"/>
+      <rect x="132" y="36" width="10" height="16" rx="1"/><rect x="146" y="36" width="10" height="11" rx="1"/></g>
+      <path d="M16 12 C2 2 0 22 12 22 C0 26 6 44 18 30 Z M40 12 C54 2 56 22 44 22 C56 26 50 44 38 30 Z" fill="#a8282e" stroke="#5d1013" stroke-width="1.2" transform="translate(0 -6) scale(1 .9)"/></svg>`;
+
   function commissionHtml(b) {
     const p = b.promo, me = S.me, record = p.record || {}, port = portName(p.port);
-    const ach = p.achievements, ranks = b.ranks, captain = b.captain;
+    const ach = p.achievements, captain = b.captain;
     const next = Object.hasOwn(record, "next") ? record.next : me.next_rank;
     const mayor = te("fleet.promotion_mayor", { port });
+    const mayorName = castOf("mayor").name || "";
     const mayorItm = mayorItem(p.port, p.rank_id);
     const mayorPic = mayorItm ? Media.faceMarkup(mayorItm, "", `alt="${mayor}"`)
       : castOf("mayor").portrait ? `<img src="${esc(castOf("mayor").portrait)}" alt="${mayor}">` : "";
-    const tile = (label, value, cls) => `<div class="${cls || ""}"><small>${esc(label)}</small><b>${esc(value)}</b></div>`;
-    const tiles = [tile(t("fleet.captain_worth"), money(record.worth ?? me.worth), "gold"),
-      tile(t("fleet.promotion_ships"), String(record.ships ?? me.ships.length))];
+    const fig = (label, value) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`;
+    const figs = [fig(t("fleet.captain_worth"), money(record.worth ?? me.worth)),
+      fig(t("fleet.promotion_ships"), String(record.ships ?? me.ships.length))];
     if (ach) {
-      if (ach.voyages != null) tiles.push(tile(t("fleet.promotion_voyages"), String(ach.voyages)));
-      if (ach.won) tiles.push(tile(plain("promo.tile.won", "Battles won"), String(ach.won)));
-      else if (ach.ports) tiles.push(tile(plain("promo.tile.ports", "Ports visited"), String(ach.ports)));
+      if (ach.voyages != null) figs.push(fig(t("fleet.promotion_voyages"), String(ach.voyages)));
+      else if (ach.won) figs.push(fig(plain("promo.tile.won", "Battles won"), String(ach.won)));
+      else if (ach.ports) figs.push(fig(plain("promo.tile.ports", "Ports visited"), String(ach.ports)));
     }
-    const best = ach && ach.best;
-    const bestLine = best ? t("fleet.promotion_best_line", { qty: best.qty, good: (D.goods[best.good] || {}).name || best.good,
-      port: portName(best.port), profit: money(best.profit) }) : "";
-    const lines = [`<li><span>${te(next ? "fleet.promotion_citation" : "fleet.promotion_citation_top", { firm: captain.firm || captain.name })}</span></li>`];
-    if (ach && (ach.ports || ach.won)) {
-      lines.push(`<li><span>${[ach.ports ? te("fleet.promotion_ports_count", { n: ach.ports }) : "", ach.won ? te("fleet.promotion_wins_count", { n: ach.won }) : ""].filter(Boolean).join(" · ")}</span></li>`);
-    }
-    if (best) lines.push(`<li><span><b>${te("fleet.promotion_best")}</b><br>${esc(bestLine)}</span></li>`);
-    const ladder = ranks.length ? `<ol class="pm-ladder" aria-label="${te("fleet.promotion_progress")}">${ranks.map((r, i) =>
-      `<li class="${i <= b.rankIndex ? "earned" : ""}${i === b.rankIndex ? " current" : ""}"${i === b.rankIndex ? ' aria-current="step"' : ""}>${esc(r.title)}</li>`).join("")}</ol>` : "";
     const badge = Ranks.url(p.rank_id);
-    const emblem = badge ? `<img src="${esc(badge)}" alt="" onerror="this.remove()">` : esc(numeral(b.rankIndex + 1));
+    const emblem = badge ? `<img src="${esc(badge)}" alt="" onerror="this.remove()">` : `<span>${esc(numeral(b.rankIndex + 1))}</span>`;
     const hear = b.clip && typeof Voice !== "undefined"
-      ? `<button type="button" class="sf-rsay pm-say-btn" data-pm="say" aria-label="${tfb("fleet.promotion_say", "Hear her again")}">${SAY_ICON}</button>`
-      : `<span class="sf-rsay" aria-hidden="true">${SAY_ICON}</span>`;
+      ? `<button type="button" class="sf-rsay pm-say-btn" data-pm="say" aria-label="${tfb("fleet.promotion_say", "Hear her again")}">${SAY_ICON}</button>` : "";
+    const ring = plain("promo.cert.ring", "Mayor of {port} · Commissioned · ", { port }).toUpperCase();
+    const date = record.date || S.date || "";
+    const house = captain.firm || captain.name;
     return `<figure class="sf-rwho pm-rwho${mayorPic ? "" : " nopic"}">${mayorPic}
-        <figcaption class="sf-rline pm-line"><header>${hear}<span>${mayor}</span></header>
-          <p>“${esc(b.said)}”</p><small>${te("fleet.promotion_audience", { rank: p.title })}</small></figcaption></figure>
-      <section class="sf-card pm-card good" role="dialog" aria-modal="true" aria-labelledby="pm-title">
-        <header><p class="eyebrow">${tfb("fleet.promotion_order", "By order of the {mayor}", { mayor: t("fleet.promotion_mayor", { port }) })}</p>
-          <div class="sf-rheading"><span class="sf-remblem pm-emblem" aria-hidden="true">${emblem}</span><h2 id="pm-title">${esc(p.title)}</h2></div>
-          <p class="sf-rreason">${tfb("fleet.promotion_to", "Captain {name}", { name: captain.name })} ${tfb("fleet.promotion_house", "of {firm}", { firm: captain.firm || captain.name })} ${tfb("fleet.promotion_commissioned", "is hereby commissioned")}.</p>
-          ${record.previous ? `<p class="pm-elevation">${esc(record.previous.title)} <span aria-hidden="true">&rarr;</span> ${esc(p.title)}</p>` : ""}</header>
-        <div class="sf-rows pm-rows">${tiles.join("")}</div>
-        <div class="sf-cols">
-          <div><h3>${tl("promo.cost.citation", "The citation")}</h3><ul class="sf-rcargo">${lines.join("")}</ul></div>
-          <div class="sf-rledger"><h3>${tl("promo.cost.road", "The road ahead")}</h3>${ladder}
-            <p class="pm-next">${next ? `${te("fleet.promotion_next")}: <b>${esc(next.title)}</b> · ${esc(money(next.worth))}` : te("fleet.promotion_top")}</p></div>
-        </div>
-        <footer>
-          <p class="pm-sign"><span>${mayor}</span><small>${esc(port)} · ${esc(record.date || S.date || "")}</small></p>
-          <button type="button" class="primary pm-go" data-pm="go" disabled>${te("fleet.promotion_accept")} <span aria-hidden="true">&rarr;</span></button>
-        </footer>
+        <figcaption class="pm-line"><b>${mayor}</b>${mayorName ? `<span>${esc(mayorName)}</span>` : ""}
+          <small>${te("fleet.promotion_audience", { rank: p.title })}</small>${hear}</figcaption></figure>
+      <div class="pm-right">
+        <section class="pm-cert" role="dialog" aria-modal="true" aria-labelledby="pm-title">
+          <i class="pm-co tl"></i><i class="pm-co tr"></i><i class="pm-co bl"></i><i class="pm-co br"></i>
+          <p class="pm-c-order">${tfb("fleet.promotion_order", "By order of the {mayor}", { mayor })}</p>
+          <p class="pm-c-game">${tfb("promo.cert.game", "Crimson Ledger")}</p>
+          <p class="pm-c-kind"><span>${tfb("promo.cert.kind", "Certificate of Commission")}</span></p>
+          <p class="pm-c-to">${tfb("fleet.promotion_to", "Captain {name}", { name: captain.name })}</p>
+          <p class="pm-c-house">${tfb("fleet.promotion_house", "of {firm}", { firm: house })}</p>
+          <p class="pm-c-is">${tfb("fleet.promotion_commissioned", "is hereby commissioned")}</p>
+          <h2 class="pm-c-rank" id="pm-title">${esc(p.title)}</h2>
+          ${record.previous ? `<p class="pm-c-elev">${esc(record.previous.title)} <span aria-hidden="true">&rarr;</span> ${esc(p.title)}</p>` : ""}
+          <p class="pm-c-cite">${te(next ? "fleet.promotion_citation" : "fleet.promotion_citation_top", { firm: house })}</p>
+          <dl class="pm-c-figs">${figs.join("")}</dl>
+          <blockquote class="pm-c-note"><small>${tfb("promo.cert.note", "A word from the Mayor")}</small>
+            <p>“${esc(b.said)}”</p></blockquote>
+          <div class="pm-c-foot">
+            <div class="pm-c-key">${KEY_SVG}<small>${tfb("promo.cert.key", "With the Key to the Mayor's Bedchamber. Knock twice, Captain.", { port })}</small></div>
+            <div class="pm-c-sign"><span class="pm-c-pen">${esc(mayorName || mayor)}</span><small>${mayor} · ${esc(date)}</small></div>
+          </div>
+          <div class="pm-stamp" aria-hidden="true">
+            <svg viewBox="0 0 120 120"><defs><radialGradient id="pmWax" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="#d4484d"/><stop offset=".55" stop-color="#9c262b"/><stop offset="1" stop-color="#5d1013"/></radialGradient>
+              <path id="pmArc" d="M60 60 m-41 0 a41 41 0 1 1 82 0 a41 41 0 1 1 -82 0"/></defs>
+              <path d="${waxPath()}" fill="url(#pmWax)"/>
+              <circle cx="60" cy="60" r="47" fill="none" stroke="#f1c9b8" stroke-opacity=".5" stroke-width="1.4"/>
+              <circle cx="60" cy="60" r="30" fill="none" stroke="#f1c9b8" stroke-opacity=".35" stroke-width="1"/>
+              <text font-size="8.4" font-family="Georgia, serif" font-weight="700" fill="#f6dccb" fill-opacity=".85" letter-spacing="1"><textPath href="#pmArc" textLength="252" lengthAdjust="spacing">${esc(ring)}</textPath></text></svg>
+            <span class="pm-stamp-em">${emblem}</span></div>
+        </section>
+        <button type="button" class="primary pm-go" data-pm="go" disabled>${te("fleet.promotion_accept")} <span aria-hidden="true">&rarr;</span></button>
         <div class="fleet-promotion-error pm-error" role="alert"></div>
-      </section>`;
+      </div>`;
   }
 
   /* ---- playing the story ------------------------------------------------------------------------------ */

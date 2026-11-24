@@ -157,7 +157,9 @@ const Stage = (() => {
         }, 900);
         return;
       }
-      const c = cast[item.c] || {};
+      // item.v: the port's own woman whose voice reads the line (her port's Mayor, Market keeper or Ship master);
+      // the stage shows her and her name, not the cast member the line belongs to.
+      const c = cast[item.v] || cast[item.c] || {};
       // Some speakers leave the stage on the port (stageKeepsPort in player.js: the officer while her
       // desk is open, since the popup already shows her): only her words go on the plate.
       if (typeof stageKeepsPort === "function" && stageKeepsPort(item.c)) {
@@ -168,7 +170,7 @@ const Stage = (() => {
         return;
       }
       // A speaker can have a picture of her own in this port (stageFace in player.js: the Mayor, the Tax collector).
-      const own = typeof stageFace === "function" ? stageFace(item.c) : "";
+      const own = typeof stageFace === "function" ? stageFace(item.v || item.c) : "";
       const lib = own || (typeof Media !== "undefined" ? Media.speaker(item.c, "stg-img", item.m) : "");
       talkLayer.innerHTML = lib || (c.portrait ? `<img class="stg-img" src="${esc(c.portrait)}" alt="">`
                                                : `<i class="stg-mono">${esc(monogram(c.name))}</i>`);

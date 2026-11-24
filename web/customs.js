@@ -152,6 +152,22 @@ const Customs = (() => {
       : `<img class="${cls}" src="${u}" alt="">`;
   }
 
+  /* Her own wide 16:9 result picture (Media Library > Personas > her name, role "Tax result, good" or
+     "Tax result, bad"; tax_results.py). media.js keeps these off every other screen. One pick per visit,
+     taking turns; "" when she has none yet, and the reveal then crops one of her mood pictures. */
+  const RESULT_ROLE = { tax: "tax_good", buyout: "tax_good", caught: "tax_bad" };
+  function resultArt(c, state) {
+    const role = RESULT_ROLE[state];
+    if (!role || !c.officer) return "";
+    const list = Media.items("persona", [c.officer], role, false, "ruling").filter(i => i.r.includes(role));
+    if (!list.length) return "";
+    const memo = "result:" + state + ":" + key(c);
+    let it = list.find(i => i.id === pick[memo]);
+    if (!it) { it = nextInTurn("result:" + role + ":" + c.officer, list); pick[memo] = it.id; }
+    onScreen.art = it.u;
+    return `<img class="cl-art-media" src="${esc(it.u)}" alt="">`;
+  }
+
   /* Her manner, in words. A new line each time her mood changes. */
   function tell(c, n) {
     const k = "customs.tell_" + n.state;
@@ -303,10 +319,10 @@ const Customs = (() => {
   const tl = (k, fb, v) => (T[k] != null ? te(k, v)
     : esc(String(fb).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] != null ? v[x] : m))));
 
-  /* The reveal: her ruling is shown on her face, big, before anything else. Happy when she is paid or
-     buys your cargo, angry when you are caught. A tap skips it. */
-  const REVEAL_MS = 2600;
-  let revealed = "", revealTimer = null;
+  /* The reveal: her ruling is shown over a widescreen picture of her before anything else. Happy when she
+     is paid or buys your cargo, angry when you are caught. It fades away to the port; a tap fades it at once. */
+  const REVEAL_MS = 2600, FADE_MS = 600;
+  let revealed = "", revealTimer = null, fading = null;
   const revealing = c => !!(c && c.status === "verdict" && c.result && !S.me.ready && revealed !== key(c));
   function revealHtml(c) {
     const res = c.result, state = verdictState(c), total = Math.round(res.tax + res.fine);
@@ -315,14 +331,18 @@ const Customs = (() => {
       : state === "buyout" ? tl("customs.reveal.buyout", "She buys your cargo")
       : total ? tl("customs.reveal.tax", "Tax paid: {amount}", { amount: money(total) }) : tl("customs.reveal.none", "Nothing to pay");
     return `<div class="veil cx-veil"><section class="modal cx-desk reveal ${state}" role="dialog" aria-label="${esc(c.name)}" data-state="${state}" data-key="${esc(key(c))}" data-act="cx_reveal">
-      <div class="cx-art" aria-hidden="true">${face(c, state, "cl-art-media")}</div>
+      <div class="cx-art" aria-hidden="true">${resultArt(c, state) || face(c, state, "cl-art-media")}</div>
       <div class="cx-reveal-banner" role="status"><small>${esc(c.name)}</small><b>${line}</b></div>
     </section></div>`;
   }
   function endReveal(c) {
     clearTimeout(revealTimer); revealTimer = null;
-    revealed = key(c);
-    render();
+    if (fading) return;                    // already fading out
+    const done = () => { fading = null; revealed = key(c); render(); };
+    const card = document.querySelector(".cx-desk.reveal"), veil = card && card.parentElement;
+    if (!veil || matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
+    veil.classList.add("cx-out");          // customs.css cxOut: the picture and its veil fade to the port
+    fading = setTimeout(done, FADE_MS);
   }
 
   function welcomeHtml(c) {
@@ -546,7 +566,7 @@ const Customs = (() => {
     const c = cu();
     if (!c || S.me.ready || closing === key(c)) return;
     if (revealing(c)) {                    // her face first; then the desk clears (or the verdict shows)
-      if (!revealTimer) revealTimer = setTimeout(() => endReveal(c), REVEAL_MS);
+      if (!revealTimer && !fading) revealTimer = setTimeout(() => endReveal(c), REVEAL_MS);
       return;
     }
     if (document.querySelector(".captains-log") || otherScreenUp()) return;   // wait for the log, a fight, a storm

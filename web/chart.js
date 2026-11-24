@@ -55,7 +55,14 @@ const Chart = (() => {
   function svg(o) {
     const D = o.data, out = [];
     let viewBox = "0 0 1000 600", focused = false;
-    if (o.focusRoute && o.here && o.dest && o.here !== o.dest &&
+    if (o.focusPort && D.ports[o.focusPort]) {
+      const p = D.ports[o.focusPort], scale = Math.max(.65, Math.min(1, o.focusScale == null ? .82 : o.focusScale));
+      const width = 1000 * scale, height = 600 * scale;
+      const x = Math.max(0, Math.min(1000 - width, p.x - width / 2));
+      const y = Math.max(0, Math.min(600 - height, p.y - height / 2));
+      viewBox = `${x.toFixed(1)} ${y.toFixed(1)} ${width.toFixed(1)} ${height.toFixed(1)}`;
+      focused = scale < 1;
+    } else if (o.focusRoute && o.here && o.dest && o.here !== o.dest &&
         typeof window !== "undefined" && window.matchMedia("(max-width: 600px)").matches) {
       const a = D.ports[o.here], b = D.ports[o.dest], pad = 70;
       let width = Math.abs(b.x - a.x) + pad * 2, height = Math.abs(b.y - a.y) + pad * 2;
@@ -73,7 +80,9 @@ const Chart = (() => {
       '<marker id="route-arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">' +
       '<path d="M1 1 L10 6 L1 11 Z"/></marker>' +
       '<filter id="chart-shadow" x="-40%" y="-40%" width="180%" height="180%">' +
-      '<feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".38"/></filter></defs>');
+      '<feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".38"/></filter>' +
+      '<filter id="intel-heat-blur" x="-100%" y="-100%" width="300%" height="300%">' +
+      '<feGaussianBlur stdDeviation="18"/></filter></defs>');
     out.push('<rect class="sea" x="-1000" y="-600" width="3000" height="1800"/>');
     for (let lon = 60; lon <= 160; lon += 5) {
       const x = px(lon, 0)[0];
@@ -106,6 +115,25 @@ const Chart = (() => {
         `<text class="rwx wxt${lvl}" x="${x}" y="${+y + 6}" text-anchor="middle">${esc(D.weather[lvl])}</text>` +
         `<text class="rname" x="${x}" y="${+y + 23}" text-anchor="middle">${esc(reg.name)}</text></g>`);
     }
+    if (o.intelRoutes && o.here && D.ports[o.here]) {
+      const a = D.ports[o.here];
+      out.push('<g class="intel-routes">');
+      for (const k in D.ports) {
+        if (k === o.here) continue;
+        const b = D.ports[k], intel = o.intel && o.intel[k];
+        const risk = intel && intel.risk != null ? intel.risk : 0;
+        const tier = risk >= .32 ? 3 : risk >= .22 ? 2 : risk >= .12 ? 1 : 0;
+        out.push(`<line class="intel-route risk-${tier}${k === o.dest ? " selected" : ""}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`);
+      }
+      out.push('</g>');
+      out.push('<g class="intel-heats">');
+      for (const k in D.ports) {
+        const p = D.ports[k], intel = o.intel && o.intel[k];
+        if (!intel || !intel.opportunity) continue;
+        out.push(`<circle class="intel-heat" cx="${p.x}" cy="${p.y}" r="${38 + intel.opportunity * 34}" style="--intel-heat:${intel.opportunity.toFixed(2)}"/>`);
+      }
+      out.push('</g>');
+    }
     // Planned route. The forecast is the same worse-of-origin-and-destination value used by the engine.
     if (o.here && o.dest && o.here !== o.dest) {
       const a = D.ports[o.here], b = D.ports[o.dest];
@@ -136,17 +164,28 @@ const Chart = (() => {
       if (o.clickable && k !== o.here) cls.push("click");
       const labelW = Math.max(90, Math.min(230, p.name.length * 13 + 30));
       const intel = o.intel && o.intel[k];
-      const offset = intel ? 36 : 19;
+      const offset = intel && intel.rings ? 54 : intel ? 36 : 19;
       const labelH = intel ? 64 : k === o.here || k === o.dest ? 46 : 34;
       const labelX = p.label_left ? p.x - labelW - offset : p.x + offset;
       const labelY = p.y - labelH / 2;
       const textX = p.label_left ? p.x - offset - 12 : p.x + offset + 12;
       const anchor = p.label_left ? "end" : "start";
       const act = o.clickable && k !== o.here ? ` data-act="dest" data-port="${k}"` : "";
-      out.push(`<g class="${cls.join(" ")}"${act}${act ? ` role="button" tabindex="0" aria-label="${esc(intel ? intel.title : p.name)}"${k === o.dest ? ' aria-pressed="true"' : ' aria-pressed="false"'}` : ""}>` +
-        (intel ? `<title>${esc(intel.title)}</title><circle class="intel-track" cx="${p.x}" cy="${p.y}" r="25"/>` +
+      const rings = intel && intel.rings ? [
+        ["visits", 22, intel.rings.visits], ["profit", 28, intel.rings.profit],
+        ["shares", 34, intel.rings.shares], ["standing", 40, intel.rings.standing]
+      ] : null;
+      const intelMarks = !intel ? "" : rings
+        ? `<title>${esc(intel.title)}</title>` + rings.map(([name, radius, ring]) =>
+            `<circle class="intel-track intel-${name}" cx="${p.x}" cy="${p.y}" r="${radius}"/>` +
+            `<circle class="intel-arc intel-${name}${ring.negative ? " negative" : ""}" cx="${p.x}" cy="${p.y}" r="${radius}" pathLength="100" stroke-dasharray="${(ring.fill * 100).toFixed(1)} 100"/>`).join("") +
+          `<circle class="intel-risk risk-${intel.riskTier}" cx="${p.x}" cy="${p.y}" r="46"/>` +
+          (intel.hot ? `<circle class="intel-beacon" cx="${p.x}" cy="${p.y}" r="50"/>` : "")
+        : `<title>${esc(intel.title)}</title><circle class="intel-track" cx="${p.x}" cy="${p.y}" r="25"/>` +
           `<circle class="intel-arc${intel.negative ? " negative" : intel.positive ? " positive" : ""}" cx="${p.x}" cy="${p.y}" r="25" pathLength="100" stroke-dasharray="${(intel.fill * 100).toFixed(1)} 100"/>` +
-          (intel.hot ? `<circle class="intel-beacon" cx="${p.x}" cy="${p.y}" r="31"/>` : "") : "") +
+          (intel.hot ? `<circle class="intel-beacon" cx="${p.x}" cy="${p.y}" r="31"/>` : "");
+      out.push(`<g class="${cls.join(" ")}"${act}${act ? ` role="button" tabindex="0" aria-label="${esc(intel ? intel.title : p.name)}"${k === o.dest ? ' aria-pressed="true"' : ' aria-pressed="false"'}` : ""}>` +
+        intelMarks +
         `<line class="label-leader" x1="${p.x}" y1="${p.y}" x2="${p.label_left ? p.x - offset : p.x + offset}" y2="${p.y}"/>` +
         `<rect class="label-bg" x="${labelX}" y="${labelY}" width="${labelW}" height="${labelH}" rx="8"/>` +
         `<circle class="hit" cx="${p.x}" cy="${p.y}" r="30"/>` +

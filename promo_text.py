@@ -32,9 +32,17 @@ EN = {
     "promo.cost.road": "The road ahead",
     "promo.tile.ports": "Ports visited",
     "promo.tile.won": "Battles won",
+    # ---- the certificate on screen 4 (23 Nov 2026) --------------------------------------------------------
+    "promo.cert.game": "Crimson Ledger",
+    "promo.cert.kind": "Certificate of Commission",
+    "promo.cert.note": "A word from the Mayor",
+    "promo.cert.key": "With the Key to the Mayor's Bedchamber. Knock twice, Captain.",
+    "promo.cert.ring": "Mayor of {port} · Commissioned · ",
 }
 
 # Nothing here needs a cleaner version: the captions are narration and already family-friendly.
-FAMILY = {}
+FAMILY = {
+    "promo.cert.key": "With the Key to the Port of {port}",
+}
 
 BANKS = ("promo.summons", "promo.rank")

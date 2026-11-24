@@ -640,9 +640,12 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "voy.left": "{n} months left", "voy.left_1": "Final month", "voy.closed": "The books are closed",
     "voy.close": "Books close {date}", "voy.seal": "終", "voy.aria": "Voyage: {date}. {left}. Books close {end}." });
 const womanPick = {};
-/* Cast members who are port women: while the Mayor or the Tax collector speaks, the stage shows the
-   picture for the port the house is in (deck.js Stage asks for it), not one portrait for every port. */
-const PORT_SPEAKERS = { mayor: "mayor", taxlady: "taxlady" };
+/* Cast members who are port women: while the Mayor speaks, the stage shows the picture for the port the
+   house is in (deck.js Stage asks for it), not one portrait for every port.
+   The Registrar (cast "taxlady") and the Port Authority officers (officer_<port>) are NOT here (23 Nov 2026):
+   a port's "Tax lady" pictures are its Ledger tax collector, a different woman, so the stage used to show
+   her face over the officer's or Mrs. Marlowe's voice. They show their own persona pictures (Media.speaker). */
+const PORT_SPEAKERS = { mayor: "mayor" };
 /* While the Port Authority's desk is open the stage already shows the officer (a different picture
    from the popup's): when she speaks, the stage keeps that picture and only her words go on the plate
    (deck.js Stage.talk). */
@@ -650,9 +653,20 @@ function stageKeepsPort(cid) {
   return /^officer_|^taxlady$/.test(cid || "") && Customs.isOpen();
 }
 function stageFace(cid) {
-  // The Port Authority officers (cast keys officer_<port>) are each port's tax lady too.
-  const role = PORT_SPEAKERS[cid] || (/^officer_/.test(cid || "") ? "taxlady" : "");
-  return role && S && S.me ? stageWomanHtml(S.me.port, role) : "";
+  if (!S || !S.me) return "";
+  if (PORT_SPEAKERS[cid]) return stageWomanHtml(S.me.port, PORT_SPEAKERS[cid]);
+  // A port's own Mayor, Market keeper or Ship master (cast keys mayor_<port>, keeper_<port>, shipmaster_<port>):
+  // her pictures are that port's, filed under Ports. A Mayor's line can come from another port (a fine, word of
+  // your standing there); the keeper and the ship master are always the ones of the port the house is in.
+  const own = /^(mayor|keeper|shipmaster)_(.+)$/.exec(cid || "");
+  if (own) return stageWomanHtml(own[1] === "mayor" && D.ports[own[2]] ? own[2] : S.me.port, own[1]);
+  // An officer with no picture of her own at all (no persona media, no profile portrait) borrows her own
+  // port's Tax lady pictures, as her desk does (customs.js herPictures); anyone else shows her own.
+  if (/^officer_/.test(cid || "") && (D.ports[S.me.port] || {}).officer === cid
+      && !Media.has("persona", cid, "", { video: true, strict: true }) && !((VS.cast || {})[cid] || {}).portrait) {
+    return stageWomanHtml(S.me.port, "taxlady");
+  }
+  return "";
 }
 
 /* The tab rail shows a picture instead of an icon: the same woman the stage shows for that tab where

@@ -73,6 +73,9 @@ KINDS = {
                           ["sly", "Sly: a secret or a bargain (Powder's whisper when pirates misjudge the hold)"],
                           ["storm", "Storm: battered and bruised, on the storm screen after a heavy or savage storm (Roxana's)"],
                           ["wallpaper", "Wallpaper: a wide 16:9 master shot of her in a dramatic scene, for backgrounds and hero screens"],
+                          # The Port Authority's result screen (23 Nov 2026, tax_results.py). Shown there and nowhere else.
+                          ["tax_good", "Tax result, good: a wide 16:9 picture of her delighted, full-width at her desk when the tax is paid or she buys your cargo (tax ladies only)"],
+                          ["tax_bad", "Tax result, bad: a wide 16:9 picture of her furious, full-width at her desk when she catches a lie (tax ladies only)"],
                           ["weather", "Weather: on the quay in that month's weather, behind the Newspaper's forecast only (tag weather-calm, weather-fair, weather-squalls or weather-typhoon; Tilly's)"]],
                 "default_role": "speaking"},
     "port": {"label": "Ports", "one": "Port", "subjects": "ports",
@@ -1132,7 +1135,12 @@ def admin_view(cfg):
         prompts = captains.base_prompts()
     except Exception:
         prompts = {"captain": {}, "house": {}}
-    return {"items": items, "rules": lib["rules"], "options": lib["options"], "kinds": KINDS, "modes": MODES,
+    try:
+        import tax_results                    # the tax ladies' wide result pictures: prompts for the Recipe
+        scene_prompts = tax_results.all_prompts(cfg.get("characters"))
+    except Exception:
+        scene_prompts = {}
+    return {"scene_prompts": scene_prompts, "items": items, "rules": lib["rules"], "options": lib["options"], "kinds": KINDS, "modes": MODES,
             "prompts": prompts, "promotion_styles": config.promotion_styles(),
             "subjects": subjects(cfg), "in_use": sorted(in_use), "counts": counts, "family": family(cfg),
             "rule_defaults": RULE_DEFAULTS, "slots": slot_status(cfg)}

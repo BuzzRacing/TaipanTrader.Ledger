@@ -1,15 +1,8 @@
 "use strict";
 
 const SailIntel = (() => {
-  const labels = { visits: "Visits", profit: "Trading P/L", shares: "Shares", standing: "Standing", risk: "Pirate risk" };
-  const notes = {
-    visits: "Ring fill compares completed arrivals with your most-visited port. Starting in a port is not an arrival.",
-    profit: "Ring fill compares absolute realised trading P/L. Jade = profit; crimson = loss. Excludes tax, harbour dues and voyage costs.",
-    shares: "Ring fill is your share of the port's total issue. The number is shares owned, not a percentage.",
-    standing: "Ring fill shows local standing out of 100. Negative standing is crimson.",
-    risk: "Ring fill shows the estimated pirate encounter chance on the route from your current port. Weather is shown separately."
-  };
-  let lens = "visits", key = "", rows = null, pending = "", error = false;
+  let key = "", rows = null, pending = "", error = false, zoom = .82;
+  const clamp = n => Math.max(0, Math.min(1, n || 0));
   const signed = n => (n > 0 ? "+" : "") + money(n);
   const compact = n => {
     const v = Math.abs(n), suffix = v >= 1e6 ? "m" : v >= 1e3 ? "k" : "";
@@ -23,58 +16,65 @@ const SailIntel = (() => {
   }
   function metrics() {
     const me = S.me, historical = rows && key === signature();
-    const maxVisits = Math.max(1, ...Object.values(historical ? rows : {}).map(r => r.visits));
-    const maxProfit = Math.max(1, ...Object.values(historical ? rows : {}).map(r => Math.abs(r.profit)));
-    const result = {};
+    const records = historical ? Object.values(rows) : [];
+    const maxVisits = Math.max(1, ...records.map(r => r.visits));
+    const maxProfit = Math.max(1, ...records.map(r => Math.abs(r.profit)));
+    const shareTotal = Math.max(1, (me.shares || {}).total || 1), result = {};
     for (const k of Object.keys(D.ports)) {
       const r = historical ? rows[k] || { visits: 0, profit: 0, sales: 0 } : null;
-      const shares = me.shares ? me.shares.mine[k] || 0 : null;
-      const standing = me.rep[k] || 0, risk = k === me.port ? null : pirateRisk(me.port, k);
-      let value, fill = 0, negative = false;
-      if (lens === "visits") { value = r ? String(r.visits) : "—"; fill = r ? r.visits / maxVisits : 0; }
-      if (lens === "profit") { value = r ? compact(r.profit) : "—"; fill = r ? Math.abs(r.profit) / maxProfit : 0; negative = !!r && r.profit < 0; }
-      if (lens === "shares") { value = shares == null ? "Off" : String(shares); fill = shares / Math.max(1, (me.shares || {}).total || 1); }
-      if (lens === "standing") { value = String(standing); fill = Math.abs(standing) / 100; negative = standing < 0; }
-      if (lens === "risk") { value = risk == null ? "Here" : Math.round(risk * 100) + "%"; fill = risk || 0; negative = risk >= .22; }
-      const hot = tips(k);
-      const exact = lens === "profit" && r ? signed(r.profit) : value;
-      result[k] = { value, fill: Math.max(0, Math.min(1, fill)), negative, positive: lens === "profit" && r && r.profit > 0, hot: hot.length > 0,
-        title: `${D.ports[k].name}: ${labels[lens]} ${exact}${hot.length ? "; Hot tip: " + hot.map(tp => D.goods[tp.good].name).join(", ") : ""}` };
+      const shareCount = me.shares ? me.shares.mine[k] || 0 : 0;
+      const standing = me.rep[k] || 0;
+      const risk = k === me.port ? null : pirateRisk(me.port, k);
+      const riskTier = risk == null ? 0 : risk >= .32 ? 3 : risk >= .22 ? 2 : risk >= .12 ? 1 : 0;
+      const hot = tips(k), run = k === me.port ? null : tradeRun(k);
+      const visits = r ? r.visits : null, profit = r ? r.profit : null;
+      const exactProfit = r ? signed(profit) : "—";
+      result[k] = {
+        value: `${visits == null ? "—" : visits} arrivals · ${r ? compact(profit) : "—"}`,
+        title: `${D.ports[k].name}: ${visits == null ? "record loading" : visits + " arrivals"}; trading P/L ${exactProfit}; shares ${me.shares ? shareCount + " of " + me.shares.total : "disabled"}; standing ${standing}; route risk ${risk == null ? "already here" : Math.round(risk * 100) + "%"}${hot.length ? "; Hot tip: " + hot.map(tp => D.goods[tp.good].name).join(", ") : ""}`,
+        rings: {
+          visits: { fill: visits == null ? 0 : clamp(visits / maxVisits), negative: false },
+          profit: { fill: profit == null ? 0 : clamp(Math.abs(profit) / maxProfit), negative: profit < 0 },
+          shares: { fill: me.shares ? clamp(shareCount / shareTotal) : 0, negative: false },
+          standing: { fill: clamp(Math.abs(standing) / 100), negative: standing < 0 }
+        },
+        visits, profit, shareCount, shareTotal: me.shares ? me.shares.total : null, standing, risk, riskTier,
+        weather: Math.max(S.weather[D.ports[k].region] || 0, S.weather[D.ports[me.port].region] || 0),
+        opportunity: run ? clamp(run.gain) : 0, run, hot: hot.length > 0
+      };
     }
     return result;
   }
-  function detail(dest) {
-    const k = dest || S.me.port, p = D.ports[k], me = S.me;
-    const r = rows && key === signature() ? rows[k] || { visits: 0, profit: 0, sales: 0 } : null;
-    const shares = me.shares, hot = tips(k), run = k === me.port ? null : tradeRun(k);
-    const wx = Math.max(S.weather[p.region] || 0, S.weather[D.ports[me.port].region] || 0);
-    const risk = k === me.port ? null : pirateRisk(me.port, k);
+  function summary(k, intel) {
+    const p = D.ports[k], m = intel[k], here = k === S.me.port;
     const fact = (name, value, cls = "") => `<div><dt>${esc(name)}</dt><dd class="${cls}">${esc(value)}</dd></div>`;
-    const tip = hot.map(tp => `<p class="si-tip"><b>HOT TIP · ${esc(D.goods[tp.good].name)}</b> ${S.turn < tp.lands ? `Boom expected in ${tp.lands - S.turn} month(s).` : "Boom window open."}${(S.bans[k] || []).includes(tp.good) ? " Cargo is currently banned here." : ""}</p>`).join("");
-    const trade = !run ? "No known buy-here / sell-there opportunity." : `Best known trade: ${D.goods[run.g].name}, ${money(run.buy)} → approximately ${money(run.sell)} per unit (${Math.round(run.gain * 100)}%). Prices last seen ${run.age ? run.age + " month(s) ago" : "this month"}. Excludes voyage costs and tax.`;
-    return `<section class="si-detail" aria-label="Selected port intelligence"><header><div><small>${k === me.port ? "CURRENT PORT" : "PLANNED DESTINATION"}</small><h3>${esc(p.name)}</h3></div><span>${esc(D.weather[wx])}${S.crackdown.includes(k) ? " · Customs crackdown" : ""}</span></header>
-      <dl>${fact("Arrivals", r ? r.visits : "—")}${fact("Realised trading P/L", r ? signed(r.profit) : "—", r && r.profit < 0 ? "si-loss" : "si-profit")}${fact("Your shares", shares ? `${shares.mine[k] || 0} / ${shares.total}` : "Disabled")}${fact("Standing", me.rep[k] || 0)}${fact("Route pirate chance", risk == null ? "Already here" : Math.round(risk * 100) + "%")}</dl>
-      ${tip}<p class="si-trade">${esc(k === me.port ? "Choose a destination on the chart or a port card to compare its route and trading opportunity." : trade)}</p></section>`;
+    const shares = m.shareTotal == null ? "Disabled" : `${m.shareCount} / ${m.shareTotal}`;
+    const risk = here ? "Already here" : Math.round(m.risk * 100) + "%";
+    const weather = D.weather[m.weather] + (S.crackdown.includes(k) ? " · Customs crackdown" : "");
+    let opportunity = here ? "Select a destination to compare its route." : "No known buy-here / sell-there opportunity.";
+    if (m.run) opportunity = `${D.goods[m.run.g].name}: ${money(m.run.buy)} → ≈${money(m.run.sell)} per unit · +${Math.round(m.run.gain * 100)}%`;
+    return `<aside class="si-summary" aria-label="Selected port intelligence"><header><div><small>${here ? "CURRENT PORT" : "PLANNED DESTINATION"}</small><h3>${esc(p.name)}</h3></div><span>${esc(weather)}</span></header>
+      <dl>${fact("Arrivals", m.visits == null ? "—" : m.visits)}${fact("Trading P/L", m.profit == null ? "—" : signed(m.profit), m.profit < 0 ? "si-loss" : "si-profit")}${fact("Your shares", shares)}${fact("Standing", m.standing)}${fact("Route risk", risk)}</dl>
+      <p>${esc(opportunity)}</p></aside>`;
+  }
+  function legend() {
+    return `<div class="si-legend" aria-label="Chart legend"><b>PORT RINGS</b><span><i class="visits"></i>Visits</span><span><i class="profit"></i>P/L</span><span><i class="shares"></i>Shares</span><span><i class="standing"></i>Standing</span><span><i class="route"></i>Route / risk</span></div>`;
   }
   function body(dest) {
-    const waiting = !rows || key !== signature();
-    return `<header class="si-head"><div><small>THE CAPTAIN'S CHART</small><h3>Port intelligence</h3></div><button type="button" data-intel-refresh ${pending ? "disabled" : ""}>Refresh record</button></header>
-      <nav class="si-lenses" aria-label="Map data layer">${Object.entries(labels).map(([k, name]) => `<button type="button" data-intel-lens="${k}" aria-pressed="${lens === k}">${name}</button>`).join("")}</nav>
-      <p class="si-key"><i class="si-key-ring"></i>${esc(notes[lens])} <b class="si-hot-key">✦ Hot tip</b></p>
-      <p class="si-status" role="status">${error ? "Port history unavailable. Use Refresh record to retry; live shares, standing and route risk are still available." : waiting ? "Loading your port record…" : "Your record · this game · exact values below when you select a port."}</p>
-      <div class="si-chart-scroll" tabindex="0" role="region" aria-label="Port chart; scroll sideways on small screens">${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: S.me.port, dest, clickable: !S.me.ready, mine: S.me.id, intel: metrics() })}</div>
-      ${detail(dest)}`;
+    const intel = metrics(), focus = dest || S.me.port, waiting = !rows || key !== signature();
+    const status = error ? "Port history unavailable · live shares, standing and route risk are still shown." : waiting ? "Loading this game’s port record…" : "All signals live · select any port to refocus";
+    return `<div class="si-stage">
+      ${Chart.svg({ data: D, players: S.players, weather: S.weather, crackdown: S.crackdown, here: S.me.port, dest, clickable: !S.me.ready, mine: S.me.id, intel, intelRoutes: true, focusPort: focus, focusScale: zoom, hideRose: true })}
+      <div class="si-map-head"><small>THE CAPTAIN'S CHART</small><h3>${esc(D.ports[focus].name)} orbit</h3><p>${esc(status)}</p></div>
+      <div class="si-controls" aria-label="Chart controls"><button type="button" data-intel-zoom="out" aria-label="Zoom out" ${zoom >= 1 ? "disabled" : ""}>−</button><button type="button" data-intel-zoom="focus">Focus port</button><button type="button" data-intel-zoom="in" aria-label="Zoom in" ${zoom <= .65 ? "disabled" : ""}>+</button><button type="button" data-intel-refresh ${pending ? "disabled" : ""}>↻ Refresh</button></div>
+      ${summary(focus, intel)}${legend()}</div>`;
   }
   function paint() {
     const root = document.querySelector(".sail-intel");
     if (!root || !S || !S.me) return;
-    const scroll = root.querySelector(".si-chart-scroll")?.scrollLeft || 0;
-    const focusedLens = root.contains(document.activeElement) ? document.activeElement.dataset.intelLens : null;
     const dest = S.me.ready ? S.me.dest : ui.dest;
     root.innerHTML = body(dest);
     Chart.fit(root);
-    root.querySelector(".si-chart-scroll").scrollLeft = scroll;
-    if (focusedLens) root.querySelector(`[data-intel-lens="${focusedLens}"]`).focus({ preventScroll: true });
   }
   async function load(force = false) {
     const wanted = signature();
@@ -88,7 +88,7 @@ const SailIntel = (() => {
       if (key !== wanted) return;
       rows = Object.fromEntries(answer.voyage.me.ports.map(r => [r.port, r]));
     } catch (e) {
-      console.error("Set Sail port history:", e);
+      console.error("Captain's Chart history:", e);
       if (key === wanted) error = true;
     } finally {
       if (pending === wanted) pending = "";
@@ -96,10 +96,15 @@ const SailIntel = (() => {
     }
   }
   document.addEventListener("click", e => {
-    const button = e.target.closest("[data-intel-lens], [data-intel-refresh]");
+    const destination = e.target.closest('[data-act="dest"]');
+    if (destination) { zoom = .82; return; }
+    const button = e.target.closest("[data-intel-zoom], [data-intel-refresh]");
     if (!button) return;
-    if (button.dataset.intelLens) { lens = button.dataset.intelLens; paint(); }
-    else { load(true); paint(); }
+    if (button.dataset.intelZoom === "in") zoom = Math.max(.65, +(zoom - .12).toFixed(2));
+    else if (button.dataset.intelZoom === "out") zoom = Math.min(1, +(zoom + .12).toFixed(2));
+    else if (button.dataset.intelZoom === "focus") zoom = .82;
+    else { load(true); paint(); return; }
+    paint();
   });
   return { html(dest) { queueMicrotask(() => load()); return `<div class="sail-map sail-intel">${body(dest)}</div>`; } };
 })();

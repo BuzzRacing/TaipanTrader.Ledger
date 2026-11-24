@@ -275,20 +275,23 @@
 .cx-desk .cx-art .cl-art-media { animation: cxFace .22s ease-out both; }
 @keyframes cxFace { from { opacity: .35; transform: scale(1.015); } }
 
-/* The reveal: her face on a small card with the ruling on it, then the desk clears.
-   A card, not the whole desk, so the port stays in view behind her (23 Nov 2026). */
+/* The reveal (23 Nov 2026): a 16:9 widescreen picture of her, as large as the port view allows, with the
+   ruling in white over it; then the whole thing fades away to the port (customs.js endReveal). */
+.deck .veil.cx-veil:has(> .cx-desk.reveal) { container-type: size; }
 .deck .modal.cx-desk.reveal { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); cursor: pointer;
-  max-width: 30rem; height: min(32rem, 62%); }
+  max-width: none; width: 100%; width: min(100cqw, 177.78cqh); height: auto; aspect-ratio: 16 / 9; }
 .cx-desk.reveal .cx-art { border: 0; }
 .cx-desk.reveal .cx-art .cl-art-media { object-position: 50% 20%; animation: cxReveal .5s cubic-bezier(.2, .9, .3, 1) both; }
 .cx-desk.reveal.caught .cx-art .cl-art-media { animation: cxReveal .5s cubic-bezier(.2, .9, .3, 1) both, cxShake .45s .15s linear 2; }
-.cx-reveal-banner { position: absolute; inset: auto 0 0 0; z-index: 2; padding: 1.8rem 1rem 1rem; text-align: center;
-  background: linear-gradient(180deg, transparent, #000c 70%); animation: cxBanner .5s .35s ease-out both; }
-.cx-reveal-banner small { display: block; color: var(--muted); font-size: .85rem; }
-.cx-reveal-banner b { display: block; color: var(--jade-hi); font: 400 clamp(1.4rem, 3.2vw, 2.1rem)/1.1 var(--title); text-shadow: 0 2px 14px #000; }
-.cx-desk.reveal.caught .cx-reveal-banner b { color: var(--blood-hi); text-transform: uppercase; }
-.cx-desk.reveal.buyout .cx-reveal-banner b { color: var(--brass-hi); }
+.cx-reveal-banner { position: absolute; inset: auto 0 0 0; z-index: 2; padding: 4rem 1.4rem 2.4rem; padding-bottom: clamp(1.6rem, 9cqh, 4.2rem); text-align: center;
+  background: linear-gradient(180deg, transparent, #000a 45%, #000d); animation: cxBanner .5s .35s ease-out both; }
+.cx-reveal-banner small { display: block; color: #fff; opacity: .85; font-size: .95rem; letter-spacing: .08em; text-shadow: 0 1px 6px #000; }
+.cx-reveal-banner b { display: block; color: #fff; font: 400 clamp(1.8rem, 5vw, 3.4rem)/1.1 var(--title); font: 400 clamp(1.8rem, 5.2cqw, 3.4rem)/1.1 var(--title);
+  text-shadow: 0 2px 4px #000, 0 2px 18px #000; }
+.cx-desk.reveal.caught .cx-reveal-banner b { text-transform: uppercase; text-shadow: 0 2px 4px #000, 0 0 22px var(--blood-hi); }
 .cx-desk.reveal.caught { box-shadow: 0 0 0 2px var(--blood-hi), 0 0 60px -10px var(--blood-hi); }
+.deck .veil.cx-veil.cx-out { animation: cxOut .6s ease-in both; pointer-events: none; }
+@keyframes cxOut { to { opacity: 0; } }
 @keyframes cxReveal { from { opacity: 0; transform: scale(1.08); filter: brightness(2); } }
 @keyframes cxBanner { from { opacity: 0; transform: translateY(14px); } }
 @keyframes cxShake { 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }

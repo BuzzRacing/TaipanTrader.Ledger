@@ -531,6 +531,8 @@ LINES.update({
     "l.officer_hot.9": "I'll deny I ever said it, Captain, and I'll deny you were ever this close. {goods}, {where}, {when}. Buy it cheap in {port} and beat the other houses there.",
 })
 SPOKEN.update({
+    "l.customs_spot_home": "{line} Welcome home, Captain, but not so fast. Spot check today: even our own houses get a thorough going-over now and then. {port}'s full rate on whatever you declare.",
+    "l.customs_spot_shares": "{line} Your shares in {port} buy you a great deal of goodwill, Captain, but not today. Today I'm feeling thorough. Spot check: the full rate on whatever you declare.",
     "l.customs_welcome": "{line} Declare your cargo, Captain. All of it. Truly, or not. I do so enjoy finding out.",
     "l.customs_welcome.20": "{line} Declare your cargo, Captain. Truly, or not. I do so enjoy finding out.",
     "l.customs_welcome.21": "{line} Write your figures honestly, Captain, or write them bravely. I'll know which, the moment I get my hands on them.",

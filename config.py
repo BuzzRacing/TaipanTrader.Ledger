@@ -2310,6 +2310,11 @@ def validate(raw):
         src = gr.get(group) if isinstance(gr.get(group), dict) else {}
         gr[group] = {k: v for k, v in src.items() if k in table and isinstance(v, str) and URL_RE.match(v)}
     # Cast members added in a later version join a saved cast once (deleting one afterwards sticks).
+    for cid in getattr(cast, "RETIRED", ()):          # the thirty extra port women (23 Nov 2026)
+        cfg["characters"].pop(cid, None)
+    for cid, ch in cfg["characters"].items():         # nobody is left without a voice
+        if isinstance(ch, dict) and not str(ch.get("voice_id") or "").strip() and cid in cast.CHARACTERS:
+            ch["voice_id"] = cast.CHARACTERS[cid].get("voice_id", "")
     seeded = set(cfg["rules"]["customs"].get("seeded") or [])
     for cid in cast.SEEDED:
         if cid not in seeded and cid not in cfg["characters"]:
