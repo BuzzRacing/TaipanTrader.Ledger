@@ -48,6 +48,10 @@ EN = {
     "e.legend_first": "The story is not finished, Captain. Hear it out.",
     "n.legend_palace_sold": "A collector of curiosities aged three hundred years in a single night. Nagasaki is "
                             "asking who sold her the box.",
+    "n.legend_jonah_threw": "A storm that broke in a minute, and a lady who was not on the passenger list when the "
+                            "ship came home. {firm} has no comment, and the crew has several.",
+    "n.legend_bond_seized": "A Singapore merchant woman lost her only ship to a bond held by {firm}. The waterfront "
+                            "says the paper was legal, and that is the whole of what it says.",
     # ---- The last two shares (honour.py, 21 Nov 2026; project doc "SeaTrader Last Two Shares") -----------------
     # A share earned from Li Yue's Flag or from a Legend tells a quick story of its own on the Legend's stage
     # (web/legend.js): page one is the share and one spoken line, page two a small result panel beside a key

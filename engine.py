@@ -47,6 +47,9 @@ HOME = "hongkong"
 # Forbidden cargo (22 Nov 2026): port key -> the cargoes that port does not trade at all. Not a ban: a ban is a
 # crackdown event (dearer, searched, in the news). A forbidden cargo does not exist in that port: it has no
 # price, no market row, no tip, no news, no declaration line, no search. One helper decides: sold_here().
+# Cargo Tiers (24 Nov 2026): False until each captain has their own cargo table (phases 2 to 5 of the build plan).
+# While False, the rules.tiers switch does nothing and the cargo that joins at tier 1 or later stays out of play.
+TIERS_READY = False
 FORBIDDEN = {}
 
 
@@ -155,6 +158,10 @@ def configure(cfg=None, text=None):
     family = cfg["content"]["rating"] == "family"
     GOODS.clear()
     for key, g in cfg["goods"].items():
+        # Cargo Tiers (24 Nov 2026), phase 1: a cargo that joins at tier 1 or later stays out of play until each captain
+        # has their own table (TIERS_READY). The game, its dice and its tests are exactly as before.
+        if int(g.get("enters", 0) or 0) >= 1 and not (TIERS_READY and (cfg["rules"].get("tiers") or {}).get("enabled")):
+            continue
         d = dict(g)
         if family and g.get("family_name"):
             d["name"] = g["family_name"]
@@ -2265,6 +2272,41 @@ class Game:
                 "mood": round(self.rng.uniform(1 - swing, 1 + swing), 4) if swing > 0 else 1.0,
                 "greed_stat": greed}
 
+    def _assess_lines(self, p, port, lines):
+        """The Authority's own valuation of each cargo line (25 Nov 2026). The captain never sees what the hold
+        is worth in this port before he has been to the desk, so the figure she taxes is her assessment, and she
+        may pad it: now and then a line is assessed far above its true worth and the captain pays on that. The
+        factor is drawn per line from its own seed (game, house, month, port, cargo), never the game's dice,
+        and is kept off every screen. Settings: rules.customs.assess_* (defaults below)."""
+        c = R["customs"]
+        if not c.get("assess_on", True):
+            for ln in lines:
+                ln["assess"], ln["assessed"] = 1.0, ln["value"]
+            return
+        st = ((CFG.get("characters") or {}).get(self.officer_of(port)) or {}).get("stats") or {}
+        greed, cunning = float(st.get("greed", 5)), float(st.get("cunning", 5))
+        rep = float(p["rep"].get(port, 50.0))
+        # A greedy, cunning officer pads more often; a house she trusts is padded less (standing 100 halves it).
+        chance = float(c.get("assess_pad", 0.20)) * max(0.2, 1 + (greed - 5) * 0.08 + (cunning - 5) * 0.05) \
+            * max(0.4, 1 + float(c.get("assess_rep", 0.5)) * (50.0 - rep) / 50.0)
+        chance = max(0.0, min(float(c.get("assess_pad_cap", 0.6)), chance))
+        cut = max(0.0, float(c.get("assess_cut", 0.08)))
+        for ln in lines:
+            rng = random.Random("assess:{}:{}:{}:{}:{}".format(self.s.get("game_id", ""), p.get("id", p.get("name", "")),
+                                                               self.s["turn"], port, ln["good"]))
+            roll = rng.random()
+            if roll < chance:                                  # padded: a really big one
+                lo, hi = sorted((float(c.get("assess_big_lo", 1.5)), float(c.get("assess_big_hi", 3.5))))
+                f = rng.uniform(lo, hi)
+            elif roll < chance + cut:                          # now and then she undervalues it
+                lo, hi = sorted((float(c.get("assess_low_lo", 0.75)), float(c.get("assess_low_hi", 0.9))))
+                f = rng.uniform(lo, hi)
+            else:                                              # the usual wobble around the true worth
+                lo, hi = sorted((float(c.get("assess_lo", 0.95)), float(c.get("assess_hi", 1.15))))
+                f = rng.uniform(lo, hi)
+            ln["assess"] = round(f, 4)
+            ln["assessed"] = int(round(ln["value"] * f))
+
     @staticmethod
     def customs_odds(cx, line, declared, bribe=1.0):
         """(chance she buys the line, chance she audits it) for a declared value. The player screen
@@ -2310,6 +2352,7 @@ class Game:
             app = max(0.3, min(3.0, float(PORTS[port]["mods"].get(g, 1.0)) ** c["appetite_power"]))
             lines.append({"good": g, "qty": q, "unit": round(mids[g], 2), "value": int(round(q * mids[g])),
                           "appetite": round(app, 4)})
+        self._assess_lines(p, port, lines)
         spot = self._spot_check(p, port) if lines else None
         if spot:                                 # stopped anyway: the port's full rate, this landing only
             rate, at_home = self.tax_rate(port), False
@@ -2333,6 +2376,11 @@ class Game:
         tip = self._registrar_tip(p) if self.registrar_here(p, port) else self._hot_tip(p, officer)
         if tip:
             p["customs"]["tip"] = tip
+        if lines:
+            self._ev("customs", "assessed", "{}: the Authority of {} assessed {} (true worth {})".format(
+                p["name"], PORTS[port]["name"], ", ".join("{} x{}".format(GOODS[ln["good"]]["name"], ln["assess"]) for ln in lines),
+                money(sum(ln["value"] for ln in lines))), p, port=port,
+                lines=[{"good": ln["good"], "assess": ln["assess"], "assessed": ln["assessed"], "value": ln["value"]} for ln in lines])
         self._ev("finance", "customs_open", "{}: the Port Authority of {} ({}) {}".format(
             p["name"], PORTS[port]["name"], officer,
             "stops the house for a spot check at the full rate of {} ({})".format(
@@ -2555,7 +2603,7 @@ class Game:
         roll between the band's floor_lo and floor_hi. Shared over the caught lines by what each hid."""
         st = R["standing"]
         caught = [r for r in out if r["outcome"] == "caught"]
-        hidden = {id(r): max(0, r["value"] - r["declared"]) for r in caught}
+        hidden = {id(r): max(0, r.get("base", r["value"]) - r["declared"]) for r in caught}
         found = sum(hidden.values())
         band = self.BANDS[self.band_here(p, port)]
         by_value = float(st.get("fine_hidden", 0.5)) * found * self.band_roll(p, port, "pen", "fine")
@@ -2611,17 +2659,21 @@ class Game:
         # (she neither buys nor searches). With no choice, the old per-line values are used.
         choice = a.get("choice") if a.get("choice") in self.PAY_DESK else None
         declared, shares = {}, {}
+        # What each line is taxed against: the Authority's own assessment (a hidden figure, padded now and then)
+        # for the four buttons; the true worth for the old per-line values. Saves from before have no assessment.
+        base_of = {ln["good"]: (int(ln.get("assessed", ln["value"])) if choice else ln["value"]) for ln in cu["lines"]}
         for ln in open_lines:
             if choice:
                 share = self.pay_share(p, cu, ln["good"], choice)
                 shares[ln["good"]] = share
-                v = int(math.ceil(ln["value"] * share - 1e-9)) if share > 1 else int(math.floor(ln["value"] * share + 1e-9))
+                bs = base_of[ln["good"]]
+                v = int(math.ceil(bs * share - 1e-9)) if share > 1 else int(math.floor(bs * share + 1e-9))
             else:
                 try:
                     v = int(round(float(raw.get(ln["good"], ln["value"]))))
                 except (TypeError, ValueError):
                     raise GameError(tx("e.whole_number"))
-            declared[ln["good"]] = max(0, min(int(math.floor(ln["value"] * top)), v))
+            declared[ln["good"]] = max(0, min(int(math.floor(base_of[ln["good"]] * top)), v))
         safe = choice in ("correct", "more")
         total_declared = sum(declared.values())
         bribe_mult, bribe = 1.0, None
@@ -2643,14 +2695,15 @@ class Game:
         desk_hid = {}
         for ln in sorted(open_lines, key=lambda x: -x["appetite"]):
             g, q, value, d = ln["good"], ln["qty"], ln["value"], declared[ln["good"]]
-            buy, audit = (0.0, 0.0) if safe else self.customs_odds(cx, ln, d, bribe_mult)
+            bs = base_of[g]                                  # the figure she taxes: her assessment (the buttons) or the true worth
+            buy, audit = (0.0, 0.0) if safe else self.customs_odds(cx, dict(ln, value=bs), d, bribe_mult)
             roll = self.rng.random()
-            res = {"good": g, "qty": q, "value": value, "declared": d, "buy": buy, "audit": audit,
+            res = {"good": g, "qty": q, "value": value, "base": bs, "declared": d, "buy": buy, "audit": audit,
                    "roll": round(roll, 5), "outcome": "tax", "units": 0, "paid": 0, "tax": 0, "fine": 0, "back": False}
             if choice:
                 res["share"] = round(shares[g], 4)
             if roll < buy:
-                per = d / float(q)
+                per = min(d, value) / float(q)               # she never pays more than the cargo is worth
                 # The crew slips a share below decks before she counts (rules.hide.desk): kept aboard, untaxed.
                 hid = self._crew_hide(p, {g: q}, "desk", "voyage").get(g, 0) if (per <= 0 or box >= per) else 0
                 room = q - hid
@@ -2673,8 +2726,8 @@ class Game:
                     res.update(outcome="tax", empty=True)
                     res["tax"] = int(math.ceil(rate * d - 1e-9))
             elif roll < buy + audit:
-                hidden = max(0, value - d)
-                res["tax"] = int(math.ceil(rate * value - 1e-9))
+                hidden = max(0, bs - d)
+                res["tax"] = int(math.ceil(rate * bs - 1e-9))
                 res["fine"] = int(math.ceil(c["fine_mult"] * rate * hidden - 1e-9))
                 res["outcome"] = "caught"
                 caught = True
@@ -2689,7 +2742,7 @@ class Game:
             out.append(res)
         for ln in cu["lines"]:
             if ln["good"] in seal:
-                out.append({"good": ln["good"], "qty": ln["qty"], "value": ln["value"], "declared": 0, "buy": 0.0, "audit": 0.0,
+                out.append({"good": ln["good"], "qty": ln["qty"], "value": ln["value"], "base": ln["value"], "declared": 0, "buy": 0.0, "audit": 0.0,
                             "roll": None, "outcome": "sealed", "units": 0, "paid": 0, "tax": 0, "fine": 0, "back": False})
         if seal:
             p["bond"] = {"port": port, "goods": {ln["good"]: ln["qty"] for ln in cu["lines"] if ln["good"] in seal}}
@@ -2698,21 +2751,22 @@ class Game:
             p["log"].append(tx("l.hid_desk", goods=self._goods_text(desk_hid)))
         rep_change, generous = 0.0, False
         value_total = sum(ln["value"] for ln in open_lines)
+        base_total = sum(base_of[ln["good"]] for ln in open_lines)       # what she taxed against (for standing and the log)
         if self.standing_on():
             # Reputation swings (19 Nov 2026): a caught lie costs standing first, then the fine is set by
             # the band the house has fallen into; an honest declaration earns standing, more for paying more.
             st = R["standing"]
             if caught:
-                hidden_all = sum(max(0, ln["value"] - declared[ln["good"]]) for ln in open_lines)
-                share = min(1.0, hidden_all / float(value_total)) if value_total else 1.0
+                hidden_all = sum(max(0, base_of[ln["good"]] - declared[ln["good"]]) for ln in open_lines)
+                share = min(1.0, hidden_all / float(base_total)) if base_total else 1.0
                 vary = max(0.0, float(st.get("caught_vary", 0.0)))
                 hit = (float(st["caught_base"]) + float(st["caught_lie"]) * share) \
                     * self._band_rng(p, "caught").uniform(1 - vary, 1 + vary)
                 rep_change = self._standing(p, port, -hit, "caught", travel=True, roll=False)
                 p["honest_run"] = 0
                 fine_total = self._caught_fine(p, port, out)
-            elif value_total:
-                ratio = total_declared / float(value_total)
+            elif base_total:
+                ratio = total_declared / float(base_total)
                 if ratio >= 1 - 1e-9:
                     generous = ratio >= float(st.get("pay_more_at", 1.1)) - 1e-9
                     run = p["honest_run"] = int(p.get("honest_run", 0) or 0) + 1
@@ -2724,8 +2778,8 @@ class Game:
         else:
             if caught:
                 rep_change = -c["caught_rep"]
-            elif value_total and total_declared > value_total:
-                over = total_declared / float(value_total) - 1
+            elif base_total and total_declared > base_total:
+                over = total_declared / float(base_total) - 1
                 rep_change = c["over_rep"] * min(1.0, over / max(0.01, top - 1))
                 generous = True
             if rep_change:
@@ -2751,8 +2805,7 @@ class Game:
         if seal:
             p["log"].append(tx("l.customs_sealed", port=name, goods=names_of(sorted(seal)).lower()))
         if not caught and open_lines:
-            p["log"].append(tx("l.customs_paid", port=name, declared=money(total_declared), value=money(value_total),
-                               tax=money(tax_total)))
+            p["log"].append(tx("l.customs_paid", port=name, declared=money(total_declared), tax=money(tax_total)))
         if drawn:
             p["log"].append(tx("l.bank_drawn", port=name, drawn=money(drawn)))
         self._detail = {"port": port, "rate": rate, "declared": declared, "value": value_total, "tax": tax_total,
@@ -2939,7 +2992,7 @@ class Game:
             return None
         c = R["customs"]
         ch = (CFG.get("characters") or {}).get(cu["officer"]) or {}
-        out = {k: cu[k] for k in ("status", "port", "officer", "rate", "base", "free", "lines", "cx", "result")}
+        out = {k: copy.deepcopy(cu[k]) for k in ("status", "port", "officer", "rate", "base", "free", "lines", "cx", "result")}
         out["turn"] = cu.get("turn", self.s["turn"])
         out["name"], out["title"], out["line"] = ch.get("name", ""), ch.get("title", ""), ch.get("catchphrase", "")
         out["view"] = MULT.get("customs_view", "bar")
@@ -2952,6 +3005,7 @@ class Game:
         if cu["status"] == "verdict":
             for r in out["result"]["lines"]:
                 r["back_price"] = self.buyback_cost(r) if r["units"] and not r["back"] else 0
+        self._hide_worth(out, cu)
         name = PORTS[cu["port"]]["name"]
         out["home_free"] = bool(cu.get("home_free"))
         out["spot"] = cu.get("spot")             # "home" / "shares" when a free house was stopped anyway
@@ -2973,6 +3027,37 @@ class Game:
                 key = "l.customs_welcome"
             out["welcome"] = tx(key, line=out["line"], port=name, rate=pct(cu["rate"]))
         return out
+
+    def _hide_worth(self, out, cu):
+        """Keep what the cargo is really worth off the desk (25 Nov 2026). The captain is told the tax on each
+        button and nothing else: no value, no price, no true worth, before or after her ruling. out is a copy."""
+        rate, rows = float(cu.get("rate", 0) or 0), []
+        top = max((ln.get("assessed", ln["value"]) * ln.get("appetite", 1.0) for ln in out["lines"]), default=0) or 1
+        more = max(1.0, min(float(R["customs"]["max_declare"]), float(R["customs"].get("pay_more_share", 1.1))))
+        for ln in out["lines"]:
+            bs = int(ln.get("assessed", ln["value"]))
+            rows.append({"good": ln["good"], "qty": ln["qty"], "appetite": ln.get("appetite", 1.0),
+                         "tax": int(math.ceil(rate * bs - 1e-9)),
+                         "tax_more": int(math.ceil(rate * int(math.ceil(bs * more - 1e-9)) - 1e-9)),
+                         "pull": round(bs * ln.get("appetite", 1.0) / float(top), 3)})
+        out["lines"] = rows
+        res = out.get("result")
+        if res:
+            for k in ("value", "declared"):
+                res.pop(k, None)
+            for r in res["lines"]:
+                for k in ("value", "declared", "base", "cost", "buy", "audit", "roll"):
+                    r.pop(k, None)
+
+    def worth_seen(self, p):
+        """Net worth as the captain may see it. While the Port Authority's desk is open the hold counts at what
+        it cost, not at this port's dealers' prices, so the header does not give away what the hold is worth
+        here before he has paid the tax (25 Nov 2026). The true worth returns when the desk closes."""
+        w = self.worth(p)
+        if self._customs_pending(p) and p.get("cargo"):
+            here = sum(self.dealer_value(p, p["port"], g, q) for g, q in p["cargo"].items() if g in GOODS and q > 0)
+            w += self._cost_of(p, p["cargo"]) - here
+        return w
 
     # Slipping out at night (owner's decisions, 19 Nov 2026; doc "SeaTrader Slipping Out"). The harbour
     # watch spots big fleets more often and watches houses the port distrusts; the fine has a floor set by
@@ -7141,7 +7226,7 @@ class Game:
         host = self.host_id(present)
         standings = []
         for q in (s["players"][i] for i in s["order"]):
-            worth = int(self.worth(q))
+            worth = int(self.worth_seen(q))
             standings.append({"id": q["id"], "name": q["name"], "firm": q["firm"], "color": q["color"],
                               "port": q["port"], "ready": q["ready"], "present": q["id"] in present,
                               "worth": worth, "rank": self.commissioned_rank(q)["title"], "ships": len(q["ships"]),
@@ -7162,7 +7247,7 @@ class Game:
         if p:
             port = p["port"]
             sp = self.spread(p, port)
-            worth = int(self.worth(p))
+            worth = int(self.worth_seen(p))
             out["me"] = {
                 "id": p["id"], "name": p["name"], "firm": p["firm"], "color": p["color"],
                 "captain": p.get("captain") or "", "hid": p.get("hid") or "",
@@ -7237,7 +7322,7 @@ class Game:
         present = set(present)
         players = []
         for p in (s["players"][i] for i in s["order"]):
-            worth = int(self.worth(p))
+            worth = int(self.worth_seen(p))
             players.append({"id": p["id"], "name": p["name"], "firm": p["firm"], "color": p["color"],
                             "port": p["port"], "dest": p["dest"], "ready": p["ready"], "orders": p["orders"],
                             "present": p["id"] in present, "cash": int(p["cash"]), "bank": int(p["bank"]),

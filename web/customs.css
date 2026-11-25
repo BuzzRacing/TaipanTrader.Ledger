@@ -105,22 +105,6 @@
 .cx-sums .risk.b b, .cx-sums .b b { color: #e9b964; } .cx-sums .risk.a b { color: var(--blood-hi); }
 .cx-sums .up b { color: var(--jade-hi); } .cx-sums .dn b { color: var(--blood-hi); }
 
-.cx-odds small { display: block; font-size: .72rem; color: var(--muted); margin-bottom: .2rem; }
-.cx-bar { display: flex; height: .8rem; border-radius: 1rem; overflow: hidden; border: 1px solid var(--edge-hi); background: var(--glass-2); }
-.cx-bar i { flex: 0 0 0; transition: flex-basis .2s; }
-.cx-bar .t, .cx-legend .t i { background: color-mix(in srgb, var(--deck-jade) 80%, #000); }
-.cx-bar .b, .cx-legend .b i { background: #c98a2a; }
-.cx-bar .a, .cx-legend .a i { background: var(--deck-oxblood); }
-.cx-legend { display: flex; gap: .9rem; flex-wrap: wrap; font-size: .78rem; margin-top: .25rem; color: var(--muted); }
-.cx-legend i { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .3rem; vertical-align: -.05rem; }
-.cx-legend b { color: var(--deck-ivory); font-variant-numeric: tabular-nums; }
-.cx-hidden { margin: 0; color: var(--muted); font-style: italic; }
-
-.cx-bribe { display: flex; align-items: center; gap: .55rem; padding: .3rem .6rem; border: 1px dashed var(--edge); border-radius: var(--radius); cursor: pointer; }
-.cx-bribe input { width: 1.2rem; height: 1.2rem; margin-top: .15rem; accent-color: var(--deck-brass); }
-.cx-bribe small { display: block; color: var(--muted); font-size: .7rem; line-height: 1.25; }
-.cx-bribe b { font-size: .92rem; }
-.cx-bribe.on { border-style: solid; border-color: #c98a2a; background: color-mix(in srgb, #c98a2a 12%, transparent); }
 .cx-short { margin: 0; color: var(--blood-hi); font-size: .82rem; min-height: 0; }
 .cx-short:empty { display: none; }
 .cx-note { margin: 0; font-style: italic; color: var(--muted); } .cx-note.bad { color: var(--blood-hi); }
@@ -128,8 +112,7 @@
 .cx-verdict { margin: .2rem 0 0; font: 400 1.25rem var(--serif); color: var(--brass-hi); }
 .cx-verdict.caught { color: var(--blood-hi); } .cx-verdict.buyout { color: #e9b964; }
 .cx-vline { display: grid; grid-template-columns: 1fr auto auto auto; gap: .6rem; align-items: center; padding: .4rem .6rem;
-  border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass-2); animation: cxIn .4s ease-out backwards; }
-.cx-vline:nth-child(2) { animation-delay: .12s; } .cx-vline:nth-child(3) { animation-delay: .24s; } .cx-vline:nth-child(4) { animation-delay: .36s; }
+  border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass-2); }
 .cx-vline.caught { border-color: color-mix(in srgb, var(--deck-oxblood) 80%, transparent); }
 .cx-vline.buyout, .cx-vline.partial { border-color: #c98a2a; }
 .cx-vline.back { opacity: .7; }
@@ -139,7 +122,6 @@
 .cx-out.buyout, .cx-out.partial { background: color-mix(in srgb, #c98a2a 45%, transparent); }
 .cx-amt { font-variant-numeric: tabular-nums; }
 .cx-vline button { min-height: 2rem; padding: .2rem .6rem; }
-@keyframes cxIn { from { opacity: 0; transform: translateY(6px); } }
 
 /* Portrait and narrow screens: the cargo slider takes its own row. */
 @media (max-width: 760px) {
@@ -148,7 +130,6 @@
   .cx-vline { grid-template-columns: minmax(0, 1fr) auto auto; gap: .35rem; }
   .cx-vline button { grid-column: 1 / -1; justify-self: end; }
 }
-@media (prefers-reduced-motion: reduce) { .cx-vline { animation: none; } .cx-bar i { transition: none; } }
 
 /* A cargo kept sealed in bond: a small pill on the slider's caption line, opposite her chip, so it
    adds no height to the row. Ticked, it turns gold and the slider greys out. */
@@ -206,11 +187,23 @@
 .deck .cx-desk button.cx-pay-btn { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .15rem;
   min-height: 4.2rem; padding: .4rem .55rem; text-align: left; white-space: normal; border: 1px solid var(--edge); border-radius: var(--radius);
   background: var(--glass-2); color: var(--deck-ivory); cursor: pointer; }
+/* Each button has its own shade at rest (25 Nov 2026): Pay Nothing blood-red, Pay Less amber, Pay Correct
+   steel-grey, Pay More jade. Chosen, they keep their own colour a little stronger (rules below). */
+.deck .cx-desk button.cx-pay-btn.nothing { background: color-mix(in srgb, var(--blood-hi) 9%, var(--glass-2));
+  border-color: color-mix(in srgb, var(--blood-hi) 45%, var(--edge)); }
+.deck .cx-desk button.cx-pay-btn.less { background: color-mix(in srgb, var(--brass-hi) 10%, var(--glass-2));
+  border-color: color-mix(in srgb, var(--brass-hi) 45%, var(--edge)); }
+.deck .cx-desk button.cx-pay-btn.correct { background: color-mix(in srgb, #8fa3b8 12%, var(--glass-2));
+  border-color: color-mix(in srgb, #8fa3b8 45%, var(--edge)); }
+.deck .cx-desk button.cx-pay-btn.more { background: color-mix(in srgb, var(--jade-hi) 9%, var(--glass-2));
+  border-color: color-mix(in srgb, var(--jade-hi) 45%, var(--edge)); }
 .cx-pay-btn b { font: 1rem var(--title); }
 .cx-pay-btn small { font-size: .7rem; line-height: 1.25; color: var(--muted); }
 .deck .cx-desk button.cx-pay-btn:hover:not(:disabled) { border-color: var(--edge-hi); }
 .deck .cx-desk button.cx-pay-btn.on { border-color: var(--brass-hi); background: color-mix(in srgb, var(--brass-hi) 16%, transparent);
   box-shadow: 0 0 0 1px var(--brass-hi) inset; }
+.deck .cx-desk button.cx-pay-btn.correct.on { border-color: #b8c8da; background: color-mix(in srgb, #8fa3b8 24%, transparent);
+  box-shadow: 0 0 0 1px #b8c8da inset; }
 .deck .cx-desk button.cx-pay-btn.nothing.on { border-color: var(--blood-hi); background: color-mix(in srgb, var(--blood-hi) 16%, transparent);
   box-shadow: 0 0 0 1px var(--blood-hi) inset; }
 .deck .cx-desk button.cx-pay-btn.more.on { border-color: var(--jade-hi); background: color-mix(in srgb, var(--jade-hi) 14%, transparent);
@@ -249,50 +242,17 @@
   .cx-rate b { font-size: 1.1rem; }
 }
 
-/* The receipt (20 Nov 2026): a plain ruling no longer stops the game; this flashes over the Port screen with
-   her happy picture, above the toast, and fades itself out. A tap dismisses it. */
-.cx-receipt { position: fixed; left: 50%; bottom: 5.2rem; transform: translateX(-50%); z-index: 29;
-  display: flex; align-items: center; gap: .8rem; max-width: min(92vw, 30rem); padding: .55rem 1rem .55rem .55rem;
-  border: 1px solid var(--edge-hi); border-radius: var(--radius); cursor: pointer;
-  background: linear-gradient(180deg, var(--deck-lacquer), var(--deck-night)); color: var(--deck-ivory);
-  box-shadow: 0 14px 34px -10px #000; animation: cx-rc-in .28s ease-out both, cx-rc-out .5s ease-in 6s both; }
-.cx-receipt .cx-rc-art { flex: none; width: 3.6rem; height: 3.6rem; border-radius: var(--radius); overflow: hidden;
-  border: 1px solid var(--edge-hi); background: var(--deck-lacquer); }
-.cx-receipt .cx-rc-img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; display: block; }
-.cx-receipt .cx-rc-art .stg-mono { display: grid; place-items: center; height: 100%; font: 1.4rem var(--title); color: var(--brass-hi); }
-.cx-receipt small { display: block; color: var(--muted); font-size: .75rem; }
-.cx-receipt b { display: block; color: var(--brass-hi); font: 400 1.35rem/1.2 var(--serif); }
-.cx-receipt p { margin: .2rem 0 0; display: flex; flex-wrap: wrap; gap: .1rem .7rem; font-size: .8rem; color: var(--muted); }
-.cx-receipt p b { display: inline; font: 700 .8rem var(--sans); color: inherit; }
-.cx-receipt p .up, .cx-receipt p .up b { color: var(--jade-hi); }
-.cx-receipt p .dn, .cx-receipt p .dn b { color: var(--blood-hi); }
-@keyframes cx-rc-in { from { opacity: 0; transform: translate(-50%, .6rem); } }
-@keyframes cx-rc-out { to { opacity: 0; transform: translate(-50%, .6rem); } }
-@media (prefers-reduced-motion: reduce) { .cx-receipt { animation: none; } }
-@media (max-width: 600px) { .cx-receipt { bottom: 4.6rem; } }
-
-/* Her face follows the pay button under the pointer: a quick fade on each swap (22 Nov 2026). */
-.cx-desk .cx-art .cl-art-media { animation: cxFace .22s ease-out both; }
-@keyframes cxFace { from { opacity: .35; transform: scale(1.015); } }
-
-/* The reveal (23 Nov 2026): a 16:9 widescreen picture of her, as large as the port view allows, with the
-   ruling in white over it; then the whole thing fades away to the port (customs.js endReveal). */
-.deck .veil.cx-veil:has(> .cx-desk.reveal) { container-type: size; }
-.deck .modal.cx-desk.reveal { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); cursor: pointer;
-  max-width: none; width: 100%; width: min(100cqw, 177.78cqh); height: auto; aspect-ratio: 16 / 9; }
-.cx-desk.reveal .cx-art { border: 0; }
-.cx-desk.reveal .cx-art .cl-art-media { object-position: 50% 20%; animation: cxReveal .5s cubic-bezier(.2, .9, .3, 1) both; }
-.cx-desk.reveal.caught .cx-art .cl-art-media { animation: cxReveal .5s cubic-bezier(.2, .9, .3, 1) both, cxShake .45s .15s linear 2; }
-.cx-reveal-banner { position: absolute; inset: auto 0 0 0; z-index: 2; padding: 4rem 1.4rem 2.4rem; padding-bottom: clamp(1.6rem, 9cqh, 4.2rem); text-align: center;
-  background: linear-gradient(180deg, transparent, #000a 45%, #000d); animation: cxBanner .5s .35s ease-out both; }
-.cx-reveal-banner small { display: block; color: #fff; opacity: .85; font-size: .95rem; letter-spacing: .08em; text-shadow: 0 1px 6px #000; }
-.cx-reveal-banner b { display: block; color: #fff; font: 400 clamp(1.8rem, 5vw, 3.4rem)/1.1 var(--title); font: 400 clamp(1.8rem, 5.2cqw, 3.4rem)/1.1 var(--title);
-  text-shadow: 0 2px 4px #000, 0 2px 18px #000; }
-.cx-desk.reveal.caught .cx-reveal-banner b { text-transform: uppercase; text-shadow: 0 2px 4px #000, 0 0 22px var(--blood-hi); }
-.cx-desk.reveal.caught { box-shadow: 0 0 0 2px var(--blood-hi), 0 0 60px -10px var(--blood-hi); }
-.deck .veil.cx-veil.cx-out { animation: cxOut .6s ease-in both; pointer-events: none; }
+/* One card, no blinking (24 Nov 2026). Her picture never restarts or dips: a new one is laid over the old
+   one and fades in (customs.js swapArt), then the old one goes. The card is changed in place from her
+   greeting to her ruling, and fades out once, to the Port screen, when it closes. */
+.cx-desk .cx-art .cl-art-media, .cx-desk .cx-art .stg-keeper { display: block; }
+.cx-desk .cx-art .cx-art-in { position: absolute; inset: 0; opacity: 0; transition: opacity .35s ease-out; }
+.cx-desk .cx-art .cx-art-in.on { opacity: 1; }
+.cx-desk .cx-art .stg-mono { position: absolute; inset: 0; }
+.cx-desk.verdict.caught { box-shadow: 0 0 0 2px var(--blood-hi), 0 0 60px -10px var(--blood-hi); }
+.cx-desk .cx-verdict { margin: 0; font: 400 clamp(1.5rem, 3vw, 2.2rem)/1.15 var(--title); color: var(--deck-ivory); }
+.cx-desk .cx-verdict.caught { color: var(--blood-hi); text-transform: uppercase; }
+.cx-desk .cx-verdict.buyout { color: #e9b964; }
+.deck .veil.cx-veil.cx-out { animation: cxOut .35s ease-in both; pointer-events: none; }
 @keyframes cxOut { to { opacity: 0; } }
-@keyframes cxReveal { from { opacity: 0; transform: scale(1.08); filter: brightness(2); } }
-@keyframes cxBanner { from { opacity: 0; transform: translateY(14px); } }
-@keyframes cxShake { 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
-@media (prefers-reduced-motion: reduce) { .cx-desk .cx-art .cl-art-media, .cx-reveal-banner { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .cx-desk .cx-art .cx-art-in { transition: none; } .deck .veil.cx-veil.cx-out { animation: none; } }

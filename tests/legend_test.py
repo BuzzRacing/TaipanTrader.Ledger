@@ -20,8 +20,14 @@ import strings  # noqa: E402
 from engine import Game, GameError, GOODS, SHIPS  # noqa: E402
 
 
-def setup(**rules):
+NEW = ("jonah", "bond", "hunger", "robe", "ledger")        # the second set (25 Nov 2026)
+
+
+def setup(only="palace", **rules):
+    """Only one Legend is on unless a test asks for another, so the first Legend's tests read as they always did."""
     cfg = config.defaults()
+    for tid in ("palace",) + NEW:
+        cfg["rules"]["legend"]["tale_" + tid] = (tid == only)
     cfg["rules"]["weather"]["storm_chance"] = [0, 0, 0, 0]
     cfg["rules"]["weather"].update({"offcourse": 0.0})
     cfg["rules"]["pirates"].update({"chance": 0.0})
@@ -86,7 +92,7 @@ def test_the_library_is_sound():
     assert legend_tales.check() == []
     en, fam, spoken = legend_tales.text_keys()
     for key, who in spoken.items():
-        assert who == legend_tales.T or who in legend_cast.TELLERS, key
+        assert who == legend_tales.T or who in legend_cast.TELLERS or who in cast.CHARACTERS, key
         assert not re.search(r"\d", en[key]), (key, en[key])          # no amounts in a spoken line
         assert set(re.findall(r"\{(\w+)\}", en[key])) <= {"port"}, key
         assert strings.EN[key] == en[key]
@@ -95,9 +101,13 @@ def test_the_library_is_sound():
     for cid in legend_cast.TELLERS:
         ch = cast.CHARACTERS[cid]
         assert ch["voice_id"] and ch["portrait_prompt"] and "{" not in ch["portrait_prompt"], cid
-    for tale in legend_tales.TALES.values():
+    for tid, tale in legend_tales.TALES.items():
         assert tale["teller"] in legend_cast.STORYTELLERS
         assert 2 <= len(tale["chapters"]) <= 4
+        for cid in tale["cast"]:
+            assert cid in cast.CHARACTERS, (tid, cid)
+    assert set(NEW) | {"palace"} == set(legend_tales.TALES)
+    assert config.defaults()["rules"]["legend"]["tale_" + "ledger"] is True
 
 
 def test_no_legends_when_switched_off():
@@ -318,3 +328,97 @@ def test_every_road_is_told_quickly():
             for _flag, start in ch["start"]:
                 assert len(ch["nodes"][start]["beats"]) <= 3, (tid, ch["id"], start)
                 assert longest(ch["nodes"], start) <= 6, (tid, ch["id"], start)
+
+
+# ---- the second set (25 Nov 2026; legend_tales_more.py) -------------------------------------------------------
+START = {"jonah": None, "ledger": None, "bond": "singapore", "hunger": "saigon", "robe": "foochow"}
+
+
+def begin(tid, seed, **rules):
+    """A new game with only this Legend on, and its first chapter open."""
+    import random as _r
+    setup(only=tid, **rules)
+    g, p = new_game(seed=seed, cash=200000, cargo={"tea": 20})
+    g.s["game_id"] = "g{}".format(seed)
+    sail(g, p, START[tid] or "manila")
+    assert p.get("legend") and p["legend"]["tale"] == tid, tid
+    return g, p, _r.Random("{}:{}".format(tid, seed))
+
+
+def play(g, p, pick):
+    """Play a Legend to its end, choosing with pick(question node, choices); returns the nodes met."""
+    met, tid = [], p["legend"]["tale"]
+    for _ in range(8):
+        if not p.get("legend"):
+            break
+        while not p["legend"]["done"]:
+            L = p["legend"]
+            node = legend_tales.TALES[tid]["chapters"][L["ch"]]["nodes"][L["node"]]
+            choose(g, pick(L, node))
+        met.append((p["legend"]["ch"], p["legend"]["node"]))
+        done(g)
+        if tid in p["legends"]["done"]:
+            break
+        next_chapter(g, p)
+    return met
+
+
+@pytest.mark.parametrize("tid", NEW)
+def test_every_new_legend_opens_where_it_should_and_can_be_played(tid):
+    g, p, _r = begin(tid, 1)
+    v = g.view("p1", {"p1"})["me"]["legend"]
+    assert v["of"] == 3 and v["n"] == 1 and v["teller"] == legend_tales.TALES[tid]["teller"]
+    assert 1 <= len(v["beats"]) <= 3 and all(b["text"] for b in v["beats"]) and v["choices"]
+    assert v["scene"] in ("port", "sea", "deep") and set(v["cast"]) <= set(cast.CHARACTERS)
+    play(g, p, lambda L, node: node["choices"][0][0])
+    assert tid in p["legends"]["done"] and p["cash"] >= 0 and all(sh["hull"] > 0 for sh in p["ships"])
+
+
+@pytest.mark.parametrize("tid", NEW)
+def test_every_road_of_every_new_legend_is_met(tid):
+    """Random choices over many games: every node of every chapter is reached, and nobody is ever sunk or left
+    with a negative purse."""
+    seen = set()
+    tale = legend_tales.TALES[tid]
+    for seed in range(1, 70):
+        g, p, rnd = begin(tid, seed)
+        for ch, node in play(g, p, lambda L, node: rnd.choice(node["choices"])[0]):
+            seen.add((ch, node))
+        assert p["cash"] >= 0 and all(sh["hull"] > 0 for sh in p["ships"])
+    every = {(i, n) for i, ch in enumerate(tale["chapters"]) for n, nd in ch["nodes"].items() if nd.get("end")}
+    assert every <= seen, sorted(every - seen)
+
+
+@pytest.mark.parametrize("tid", NEW)
+def test_the_right_answers_earn_the_share_and_a_wrong_one_does_not(tid):
+    def right(L, node):
+        marked = legend_tales.TALES[tid]["chapters"][L["ch"]]["right"][L["node"]]
+        return marked[0]
+
+    def wrong(L, node):
+        marked = legend_tales.TALES[tid]["chapters"][L["ch"]]["right"].get(L["node"], ())
+        return next(c[0] for c in node["choices"] if c[0] not in marked)
+
+    g, p, _r = begin(tid, 2)
+    play(g, p, right)
+    assert "legend" in (p.get("honours") or {}), tid
+    assert p["honours"]["legend"]["tale"] == tid and len(p["honours"]["legend"]["right"]) >= 2
+    g, p, _r = begin(tid, 2)
+    play(g, p, wrong)
+    assert "legend" not in (p.get("honours") or {}), tid
+
+
+@pytest.mark.parametrize("tid", NEW)
+def test_the_right_answer_costs_the_bigger_prize(tid):
+    """Owner's rule: the right answer is the generous one and costs the Captain the bigger prize. At the first
+    question every wrong road pays at least as much silver as the right one."""
+    tale = legend_tales.TALES[tid]
+    ch = tale["chapters"][0]
+    node = ch["nodes"][ch["start"][-1][1]]
+    marked = ch["right"][ch["start"][-1][1]]
+
+    def pay(name):
+        return sum(fx[1] for fx in ch["nodes"][name].get("fx", ()) if fx[0] == "silver")
+    right = max(pay(c[2]) for c in node["choices"] if c[0] in marked)
+    other = max(pay(c[2]) for c in node["choices"] if c[0] not in marked)
+    assert other >= right, tid

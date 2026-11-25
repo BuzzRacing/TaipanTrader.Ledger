@@ -39,6 +39,54 @@ SCENES = [
      "A ship captain's cabin by lamp light, a small black lacquer box tied with a red silk cord sitting on the chart "
      "table and glowing faintly from within, sea charts and a brass chronometer beside it, dark sea through the "
      "stern windows"),
+    # ---- The second set (25 Nov 2026): three scenes for each of five Legends -------------------------------
+    ("legend_jonah_fare", "legend jonah",
+     "A busy Indian Ocean quay at dusk in 1860, a single empty gangway of a trading ship in the foreground, a "
+     "heavy leather purse and a lace shawl left on a barrel, lantern light, crates and rope, ships' masts against "
+     "an orange sky"),
+    ("legend_jonah_storm", "legend jonah",
+     "A trading junk's deck in a violent storm at night, enormous black waves, lightning splitting the sky, a "
+     "ship's lantern swinging wildly, rain driving sideways, a closed cabin door at the stern with a thin line "
+     "of warm light under it"),
+    ("legend_jonah_truth", "legend jonah",
+     "A harbour tavern table at dawn after a storm, a string of pearls and a rosary lying on a worn wooden table "
+     "beside two cups, soft light through a shuttered window, calm masts outside"),
+    ("legend_bond_paper", "legend bond",
+     "A Singapore money-lender's counting house in 1860, a long lacquered desk with a rolled bond sealed in red "
+     "wax, brass scales, stacks of silver dollars and an open ledger, tall windows onto the harbour and godowns"),
+    ("legend_bond_stair", "legend bond",
+     "A steep stone stairway down into a whitewashed colonial debtors' prison in Singapore, iron-barred doors, "
+     "a single shaft of light on the steps, tropical foliage pressing at a small window"),
+    ("legend_bond_day", "legend bond",
+     "A Singapore waterfront at golden hour, a freshly painted trading ship with an empty quay beside it, a "
+     "laid supper table with lanterns and bowls of tea, merchants' houses in the background"),
+    ("legend_hunger_famine", "legend hunger",
+     "A Saigon quay in a famine year in 1860, an almost empty rice market with bare wooden stalls, a few bags of "
+     "rice on a barrow, a long patient queue of silent baskets, grey humid light over the river"),
+    ("legend_hunger_hoard", "legend hunger",
+     "Three tall shuttered river warehouses in Saigon at night, a single thread of lantern light under the "
+     "doors, a heavy padlock and chain, bags of rice glimpsed through a crack, sampans moored beneath"),
+    ("legend_hunger_noodles", "legend hunger",
+     "A Saigon harbour quay buried in a river of long noodles, an enormous collapsed iron cauldron steaming in "
+     "the background, upturned carts and paper lanterns, festive bunting torn down, comic and chaotic, warm light"),
+    ("legend_robe_rocks", "legend robe",
+     "A rocky Fujian shoreline below a sea goddess temple at moonrise, a gauzy robe of shimmering sea-silk folded "
+     "on a flat black rock above the surf, red temple lanterns on the cliff, mist on the water"),
+    ("legend_robe_wake", "legend robe",
+     "The open sea at dawn behind the stern of a trading junk, a luminous path of foam running to the horizon, a "
+     "brass compass and a silk-wrapped chest on the deck, fair wind filling the sails"),
+    ("legend_robe_silk", "legend robe",
+     "A ship captain's cabin at night with a carved sea chest open on the floor, folds of shimmering sea-silk "
+     "spilling from it and glowing faintly blue-green, moonlight through the stern windows, rolled charts"),
+    ("legend_ledger_page", "legend ledger",
+     "A fish market at dawn in 1860, a torn page covered in fine red-inked writing wrapped around a silver fish "
+     "on a wet slab, baskets, hanging lanterns and gutting knives, steam rising from the stalls"),
+    ("legend_ledger_pages", "legend ledger",
+     "A lamp-lit Saigon pawnshop back room, torn pages of a crimson ledger pinned across a wall with string "
+     "between them like a map, a writing desk with a red pen and black coffee, dust motes in the lamp light"),
+    ("legend_ledger_last", "legend ledger",
+     "A captain's cabin chart table at night, a great open crimson ledger filling the table, lit by a single "
+     "brass lamp, a brazier glowing beside it, shadow of rolling sea outside the stern windows"),
 ]
 
 

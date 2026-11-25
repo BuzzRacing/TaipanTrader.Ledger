@@ -46,6 +46,7 @@ DEFAULTS = {
     "swing": 0.25,            # each silver or cargo effect varies by this much either way
     "teller": "tale",         # "tale" (each Legend's own), "random", or one storyteller's cast key
     "tale_palace": True,      # each Legend on or off: tale_<key> (a Legend with no switch is on)
+    "tale_jonah": True, "tale_bond": True, "tale_hunger": True, "tale_robe": True, "tale_ledger": True,
     "share": True,            # a Legend's share (honour.py, 21 Nov 2026): share_right right answers in one
     "share_right": 2,         # Legend earn the house a port share, once a game; never shown or hinted
     "eager": False,           # testing: a Legend begins at the first landfall that fits

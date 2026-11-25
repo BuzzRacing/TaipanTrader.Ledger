@@ -160,7 +160,7 @@ DEFAULTS = {
                    # port may start a run: its price climbs or falls runs_drift_min..max a month for runs_min..max
                    # months, on top of a bigger monthly swing (wild_vol), a weaker pull back (wild_reversion) and a
                    # much wider floor and ceiling (wild_floor..wild_ceiling x usual). No signal: no News, no arrow.
-                   "wild_goods": ["porcelain"], "wild_vol": 0.35, "wild_reversion": 0.25,
+                   "wild_goods": ["porcelain", "ambergris"], "wild_vol": 0.35, "wild_reversion": 0.25,
                    "wild_floor": 0.15, "wild_ceiling": 6.0,
                    "runs_chance": 0.03, "runs_min": 3, "runs_max": 5, "runs_drift_min": 0.30, "runs_drift_max": 0.60,
                    "review4_v1": False,
@@ -253,6 +253,8 @@ DEFAULTS = {
         "legend": {"enabled": True, "per_game": 5, "first_month": 6, "max_running": 2, "gap_min": 6, "gap_max": 14,
                    "stake_share": 0.06, "stake_min": 2000, "swing": 0.25, "teller": "tale", "eager": False,
                    "tale_palace": True,
+                   "tale_jonah": True, "tale_bond": True, "tale_hunger": True, "tale_robe": True,
+                   "tale_ledger": True,
                    # A Legend's share (21 Nov 2026): share_right right choices in one Legend earn the house
                    # one port share, once a game (honour.py). Which choices are right is never shown.
                    "share": True, "share_right": 2},
@@ -452,6 +454,10 @@ DEFAULTS = {
                     "risk_loss": 0.4},
         # Forbidden cargo (22 Nov 2026): off means every port trades every cargo, as before.
         "forbidden": {"enabled": True},
+        # Cargo Tiers (24 Nov 2026): as a captain reaches each step's rank, cargo with that tier in "enters" joins their
+        # market and cargo with it in "leaves" is bought out and goes. Off: everyone trades the original nine.
+        # Not wired into the engine yet (engine.TIERS_READY), so the switch does nothing for now.
+        "tiers": {"enabled": False, "steps": ["merchant", "merchant_prince"], "seeded_v1": False},
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
                       "hot_enabled": True, "hot_home_chance": 0.25, "hot_away_chance": 0.1,
                       "hot_every": 3, "hot_lead": 1, "hot_months": 2, "hot_hold": True,
@@ -520,17 +526,28 @@ DEFAULTS = {
                      "lot_chance": 0.3, "lot_depth": 0.15, "lot_discount": 0.15, "lot_discount_max": 0.5},
     },
     # base = typical price; vol = monthly volatility; depth = units that move the price ~25%.
+    # enters / leaves = Cargo Tiers (24 Nov 2026): the tier a captain is at when the cargo joins their market and
+    # when it leaves (0 = from the start / never leaves). Tier 0 is the start; each rules.tiers step is one tier up.
     "goods": {
-        "opium":     {"name": "Opium", "family_name": "Fireworks", "base": 4200, "vol": 0.16, "depth": 600, "contraband": True, "ban_odds": 0.0},
+        "opium":     {"name": "Opium", "family_name": "Fireworks", "base": 4200, "vol": 0.16, "depth": 600, "enters": 0, "leaves": 0, "contraband": True, "ban_odds": 0.0},
         # Gold is legal, but a port's ban sometimes covers bullion too (ban_odds).
-        "gold":      {"name": "Gold", "family_name": "", "base": 2400, "vol": 0.05, "depth": 900, "contraband": False, "ban_odds": 0.5},
-        "silk":      {"name": "Silk", "family_name": "", "base": 520, "vol": 0.10, "depth": 1200, "contraband": False, "ban_odds": 0.0},
-        "porcelain": {"name": "Porcelain", "family_name": "", "base": 230, "vol": 0.08, "depth": 1500, "contraband": False, "ban_odds": 0.0},
-        "arms":      {"name": "Arms", "family_name": "Ironware", "base": 160, "vol": 0.10, "depth": 1500, "contraband": False, "ban_odds": 0.0},
-        "spices":    {"name": "Spices", "family_name": "", "base": 95, "vol": 0.09, "depth": 1800, "contraband": False, "ban_odds": 0.0},
-        "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 2000, "contraband": False, "ban_odds": 0.0},
-        "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 3000, "contraband": False, "ban_odds": 0.0},
-        "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 3000, "contraband": False, "ban_odds": 0.0},
+        "gold":      {"name": "Gold", "family_name": "", "base": 2400, "vol": 0.05, "depth": 900, "enters": 0, "leaves": 0, "contraband": False, "ban_odds": 0.5},
+        "silk":      {"name": "Silk", "family_name": "", "base": 520, "vol": 0.10, "depth": 1200, "enters": 0, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "porcelain": {"name": "Porcelain", "family_name": "", "base": 230, "vol": 0.08, "depth": 1500, "enters": 0, "leaves": 2, "contraband": False, "ban_odds": 0.0},
+        "arms":      {"name": "Arms", "family_name": "Ironware", "base": 160, "vol": 0.10, "depth": 1500, "enters": 0, "leaves": 2, "contraband": False, "ban_odds": 0.0},
+        "spices":    {"name": "Spices", "family_name": "", "base": 95, "vol": 0.09, "depth": 1800, "enters": 0, "leaves": 2, "contraband": False, "ban_odds": 0.0},
+        "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 2000, "enters": 0, "leaves": 1, "contraband": False, "ban_odds": 0.0},
+        "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 3000, "enters": 0, "leaves": 1, "contraband": False, "ban_odds": 0.0},
+        "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 3000, "enters": 0, "leaves": 1, "contraband": False, "ban_odds": 0.0},
+        # Cargo Tiers (24 Nov 2026), six real China Seas luxuries that join as a captain climbs. They are
+        # in the table but not in play yet: engine.TIERS_READY. Base prices, swings and depths are
+        # placeholders until the balance pass. Ambergris is the second batch's wild cargo.
+        "camphor":   {"name": "Camphor", "family_name": "", "base": 5500, "vol": 0.08, "depth": 400, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "sandalwood": {"name": "Sandalwood", "family_name": "", "base": 6500, "vol": 0.08, "depth": 350, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "ginseng":   {"name": "Ginseng", "family_name": "", "base": 8000, "vol": 0.10, "depth": 300, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "jade":      {"name": "Jade", "family_name": "", "base": 11000, "vol": 0.10, "depth": 250, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "pearls":    {"name": "Pearls", "family_name": "", "base": 15000, "vol": 0.12, "depth": 200, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "ambergris": {"name": "Ambergris", "family_name": "", "base": 20000, "vol": 0.12, "depth": 150, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
     },
     "regions": {
         "north":  {"name": "Yellow Sea & Japan", "typhoon": 0.02, "squalls": 0.20, "label_lon": 126, "label_lat": 29,
@@ -549,23 +566,23 @@ DEFAULTS = {
         "hongkong":  {"name": "Hong Kong", "lon": 114.2, "lat": 22.3, "region": "china", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.02, "officer": "officer_hongkong", "mood": 0.15, "purse": 1.4,
                       "mods": {"arms": 0.8, "tea": 0.9, "general": 0.85, "gold": 1.05}, "forbidden": []},
         "shanghai":  {"name": "Shanghai", "lon": 121.5, "lat": 31.2, "region": "north", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 1.2, "tax_rate": 0.03, "officer": "officer_shanghai", "mood": 0.15, "purse": 1.3,
-                      "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}, "forbidden": ["porcelain", "rice"]},
+                      "mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}, "forbidden": ["porcelain", "rice", "sandalwood"]},
         "nagasaki":  {"name": "Nagasaki", "lon": 129.9, "lat": 32.75, "region": "north", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.4, "tax_rate": 0.025, "officer": "officer_nagasaki", "mood": 0.1, "purse": 0.8,
-                      "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}, "forbidden": ["opium", "tea"]},
+                      "mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}, "forbidden": ["opium", "tea", "ambergris"]},
         "manila":    {"name": "Manila", "lon": 121.0, "lat": 14.6, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.8, "tax_rate": 0.015, "officer": "officer_manila", "mood": 0.15, "purse": 0.9,
-                      "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}, "forbidden": ["arms", "tea"]},
+                      "mods": {"general": 0.75, "rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}, "forbidden": ["arms", "tea", "ginseng"]},
         "foochow":   {"name": "Foochow", "lon": 119.3, "lat": 26.1, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 1.0, "tax_rate": 0.025, "officer": "officer_foochow", "mood": 0.15, "purse": 0.9,
-                      "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}, "forbidden": ["gold", "spices"]},
+                      "mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15, "general": 1.1}, "forbidden": ["gold", "spices", "pearls"]},
         "saigon":    {"name": "Saigon", "lon": 106.7, "lat": 10.8, "region": "china", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 0.9, "tax_rate": 0.02, "officer": "officer_saigon", "mood": 0.5, "purse": 0.8,
-                      "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}, "forbidden": ["opium", "gold"]},
+                      "mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25, "general": 1.2}, "forbidden": ["opium", "gold", "ambergris"]},
         "bangkok":   {"name": "Bangkok", "lon": 100.5, "lat": 13.75, "region": "south", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": True, "dues": 0.7, "tax_rate": 0.03, "officer": "officer_bangkok", "mood": 0.12, "purse": 0.9,
-                      "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}, "forbidden": ["porcelain", "opium"]},
+                      "mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}, "forbidden": ["porcelain", "opium", "jade"]},
         "singapore": {"name": "Singapore", "lon": 103.8, "lat": 1.35, "region": "south", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": False, "label_left": True, "dues": 0.6, "tax_rate": 0.01, "officer": "officer_singapore", "mood": 0.1, "purse": 1.2,
                       "mods": {"arms": 0.85, "general": 0.8, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}, "forbidden": ["rice", "gold"]},
         "batavia":   {"name": "Batavia", "lon": 106.8, "lat": -6.2, "region": "south", "bank": False, "lender": False, "warehouse": False, "shipyard": False, "no_ban": False, "label_left": False, "dues": 1.1, "tax_rate": 0.035, "officer": "officer_batavia", "mood": 0.1, "purse": 1.0,
-                      "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}, "forbidden": ["general", "porcelain"]},
+                      "mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35, "general": 1.3}, "forbidden": ["general", "porcelain", "jade"]},
         "calcutta":  {"name": "Calcutta", "lon": 88.4, "lat": 22.6, "region": "bengal", "bank": True, "lender": True, "warehouse": True, "shipyard": True, "no_ban": True, "label_left": False, "dues": 1.3, "tax_rate": 0.045, "officer": "officer_calcutta", "mood": 0.2, "purse": 1.2,
-                      "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}, "forbidden": ["arms"]},
+                      "mods": {"opium": 0.55, "tea": 0.8, "general": 0.9, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}, "forbidden": ["arms", "camphor"]},
     },
     # hold = cargo units; hull = damage it can take; slots = guns it can mount (a cannon takes
     # rules.fleet.cannon_slots of them); cannons = whether her deck can carry cannons at all.
@@ -633,6 +650,8 @@ OLD_DEPTHS = {"opium": 60, "gold": 90, "silk": 160, "porcelain": 250, "arms": 25
               "rice": 1200, "general": 1200}
 
 SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
+# Cargo Tiers (24 Nov 2026): the luxuries that join saved cargo tables once (see validate).
+TIER_GOODS = ("camphor", "sandalwood", "ginseng", "jade", "pearls", "ambergris")
 # Game 3 review (19 Nov 2026): the swingiest cargoes are calmed once to at most these monthly swings.
 CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
 # Game 5 review (20 Nov 2026): the old shipped Savage storm numbers and what they become (see load_config).
@@ -1312,6 +1331,15 @@ SECTIONS = [
                "line and no customs search for it, and nothing can be bought, sold or stored in that port. Cargo "
                "already in the hold just stays aboard. Off: every port trades every cargo. A ban is different: "
                "that is a crackdown event, and the cargo stays on the market.")]},
+         {"title": "Cargo tiers (richer cargo as a captain climbs)", "fields": [
+             F("rules.tiers.enabled", "Cargo changes with a captain's rank", "bool",
+               "On: at each rank step below, cargo marked 'Joins at tier' for that step appears on that captain's market and "
+               "cargo marked 'Gone from tier' is bought out at the dealers' price and leaves it. Each captain has their own "
+               "table. Bankruptcy puts a captain back at the start. Off: everyone trades the original nine. NOT WIRED IN YET: "
+               "leave this off."),
+             F("rules.tiers.steps", "Rank steps (rank keys, one per line)", "lines",
+               "The ranks at which the table changes, in order. The first line is tier 1, the second tier 2. Rank keys are in "
+               "Ratings > Ranks (merchant, merchant_prince...).", max=40)]},
          {"title": "The Registrar (Mrs. Marlowe, at each captain's home port)", "fields": [
              F("rules.registrar.enabled", "The Registrar meets each house in its home port with a price tip", "bool",
                "On: a house coming home is met by the Registrar (cast key taxlady) instead of the port's officer, "
@@ -1473,6 +1501,10 @@ SECTIONS = [
                       C("vol", "Monthly swing", "pct", min=0, max=1),
                       C("depth", "Depth (units)", "int", "Units traded that move the local price by the 'price move' setting.", min=1, max=10**7),
                       C("contraband", "Contraband", "bool", "Subject to bans, searches and seizure."),
+                      C("enters", "Joins at tier", "int", "Cargo Tiers: the tier a captain must reach before this cargo is on "
+                        "their market. 0 = from the start. Tier 1 is the first rank step, tier 2 the second.", min=0, max=9, default=0),
+                      C("leaves", "Gone from tier", "int", "Cargo Tiers: the tier at which this cargo is bought out and leaves a "
+                        "captain's market. 0 = never leaves.", min=0, max=9, default=0),
                       C("ban_odds", "Sometimes contraband", "pct",
                         "For cargo that is normally legal: the chance a port's ban also covers it. While it does, it sells "
                         "for more there and can be searched and seized. Ignored when Contraband is ticked.",
@@ -1646,7 +1678,17 @@ SECTIONS = [
                "real game.")]},
          {"title": "The Library", "fields": [
              F("rules.legend.tale_palace", "The Palace Beneath the Waves", "bool", "Begins on a landfall at Nagasaki. "
-               "Three chapters: the turtle in the net, the lady on the anchor chain, the box. Told by Morwenna Teague.")]},
+               "Three chapters: the turtle in the net, the lady on the anchor chain, the box. Told by Morwenna Teague."),
+             F("rules.legend.tale_jonah", "The Passenger Who Brought the Storm", "bool", "Begins on any landfall. "
+               "A passenger pays too well, a storm comes, the crew wants her over the side. Told by Morwenna Teague."),
+             F("rules.legend.tale_bond", "The Bond", "bool", "Begins on a landfall at Singapore. A bond on a "
+               "merchant woman's only ship lands on your desk: seize it, extend it or tear it up. Told by La Golondrina."),
+             F("rules.legend.tale_hunger", "The Hungry Port", "bool", "Begins on a landfall at Saigon. A famine, a "
+               "hoard, and a feast that ends in noodles. The Mayor answers. Told by Mother Chen."),
+             F("rules.legend.tale_robe", "The Mermaid's Robe", "bool", "Begins on a landfall at Foochow. A sea "
+               "woman's robe of sea-silk is found on the rocks: keep her, sell it back, or let her go. Told by Mother Chen."),
+             F("rules.legend.tale_ledger", "The Crimson Ledger", "bool", "Begins on any landfall. Torn pages of a "
+               "dead merchant's ledger of who owes what: use them, sell them or give them back. Told by La Golondrina.")]},
          {"title": "Stakes", "fields": [
              _pct("rules.legend.stake_share", "A Legend's stake: share of the house's net worth", "Every reward and "
                   "loss in a Legend is a multiple of this stake, so a Legend matters to a small house and a great "
@@ -2196,6 +2238,33 @@ def validate(raw):
             cfg["ships"][key] = copy.deepcopy(DEFAULTS["ships"][key])
         seeded_ships.add(key)
     fl["seeded_ships"] = sorted(seeded_ships)
+    # Cargo Tiers (24 Nov 2026), once: saved settings gain the six luxuries, their forbidden ports and Ambergris as a wild
+    # cargo. Deleting one afterwards sticks. (Cargo, tier fields: a column added later takes the shipped value.)
+    tr = cfg["rules"]["tiers"]
+    if not tr.get("seeded_v1"):
+        for key in TIER_GOODS:
+            if key not in cfg["goods"]:
+                cfg["goods"][key] = copy.deepcopy(DEFAULTS["goods"][key])
+                for port_key, port in cfg["ports"].items():
+                    # A port saved before Forbidden Cargo has no list at all (None): leave it, and it takes the shipped map
+                    # (which includes the luxuries) below.
+                    if port.get("forbidden") is not None and key in (DEFAULTS["ports"].get(port_key) or {}).get("forbidden", []):
+                        fb0 = list(port.get("forbidden") or [])
+                        if key not in fb0:
+                            port["forbidden"] = fb0 + [key]
+        wg = list(cfg["rules"]["market"].get("wild_goods") or [])
+        if "ambergris" in cfg["goods"] and "ambergris" not in wg and "porcelain" in wg:
+            cfg["rules"]["market"]["wild_goods"] = wg + ["ambergris"]
+        tr["seeded_v1"] = True
+    rank_ids = [r["id"] for r in cfg["ranks"]]
+    tr["steps"] = [r for r in dict.fromkeys(tr.get("steps") or []) if r in rank_ids]
+    for key, gd in cfg["goods"].items():
+        e, l = int(gd.get("enters", 0) or 0), int(gd.get("leaves", 0) or 0)
+        if e > len(tr["steps"]) or l > len(tr["steps"]):
+            errors.append("Cargo / {}: joins or leaves at a tier that does not exist (the Cargo tiers rule has {} steps)".format(
+                key, len(tr["steps"])))
+        if l and e and l <= e:
+            errors.append("Cargo / {}: it must join at an earlier tier than the one it leaves at".format(key))
     # Each class keeps to its job: an escort carries no cargo, a cargo ship mounts no guns.
     for key, sh in cfg["ships"].items():
         if sh.get("role") not in SHIP_ROLES:

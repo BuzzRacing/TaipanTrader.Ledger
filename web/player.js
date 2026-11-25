@@ -457,8 +457,8 @@ function render() {
     deck.dataset.tab = ui.tab;
     ["top", "nav", "pane", "side", "over"].forEach(k => {
       if (ui.drag && (k === "pane" || (k === "over" && mayorOpen()))) return;   // the purse slider in the Mayor's popup is held still too
-      // The Port Authority's declaration desk is updated in place while it stays open.
-      if (k === "over" && parts.over.includes("cx-desk declare") && Customs.keep()) { drawn.over = null; return; }
+      // The Port Authority desk (declaration and ruling) is updated in place while it stays open.
+      if (k === "over" && parts.over.includes("cx-desk ") && Customs.keep(parts.over)) { drawn.over = null; return; }
       region(k, parts[k]);
     });
     if (ui.paneTab !== ui.tab) { ui.paneTab = ui.tab; app.querySelector(".dk-pane").scrollTop = 0; }

@@ -387,7 +387,7 @@ def main():
             res = p["customs"]["result"]
             assert res["choice"] == choice and res["bribe"] is None, res        # no sweetener with the buttons
             for r in res["lines"]:
-                v = lines[r["good"]]["value"]
+                v = lines[r["good"]]["assessed"]            # the buttons work from her assessment (25 Nov 2026)
                 if choice == "nothing":
                     assert r["declared"] == 0
                 elif choice == "less":
@@ -410,6 +410,56 @@ def main():
         if p.get("customs") and p["customs"]["status"] == "declare":
             assert g.view("p1", ["p1"])["me"]["customs"]["rules"]["pay_more_share"] == 1.1
             break
+    # The hidden assessment (25 Nov 2026): the desk never shows the cargo's worth, and her figure is padded now and then.
+    seen, pads, total = [], 0, 0
+    for seed in range(80):
+        g, p = arrive(seed, "calcutta")
+        cu = p.get("customs")
+        if not cu or cu["status"] != "declare":
+            continue
+        for ln in cu["lines"]:
+            total += 1
+            pads += ln["assess"] >= 1.5
+            assert abs(ln["assessed"] - ln["value"] * ln["assess"]) <= ln["value"] * 1e-4 + 1 and 0.7 <= ln["assess"] <= 3.6, ln
+        cx = g.view("p1", ["p1"])["me"]["customs"]
+        for ln in cx["lines"]:
+            assert set(ln) == {"good", "qty", "appetite", "tax", "tax_more", "pull"}, ln       # no value, no price, no factor
+        once = g.view("p1", ["p1"])["me"]["customs"]["lines"]
+        assert once == cx["lines"]                                                              # fixed for the visit
+        seen.append((g, p, cx))
+    assert pads > 0 and pads < total * 0.5, (pads, total)                                       # padded sometimes, not always
+    g, p, cx = seen[0]
+    assert "value" not in str(cx["lines"]) and p["customs"]["lines"][0]["value"] > 0            # the engine still keeps the truth
+    # The header's net worth does not jump to the hold's value here before she has been paid.
+    cost = g._cost_of(p, p["cargo"])
+    assert abs(g.worth_seen(p) - (g.worth(p) + cost - sum(g.dealer_value(p, p["port"], k, q) for k, q in p["cargo"].items()))) < 1e-6
+    assert g.view("p1", ["p1"])["me"]["worth"] == int(g.worth_seen(p))
+    g.act("p1", {"type": "customs_declare", "choice": "correct"}, present=["p1"])
+    ver = g.view("p1", ["p1"])["me"]["customs"]
+    assert "value" not in ver["result"] and all("value" not in r and "declared" not in r for r in ver["result"]["lines"])
+    assert "worth" not in engine.tx("l.customs_paid", port="X", declared="$1", tax="$2")
+    g.act("p1", {"type": "customs_done"}, present=["p1"])
+    assert g.worth_seen(p) == g.worth(p)                                                        # the truth returns once she is done
+    # Pay Correct pays on her figure, so a padded line costs the captain more than its worth warrants.
+    padded = 0
+    for seed in range(80):
+        g, p = arrive(seed, "calcutta")
+        cu = p.get("customs")
+        if not cu or cu["status"] != "declare" or not any(ln["assess"] >= 1.5 for ln in cu["lines"]):
+            continue
+        cu_lines = {ln["good"]: ln for ln in cu["lines"]}
+        g.act("p1", {"type": "customs_declare", "choice": "correct"}, present=["p1"])
+        for r in p["customs"]["result"]["lines"]:
+            assert r["tax"] == int(math.ceil(cu["rate"] * cu_lines[r["good"]]["assessed"] - 1e-9)), r
+            padded += cu_lines[r["good"]]["assess"] >= 1.5 and r["tax"] > int(math.ceil(cu["rate"] * r["value"] - 1e-9))
+        break
+    assert padded, "no padded line paid more than the cargo's worth"
+    off = no_spot(config.defaults())
+    off["rules"]["customs"]["assess_on"] = False
+    engine.configure(off)
+    g, p = arrive(1, "calcutta")
+    assert all(ln["assess"] == 1.0 and ln["assessed"] == ln["value"] for ln in (p["customs"] or {"lines": []})["lines"])
+    engine.configure(fresh)
     for k in ("customs.pay.nothing", "customs.pay.less", "customs.pay.correct", "customs.pay.more",
               "customs.pay_sub.less", "customs.pay_warn.nothing", "customs.share"):
         assert str(engine.TEXT.get(k, "")).strip(), k

@@ -67,20 +67,21 @@ const Customs = (() => {
     const more = (c.rules && c.rules.pay_more_share) || 1.1;
     const lines = c.lines.map(ln => ({ ln, sealed: sealedOn(c, ln.good) }));
     const open = lines.filter(l => !l.sealed);
-    const worth = open.reduce((n, l) => n + l.ln.value, 0);
-    const taxOf = l => Math.ceil(c.rate * l.ln.value - 1e-9);
-    const taxMore = l => Math.ceil(c.rate * Math.ceil(l.ln.value * more - 1e-9) - 1e-9);
+    /* The desk never shows what the cargo is worth: only the tax on each button, worked out by the engine from
+       the Authority's own (hidden) assessment (engine _hide_worth). */
+    const taxOf = l => l.ln.tax;
+    const taxMore = l => l.ln.tax_more;
     const tax = { nothing: 0, less: open.reduce((n, l) => n + taxOf(l), 0),
                   correct: open.reduce((n, l) => n + taxOf(l), 0), more: open.reduce((n, l) => n + taxMore(l), 0) };
     const pay = payOf();
     // The cargo she would like best (for "eyeing your {good}"): the dearest line not sealed.
-    const hungry = open.slice().sort((a, b) => b.ln.value * (b.ln.appetite || 1) - a.ln.value * (a.ln.appetite || 1))[0] || null;
+    const hungry = open.slice().sort((a, b) => (b.ln.pull || 0) - (a.ln.pull || 0))[0] || null;
     const fe = feel();
     const state = fe ? PAY_STATE[fe] : "bored";
     const mood = fe ? FACE_MOOD[fe] : "idle";
     // "less" owes less than the correct tax, by a share the player does not see; "due" is what is sure.
     const due = pay === "less" ? null : pay ? tax[pay] : null;
-    return { lines, open, worth, tax, pay, due, state, mood, hungry, more,
+    return { lines, open, tax, pay, due, state, mood, hungry, more,
              total: pay === "less" ? tax.correct : due || 0 };
   }
 
@@ -232,8 +233,8 @@ const Customs = (() => {
 
   /* Pay Nothing or Pay Less: say plainly, in silver, what she may do with the cargo (no odds). */
   function payWarn(c, n) {
-    if (!n.pay || n.pay === "correct" || n.pay === "more" || !n.worth) return "";
-    return te("customs.pay_warn." + n.pay, { value: money(n.worth) });
+    if (!n.pay || n.pay === "correct" || n.pay === "more" || !n.open.length) return "";
+    return te("customs.pay_warn." + n.pay);
   }
 
   function paySub(n, k) {
@@ -253,7 +254,7 @@ const Customs = (() => {
         <span>${te("customs.seal")}</span></label>` : "";
     return `<div class="cx-line cx-line-pay${l.sealed ? " sealed" : ""}" data-good="${g}">
       <span class="cx-good">${gi ? `<img src="${esc(gi)}" alt="">` : ""}<b>${esc(D.goods[g].name)}</b>
-        <small title="${te("customs.worth")}">${l.ln.qty.toLocaleString()} × ${money(l.ln.unit)} = <i>${money(l.ln.value)}</i></small></span>
+        <small>${l.ln.qty.toLocaleString()} ${te("customs.qty").toLowerCase()}</small></span>
       <span class="cx-line-foot">${l.sealed ? `<em class="cx-chip sealed">${te("customs.sealed")}</em>` : ""}${seal}</span></div>`;
   }
 
@@ -276,7 +277,6 @@ const Customs = (() => {
       ${payButtons(c, n)}
       <p class="cx-warn" data-cx="warn">${payWarn(c, n)}</p>
       <div class="cx-sums">
-        <span><small>${te("customs.total_worth")}</small><b data-cx="worth">${money(n.worth)}</b></span>
         <span class="due"><small>${te("customs.total_tax")}</small><b data-cx="tax">${dueText(n)}</b></span>
       </div>
       <p class="cx-short" data-cx="short">${short ? te("customs.debt", { amount: money(short) }) : ""}</p>
@@ -297,7 +297,7 @@ const Customs = (() => {
       else amount = money(r.tax);
       const back = r.units && !r.back
         ? btn(te("customs.buyback", { cost: money(r.back_price) }), "cx_back", `data-good="${g}"`, "ghost", r.back_price > S.me.cash) : "";
-      return `<div class="cx-vline ${r.outcome}${r.back ? " back" : ""}"><span class="cx-good"><b>${name}</b><small>${r.outcome === "sealed" ? money(r.value) : money(r.declared) + " / " + money(r.value)}${res.choice === "less" && r.share != null ? " · " + te("customs.share", { pct: Math.round(r.share * 100) }) : ""}</small></span>
+      return `<div class="cx-vline ${r.outcome}${r.back ? " back" : ""}"><span class="cx-good"><b>${name}</b><small>${res.choice === "less" && r.share != null && r.outcome !== "sealed" ? te("customs.share", { pct: Math.round(r.share * 100) }) : ""}</small></span>
         <em class="cx-out ${r.outcome}">${te("customs.out." + out)}${r.outcome === "partial" ? ` (${r.units}/${r.qty})` : ""}${r.hid ? ` · <span class="cx-hid" title="${te("customs.hid_tip")}">${te("customs.hid", { qty: r.hid })}</span>` : ""}</em>
         <b class="cx-amt">${amount}</b>${back}</div>`;
     }).join("");
@@ -305,7 +305,7 @@ const Customs = (() => {
     const rep = res.rep ? `<span class="${res.rep > 0 ? "up" : "dn"}"><small>${te("customs.standing", { port: esc(portName(c.port)) })}</small><b>${res.rep > 0 ? "+" : ""}${Math.round(res.rep * 10) / 10}</b></span>` : "";
     return `<div class="cx-body">
       ${head(c)}
-      <h3 class="cx-verdict ${state}">${te("customs.verdict")}</h3>
+      <h3 class="cx-verdict ${state}">${rulingLine(c, state)}</h3>
       <div class="cx-vlines">${rows}</div>${bribe}
       <div class="cx-sums">
         <span class="due"><small>${te("customs.paid_her")}</small><b>${money(res.tax + res.fine)}</b></span>
@@ -319,33 +319,12 @@ const Customs = (() => {
   const tl = (k, fb, v) => (T[k] != null ? te(k, v)
     : esc(String(fb).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] != null ? v[x] : m))));
 
-  /* The reveal: her ruling is shown over a widescreen picture of her before anything else. Happy when she
-     is paid or buys your cargo, angry when you are caught. It fades away to the port; a tap fades it at once. */
-  const REVEAL_MS = 2600, FADE_MS = 600;
-  let revealed = "", revealTimer = null, fading = null;
-  const revealing = c => !!(c && c.status === "verdict" && c.result && !S.me.ready && revealed !== key(c));
-  function revealHtml(c) {
-    const res = c.result, state = verdictState(c), total = Math.round(res.tax + res.fine);
-    shownState = state;
-    const line = state === "caught" ? tl("customs.reveal.caught", "Caught! {amount}", { amount: money(total) })
+  /* The ruling, in one line: the headline of the verdict card. */
+  function rulingLine(c, state) {
+    const total = Math.round(c.result.tax + c.result.fine);
+    return state === "caught" ? tl("customs.reveal.caught", "Caught! {amount}", { amount: money(total) })
       : state === "buyout" ? tl("customs.reveal.buyout", "She buys your cargo")
       : total ? tl("customs.reveal.tax", "Tax paid: {amount}", { amount: money(total) }) : tl("customs.reveal.none", "Nothing to pay");
-    return `<div class="veil cx-veil"><section class="modal cx-desk reveal ${state}" role="dialog" aria-label="${esc(c.name)}" data-state="${state}" data-key="${esc(key(c))}" data-act="cx_reveal">
-      <div class="cx-art" aria-hidden="true">${resultArt(c, state) || face(c, state, "cl-art-media")}</div>
-      <div class="cx-reveal-banner" role="status"><small>${esc(c.name)}</small><b>${line}</b></div>
-    </section></div>`;
-  }
-  function endReveal(c) {
-    clearTimeout(revealTimer); revealTimer = null;
-    if (fading) return;                    // already fading out
-    const done = () => { fading = null; revealed = key(c); render(); };
-    // Land on the Port screen UNDER the picture before it fades, so the fade reveals the Port and never the
-    // map (or any other tab) that was open on arrival. The veil's markup is unchanged, so render() leaves it alone.
-    if (ui.tab !== "port" || ui.tally || ui.ledger) { ui.tab = "port"; ui.tally = false; ui.ledger = false; render(); clearTimeout(revealTimer); revealTimer = null; }   // render() -> auto() re-arms the reveal timer: cancel it, or it fires later and yanks the Captain back to the Port
-    const card = document.querySelector(".cx-desk.reveal"), veil = card && card.parentElement;
-    if (!veil || matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
-    veil.classList.add("cx-out");          // customs.css cxOut: the picture and its veil fade to the port
-    fading = setTimeout(done, FADE_MS);
   }
 
   function welcomeHtml(c) {
@@ -353,24 +332,67 @@ const Customs = (() => {
     return `<div class="cx-body">${head(c)}${greeting(c)}${tipHtml(c)}</div>`;
   }
 
+  /* One card for the whole visit (24 Nov 2026): the same desk stays on screen from her greeting to her ruling.
+     When she rules, keep() changes it in place (her picture cross-fades, the panel text swaps), so nothing is
+     rebuilt, reloaded or faded out and back in. */
   function html() {
     const c = cu();
     if (!c || S.me.ready) return "";
-    // Nothing to decide: no stop (auto() lets her speak or flashes the receipt, and clears the desk).
-    if (revealing(c)) return revealHtml(c);
-    if (c.status === "welcome" || autoVerdict(c)) return "";
+    if (c.status === "welcome") return "";      // no stop: her greeting is read over the Port screen (auto)
     if (ui.cxKey !== key(c)) {            // a new visit: start honest, no sweetener
       ui.cxKey = key(c);
       Object.keys(ui.vals).filter(k => k.startsWith("cx_") || k.startsWith("cxs_")).forEach(k => delete ui.vals[k]);
       ui.cxBribe = false; ui.cxPay = null; ui.cxHover = null; ui.cxTell = null; ui.cxSpoken = null;
     }
-    if (c.status === "declare") preload(c);
-    const body = c.status === "declare" ? declareHtml(c) : c.status === "verdict" ? verdictHtml(c) : welcomeHtml(c);
-    const label = c.status === "declare" ? "customs.declare_btn" : c.status === "verdict" ? "customs.continue" : "customs.welcome_btn";
-    return `<div class="veil cx-veil"><section class="modal cx-desk ${c.status}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}" data-key="${esc(key(c))}">
-      <div class="cx-art" aria-hidden="true">${face(c, c.status === "declare" ? shownMood : shownState, "cl-art-media")}</div>
-      <div class="cx-panel">${body}<footer>${btn(te(label), c.status === "declare" ? "cx_declare" : "cx_done", "", "primary", c.status === "declare" && !payOf() && c.lines.some(ln => !sealedOn(c, ln.good)))}</footer></div>
+    const declare = c.status === "declare";
+    if (declare) preload(c);
+    const body = declare ? declareHtml(c) : verdictHtml(c);
+    const art = declare ? face(c, shownMood, "cl-art-media") : (resultArt(c, shownState) || face(c, shownState, "cl-art-media"));
+    const label = declare ? "customs.declare_btn" : "customs.continue";
+    return `<div class="veil cx-veil"><section class="modal cx-desk ${declare ? "declare" : "verdict " + shownState}" role="dialog" aria-labelledby="cx-title" data-state="${shownState}" data-key="${esc(key(c))}">
+      <div class="cx-art" aria-hidden="true">${art}</div>
+      <div class="cx-panel">${body}<footer>${btn(te(label), declare ? "cx_declare" : "cx_done", "", "primary", declare && !payOf() && c.lines.some(ln => !sealedOn(c, ln.good)))}</footer></div>
     </section></div>`;
+  }
+
+  /* Put a new picture of her on the card without a blink: the new one loads, fades in over the old one, and
+     only then is the old one removed. The same picture is left alone. */
+  function swapArt(art, htmlText) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = htmlText;
+    const next = tmp.firstElementChild, cur = art.lastElementChild;
+    if (!next) return;
+    if (cur && cur.tagName === next.tagName && (cur.getAttribute("src") || "") === (next.getAttribute("src") || "")) return;
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!cur || still) { art.innerHTML = htmlText; return; }
+    next.classList.add("cx-art-in");
+    art.appendChild(next);
+    const show = () => requestAnimationFrame(() => {
+      next.classList.add("on");
+      setTimeout(() => { while (next.previousElementSibling) next.previousElementSibling.remove(); next.classList.remove("cx-art-in", "on"); }, 420);
+    });
+    if (next.tagName === "IMG" && !next.complete) { next.addEventListener("load", show, { once: true }); next.addEventListener("error", show, { once: true }); }
+    else show();
+  }
+
+  /* Declare -> ruling (and any later change to the ruling, such as Buy back) on the desk already on screen. */
+  function keepVerdict(box, htmlText) {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = htmlText.trim();
+    const nb = tpl.content.querySelector(".cx-desk");
+    if (!nb) return false;
+    const first = box.className !== nb.className;
+    if (first) box.className = nb.className;
+    box.dataset.state = nb.dataset.state;
+    swapArt(box.querySelector(".cx-art"), nb.querySelector(".cx-art").innerHTML);
+    const body = box.querySelector(".cx-body"), nbody = nb.querySelector(".cx-body");
+    if (body && nbody && body.innerHTML !== nbody.innerHTML) {
+      body.innerHTML = nbody.innerHTML;
+      if (first && body.animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) body.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: "ease-out" });
+    }
+    const foot = box.querySelector("footer"), nfoot = nb.querySelector("footer");
+    if (foot && nfoot && foot.innerHTML !== nfoot.innerHTML) foot.innerHTML = nfoot.innerHTML;
+    return true;
   }
 
   /* After a button or a seal changes: rewrite the numbers, the warning, her tell and (if her mood
@@ -382,7 +404,7 @@ const Customs = (() => {
     if (!box) return;
     const set = (k, h) => { const o = box.querySelector(`[data-cx="${k}"]`); if (o) o.innerHTML = h; };
     PAYS.forEach(k => set("ps_" + k, paySub(n, k)));
-    set("worth", money(n.worth)); set("tax", dueText(n)); set("warn", payWarn(c, n));
+    set("tax", dueText(n)); set("warn", payWarn(c, n));
     const short = Math.max(0, n.total - S.me.cash);
     set("short", short ? te("customs.debt", { amount: money(short) }) : "");
     const was = shownState;
@@ -398,10 +420,12 @@ const Customs = (() => {
   /* The declaration desk already on screen is kept and brought up to date in place (buttons, seals,
      every number), never rebuilt: rebuilding it restarts the veil's fade and reloads her picture,
      which reads as the whole screen blinking. True when the desk was kept. */
-  function keep() {
-    const c = cu(), box = app.querySelector(".cx-desk.declare");
-    if (!c || S.me.ready || c.status !== "declare" || !box) return false;
+  function keep(htmlText) {
+    const c = cu(), box = app.querySelector(".cx-desk");
+    if (!c || S.me.ready || !box || (c.status !== "declare" && c.status !== "verdict")) return false;
     if (ui.cxKey !== key(c) || box.dataset.key !== key(c)) return false;
+    if (c.status === "verdict") return keepVerdict(box, htmlText || "");
+    if (!box.classList.contains("declare")) return false;
     if (box.querySelectorAll(".cx-line").length !== c.lines.length) return false;
     const pay = payOf();
     box.querySelectorAll(".cx-line").forEach(row => {
@@ -425,6 +449,7 @@ const Customs = (() => {
     return true;
   }
 
+  let hoverTimer = null;
   /* Hover (or keyboard focus) on a pay button changes her face; leaving puts it back to the chosen one. */
   function hover(e, on) {
     const b = e.target && e.target.closest && e.target.closest(".cx-pay-btn");
@@ -433,7 +458,8 @@ const Customs = (() => {
     const next = on ? b.dataset.pay : null;
     if ((ui.cxHover || null) === next) return;
     ui.cxHover = next;
-    live();
+    // Moving from one button to the next fires leave then enter: wait a beat so her face changes once, not twice.
+    clearTimeout(hoverTimer); hoverTimer = setTimeout(live, 70);
   }
   document.addEventListener("mouseover", e => hover(e, true));
   document.addEventListener("mouseout", e => hover(e, false));
@@ -444,7 +470,6 @@ const Customs = (() => {
     const c = cu();
     if (!c) return false;
     switch (d.act) {
-      case "cx_reveal": endReveal(c); return true;
       case "cx_pay":
         if (PAYS.includes(d.pay)) { ui.cxPay = d.pay; ui.cxHover = d.pay; }
         render();
@@ -463,9 +488,7 @@ const Customs = (() => {
         return true;
       }
       case "cx_back": await act("customs_buyback", { good: d.good }); return true;
-      case "cx_done":
-        if (await act("customs_done")) { ui.tab = "port"; ui.tally = false; render(); }
-        return true;
+      case "cx_done": release(c); return true;
     }
     return false;
   }
@@ -558,69 +581,45 @@ const Customs = (() => {
      The server still gets customs_done, so the cargo she bought is sold on and the books settle as before. */
   const otherScreenUp = () => (typeof Battle !== "undefined" && Battle.busy())
     || (typeof Jail !== "undefined" && Jail.busy()) || (typeof Storm !== "undefined" && Storm.busy());
-  /* A ruling with nothing left to decide (no cargo bought) clears itself after the reveal, caught or not;
-     the jail's plea, if any, is its own card. */
+  /* A ruling with nothing left to decide (no cargo bought) stays on the card long enough to read, then the
+     card fades away to the Port screen; Continue closes it at once. Caught holds a little longer (the fine).
+     The jail's plea, if any, is its own card. */
   const autoVerdict = c => !!(c && c.status === "verdict" && c.result && !c.result.lines.some(r => r.units));
+  const HOLD_MS = 3200, HOLD_CAUGHT_MS = 5200, FADE_MS = 350;
   let closing = "";              // the visit being cleared now, so a redraw never sends it twice
-  let receiptTimer = null;
+  let holdTimer = null, holdKey = "";
 
   /* Called from every redraw. */
   function auto() {
     const c = cu();
     if (!c || S.me.ready || closing === key(c)) return;
-    if (revealing(c)) {                    // her face first; then the desk clears (or the verdict shows)
-      if (!revealTimer && !fading) revealTimer = setTimeout(() => endReveal(c), REVEAL_MS);
-      return;
-    }
     if (document.querySelector(".captains-log") || otherScreenUp()) return;   // wait for the log, a fight, a storm
-    if (c.status === "welcome") { speak(); release(c, null); }
-    else if (autoVerdict(c)) release(c, receiptOf(c));
+    if (c.status === "welcome") { speak(); release(c); }
+    else if (autoVerdict(c) && holdKey !== key(c)) {
+      holdKey = key(c);
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => { const x = cu(); if (x && key(x) === holdKey && autoVerdict(x)) release(x); }, verdictState(c) === "caught" ? HOLD_CAUGHT_MS : HOLD_MS);
+    }
   }
 
-  async function release(c, flash) {
+  async function release(c) {
     const k = closing = key(c);
+    clearTimeout(holdTimer);
+    const veil = document.querySelector(".cx-veil");
+    if (veil && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      veil.classList.add("cx-out");          // customs.css cxOut: a plain fade to the Port screen
+      await new Promise(r => setTimeout(r, FADE_MS));
+    }
     const res = await post("/api/act", { token, type: "customs_done" });   // silent: no toast, no cue
     if (res && res.ok) {
       ui.tab = "port"; ui.tally = false; ui.ledger = false;
       render();
-      if (flash) showReceipt(flash);
-    } else setTimeout(() => { if (closing === k) closing = ""; }, 2500);     // try again on a later redraw
+    } else {
+      if (veil) veil.classList.remove("cx-out");
+      setTimeout(() => { if (closing === k) closing = ""; }, 2500);     // try again on a later redraw
+    }
   }
 
-  /* What the receipt says, taken from the ruling before the desk is cleared. */
-  function receiptOf(c) {
-    const res = c.result, sealed = res.lines.filter(r => r.outcome === "sealed").length;
-    return { name: c.name, port: c.port, key: key(c), art: face(c, verdictState(c), "cx-rc-img"), caught: !!res.caught,
-             paid: Math.round(res.tax + res.fine), owed: res.owed || 0, rep: res.rep || 0, sealed,
-             bribe: res.bribe && res.bribe.taken ? res.bribe.cost : 0 };
-  }
-
-  function showReceipt(r) {
-    hideReceipt();
-    if (r.paid && !r.caught) coin(r.key);
-    const chips = [];
-    if (r.rep) chips.push(`<span class="${r.rep > 0 ? "up" : "dn"}">${te("customs.standing", { port: esc(portName(r.port)) })} <b>${r.rep > 0 ? "+" : ""}${Math.round(r.rep * 10) / 10}</b></span>`);
-    if (r.sealed) chips.push(`<span>${tl("customs.flash.sealed", "{n} kept sealed in bond", { n: r.sealed })}</span>`);
-    if (r.bribe) chips.push(`<span>${te("customs.bribe_taken", { cost: money(r.bribe) })}</span>`);
-    if (r.owed) chips.push(`<span class="dn">${te("customs.debt", { amount: money(r.owed) })}</span>`);
-    const el = document.createElement("div");
-    el.id = "cx-receipt";
-    el.className = "cx-receipt";
-    el.setAttribute("role", "status");
-    el.innerHTML = `<span class="cx-rc-art" aria-hidden="true">${r.art}</span>
-      <div><small>${esc(r.name)}</small>
-      <b>${r.caught ? tl("customs.flash.caught", "Caught! {amount}", { amount: money(r.paid) }) : r.paid ? tl("customs.flash.paid", "Tax paid: {amount}", { amount: money(r.paid) }) : tl("customs.flash.none", "Nothing to pay")}</b>
-      ${chips.length ? `<p>${chips.join("")}</p>` : ""}</div>`;
-    el.addEventListener("click", hideReceipt);
-    document.body.appendChild(el);
-    receiptTimer = setTimeout(hideReceipt, 6500);
-  }
-  function hideReceipt() {
-    clearTimeout(receiptTimer);
-    const el = document.getElementById("cx-receipt");
-    if (el) el.remove();
-  }
-
-  return { html, live, keep, click, speak, stage, markSpeaking, auto, hideReceipt,
-           isOpen: () => !!(cu() && cu().status !== "welcome" && (revealing(cu()) || !autoVerdict(cu())) && !S.me.ready) };
+  return { html, live, keep, click, speak, stage, markSpeaking, auto, hideReceipt: () => {},
+           isOpen: () => !!(cu() && cu().status !== "welcome" && !S.me.ready) };
 })();

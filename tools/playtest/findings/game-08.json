@@ -1,0 +1,206 @@
+{
+ "game_id": "g20261123-193514-a76f",
+ "game": 8,
+ "headline": "The economy fixes worked: $108M in ten years (Game 7 was $1.55B), never close to runaway, and top rank came at month 78 instead of 23. But the last third of the game went nowhere: worth was $111.7M at month 79 and $108.3M at month 120. Marijuana rot, one disastrous refused fight, and a final-month gold purchase did most of the damage.",
+ "fortune": "$1M by month 8, $10M by month 21, $100M by month 77. Then a plateau: 1866 ended near $107M, 1868 dipped to $92M, 1869 reached $120M, and the game closed at $108.3M, 18% under the $132.3M peak at month 117. Worth swings $30M to $40M month to month because stock is valued at dealer prices (month 105 $62.7M, month 106 $104.6M, month 107 $68.4M).",
+ "money": "Trading made $141.9M ($603.8M sold on $461.9M bought). Gold made $93.5M of it. Marijuana lost $16.2M. Bank interest $21.2M, Legend $10.1M. Out: Port Authority tax $48.4M (8% of sales), harbour dues $12.3M, robbed ashore $11.1M, ships and cannons $7.5M, wages $6.3M, repairs $1.6M. No gifts, no protection, no house.",
+ "perils": "28 fights in 120 months (Game 7: 14), 13 ships lost, 11 storms (3 savage). 27 demands refused totalling $25.4M, 1 paid ($153k). Fights cost $20.3M net, and $11.1M of that was one fight at month 98 (26 Li Yue junks, asked $3.0M, 5 ships lost). Robbed ashore 3 times, $11.1M.",
+ "fixes_intro": "Changes between Game 7 and 8 (from the settings diff): wild cargo runs 15% to 3% chance, price reversion 0.08 to 0.25, calm wild cargo, gift worth capped at $10k, contract fee cap and one-job-per-hold, Li Yue cost scaled to fleet, zero-declaration audit, forbidden cargo cleared in every port.",
+ "well": [
+  {
+   "t": "The runaway economy is fixed",
+   "d": "$108M against $1.55B. Wild runs fire far less often and revert fast, so the climb is a steady S-curve. Top rank at month 78 (65% through) against month 23 in Game 7."
+  },
+  {
+   "t": "Market depth now pushes back",
+   "d": "Large buys lift the price hard (5,500 gold at month 119 moved it from $3,209 to $8,113, average paid $5,723) and large sells drop it 10 to 20%. 44 buys over $1M lifted price by 1.4x on average. Slicing orders across ports pays."
+  },
+  {
+   "t": "Gold is the trade",
+   "d": "Bought at $7,054, sold at $20,559 (2.9x), +$93.5M, 66% of net trading profit. A clear best cargo, without the 5x to 9x multiples of Game 7."
+  },
+  {
+   "t": "Clean desk",
+   "d": "83 correct declarations, 7 Pay Less, 0 caught, 0 seizures, 0 jail. Standing 100 in four ports, Patron of seven."
+  },
+  {
+   "t": "Legend",
+   "d": "3 of 3 right again, 9 of 10 port shares earned, +$10.1M."
+  },
+  {
+   "t": "No debt",
+   "d": "Loan cleared at month 19 for good; total loan interest $8.6k."
+  }
+ ],
+ "improve": [
+  {
+   "id": "rot",
+   "sev": "High",
+   "area": "Cargo",
+   "title": "Marijuana rot ate 41% of what was bought",
+   "what": "Marijuana is the only cargo that lost money, and rot is the main reason.",
+   "evidence": [
+    "Bought 33,236 units, sold 16,520. Rotted 13,752 (about $73M at cost), 2,656 lost overboard, 952 taken in fights.",
+    "Net -$16.2M despite a 1.8x average margin ($5,298 to $9,682).",
+    "36 rot events, aging up to 9.6 months in the hold. 31 marijuana runs chased."
+   ],
+   "options": [
+    "Show age and rot-by-next-month on the hold screen and a sell-by hint in the port card.",
+    "Or accept it as the designed trap and stop wild runs for marijuana so the lure is not a loss.",
+    "Cap how much one purchase can be held past 4 months, or let rot start later but faster."
+   ]
+  },
+  {
+   "id": "parley",
+   "sev": "High",
+   "area": "Fights",
+   "title": "Refusing was the wrong call when the fleet was huge, and the game does not say",
+   "what": "Every demand was refused except one. Over the game that was close to break-even ($25.4M asked, $20.3M lost), but month 98 cost 3.7 times the ask.",
+   "evidence": [
+    "Month 98: 26 Li Yue junks asked $2,986,965. Outcome 'broke off' yet lost 5 ships and $11.1M of cargo (867 opium, 290 marijuana).",
+    "Month 103: asked $4.15M, lost $2.4M. Month 40: asked $337k, lost $1.47M.",
+    "Li Yue fleet sizes tracked the player's fleet (cost basis is now fleet size): 16 ships at month 98 met 26 junks.",
+    "28 fights vs 14 in Game 7."
+   ],
+   "options": [
+    "Show win odds and cargo at risk on the parley card so paying is an informed choice.",
+    "Cap Li Yue's fleet at a multiple of the player's guns, not hulls; unarmed country ships should not raise the bar.",
+    "Let 'broke off' outcomes save the cargo that spite gunners were aiming at."
+   ]
+  },
+  {
+   "id": "endgame",
+   "sev": "High",
+   "area": "Scoring",
+   "title": "The final month swings the score by 18%",
+   "what": "Worth counts stock at dealer prices, so what you hold on the last turn decides the result.",
+   "evidence": [
+    "Peak $132.3M at month 117; final $108.3M.",
+    "Month 119 bought 5,500 gold for $31.5M (price pushed 2.5x); month 120 worth fell $13.7M.",
+    "Month-to-month worth jumps $30M to $40M as hold contents change."
+   ],
+   "options": [
+    "Warn on the last two months: 'stock counts at dealer price, X% under market'.",
+    "Score on the average of the last 3 months, or liquidate at average price.",
+    "Block purchases on the last arrival, or flag them."
+   ]
+  },
+  {
+   "id": "contracts",
+   "sev": "Medium",
+   "area": "Mayor's commissions",
+   "title": "Commissions: 87 offered, 0 taken, third game running",
+   "what": "Game 6 173/0, Game 7 92/0, Game 8 87/0.",
+   "evidence": [
+    "Median fee $1.25M, max $36.0M.",
+    "Month 120 offer: sell 11,750 spices in Bangkok for $5.55M, which is the whole hold (11,755).",
+    "One-job-per-hold means a job always costs a full hold of gold."
+   ],
+   "options": [
+    "Let a job use a slice of the hold and stack with trading.",
+    "Pay in standing, shares or protection rather than silver.",
+    "Or retire the Mayor's commissions."
+   ]
+  },
+  {
+   "id": "unused",
+   "sev": "Medium",
+   "area": "Systems",
+   "title": "Gifts, protection and the house were never touched",
+   "what": "Game 7 spent $186M on gifts and $107M on protection. Game 8: zero, and no house.",
+   "evidence": [
+    "Gift value now capped at $10,000.",
+    "Standing reached 100 in four ports anyway through trade.",
+    "Cash ended at $51.6M and the bank $22.2M, idle."
+   ],
+   "options": [
+    "Confirm gifts were deliberately ignored because they stopped mattering.",
+    "Give mid-game money a use (house, convoy, bribes with real effect) now that the economy is sane."
+   ]
+  },
+  {
+   "id": "plateau",
+   "sev": "Medium",
+   "area": "Pacing",
+   "title": "A 40-month plateau after Merchant Lord",
+   "what": "Worth $111.7M at month 79, $108.3M at month 120.",
+   "evidence": [
+    "Rank Tai-Pan month 73 and Merchant Lord month 78, then no further goal.",
+    "Fleet grew 6 to 16 ships, 13 lost, trade net -$51M in 1867 (stock build) and +$10.8M in 1868.",
+    "No rank, share or legend target after month 93."
+   ],
+   "options": [
+    "Add a goal beyond Merchant Lord, or spread rank thresholds toward month 100.",
+    "Make late-game costs scale less brutally so a big fleet can still grow."
+   ]
+  },
+  {
+   "id": "robbed",
+   "sev": "Low",
+   "area": "Cash",
+   "title": "Robbed ashore of $11.1M",
+   "what": "Three robberies took cash carried ashore: months 69, 80 and 108.",
+   "evidence": [
+    "$4.2M, $5.5M and $1.45M, at roughly 4% a month while carrying over $20,000.",
+    "Bank was used 29 times, but large cash piles were still carried."
+   ],
+   "options": [
+    "Warn before leaving the port screen with over $1M on hand.",
+    "Offer a one-click 'bank everything'."
+   ]
+  },
+  {
+   "id": "desk",
+   "sev": "Low",
+   "area": "Customs",
+   "title": "The desk still never bites",
+   "what": "203 rolls, all plain tax; 33 seizure searches at 2%, all missed; Pay Nothing never chosen.",
+   "evidence": [
+    "Tax $48.4M, 8% of sales, is the largest single cost."
+   ],
+   "options": [
+    "Test Pay Nothing deliberately in the next game to prove the new zero-declaration audit."
+   ]
+  },
+  {
+   "id": "storms",
+   "sev": "Low",
+   "area": "Storms",
+   "title": "Savage storms still land away from a yard",
+   "what": "6 of 11 storms diverted to a port without a shipyard, including the month 96 savage storm (3,693 hull lost at Batavia).",
+   "evidence": [
+    "Same pattern as Game 7."
+   ],
+   "options": [
+    "Prefer a yard port when the hull is badly hurt."
+   ]
+  }
+ ],
+ "fixes": [
+  {
+   "name": "1. Economy runaway",
+   "status": "worked",
+   "note": "$108M, S-curve, no purse-driven blowouts."
+  },
+  {
+   "name": "2. Top rank too early",
+   "status": "worked",
+   "note": "Merchant Lord at month 78. Now there is nothing after it."
+  },
+  {
+   "name": "3. Commissions worth taking",
+   "status": "not working",
+   "note": "0 of 87 taken again."
+  },
+  {
+   "name": "4. Gifts scaling",
+   "status": "worked",
+   "note": "Gifts unused; cap held."
+  },
+  {
+   "name": "5. Forbidden cargo cleared",
+   "status": "worked",
+   "note": "Seizure rolls 33, 0 hits, no bans hurt trading."
+  }
+ ]
+}

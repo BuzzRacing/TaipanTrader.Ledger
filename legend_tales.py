@@ -328,6 +328,11 @@ TALES = {
 }
 
 
+# The second set (25 Nov 2026; legend_tales_more.py): five more Legends, merged in here.
+import legend_tales_more as _more  # noqa: E402
+TALES.update(_more.MORE)
+
+
 def _key(tale, ch, node, i):
     return "legend.{}.{}.{}.{}".format(tale, ch, node, i)
 

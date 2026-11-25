@@ -1,9 +1,9 @@
 @echo off
 rem Queues the Legends' pictures on the live game (the Pi), 20 Nov 2026. Run on BIGBOX.
 rem Deploy the Legends update to the Pi first (Deploy_To_Pi.bat), or the Pi will not know the new people and scenes.
-rem   1. The picture behind each chapter (Scenes > "Legend: ..."): 4 scenes x 2 = 8 pictures, nobody in them.
+rem   1. The picture behind each chapter (Scenes > "Legend: ..."): 19 scenes x 2 = 38 pictures (the Palace's 4 and the second set's 15), nobody in them.
 rem   2. NSFW + clean PAIRS of the three storytellers and each Legend's own characters, from their cast prompts:
-rem        portrait x3 pairs, speaking x3 pairs, sly x2 pairs each = 64 pictures (Personas > her name).
+rem        portrait x3 pairs, speaking x3 pairs, sly x2 pairs each; now also the second set's four characters = 128 pictures (Personas > her name).
 rem Extra options go to the pairs, e.g.  Queue_Legend_Pictures.bat --dry   or   --only clean
 cd /d "%~dp0"
 set "PY=python"

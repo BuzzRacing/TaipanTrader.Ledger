@@ -179,11 +179,12 @@ def test_the_admin_form_keeps_and_checks_the_map():
     raw = copy.deepcopy(cfg)
     cfg2, errors = config.validate(raw)
     assert not errors, errors
-    assert cfg2["ports"]["nagasaki"]["forbidden"] == ["opium", "tea"]
+    # Cargo Tiers (24 Nov 2026): the shipped map also forbids the luxuries (Ambergris in Nagasaki and Saigon).
+    assert cfg2["ports"]["nagasaki"]["forbidden"] == ["opium", "tea", "ambergris"]
     raw = copy.deepcopy(cfg)
     del raw["ports"]["saigon"]["forbidden"]                          # settings saved before the feature
     cfg3, errors = config.validate(raw)
-    assert not errors and cfg3["ports"]["saigon"]["forbidden"] == ["opium", "gold"], errors
+    assert not errors and cfg3["ports"]["saigon"]["forbidden"] == ["opium", "gold", "ambergris"], errors
     raw = copy.deepcopy(cfg)
     raw["ports"]["saigon"]["forbidden"] = list(raw["goods"])         # a port must keep one cargo
     _, errors = config.validate(raw)

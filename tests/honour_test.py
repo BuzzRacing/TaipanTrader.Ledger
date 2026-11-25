@@ -186,7 +186,10 @@ def test_the_story_survives_a_reload():
 
 # ---------------------------------------------------------------- a Legend's share --
 def legends(**rules):
-    setup(legend__enabled=True, legend__eager=True, **rules)
+    # Only the first Legend is on: these tests walk the Palace. The second set (25 Nov 2026) is tested in
+    # tests/legend_test.py, including its shares.
+    setup(legend__enabled=True, legend__eager=True, legend__tale_jonah=False, legend__tale_bond=False,
+          legend__tale_hunger=False, legend__tale_robe=False, legend__tale_ledger=False, **rules)
 
 
 def choose(g, key):
@@ -221,7 +224,8 @@ def test_every_question_marks_a_right_answer():
     for tale in legend_tales.TALES.values():
         for ch in tale["chapters"]:
             asking = [name for name, node in ch["nodes"].items() if node.get("choices")]
-            assert asking and set(asking) == set(ch["right"]), ch["id"]
+            assert set(asking) == set(ch["right"]), ch["id"]          # a chapter with no question marks none
+        assert sum(1 for ch in tale["chapters"] if ch["right"]) >= 2, tale["title"]   # two can be answered rightly
 
 
 def test_two_right_of_three_earn_the_share_as_the_second_chapter_closes():

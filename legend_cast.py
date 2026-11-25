@@ -96,6 +96,81 @@ TELLERS = {
                "trailing in the water like a tail, a small black lacquer box tied with a red cord held in both "
                "hands, shafts of green light falling through the water above, a great sea turtle at her side, an "
                "amused, regal, dangerous smile, {style}"),
+    # ---- The second set (25 Nov 2026) -------------------------------------------------------------------
+    "legend_passenger": dict(
+        name="Dona Ines de Albuquerque", title="The Passenger Who Pays Too Well", age=36, origin="Goa",
+        home_port="calcutta", color="#8a2f4a", voice_id="Sarah", speaking_rate=0.95,
+        delivery="low, polished and a little hunted, a Goan lady who has learned to be charming at doors she is "
+                 "afraid of",
+        catchphrase="Passage to anywhere that is not here, Captain. I will pay for the silence.",
+        bio="Dona Ines married a Portuguese shipping agent in Goa and buried him within the year, with debts she "
+            "had never seen. She ran with his pearls and her prayer book, and has been paying for a quiet cabin "
+            "ever since. She tips like a duchess and prays like a sinner, and the sea has a way of noticing both.",
+        quirk="Tells her rosary over the bedcovers, and counts the locks on any door she passes.",
+        vice="Port wine, good locks and captains who do not ask where she is from.",
+        secret="She never stole the pearls. He gave them to her, the night before the creditors came.",
+        stats={"cunning": 7, "nerve": 6, "charm": 9, "greed": 4},
+        prompt="An {adult} Goan-Portuguese woman (age 36), elegant and full-figured with olive skin and dark hair "
+               "half-pinned under a black lace mantilla, a widow travelling in secret in 1860, in a lamp-lit ship's "
+               "cabin with a heavy purse and a rosary on the table, wearing a deep wine-red travelling dress "
+               "unbuttoned at the throat with a string of pearls and a lace shawl slipping from one "
+               "shoulder, a hand on the cabin lock and a hunted, glancing, beautiful look, {style}"),
+    "legend_debtor": dict(
+        name="Nyonya Tan Bee-Lian", title="Owner of the Only Ship She Has", age=44, origin="Singapore",
+        home_port="singapore", color="#2f8a5b", voice_id="Ashley", speaking_rate=0.98,
+        delivery="warm, quick and a little theatrical, a Peranakan trader who negotiates the way other women "
+                 "flirt: with eye contact and a plan",
+        catchphrase="I have one ship, Captain, and several admirers. Let us see which of them is the cheaper.",
+        bio="Bee-Lian runs freight from Singapore to Malacca on a single sound ship and a great many promises. She "
+            "signed the ship over as security to a lender who sold the paper to a lender who sold it to Madam Wu, "
+            "and now it sits on the desk of a foreign captain who has never met her. She dresses to be underestimated.",
+        quirk="Fans herself with her own bills of lading.",
+        vice="Fine tea, fine cloth, a good gamble and friends with long memories.",
+        secret="The squall that sank her second ship was a gambling table. She has not told anyone, including "
+               "her bookkeeper.",
+        stats={"cunning": 9, "nerve": 7, "charm": 8, "greed": 6},
+        prompt="An {adult} Peranakan Chinese woman (age 44), poised and full-figured with sleek dark hair in a "
+               "chignon pinned with gold, a Singapore shipping merchant in 1860 standing at a harbour counting "
+               "house desk with a stack of bills of lading and a lacquered fan, wearing a fitted embroidered "
+               "kebaya of emerald silk open low at the chest over a sarong, jade bangles, harbour lanterns "
+               "and godowns through the window, a bright appraising smile that gives nothing away, {style}"),
+    "legend_robe": dict(
+        name="Lady Nami of the Foam", title="The Dancer on the Water", age=28, origin="Ryukyu, and below",
+        home_port="foochow", color="#58a6b8", voice_id="Sarah", speaking_rate=0.90,
+        delivery="light, amused and faintly sung, a sea woman who finds mortal bargaining adorable and a little "
+                 "sad",
+        catchphrase="Give it back, sailor. I was only swimming.",
+        bio="Nami is one of the sea goddess's many daughters, who come ashore on moonlit rocks to dance in robes "
+            "of sea-silk. A robe taken is a bride caught, and every coast has a story about a man who hid one. "
+            "She finds this flattering the first time and tiresome the thousandth.",
+        quirk="Wrings her hair out and the water makes a faint song.",
+        vice="Moonlight, salt air, mortals who turn their backs and her sisters' gossip.",
+        secret="She could always have made the sea take the robe back. She wanted to see what you would do.",
+        stats={"cunning": 8, "nerve": 8, "charm": 10, "greed": 2},
+        prompt="An {adult} Ryukyuan woman (age 28), lithe and luminous with long wet black hair and pearl-white "
+               "skin dusted with sea-glitter, a sea goddess's daughter standing waist-deep in moonlit surf by "
+               "a rock holding a gauzy robe of sea-silk that barely covers her, shells in her hair, droplets "
+               "running down her skin, green-blue light on the water, a playful, patient, dangerous smile, "
+               "{style}"),
+    "legend_clerk": dict(
+        name="Le Thi Hoa", title="Last Clerk of the Crimson Ledger", age=33, origin="Saigon",
+        home_port="saigon", color="#a4232f", voice_id="Olivia", speaking_rate=0.93,
+        delivery="dry, precise and quietly sultry, a clerk who has read everyone's secrets and kept every one of "
+                 "them, until now",
+        catchphrase="Everyone owes somebody, Captain. I only know who.",
+        bio="Hoa kept the books of a Saigon merchant who died owing the whole coast, and who left behind a ledger "
+            "of everything the coast owed him in turn: money, favours, silences. She has been recovering its torn "
+            "pages ever since, one fishwife and one pawnshop at a time, trying to decide whether the whole thing "
+            "should be burned.",
+        quirk="Dips her pen without looking and never blots it.",
+        vice="Red ink, black coffee and the moment a liar realises she has the page.",
+        secret="She has read her own name on page nine, and has not told anyone what it says.",
+        stats={"cunning": 10, "nerve": 6, "charm": 7, "greed": 3},
+        prompt="An {adult} Vietnamese woman (age 33), slender and sharp-eyed with a long black braid over one "
+               "shoulder, a merchant's clerk in a lamp-lit counting room in Saigon in 1860, seated at a "
+               "slanted writing desk with a fat crimson ledger and a red pen, wearing a fitted indigo ao dai "
+               "split high and unbuttoned at the collar, spectacles pushed up into her hair, torn ledger "
+               "pages pinned along the wall behind her, a dry, knowing, sultry look over the book, {style}"),
 }
 
 STORYTELLERS = ("teller_temple", "teller_tavern", "teller_drowned")
