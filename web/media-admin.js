@@ -44,8 +44,10 @@
   }
   function roleName(kind, role) {
     const r = ((kinds()[kind] || {}).roles || []).find(x => x[0] === role);
-    return r ? r[1].split(":")[0] : role;
+    return r ? r[1].split(":")[0] : (kind === "persona" && virtualRoles()[role]) || role;
   }
+  // A recipe's own names for exact pictures (the tax desk tells, the weather looks): recipe_scenes.py.
+  const virtualRoles = () => (M.lib && M.lib.virtual_roles) || {};
   const fmtBytes = n => n >= 1 << 30 ? (n / (1 << 30)).toFixed(1) + " GB" : n >= 1 << 20 ? (n / (1 << 20)).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
 
   /* ------------------------------------------------------------ video -- */
@@ -750,19 +752,29 @@
     const subs = r.subjects.length ? r.subjects : subjectsFor(r.kind).map(x => x[0]);
     const roles = r.by === "role" ? (r.roles.length ? r.roles : K.roles.map(x => x[0])) : [""];
     const out = [];
-    subs.forEach(s => roles.forEach(role => out.push({ s, role })));
+    subs.forEach(s => roles.forEach(role => {
+      if (virtualRoles()[role] && !scenePrompt(r.kind, s, role)) return;     // only the women who have prompts for it
+      out.push({ s, role });
+    }));
     return out;
   }
   const recRoleOk = (r, t, roles) => t.role ? roles.includes(t.role) : (r.roles.length ? roles.some(x => r.roles.includes(x)) : true);
+  // A recipe's own role stands for one exact picture: the real role it is filed under plus the tags that tell it apart
+  // from her other pictures (a desk tell is role idle + tag hungry, not every idle picture). Null for an ordinary role.
+  const recSpec = (r, t) => { const sp = scenePrompt(r.kind, t.s, t.role); return sp && sp.role ? { role: sp.role, need: sp.need || [], not: sp.not || [] } : null; };
+  const specHit = (sp, roles, tags) => (roles || []).includes(sp.role) && sp.need.every(n => (tags || []).includes(n)) && sp.not.every(n => !(tags || []).includes(n));
   function recPics(r, t) {
-    return items().filter(i => i.type === "image" && !i.missing && i.kind === r.kind && i.subject === t.s && recRoleOk(r, t, i.roles));
+    const sp = recSpec(r, t);
+    return items().filter(i => i.type === "image" && !i.missing && i.kind === r.kind && i.subject === t.s
+      && (sp ? specHit(sp, i.roles, i.tags) : recRoleOk(r, t, i.roles)));
   }
   const ACTIVE = ["waiting", "running", "cancelling"];
   function recPlan(r) {
     return recTargets(r).map(t => {
       const have = recPics(r, t).filter(i => i.enabled);
       let pendC = 0, pendN = 0;
-      M.jobs.filter(j => j.type !== "video" && ACTIVE.includes(j.status) && j.kind === r.kind && j.subject === t.s && recRoleOk(r, t, j.roles || []))
+      const sp = recSpec(r, t);
+      M.jobs.filter(j => j.type !== "video" && ACTIVE.includes(j.status) && j.kind === r.kind && j.subject === t.s && (sp ? specHit(sp, j.roles, j.tags) : recRoleOk(r, t, j.roles || [])))
         .forEach(j => { const left = Math.max(0, (j.count || 0) - (j.done || 0) - (j.failed || 0)); if (j.nsfw === "no") pendC += left; else pendN += left; });
       const haveC = have.filter(isClean).length, haveN = have.length - haveC;
       let needC, needN;
@@ -777,7 +789,8 @@
   function recPrompts(r, t) {
     // Her wide result pictures are not portraits: they have their own prompts and shape, the same ones the batch used.
     const sp = scenePrompt(r.kind, t.s, t.role);
-    if (sp) return { nsfwP: sp.nsfw, cleanP: sp.clean, plainP: sp.clean, aspect: sp.aspect || "16:9", person: false };
+    if (sp) return { nsfwP: sp.nsfw, cleanP: sp.clean, plainP: sp.clean || sp.nsfw, aspect: sp.aspect || "16:9", person: false,
+      fixed: !!sp.role, tags: sp.tags || null, variants: sp.variants || null };
     const pics = recPics(r, t).filter(i => i.prompt && i.prompt.length >= 20).sort(byAdded);
     const loose = pics.length ? pics : items().filter(i => i.type === "image" && !i.missing && i.kind === r.kind && i.subject === t.s && i.prompt && i.prompt.length >= 20).sort(byAdded);
     const persona = r.kind === "persona" && CFG.characters[t.s] && CFG.characters[t.s].portrait_prompt;
@@ -823,7 +836,7 @@
         <div class="ml-rec-checks">${subs.map(([k, n]) => `<label class="ml-check"><input type="checkbox" data-mlrecsub="${e(k)}"${d.subjects.includes(k) ? " checked" : ""}> ${e(n)}</label>`).join("")}</div></div>
       ${K.roles.length ? `<div class="ml-rec-pick"><div class="ml-rec-pickhead"><b>Roles</b> <small>${d.roles.length ? d.roles.length + " chosen" : "any role"}</small>
         <button type="button" class="link" data-mlrec="allroles">all</button><button type="button" class="link" data-mlrec="noroles">none</button></div>
-        <div class="ml-rec-checks">${K.roles.map(([k, n]) => `<label class="ml-check" title="${e(n)}"><input type="checkbox" data-mlrecrole="${k}"${d.roles.includes(k) ? " checked" : ""}> ${e(n.split(":")[0])}</label>`).join("")}</div></div>` : ""}
+        <div class="ml-rec-checks">${K.roles.concat(d.kind === "persona" ? Object.entries(virtualRoles()) : []).map(([k, n]) => `<label class="ml-check" title="${e(n)}"><input type="checkbox" data-mlrecrole="${k}"${d.roles.includes(k) ? " checked" : ""}> ${e(n.split(":")[0])}</label>`).join("")}</div></div>` : ""}
       <div class="ml-rec-sliders">
         ${d.mode === "plain"
           ? `<label>Pictures each <b id="mlrecv-count">${d.count}</b><input type="range" min="0" max="20" value="${d.count}" data-mlrecf="count"></label>`
@@ -843,6 +856,7 @@
         ${rows.length ? `<div class="ml-covwrap ml-rec-table"><table class="ml-covtable"><thead><tr><th></th><th>Have</th><th>Waiting</th><th>Short</th></tr></thead><tbody>${rows.map(p => `<tr><th>${e(p.label)}</th>
           <td>${p.plain ? p.haveC + p.haveN : `${p.haveC} clean · ${p.haveN} NSFW`}</td><td>${p.pendC + p.pendN || "–"}</td><td class="${p.needC || p.needN ? "ml-short" : ""}">${p.plain ? p.needN : `${p.needC} clean · ${p.needN} NSFW`}</td></tr>`).join("")}</tbody></table></div>` : `<p class="help">Everything is at or above target (counting pictures waiting on the farm).</p>`}
         ${first ? `<p class="help">Prompts for the first few:</p>${first}` : ""}
+        ${d.kind === "persona" && ((M.lib || {}).scene_notes || []).length ? `<p class="help">Left out: ${((M.lib || {}).scene_notes || []).map(e).join(" ")}</p>` : ""}
         <div class="row"><button type="button" class="primary" data-mlrec="run"${total && !R.busy ? "" : " disabled"}>${R.busy ? e(R.prog || "Queueing…") : `Queue ${total} picture${total === 1 ? "" : "s"}`}</button>
           <span class="help">Only the shortfall is queued, so running it again won't double up.</span></div>`;
     }
@@ -866,14 +880,17 @@
     for (const p of plan) {
       if (!p.needC && !p.needN) continue;
       const pr = recPrompts(d, p.t), pool = pr.person ? POSES : CAMERAS;
-      const roles = p.t.role ? [p.t.role] : d.roles.slice();
+      const sp = recSpec(d, p.t);
+      const roles = sp ? [sp.role] : p.t.role ? [p.t.role] : d.roles.slice();
       const batches = p.plain ? [["auto", p.needN, pr.plainP, ""]] : [["yes", p.needN, pr.nsfwP, ""], ["no", p.needC, pr.cleanP, "clean"]];
       for (const [nsfw, n, base, extra] of batches) {
-        if (!n) continue;
+        if (!n || !base) continue;      // a recipe picture with no prompt on this side (weather looks have only one) is left alone
         const have = nsfw === "no" ? p.haveC + p.pendC : p.haveN + p.pendN;
-        const jobs = d.pose ? Array.from({ length: n }, (_, i) => [1, `${base}, ${pool[(have + i) % pool.length]}`]) : [[n, base]];
+        const own = pr.variants && (nsfw === "no" ? pr.variants.clean : pr.variants.nsfw);     // one prompt per pose (the weather set)
+        const jobs = d.pose && own && own.length ? Array.from({ length: n }, (_, i) => [1, own[(have + i) % own.length]])
+          : d.pose && !pr.fixed ? Array.from({ length: n }, (_, i) => [1, `${base}, ${pool[(have + i) % pool.length]}`]) : [[n, base]];
         for (const [count, prompt] of jobs) {
-          const tags = [tag, extra].filter(Boolean).join(", ");
+          const tags = pr.tags ? pr.tags.concat(nsfw === "no" ? ["clean"] : []).join(", ") : [tag, extra].filter(Boolean).join(", ");
           const res = await api("media/generate", { kind: d.kind, subject: p.t.s, roles, prompt, aspect: pr.aspect, count: Math.min(8, count), nsfw, tags });
           if (res.ok) made += count; else { failed += count; last = res.error || last; }
           R.prog = `Queued ${made} of ${total}…`; drawRec();
@@ -1702,7 +1719,7 @@
   });
 
   window.SeaTraderMedia = {
-    render,
+    render, recPlan, recPrompts, _state: M,   // recPlan and recPrompts are read by tests/tax_weather_recipe_test.cjs
     enter() { if (M.lib) load(true); },
     leave() { document.body.classList.remove("ml-active", "ml-navmin"); if (M.poll) { clearInterval(M.poll); M.poll = null; } },
   };

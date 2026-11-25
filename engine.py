@@ -1494,7 +1494,9 @@ class Game:
         # Each rank climbed above Clerk earns one free port share (rules.estates.shares_per_rank).
         earned = self._rank_shares(qualified) - self._rank_shares(current)
         if earned > 0:
-            self.award_shares(p, earned, "promotion", rank=rank["title"])
+            # No Captain's Log line for this one (24 Nov 2026): the log is read, and spoken, before the Promotion
+            # Story starts in port, so "you earned a share with your promotion" gave the surprise away.
+            self.award_shares(p, earned, "promotion", log=None, rank=rank["title"])
         # The Mayor's words (m.promote.N), one of a bank drawn from this house's own deck.
         # The ranks above Taipan have their own, grander bank (m.promote_top.N, 19 Nov 2026).
         say = self._draw(p, "m.promote_top" if rank.get("scales") and self._bank("m.promote_top") else "m.promote")
@@ -4014,8 +4016,9 @@ class Game:
         if n <= 0:
             return 0
         p["share_earned"] = have + n
-        p["log"].append(tx(log, n=n, s="" if n == 1 else "s", free=self.shares_free(p),
-                           earned=p["share_earned"], cap=self.share_cap()))
+        if log:                                       # log=None: earned quietly (the promotion has its own story)
+            p["log"].append(tx(log, n=n, s="" if n == 1 else "s", free=self.shares_free(p),
+                               earned=p["share_earned"], cap=self.share_cap()))
         self._ev("finance", "shares_earned", "{} earned {} port share(s) ({}): {} of {} earned".format(
             p["name"], n, why, p["share_earned"], self.share_cap()), p, n=n, why=why,
                  earned=p["share_earned"], **info)

@@ -26,12 +26,14 @@ Options:
 import argparse
 import json
 import os
-import re
 import sys
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOCAL_SETTINGS = os.path.join(ROOT, "config", "settings.json")
 sys.path.insert(0, ROOT)
+import persona_pairs
+from persona_pairs import nsfw_prompt, clean_prompt, split, NUDE, CLEAN_STYLE, DECENT  # noqa: F401  (kept for older callers)
 try:
     import persona_prompts_v2 as pp
 except ImportError:
@@ -62,32 +64,8 @@ MOODS.update({
 })
 PERSONA_ROLES = ("portrait", "speaking", "idle", "happy", "angry", "sly")
 
-NUDE = ("completely naked, her clothes fallen away, breasts and body shown openly, only her jewellery and the "
-        "props of her trade left on her")
-CLEAN_STYLE = ("fully and modestly clothed, high neckline, no nudity, no cleavage, romanticized cinematic historical "
-               "realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, "
-               "oxblood silk, antique brass, imperial jade, waist-up 3:4 portrait, hands visible, original face and "
-               "garment design, no text")
-# Undressed wording in the profile prompts, made decent for the clean version.
-DECENT = [
-    (r"worn loose off both shoulders with the obi half undone", "neatly worn and tied"),
-    (r"off-shoulder ", ""), (r"slipping from one shoulder", "worn neatly"), (r"draped over one bare shoulder", "draped neatly"),
-    (r"half-laced ", ""), (r"loosened ", ""), (r"with a thigh-high slit unbuttoned at the collar", "buttoned to the collar"),
-    (r"open over a black lace corset", "buttoned over a black lace blouse"),
-    (r"open over a black silk corset, high collar undone", "with the high collar buttoned"),
-    (r"with a laced leather corset over it", ""), (r"plunging ", "high-necked "), (r"with a deep neckline", ""),
-    (r"\bundone\b", "fastened"), (r"across her skin", "across the room"), (r"bedroom gaze", "gaze"),
-    (r"sensual private-release erotic glamour,? ?", ""),
-    # The bookkeeper (Accounting Ledger, 20 Nov 2026).
-    (r"black silk blouse unbuttoned to the waist and slipping off one shoulder over an oxblood lace corset",
-     "black silk blouse buttoned to the collar under an oxblood waistcoat"),
-    (r"sheer black stockings and one knee drawn up, ", ""), (r"reclining in", "seated in"),
-    (r"a smouldering heavy-lidded gaze", "a knowing gaze"), (r" deliciously", ""),
-]
-
-
 def cast_prompts(server):
-    """Every cast member's portrait prompt: the live game's own, else this folder's cast.py."""
+    """Every cast member's portrait prompt: the live game's own, then config/settings.json, then this folder's cast.py."""
     try:
         req = urllib.request.Request(server + "/api/admin/all", headers={"X-SeaTrader": "admin"})
         with urllib.request.urlopen(req, timeout=20) as r:
@@ -103,30 +81,19 @@ def cast_prompts(server):
                 prompts[k], names[k] = v["portrait_prompt"], v["name"]
         return prompts, names
     except Exception as e:
-        print("Could not read the live game's cast ({}); using this folder's cast.py".format(e))
+        try:                                    # the Pi is off: this folder's own saved settings come next
+            with open(LOCAL_SETTINGS, encoding="utf-8") as f:
+                chars = json.load(f)["characters"]
+            print("Could not read the live game's cast ({}); using config/settings.json".format(e))
+            return ({k: v.get("portrait_prompt") or "" for k, v in chars.items()},
+                    {k: v.get("name", k) for k, v in chars.items()})
+        except (OSError, ValueError, KeyError, TypeError) as local_error:
+            print("Could not read the live cast ({}) or config/settings.json ({}); using this folder's cast.py".format(
+                e, local_error))
         sys.path.insert(0, ROOT)
         import cast
         return ({k: v["portrait_prompt"] for k, v in cast.CHARACTERS.items()},
                 {k: v["name"] for k, v in cast.CHARACTERS.items()})
-
-
-def split(prompt):
-    """(her description, the style tail). The style tail starts at ', romanticized'."""
-    at = prompt.find(", romanticized")
-    return (prompt[:at], prompt[at + 2:]) if at > 0 else (prompt, "")
-
-
-def nsfw_prompt(base, mood):
-    desc, tail = split(base)
-    return "{}, {}, {}{}".format(desc, mood, NUDE, ", " + tail if tail else "")
-
-
-def clean_prompt(base, mood):
-    desc, _tail = split(base)
-    for pat, rep in DECENT:
-        desc = re.sub(pat, rep, desc)
-    desc = re.sub(r"\s+,", ",", re.sub(r"  +", " ", desc))
-    return "{}, {}, {}".format(desc, mood, CLEAN_STYLE)
 
 
 def main():

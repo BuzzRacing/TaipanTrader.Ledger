@@ -1,6 +1,7 @@
 """Generate SeaTrader images (cast portraits, Art Bible examples) through the local AI farm."""
 import json
 import os
+import re
 import secrets
 import time
 from urllib.error import HTTPError, URLError
@@ -11,6 +12,11 @@ from urllib.request import Request, urlopen
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(ROOT, "config", "imagegen.json")
 MAX_IMAGE_BYTES = 16 * 1024 * 1024
+ADULT_PROMPT = re.compile(
+    r"EXPLICIT PRIVATE ADULT PORTRAIT|\bcompletely (?:naked|topless)\b|\bbare breasts (?:are )?(?:fully )?"
+    r"(?:visible|shown)|\bfull nudity is required\b",
+    re.I,
+)
 
 
 class ImageGenError(Exception):
@@ -31,6 +37,21 @@ def _settings():
     if not workflow.startswith(ROOT + os.sep) or not os.path.isfile(workflow):
         raise ImageGenError("The portrait workflow file is missing.")
     return cfg, base, workflow
+
+
+def render_profile(cfg, prompt):
+    """Use the configured adult checkpoint only for blunt, affirmative adult prompts."""
+    out = dict(cfg)
+    if ADULT_PROMPT.search(str(prompt or "")) and isinstance(cfg.get("adult_profile"), dict):
+        out.update(cfg["adult_profile"])
+    return out
+
+
+def _workflow_path(cfg):
+    workflow = os.path.abspath(os.path.join(ROOT, str(cfg.get("workflow") or "")))
+    if not workflow.startswith(ROOT + os.sep) or not os.path.isfile(workflow):
+        raise ImageGenError("The portrait workflow file is missing.")
+    return workflow
 
 
 def _json(url, method="GET", body=None, timeout=30):
@@ -61,6 +82,24 @@ ASPECTS = {
 }
 
 
+def _pick_checkpoint(base, wanted):
+    """The checkpoint file name ComfyUI on the farm should load. "wanted" is an exact file name or just a word
+    to look for (config "checkpoint", default "juggernaut"); the farm's own list is asked, so no path is guessed.
+    Prefers Ragnarok, then the highest name; skips Lightning / Hyper / inpainting variants."""
+    wanted = str(wanted or "").strip() or "juggernaut"
+    info = _json(base + "/object_info/CheckpointLoaderSimple", timeout=30)
+    spec = (((info.get("CheckpointLoaderSimple") or {}).get("input") or {}).get("required") or {}).get("ckpt_name")
+    names = [str(n) for n in spec[0]] if spec and isinstance(spec[0], list) else []
+    if wanted in names:
+        return wanted
+    found = [n for n in names if wanted.lower() in n.lower()
+             and not any(x in n.lower() for x in ("lightning", "hyper", "inpaint", "turbo"))]
+    if not found:
+        raise ImageGenError("No checkpoint matching '{}' is installed on the image farm.".format(wanted))
+    found.sort(key=lambda n: ("ragnarok" in n.lower(), n.lower()))
+    return found[-1]
+
+
 def generate_portrait(prompt, character):
     cfg, _base, _workflow = _settings()
     data, _seed = generate_image(prompt, "seatrader/portrait-{}".format(character),
@@ -77,17 +116,29 @@ def generate_image(prompt, prefix, width, height, negative=None, seed=None):
     if len(prompt) > 6000:
         raise ImageGenError("The prompt is longer than 6,000 characters.")
     cfg, base, workflow_path = _settings()
+    cfg = render_profile(cfg, prompt)
+    workflow_path = _workflow_path(cfg)
     with open(workflow_path, encoding="utf-8") as f:
         workflow = json.load(f)
     seed = int(seed) if isinstance(seed, int) and 0 <= seed < 2 ** 63 else secrets.randbits(48)
     neg = str(cfg.get("negative_prompt") or "") if negative is None else str(negative)[:4000]
-    workflow["4"]["inputs"]["prompt"] = prompt
-    workflow["4"]["inputs"]["negative_prompt"] = neg
-    workflow["5"]["inputs"]["width"] = int(width)
-    workflow["5"]["inputs"]["height"] = int(height)
-    workflow["7"]["inputs"]["seed"] = seed
-    workflow["7"]["inputs"]["steps"] = int(cfg.get("steps") or 25)
-    workflow["9"]["inputs"]["filename_prefix"] = prefix
+    steps = int(cfg.get("steps") or 25)
+    if "{{PROMPT}}" in json.dumps(workflow):
+        # Placeholder workflow (Juggernaut XL / SDXL, 22 Nov 2026): the graph says where each value goes.
+        workflow = fill_placeholders(workflow, {
+            "CHECKPOINT": _pick_checkpoint(base, cfg.get("checkpoint")), "PROMPT": prompt, "NEGATIVE": neg,
+            "WIDTH": int(width), "HEIGHT": int(height), "SEED": seed, "STEPS": steps,
+            "CFG": float(cfg.get("cfg") or 4.5), "SAMPLER": str(cfg.get("sampler_name") or "dpmpp_2m_sde"),
+            "SCHEDULER": str(cfg.get("scheduler") or "karras"), "PREFIX": prefix})
+    else:
+        # Original Qwen Image 2.1 workflow: fixed node numbers.
+        workflow["4"]["inputs"]["prompt"] = prompt
+        workflow["4"]["inputs"]["negative_prompt"] = neg
+        workflow["5"]["inputs"]["width"] = int(width)
+        workflow["5"]["inputs"]["height"] = int(height)
+        workflow["7"]["inputs"]["seed"] = seed
+        workflow["7"]["inputs"]["steps"] = steps
+        workflow["9"]["inputs"]["filename_prefix"] = prefix
 
     result = _json(base + "/prompt", "POST", {"prompt": workflow}, 30)
     if result.get("node_errors"):

@@ -341,7 +341,7 @@ const Customs = (() => {
     const done = () => { fading = null; revealed = key(c); render(); };
     // Land on the Port screen UNDER the picture before it fades, so the fade reveals the Port and never the
     // map (or any other tab) that was open on arrival. The veil's markup is unchanged, so render() leaves it alone.
-    if (ui.tab !== "port" || ui.tally || ui.ledger) { ui.tab = "port"; ui.tally = false; ui.ledger = false; render(); }
+    if (ui.tab !== "port" || ui.tally || ui.ledger) { ui.tab = "port"; ui.tally = false; ui.ledger = false; render(); clearTimeout(revealTimer); revealTimer = null; }   // render() -> auto() re-arms the reveal timer: cancel it, or it fires later and yanks the Captain back to the Port
     const card = document.querySelector(".cx-desk.reveal"), veil = card && card.parentElement;
     if (!veil || matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
     veil.classList.add("cx-out");          // customs.css cxOut: the picture and its veil fade to the port

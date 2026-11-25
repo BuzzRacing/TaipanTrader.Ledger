@@ -189,6 +189,63 @@ def _pronounce(t):
     return t
 
 
+# ---------------------------------------------------------------- what the player is called aloud --
+# Every line is written "..., Captain." The voice says it that way for anyone, except a player whose
+# first name is in ADDRESS_NAMES (config/address_names.json, {"anthony": "Anthony"}): to that player the
+# characters say the name. Only the spoken clip changes; the words on screen stay "Captain".
+ADDRESS_FILE = os.path.join(ROOT, "config", "address_names.json")
+DEFAULT_ADDRESS_NAMES = {"anthony": "Anthony"}
+# "Captain" used as a form of address (after a comma or at the start of a sentence, then punctuation).
+# "saved Captain", "that Captain", "Captain's Log" and "Captains" are about the profile, so they stay.
+VOCATIVE = re.compile(r"(?:^|(?<=, )|(?<=[.!?…] ))Captain(?=[,.!?;:…]|\s*$)")
+_ADDRESS = threading.local()
+_address_cache = {"mtime": None, "names": dict(DEFAULT_ADDRESS_NAMES)}
+
+
+def address_names():
+    """{first name in lower case: how the characters say it}. The file adds to the default."""
+    try:
+        mtime = os.path.getmtime(ADDRESS_FILE)
+    except OSError:
+        mtime = None
+    if mtime != _address_cache["mtime"]:
+        names = dict(DEFAULT_ADDRESS_NAMES)
+        if mtime is not None:
+            try:
+                with open(ADDRESS_FILE, encoding="utf-8") as f:
+                    for k, v in (json.load(f) or {}).items():
+                        if str(k).strip() and str(v).strip():
+                            names[str(k).strip().lower()] = str(v).strip()
+            except (OSError, ValueError, AttributeError):
+                pass
+        _address_cache.update(mtime=mtime, names=names)
+    return _address_cache["names"]
+
+
+def address_for(*names):
+    """What the characters call a player with these names (a saved Captain's name, a seat's name),
+    or None for plain "Captain"."""
+    table = address_names()
+    for n in names:
+        first = (str(n or "").split() or [""])[0].lower()
+        if first in table:
+            return table[first]
+    return None
+
+
+def set_address(name):
+    """Who the lines planned on this thread are for. Set at the start of every request; None = "Captain"."""
+    _ADDRESS.name = name or None
+
+
+def addressed(text):
+    """The wording with "Captain" (as address) swapped for this thread's player name, if there is one."""
+    name = getattr(_ADDRESS, "name", None)
+    if not name or not text:
+        return text
+    return VOCATIVE.sub(lambda m: name, str(text))
+
+
 def speech_text(text):
     """Game wording tidied for the ear."""
     t = str(text or "")
@@ -638,6 +695,7 @@ class Planner:
         throughout gets the clean clip as u.
         voice: another cast member whose voice (and speed, and delivery) reads it, while the screens still
         show cid (a port's own Mayor speaking as "the Mayor")."""
+        text = addressed(text)               # "Captain" becomes the player's name, for players who have one
         ch = self.cfg["characters"].get(cast.played_by(self.cfg, cid))   # a Brand role speaks as whoever is cast
         own = self.cfg["characters"].get(voice) if voice else None
         if own and own.get("voice_id"):

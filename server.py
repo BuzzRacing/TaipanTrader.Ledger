@@ -542,7 +542,20 @@ class Hub:
             json.dump(self.game.s, f)
         os.replace(tmp, SAVE_FILE)
 
+    def _address_for(self, pid):
+        """What the characters call this seat aloud: the player's name if it is in voice.ADDRESS_NAMES
+        (a saved Captain's name, else the seat's own name), otherwise None, which stays "Captain"."""
+        p = (self.game.s["players"].get(pid) if pid else None) or {}
+        cap = None
+        if p.get("captain"):
+            try:
+                cap = (captains.get(p["captain"]) or {}).get("name")
+            except Exception:
+                cap = None
+        return voice.address_for(cap) if cap else voice.address_for(p.get("name"))
+
     def view(self, pid):
+        voice.set_address(self._address_for(pid))   # every line planned below is spoken to this player
         v = self.game.view(pid, self.present())
         v["game_id"] = self.game.s["game_id"]
         v["server_time"] = time.time()
@@ -1202,6 +1215,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._certificate_post(body)
             if path == "/api/act":
                 with HUB.cond:
+                    voice.set_address(None)
                     pid = HUB.game.pid_for_token(body.get("token"))
                     if pid is None:
                         journal.log("WARN", "players", "An action came from a device whose seat is not in this game "
@@ -1211,6 +1225,7 @@ class Handler(BaseHTTPRequestHandler):
                     present = HUB.present() | {pid}
                     # Noted before the action (it may clear the desk): the port, and the officer at the desk there.
                     seat = HUB.game.s["players"].get(pid) or {}
+                    voice.set_address(HUB._address_for(pid))   # the reply is spoken to whoever acted
                     at_port = seat.get("port")
                     desk = seat.get("customs") or {}
                     at_desk = desk.get("officer") if desk.get("port") == at_port else None

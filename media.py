@@ -1140,7 +1140,15 @@ def admin_view(cfg):
         scene_prompts = tax_results.all_prompts(cfg.get("characters"))
     except Exception:
         scene_prompts = {}
-    return {"scene_prompts": scene_prompts, "items": items, "rules": lib["rules"], "options": lib["options"], "kinds": KINDS, "modes": MODES,
+    virtual_roles, scene_notes = {}, []
+    try:
+        import recipe_scenes                  # the tax-lady desk faces and the weather set (were .bat files)
+        extra, virtual_roles, scene_notes = recipe_scenes.all_prompts(cfg)
+        for subject, entries in extra.items():
+            scene_prompts.setdefault(subject, {}).update(entries)
+    except Exception as exc:
+        scene_notes = ["The tax and weather recipes could not be prepared: {}".format(exc)]
+    return {"scene_prompts": scene_prompts, "virtual_roles": virtual_roles, "scene_notes": scene_notes, "items": items, "rules": lib["rules"], "options": lib["options"], "kinds": KINDS, "modes": MODES,
             "prompts": prompts, "promotion_styles": config.promotion_styles(),
             "subjects": subjects(cfg), "in_use": sorted(in_use), "counts": counts, "family": family(cfg),
             "rule_defaults": RULE_DEFAULTS, "slots": slot_status(cfg)}

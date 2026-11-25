@@ -10,6 +10,8 @@ import os
 import re
 import threading
 
+import recipe_scenes
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATH = os.path.join(ROOT, "config", "media_recipes.json")
 LOCK = threading.Lock()
@@ -24,6 +26,21 @@ STARTERS = [
     {"id": "starter_battle", "name": "Sea battle moments: 3 each", "kind": "scene",
      "subjects": ["seafight_pirates", "seafight_lord"], "roles": MOMENTS, "by": "role", "mode": "plain",
      "clean": 1, "nsfw": 0, "count": 3, "mood": "", "pose": True, "tag": "battle-moments"},
+    # The tax-lady desk tells and the weather pictures, as recipes (24 Nov 2026). Prompts come from recipe_scenes.py, which
+    # runs the same code as the Queue_TaxLady_*_Pairs.bat and Queue_Weather_*.bat files. The roles are recipe_scenes' own
+    # names for each exact picture; only an officer (or the crier) has prompts for them, so the others are skipped.
+    {"id": "tax_desk_faces", "name": "Port Authority desk tells: 1 clean + 1 NSFW each", "kind": "persona",
+     "subjects": [], "roles": recipe_scenes.TAX_ENTRY_ROLES, "by": "role", "mode": "pairs", "clean": 1, "nsfw": 1,
+     "count": 1, "mood": "", "pose": False, "tag": "tax-desk"},
+    {"id": "weather_nude_looks", "name": "Newspaper weather NSFW: nude, 4 poses each weather", "kind": "persona",
+     "subjects": ["crier"], "roles": recipe_scenes.WEATHER_NUDE_ROLES, "by": "role", "mode": "pairs", "clean": 0,
+     "nsfw": 4, "count": 1, "mood": "", "pose": True, "tag": "weather"},
+    {"id": "weather_topless_looks", "name": "Newspaper weather NSFW: topless, 5 poses each weather", "kind": "persona",
+     "subjects": ["crier"], "roles": recipe_scenes.WEATHER_TOPLESS_ROLES, "by": "role", "mode": "pairs", "clean": 0,
+     "nsfw": 5, "count": 1, "mood": "", "pose": True, "tag": "weather"},
+    {"id": "weather_clean_looks", "name": "Newspaper weather clean: 5 poses each weather", "kind": "persona",
+     "subjects": ["crier"], "roles": recipe_scenes.WEATHER_CLEAN_ROLES, "by": "role", "mode": "pairs", "clean": 5,
+     "nsfw": 0, "count": 1, "mood": "", "pose": True, "tag": "weather"},
     {"id": "starter_persona", "name": "Cast top-up: 2 clean + 2 NSFW each", "kind": "persona", "subjects": [],
      "roles": [], "by": "subject", "mode": "pairs", "clean": 2, "nsfw": 2, "count": 3, "mood": "", "pose": True,
      "tag": "cast-topup"},
