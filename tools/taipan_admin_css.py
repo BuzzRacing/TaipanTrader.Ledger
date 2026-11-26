@@ -28,6 +28,9 @@ ROOT_VARS = """:root {
   --sans: "Libre Caslon Text", "Palatino Linotype", Palatino, Georgia, serif;
   --special: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
 }
+/* Taipan Trader has no NSFW: the Media Library's Family-friendly switch, NSFW quick view and NSFW upload tick are
+   hidden (the game is locked to family-friendly anyway). */
+.ml-safe, [data-mlpreset="nsfw"], label.ml-check:has(> input[data-mlf="upNsfw"]) { display: none !important; }
 """
 
 

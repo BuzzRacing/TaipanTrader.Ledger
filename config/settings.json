@@ -60,7 +60,7 @@
   "radius": 8,
   "ambient_seconds": 40,
   "ambient_dim": 55,
-  "custom_css": ""
+  "custom_css": "/* Taipan Trader: no NSFW switch on the Captain's Options desk. */\n.op-fam { display: none !important; }"
  },
  "graphics": {
   "logo": "",

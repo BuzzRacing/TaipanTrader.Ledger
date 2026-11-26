@@ -29,6 +29,8 @@ FONTS = {
     "font_serif": "\"Libre Caslon Text\", \"Palatino Linotype\", Palatino, \"Book Antiqua\", Georgia, serif",
     "font_special": "\"IM Fell English SC\", \"Palatino Linotype\", Palatino, Georgia, serif",
     "web_fonts": "IM Fell English SC | Libre Caslon Text:ital,wght@0,400;0,700;1,400",
+    # Taipan Trader has no NSFW, so the Captain's Options desk hides its Family Friendly switch and flip picture.
+    "custom_css": "/* Taipan Trader: no NSFW switch on the Captain's Options desk. */\n.op-fam { display: none !important; }",
 }
 
 with open(PATH, encoding="utf-8") as f:
