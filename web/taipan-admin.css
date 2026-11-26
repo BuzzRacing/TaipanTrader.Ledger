@@ -8,9 +8,34 @@
   --sans: "Libre Caslon Text", "Palatino Linotype", Palatino, Georgia, serif;
   --special: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
 }
-/* Taipan Trader has no NSFW: the Media Library's Family-friendly switch, NSFW quick view and NSFW upload tick are
-   hidden (the game is locked to family-friendly anyway). */
-.ml-safe, [data-mlpreset="nsfw"], label.ml-check:has(> input[data-mlf="upNsfw"]) { display: none !important; }
+/* Taipan Trader has no NSFW, so every NSFW control in Admin is hidden (the game is locked to family-friendly and
+   the server refuses NSFW picture jobs anyway). */
+/* Media Library: the switch, NSFW quick view, Rating filter, NSFW upload tick, per-picture NSFW toggle. */
+.ml-safe, [data-mlpreset="nsfw"], .ml-rail-sec:has([data-mlrating]), label.ml-check:has(> input[data-mlf="upNsfw"]),
+.ml-tile .ml-nsfw, .ml-tile em.nsfw { display: none !important; }
+/* Image generator: the NSFW tag, and the rule for new pictures. */
+label:has(> select[data-mlgenf="nsfw"]), label:has(> select[data-mlopt="new_nsfw"]) { display: none !important; }
+/* Make video: clean + NSFW pairs, the cheeky movements, the NSFW compare. */
+label.ml-check:has(> input[data-mlvidf="pair"]), label:has(> select[data-mlvidf="partner"]), label.ml-cleantwin,
+optgroup[label^="Cheeky"] { display: none !important; }
+/* Recipes: pairs vs plain (always plain here) and the NSFW count. Coverage: the clean-twin check. */
+label:has(> select[data-mlrecf="mode"]), label:has(> input[data-mlrecf="nsfw"]), .ml-twins,
+.ml-twins + .help, .ml-coverage .help:has(.ml-covkey.cnsfw) { display: none !important; }
+/* Dialogue Banks: only the wording the game uses is shown, and only the clean wording is edited. A line with a
+   clean twin shows the twin; a line without one is used as written, so its first wording stays visible. */
+label:has(> textarea[data-bkf="spicy"]), label:has(> textarea[data-bkf="say"]),
+label.bk-dlab:has(> textarea[data-f="spicy"]), label.bk-dlab:has(> textarea[data-f="say"]) { display: none !important; }
+.bk-lines tbody tr:not(:has(> td:nth-child(3) .bk-none)) > td:nth-child(2) > * { visibility: hidden; }
+.bk-lines tbody tr:not(:has(> td:nth-child(3) .bk-none)) > td:nth-child(2) { font-size: 0; }
+.bk-lines td:nth-child(3) .bk-none { display: none !important; }
+.bk-lines thead th:nth-child(2), .bk-lines thead th:nth-child(3) { font-size: 0; }
+.bk-lines thead th:nth-child(2)::after { content: "Wording used (no clean twin yet)"; font-size: .8rem; }
+.bk-lines thead th:nth-child(3)::after { content: "Clean wording used"; font-size: .8rem; }
+.bk-lines:not(:has(td .bk-none)) th:nth-child(2), .bk-lines:not(:has(td .bk-none)) td:nth-child(2) { display: none; }
+/* Certificate Studio: always family-friendly pictures. */
+label.cs-check:has(> #cs-fam) { display: none !important; }
+/* Language & Text: the family-wording view is the only wording here. */
+label:has(> input[data-langfamily]) { display: none !important; }
 
 /* from admin.css */
 .brand-kicker { text-shadow: 0 1px 4px #000000; }

@@ -604,6 +604,8 @@ def _bank_info(cfg, key):
 def _validate(cfg, key, body, shipped_line):
     """Checks one line's new wording. Returns the entry fields {spicy, clean, say, say_clean}."""
     stem, siblings, allowed, specs, who, numbered = _bank_info(cfg, key)
+    if not (body.get("spicy") or "").strip():    # Taipan Trader hides the spicy field: the clean line stands in
+        body = dict(body, spicy=body.get("clean") or "", say=body.get("say_clean") or "")
     spicy = _check_text("spicy", body.get("spicy"), allowed, specs)
     clean_raw = (body.get("clean") or "").strip()
     if not clean_raw and not shipped_line:

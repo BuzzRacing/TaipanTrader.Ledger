@@ -1,6 +1,6 @@
 @echo off
 rem Opens the TEST copy of the game on this computer (BIGBOX), even when
-rem server_address.txt points the other launchers at the Pi (sea.trade).
+rem server_address.txt points the other launchers at the Pi (taipantrader.ledger).
 rem Its saves are test games only; the live game is on the Pi.
 rem   Launch_Dev.bat          player screen
 rem   Launch_Dev.bat board    harbor board

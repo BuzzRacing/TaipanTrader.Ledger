@@ -10,7 +10,7 @@ rem By default the game server runs on this computer and is started if needed.
 rem To use a server on another machine (for example a Raspberry Pi), put its
 rem address on one line in server_address.txt next to this file, e.g.
 rem   taipantrader.ledger   (the Pi, through its proxy)
-rem   192.168.1.50:8775
+rem   192.168.1.69:8775
 rem Launch_Dev.bat always opens the copy on this computer instead.
 setlocal
 cd /d "%~dp0"

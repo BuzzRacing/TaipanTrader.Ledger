@@ -9,7 +9,7 @@
     lib: null, loading: false, kind: "persona", subject: "", role: "", type: "", nsfw: "", review: false, q: "",
     sort: (() => { try { return localStorage.getItem("ml.sort") || "new"; } catch (_) { return "new"; } })(),
     sel: new Set(), last: null, genOpen: false, rulesOpen: false, jobs: [], jobsOpen: (() => { try { return localStorage.getItem("ml.jobsOpen") === "1"; } catch (_) { return false; } })(), poll: null, uploads: [],
-    gen: { kind: "", subject: "", roles: [], aspect: "3:4", count: 2, nsfw: "auto", prompt: "", tags: "", forKey: "" },
+    gen: { kind: "", subject: "", roles: [], aspect: "3:4", count: 2, nsfw: "no", prompt: "", tags: "", forKey: "" },
     // Gallery 2 (Anthony, 21 Nov 2026): filter rail + chips, Pictures/Videos/Pairs toggle, generate drawer, density, left menu collapse.
     port: "", job: "", tag: "", density: (() => { try { return localStorage.getItem("ml.density") || "m"; } catch (_) { return "m"; } })(),
     railOpen: (() => { try { return localStorage.getItem("ml.rail") !== "0"; } catch (_) { return true; } })(),
@@ -20,7 +20,7 @@
     rec: { open: false, draft: null, busy: false, prog: "" }, recipes: [],
     rulesDraft: null, timers: {},
     // Videos (Anthony, 20 Nov 2026): the Make video panel and the side-by-side Compare of a clean + NSFW pair.
-    vid: { open: false, src: "", partner: "", pair: true, motion: "", clean: "", preset: "idle", count: 2, tags: "" },
+    vid: { open: false, src: "", partner: "", pair: false, motion: "", clean: "", preset: "idle", count: 2, tags: "" },
     cmp: "",
   };
   const $ = id => document.getElementById(id);
@@ -743,8 +743,8 @@
     return `${d}${mood ? ", " + mood : ""}, ${CLEAN_STYLE}`;
   }
   const slug = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
-  const newRecipe = () => ({ id: "r" + Math.random().toString(36).slice(2, 9), name: "New recipe", kind: M.kind || "persona", subjects: [], roles: [], by: "subject", mode: "pairs",
-    clean: 1, nsfw: 5, count: 3, mood: "", pose: true, tag: "", last_run: "", last_made: 0 });
+  const newRecipe = () => ({ id: "r" + Math.random().toString(36).slice(2, 9), name: "New recipe", kind: M.kind || "persona", subjects: [], roles: [], by: "subject", mode: "plain",
+    clean: 1, nsfw: 0, count: 3, mood: "", pose: true, tag: "", last_run: "", last_made: 0 });
   const womanRole = r => !!r && (["keeper", "shipmaster", "mayor", "taxlady"].includes(r) || r.startsWith("mayor_"));
 
   function recTargets(r) {
@@ -818,6 +818,7 @@
     const list = M.recipes.map(x => `<button type="button" data-mlrec="pick" data-id="${e(x.id)}" class="${d && d.id === x.id ? "on" : ""}"><b>${e(x.name)}</b><small>${e((kinds()[x.kind] || {}).label || x.kind)} · ${x.mode === "plain" ? x.count + " each" : x.clean + " clean + " + x.nsfw + " NSFW"}${x.last_run ? " · ran " + e(x.last_run) : ""}</small></button>`).join("");
     let form = `<p class="help">Pick a recipe, or start a new one. A recipe counts what is already filed or waiting on the farm and paints only what is short.</p>`, prev = "";
     if (d) {
+      d.mode = "plain";             // Taipan Trader: clean only, so a recipe never paints NSFW halves
       const K = kinds()[d.kind] || { roles: [], one: "Subject", label: d.kind };
       const subs = subjectsFor(d.kind);
       const ports = d.kind === "persona" ? [...new Set(Object.values(CFG.characters).map(c => c.home_port).filter(Boolean))] : [];

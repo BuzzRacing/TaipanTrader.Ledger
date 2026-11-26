@@ -19,7 +19,7 @@
   const YEARS = [5, 10, 20, 50];
 
   const st = {
-    games: null, game: "", houses: [], pid: "", f: null, who: "", lib: null, fam: false,
+    games: null, game: "", houses: [], pid: "", f: null, who: "", lib: null, fam: true,
     pics: { bg: [], mayor: [], persona: [] }, sel: { bg: null, mayor: null, persona: null },
     ok: new Set(), busy: "", msg: "", timer: 0, listen: null,
   };

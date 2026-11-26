@@ -16,7 +16,7 @@ let section = (location.hash || "#live").slice(1);
 let errors = [];
 let polling = false;
 const FIELD = {}, COL = {};
-const lv = { code: "en", q: "", group: "", changed: false, family: false };
+const lv = { code: "en", q: "", group: "", changed: false, family: true };   // Taipan Trader: clean wording only
 
 const NAV = [
   ["Game", [["live", "Live Game"], ["captains", "Captains"], ["report", "Captain's Report"], ["certificate", "Certificate Studio"]]],
