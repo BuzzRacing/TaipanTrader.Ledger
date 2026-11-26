@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>At sea — waiting screen preview</title>
+  <link rel="stylesheet" href="../web/style.css">
+  <link rel="stylesheet" href="../web/deck.css">
+  <link rel="stylesheet" href="../web/battle.css">
+  <style>
+    .preview-note {
+      position: fixed;
+      right: 1rem;
+      bottom: .8rem;
+      z-index: 40;
+      color: color-mix(in srgb, var(--deck-ivory) 48%, transparent);
+      font: .7rem var(--sans);
+      letter-spacing: .04em;
+    }
+  </style>
+</head>
+<body class="player">
+  <div id="seafight" data-mode="wait">
+    <div class="sf-bg" aria-hidden="true">
+      <div class="sf-sea"></div>
+      <div class="sf-pic"></div>
+      <div class="sf-pic"></div>
+      <div class="sf-shade"></div>
+    </div>
+    <header class="sf-top">
+      <div class="sf-where"><small>At sea</small><b></b></div>
+      <div class="sf-round"></div>
+      <div class="sf-clock" hidden><span></span><i><b></b></i><small></small></div>
+    </header>
+    <div class="sf-mid"></div>
+    <section class="sf-wait">
+      <h2>At sea</h2>
+      <p class="sf-lead">Nobody lands until every fight is over.</p>
+      <ul>
+        <li style="--who:#c9a34e">
+          <b>Evelyn of Hawthorne &amp; Co. is under attack off Manila</b>
+          <span>3 of 7 pirate junks afloat · round 4 of 6</span>
+          <i class="sf-wbar"><i style="width:43%"></i></i>
+        </li>
+        <li style="--who:#2f8f78">
+          <b>Roxana of House Marcellus is under attack off Saigon</b>
+          <span>5 war junks · they are naming their price</span>
+          <i class="sf-wbar"><i style="width:100%"></i></i>
+        </li>
+      </ul>
+    </section>
+  </div>
+  <span class="preview-note">Static preview · sample battle data</span>
+</body>
+</html>
