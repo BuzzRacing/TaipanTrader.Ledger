@@ -1,4 +1,2 @@
-Uncial Antiqua
-MedievalSharp
-Alegreya:ital,wght@0,400;0,700;1,400;1,700
-Alegreya SC:wght@400;700
+IM Fell English SC
+Libre Caslon Text:ital,wght@0,400;0,700;1,400

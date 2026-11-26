@@ -5,3 +5,5 @@
 config/settings.json merge=ours
 config/media.json merge=ours
 config/artbible_examples.json merge=ours
+web/fonts/fonts.css merge=ours
+web/fonts/families.txt merge=ours
