@@ -3643,7 +3643,7 @@ class Game:
         A bulk purchase (trade_text.BULK_MIN or more) of a cargo with its own bank (trade_text.PRODUCT_BUY)
         draws from that bank first."""
         table = {"m.bought": trade_text.PRODUCT_BUY, "m.sold": getattr(trade_text, "PRODUCT_SELL", {})}.get(prefix)
-        own = table.get(good) if table and qty >= trade_text.BULK_MIN else None
+        own = table.get(good) if table and qty >= getattr(trade_text, "BULK_MIN_OF", {}).get(good, trade_text.BULK_MIN) else None
         if own and self._bank(own):
             return self._draw(p, own)
         for bank in (prefix, fallback or prefix):

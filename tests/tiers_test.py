@@ -937,6 +937,33 @@ def test_deleting_a_non_luxury_cargo_is_left_as_it_was():
     reset()
 
 
+def test_each_luxury_has_its_own_buy_and_sell_lines():
+    """Phase 7: every trade in a luxury draws from that cargo's own bank, in both the house voice and the family one."""
+    import trade_text
+    reset()
+    for good in LUX1 + LUX2:
+        for prefix in ("m.bought", "m.sold"):
+            keys = [k for k in trade_text.KEYS if k.startswith("{}.{}.".format(prefix, good))]
+            assert len(keys) >= 4, (good, prefix)
+            for k in keys:
+                assert trade_text.FAMILY[k] and trade_text.SAY[k] and trade_text.SAY_FAMILY[k], k
+    g = engine.Game(seed=4)
+    p = captain(g)
+    for good in LUX1 + LUX2:
+        got = g._trade_say(p, "m.bought", good=good, qty=1)
+        assert got.startswith("m.bought.{}.".format(good)), (good, got)
+        got = g._trade_say(p, "m.sold", "m.sold", good=good, qty=1)
+        assert got.startswith("m.sold.{}.".format(good)), (good, got)
+    # the nine still use the general banks for a small trade, and nothing about them changed
+    assert g._trade_say(p, "m.bought", good="silk", qty=1).startswith("m.bought.") and \
+        not g._trade_say(p, "m.bought", good="silk", qty=1).split(".")[2:3] == ["silk"]
+    # a luxury's spoken lines carry no amounts, and the family versions keep the cargo's name
+    for k in trade_text.KEYS:
+        if k.split(".")[2:3] and k.split(".")[2] in trade_text.BULK_MIN_OF:
+            for text in (trade_text.SAY[k], trade_text.SAY_FAMILY[k]):
+                assert "{qty}" not in text and "{cost}" not in text and "{gain}" not in text, k
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

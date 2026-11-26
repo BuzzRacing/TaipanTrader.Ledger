@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Most-used pictures · Crimson Ledger</title>
+<style>
+  :root { --bg:#17110d; --card:#241a14; --ink:#f1e6d3; --dim:#a8977f; --gold:#d9a441; --red:#b8322a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 Georgia, "Times New Roman", serif; }
+  header { padding:1.2rem 1.4rem .6rem; }
+  h1 { margin:0; font-size:1.6rem; color:var(--gold); letter-spacing:.02em; }
+  .sub { color:var(--dim); margin:.3rem 0 0; font-size:.95rem; }
+  .bar { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; padding:.6rem 1.4rem 1rem; }
+  .bar button, .bar select { background:var(--card); color:var(--ink); border:1px solid #4a382b; border-radius:.5rem;
+    padding:.5rem .9rem; font:inherit; cursor:pointer; }
+  .bar button:hover { border-color:var(--gold); }
+  .bar label { color:var(--dim); font-size:.95rem; display:flex; align-items:center; gap:.4rem; }
+  #msg { padding:2rem 1.4rem; color:var(--dim); font-size:1.05rem; max-width:44rem; }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(15rem, 1fr)); gap:1rem; padding:0 1.4rem 2rem; }
+  .card { background:var(--card); border:1px solid #3a2b21; border-radius:.7rem; overflow:hidden; position:relative; }
+  .rank { position:absolute; top:.5rem; left:.5rem; background:rgba(0,0,0,.65); color:var(--gold); font-weight:bold;
+    border-radius:.4rem; padding:.1rem .5rem; z-index:2; }
+  .thumb { width:100%; height:15rem; object-fit:cover; object-position:top; display:block; background:#000; cursor:zoom-in; }
+  .thumb.blur { filter:blur(18px); }
+  .body { padding:.7rem .8rem .9rem; }
+  .count { font-size:1.5rem; color:var(--gold); }
+  .count small { color:var(--dim); font-size:.85rem; }
+  .meter { height:.4rem; background:#3a2b21; border-radius:.3rem; margin:.4rem 0 .6rem; overflow:hidden; }
+  .meter i { display:block; height:100%; background:linear-gradient(90deg, var(--red), var(--gold)); }
+  .title { font-weight:bold; word-break:break-word; }
+  .meta { color:var(--dim); font-size:.88rem; margin-top:.2rem; word-break:break-word; }
+  .tag { display:inline-block; background:#3a2b21; border-radius:.3rem; padding:0 .4rem; margin:.15rem .2rem 0 0; font-size:.8rem; }
+  .nsfw { color:#ff8a80; }
+  #big { position:fixed; inset:0; background:rgba(0,0,0,.92); display:none; align-items:center; justify-content:center; z-index:9; cursor:zoom-out; }
+  #big img, #big video { max-width:96vw; max-height:96vh; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Most-used pictures</h1>
+  <p class="sub" id="since"></p>
+</header>
+<div class="bar">
+  <label>Show
+    <select id="n"><option>12</option><option selected>24</option><option>60</option><option>100</option></select>
+  </label>
+  <label><input type="checkbox" id="reveal"> Show NSFW pictures unblurred</label>
+  <button id="refresh">Refresh</button>
+</div>
+<div id="msg">Loading…</div>
+<div id="grid"></div>
+<div id="big"></div>
+<script>
+const $ = id => document.getElementById(id);
+const isVideo = u => /\.(mp4|webm)$/i.test(u);
+const nocount = u => u + (u.includes("?") ? "&" : "?") + "nocount=1";   // looking here must not add to the counts
+const when = t => t ? new Date(t * 1000).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}) : "";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const nice = s => String(s || "").replace(/_/g, " ");
+
+async function load() {
+  $("msg").style.display = "block"; $("msg").textContent = "Loading…"; $("grid").innerHTML = "";
+  let r;
+  try {
+    const res = await fetch("/api/admin/picture-use?n=" + $("n").value, {credentials:"same-origin"});
+    if (res.status === 401) {
+      $("msg").innerHTML = 'This page needs the admin sign-in. <a style="color:#d9a441" href="/admin">Open Admin</a>, sign in, then come back and press Refresh.';
+      return;
+    }
+    r = await res.json();
+  } catch (e) {
+    $("msg").textContent = "Couldn't reach the server. Is the game running?"; return;
+  }
+  if (!r.total) {
+    $("since").textContent = "";
+    $("msg").textContent = "Nothing counted yet. The counter starts when the server restarts with the new code; play a little, then press Refresh.";
+    return;
+  }
+  const d = r.since ? new Date(r.since * 1000).toLocaleDateString([], {month:"long", day:"numeric", year:"numeric"}) : "";
+  $("since").textContent = r.total.toLocaleString() + " picture fetches across " + r.distinct + " different pictures, counted since " + d + ".";
+  $("msg").style.display = "none";
+  const top = r.top[0].n || 1;
+  $("grid").innerHTML = r.top.map((p, i) => {
+    const hide = p.nsfw && !$("reveal").checked;
+    const media = isVideo(p.url)
+      ? `<video class="thumb ${hide ? "blur" : ""}" src="${esc(nocount(p.url))}" muted preload="metadata" data-full="${esc(p.url)}"></video>`
+      : `<img class="thumb ${hide ? "blur" : ""}" loading="lazy" src="${esc(nocount(p.url))}" alt="" data-full="${esc(p.url)}">`;
+    const title = p.title || [nice(p.kind), nice(p.subject)].filter(Boolean).join(" · ") || p.url.split("/").pop();
+    const roles = (p.roles || []).map(x => `<span class="tag">${esc(nice(x))}</span>`).join("");
+    return `<div class="card"><div class="rank">#${i + 1}</div>${media}
+      <div class="body">
+        <div class="count">${p.n.toLocaleString()} <small>${p.n === 1 ? "time" : "times"} shown</small></div>
+        <div class="meter"><i style="width:${Math.max(3, Math.round(100 * p.n / top))}%"></i></div>
+        <div class="title">${esc(title)}${p.nsfw ? ' <span class="nsfw">· NSFW</span>' : ""}</div>
+        <div class="meta">${esc([nice(p.kind), nice(p.subject)].filter(Boolean).join(" · "))}</div>
+        <div>${roles}</div>
+        <div class="meta">First ${esc(when(p.first))} · last ${esc(when(p.last))}</div>
+      </div></div>`;
+  }).join("");
+}
+
+$("grid").addEventListener("click", e => {
+  const el = e.target.closest(".thumb"); if (!el) return;
+  const u = nocount(el.dataset.full);
+  $("big").innerHTML = isVideo(u) ? `<video src="${esc(u)}" controls autoplay loop></video>` : `<img src="${esc(u)}" alt="">`;
+  $("big").style.display = "flex";
+});
+$("big").addEventListener("click", () => { $("big").style.display = "none"; $("big").innerHTML = ""; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("big").click(); });
+$("refresh").onclick = load; $("n").onchange = load; $("reveal").onchange = load;
+load();
+</script>
+</body>
+</html>
