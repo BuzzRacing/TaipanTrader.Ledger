@@ -8,6 +8,7 @@ Taipan Trader is a family-friendly fork of Crimson Ledger (D:\SeaTrader), forked
 - **A mixed cast.** Sixteen characters are men (cast.MEN): the bosun, banker, comprador, shipwright, customs inspector, crier, five Port Authority officers and five wardens. Their old pictures were women and were dropped; their cards show initials until new portraits are made. taipan_text.py rewords lines about them and about "the officer" / "the warden".
 - **Runs beside Crimson Ledger.** Port 8775 (Crimson Ledger uses 8765). Launch with Launch_TaipanTrader.bat. Raspberry Pi, deploy and picture-queue scripts were left out.
 - The Inworld voice key is not copied; paste it in Admin > Voices to hear the cast.
+- **Staying in step with Crimson Ledger.** GitHub: BuzzRacing/TaipanTrader (`origin`). Crimson Ledger is the `upstream` remote (BuzzRacing/SeaTrader). Push Crimson Ledger first, then double-click **Sync_From_Crimson_Ledger.bat**: it merges upstream `main`, keeps Taipan's own `config/settings.json` and `config/media.json`, runs `tests/taipan_clean_test.py` and pushes. If lines clash, it stops and lists the files.
 
 ## Play
 

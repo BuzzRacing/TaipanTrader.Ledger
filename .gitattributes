@@ -1,2 +1,7 @@
 *.sh text eol=lf
 *.bat text eol=crlf
+# Taipan Trader keeps its own settings and picture library when Crimson Ledger is merged in
+# (Sync_From_Crimson_Ledger.bat sets up the "ours" merge driver).
+config/settings.json merge=ours
+config/media.json merge=ours
+config/artbible_examples.json merge=ours
