@@ -9,7 +9,7 @@ rem
 rem By default the game server runs on this computer and is started if needed.
 rem To use a server on another machine (for example a Raspberry Pi), put its
 rem address on one line in server_address.txt next to this file, e.g.
-rem   crimson.ledger   (the Pi, through its proxy)
+rem   taipantrader.ledger   (the Pi, through its proxy)
 rem   192.168.1.50:8775
 rem Launch_Dev.bat always opens the copy on this computer instead.
 setlocal
@@ -17,7 +17,7 @@ cd /d "%~dp0"
 set "PORT=8775"
 set "HOST=localhost:%PORT%"
 set "REMOTE="
-rem The Pi's address. A name without a port (crimson.ledger) is sent straight there,
+rem The Pi's address. A name without a port (taipantrader.ledger) is sent straight there,
 rem so the launcher works even if this PC's own name lookup goes wrong.
 set "PI_IP=192.168.1.69"
 rem ST_DEV is set by Launch_Dev.bat: always use the copy on this computer.
@@ -25,7 +25,7 @@ if not defined ST_DEV if exist "server_address.txt" set /p HOST=<"server_address
 set "HOST=%HOST: =%"
 set "HOST=%HOST:http://=%"
 if "%HOST:~-1%"=="/" set "HOST=%HOST:~0,-1%"
-rem A bare IP or localhost gets the game port added; a name like crimson.ledger is used as it is
+rem A bare IP or localhost gets the game port added; a name like taipantrader.ledger is used as it is
 rem (the Pi's proxy answers it on the normal web port).
 echo %HOST%| find ":" >nul
 if errorlevel 1 (echo %HOST%| findstr /r /i "^[0-9] ^localhost$" >nul && set "HOST=%HOST%:%PORT%")
