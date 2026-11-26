@@ -173,6 +173,14 @@ const Promotion = (() => {
     const clip = ((S.voice || {}).promotion || [])[0] || null;
     const base = { port: p.port, rank_id: p.rank_id, bg: sceneUrl(p.port), count: ranks.length, at: rankIndex, vars };
     const beats = [];
+    if (p.kind === "tier") {
+      // Cargo Tiers (25 Nov 2026): no rank-up this time, only the dealers closing out the old stock (p.tier).
+      beats.push(Object.assign({}, base, { kind: "tier", title: tl("promo.tier.title", "The market turns"),
+        cap: hasBank("promo.tier.open") ? bankLine("promo.tier.open", key, vars) : "" }));
+      beats.push(Object.assign({}, base, { kind: "tiercard", last: true, promo: p, said: "", clip: null, ranks, rankIndex,
+        captain }));
+      return beats;
+    }
     if (hasBank("promo.summons")) {
       beats.push(Object.assign({}, base, { kind: "summons", title: tl("promo.title.summons", "Summoned"),
         cap: bankLine("promo.summons", key, vars) }));
@@ -181,6 +189,10 @@ const Promotion = (() => {
       prev: record.previous ? record.previous.title : "", cap: hasBank("promo.rank") ? bankLine("promo.rank", key, vars) : "" }));
     beats.push(Object.assign({}, base, { kind: "words", title: tl("promo.title.words", "The Mayor's congratulations"),
       say: { text: said, clip } }));
+    if (p.tier && hasBank("promo.tier.cap")) {
+      beats.push(Object.assign({}, base, { kind: "tier", title: tl("promo.tier.title", "The market turns"),
+        cap: bankLine("promo.tier.cap", key, vars) }));
+    }
     beats.push(Object.assign({}, base, { kind: "commission", last: true, promo: p, said, clip, ranks, rankIndex, captain }));
     return beats;
   }
@@ -202,6 +214,52 @@ const Promotion = (() => {
       <rect x="50" y="28" width="108" height="8" rx="2"/><rect x="62" y="22" width="8" height="20" rx="2"/>
       <rect x="132" y="36" width="10" height="16" rx="1"/><rect x="146" y="36" width="10" height="11" rx="1"/></g>
       <path d="M16 12 C2 2 0 22 12 22 C0 26 6 44 18 30 Z M40 12 C54 2 56 22 44 22 C56 26 50 44 38 30 Z" fill="#a8282e" stroke="#5d1013" stroke-width="1.2" transform="translate(0 -6) scale(1 .9)"/></svg>`;
+
+  /* The cargo the dealers closed out and the cargo now on the market (p.tier, Cargo Tiers 25 Nov 2026). */
+  const goodLabel = k => (D.goods && D.goods[k] && D.goods[k].name) || k;
+  function tierBlockHtml(tier) {
+    if (!tier) return "";
+    const sold = (tier.sold || []).map(r => `<li><span>${esc(r.qty.toLocaleString())} ${esc(goodLabel(r.good))}</span><i>${esc(money(r.gain))}</i></li>`).join("");
+    const out = (tier.goods_out || []).map(g => esc(goodLabel(g))).join(", ");
+    const inn = (tier.goods_in || []).map(g => esc(goodLabel(g))).join(", ");
+    return `<div class="pm-c-tier">
+      <p class="pm-c-tier-h"><small>${tfb("promo.tier.closed", "Closed out by the dealers")}</small></p>
+      ${sold ? `<ul class="pm-c-sold">${sold}</ul><p class="pm-c-paid"><span>${tfb("promo.tier.paid", "Paid to you")}</span><b>${esc(money(tier.total || 0))}</b></p>`
+        : `<p class="pm-c-none">${tfb("promo.tier.none", "Nothing of yours was left on the old shelves.")}</p>`}
+      ${out ? `<p class="pm-c-gone"><s>${out}</s></p>` : ""}
+      ${inn ? `<p class="pm-c-tier-h"><small>${tfb("promo.tier.opened", "Now on the market")}</small></p><p class="pm-c-new">${inn}</p>` : ""}
+      ${tier.cancelled ? `<p class="pm-c-drop">${tfb("promo.tier.dropped", "Commissions for the old cargo were cancelled, with no fee and no blame.")}</p>` : ""}
+    </div>`;
+  }
+
+  /* The card for a tier step with no rank-up beside it: the Mayor beside a notice from the dealers. */
+  function tierCardHtml(b) {
+    const p = b.promo, record = p.record || {}, port = portName(p.port), captain = b.captain;
+    const mayor = te("fleet.promotion_mayor", { port });
+    const mayorName = castOf("mayor").name || "";
+    const mayorItm = mayorItem(p.port, p.rank_id);
+    const mayorPic = mayorItm ? Media.faceMarkup(mayorItm, "", `alt="${mayor}"`)
+      : castOf("mayor").portrait ? `<img src="${esc(castOf("mayor").portrait)}" alt="${mayor}">` : "";
+    const date = record.date || S.date || "";
+    const house = captain.firm || captain.name;
+    return `<figure class="sf-rwho pm-rwho${mayorPic ? "" : " nopic"}">${mayorPic}
+        <figcaption class="pm-line"><b>${mayor}</b>${mayorName ? `<span>${esc(mayorName)}</span>` : ""}</figcaption></figure>
+      <div class="pm-right">
+        <section class="pm-cert pm-tiercert" role="dialog" aria-modal="true" aria-labelledby="pm-title">
+          <i class="pm-co tl"></i><i class="pm-co tr"></i><i class="pm-co bl"></i><i class="pm-co br"></i>
+          <p class="pm-c-order">${tfb("promo.tier.order", "By order of the {mayor}, and with the dealers' compliments", { mayor })}</p>
+          <p class="pm-c-game">${tfb("promo.cert.game", "Crimson Ledger")}</p>
+          <p class="pm-c-kind"><span id="pm-title">${tfb("promo.tier.kind", "Notice from the Dealers")}</span></p>
+          <p class="pm-c-to">${tfb("fleet.promotion_to", "Captain {name}", { name: captain.name })}</p>
+          <p class="pm-c-house">${tfb("fleet.promotion_house", "of {firm}", { firm: house })}</p>
+          <p class="pm-c-cite">${tfb("promo.tier.cite", "The old dealers have closed out their stock and paid you in full. Nothing was lost in the swap.")}</p>
+          ${tierBlockHtml(p.tier)}
+          <div class="pm-c-foot"><div class="pm-c-sign"><span class="pm-c-pen">${esc(mayorName || mayor)}</span><small>${mayor} · ${esc(date)}</small></div></div>
+        </section>
+        <button type="button" class="primary pm-go" data-pm="go" disabled>${tfb("promo.tier.accept", "Understood, Captain")} <span aria-hidden="true">&rarr;</span></button>
+        <div class="fleet-promotion-error pm-error" role="alert"></div>
+      </div>`;
+  }
 
   function commissionHtml(b) {
     const p = b.promo, me = S.me, record = p.record || {}, port = portName(p.port);
@@ -243,6 +301,7 @@ const Promotion = (() => {
           ${record.previous ? `<p class="pm-c-elev">${esc(record.previous.title)} <span aria-hidden="true">&rarr;</span> ${esc(p.title)}</p>` : ""}
           <p class="pm-c-cite">${te(next ? "fleet.promotion_citation" : "fleet.promotion_citation_top", { firm: house })}</p>
           <dl class="pm-c-figs">${figs.join("")}</dl>
+          ${tierBlockHtml(p.tier)}
           <blockquote class="pm-c-note"><small>${tfb("promo.cert.note", "A word from the Mayor")}</small>
             <p>“${esc(b.said)}”</p></blockquote>
           <div class="pm-c-foot">
@@ -352,14 +411,14 @@ const Promotion = (() => {
   }
 
   function drawBeat(b) {
-    const card = b.kind === "commission";
+    const card = b.kind === "commission" || b.kind === "tiercard";
     screen.dataset.kind = b.kind;
     screen.classList.toggle("costs", card);
     screen.classList.remove("talking");
     setBg(b.bg);
     const result = $(".pm-result");
     if (card) {
-      result.innerHTML = commissionHtml(b);
+      result.innerHTML = b.kind === "tiercard" ? tierCardHtml(b) : commissionHtml(b);
       result.hidden = false;
       refreshFoot();
       return;

@@ -38,6 +38,8 @@ OVERRIDES = {
     "customs.pay_warn.less": "If the officer buys at your price, you hand over your cargo for less than it's worth.",
     "customs.pay_warn.nothing": "If the officer buys at your price, you hand over your cargo for nothing.",
     "customs.rate_base": "the usual rate",
+    "customs.pad_tip": "Against a stranger with no shares. Good standing and shares in the port make the officer pad "
+                       "less; poor standing makes the officer pad more.",
     "customs.share": "{pct}% of the officer's figure",
     "customs.she_paid": "Paid to you",
     "customs.tell_bored.0": "The officer barely looks up from the ledger. Honest captains are a bore.",

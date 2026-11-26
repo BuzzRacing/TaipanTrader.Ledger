@@ -381,6 +381,7 @@ function tableHtml(tb) {
   return `<section class="card"><div class="head"><h2>${esc(tb.title)}</h2>
       <button type="button" class="link" data-reset="${tb.path}" data-table="1">restore defaults</button></div>
     ${tb.help ? `<p class="help">${esc(tb.help)}</p>` : ""}
+    ${tb.path === "goods" ? `<div id="tierwarn">${tierWarn()}</div>` : ""}
     <div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     <div class="row">${add}</div></section>`;
 }
@@ -410,6 +411,24 @@ function forbidWarn() {
   });
   return low.length ? `<p class="note bad">Careful: ${low.join("; ")}. It can hardly be sold.</p>` : "";
 }
+/* Cargo Tiers (25 Nov 2026): every port should trade at least one cargo at every tier, or a captain at that rank has
+   nothing to deal in there. Advice only, like the warning above: it never blocks a save. Mirrors config.tier_gaps(). */
+function tierWarn() {
+  const rows = get(CFG, "ports"), goods = get(CFG, "goods"), steps = (((CFG.rules || {}).tiers || {}).steps) || [];
+  const bad = [];
+  Object.keys(rows).forEach(p => {
+    const banned = rows[p].forbidden || [], tiers = [];
+    for (let t = 0; t <= steps.length; t++) {
+      const any = Object.keys(goods).some(g => {
+        const e = +goods[g].enters || 0, l = +goods[g].leaves || 0;
+        return e <= t && !(l && t >= l) && !banned.includes(g);
+      });
+      if (!any) tiers.push(t);
+    }
+    if (tiers.length) bad.push(`${esc(rows[p].name)} at tier ${tiers.join(", ")}`);
+  });
+  return bad.length ? `<p class="note bad">Cargo tiers: no cargo is traded at ${bad.join("; ")}. A captain at that rank could not trade there.</p>` : "";
+}
 function forbidHtml(m) {
   const rows = get(CFG, m.path), cols = get(CFG, m.cols_from);
   const colKeys = m.cols_from === "goods" ? goodsByPrice(Object.keys(cols)) : Object.keys(cols);
@@ -418,7 +437,7 @@ function forbidHtml(m) {
     `<td class="c"><input type="checkbox" data-fb="${m.path}" data-r="${esc(p)}" data-c="${esc(g)}" ` +
     `${(rows[p].forbidden || []).includes(g) ? "checked" : ""} title="${esc(rows[p].name)} does not trade ${esc(cols[g].name)}"></td>`).join("") + "</tr>").join("");
   return `<section class="card"><h2>${esc(m.forbid.title)}</h2><p class="help">${esc(m.forbid.help)}</p>
-    <div id="fbwarn">${forbidWarn()}</div>
+    <div id="fbwarn">${forbidWarn()}${tierWarn()}</div>
     <div class="scroll"><table class="matrix"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></section>`;
 }
 
@@ -660,6 +679,11 @@ function edited(e) {
     el.classList.toggle("bad", v === undefined);
     if (v === undefined) return;
     row[d.c] = v;
+    if (d.t === "goods" && (d.c === "enters" || d.c === "leaves")) {
+      const w = $("#fbwarn"), tw = $("#tierwarn");
+      if (w) w.innerHTML = forbidWarn() + tierWarn();
+      if (tw) tw.innerHTML = tierWarn();
+    }
   } else if (d.m) {
     const row = get(CFG, d.m)[d.r];
     row.mods = row.mods || {};
@@ -675,7 +699,7 @@ function edited(e) {
     if (el.checked) list.push(d.c);
     row.forbidden = list;
     const w = $("#fbwarn");
-    if (w) w.innerHTML = forbidWarn();
+    if (w) w.innerHTML = forbidWarn() + tierWarn();
   } else if (d.lang) {
     const L = LANGS[lv.code], part = lv.family ? "family" : "strings";
     if (el.value.trim()) L[part][d.lang] = el.value; else delete L[part][d.lang];

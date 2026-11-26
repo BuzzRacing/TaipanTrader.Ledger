@@ -68,5 +68,16 @@ women = [cid for cid in cast.CHARACTERS if cid not in cast.MEN]
 check(len(men) >= 10 and len(women) >= 10, "the cast is a mix of men and women")
 check(cfg["brand"]["title_a"] == "Taipan" and cfg["brand"]["title_b"] == "Trader", "the brand is Taipan Trader")
 
+# Picture scripts that arrive with a Crimson Ledger merge: none may ask for NSFW pictures or aim at Crimson's server.
+import glob  # noqa: E402
+SCRIPTS = glob.glob(os.path.join(ROOT, "*.bat")) + glob.glob(os.path.join(ROOT, "tools", "queue_*.py"))
+for path in SCRIPTS:
+    with open(path, encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    name = os.path.relpath(path, ROOT)
+    check(not re.search(r'"nsfw":\s*"yes"|only-kind nsfw|\b\d+ NSFW\b|\b(nude|naked|topless|sultry|boudoir)\b', text,
+                        re.I), "{}: asks for NSFW pictures".format(name))
+    check(":8765" not in text, "{}: points at Crimson Ledger's server (:8765)".format(name))
+
 print("{} problem(s).".format(len(problems)) if problems else "Taipan Trader rules hold.")
 sys.exit(1 if problems else 0)

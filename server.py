@@ -54,6 +54,7 @@ import journal
 import captain_review
 import manual_feed
 import media
+import picture_use
 import recipes
 import stats
 import strings
@@ -1062,6 +1063,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, preview.read(), "text/html; charset=utf-8")
         if path == "/admin":
             return self._file("admin.html")
+        if path == "/pictures":
+            return self._file("picture-use.html")        # most-used pictures, friendly page (admin sign-in)
         if path == "/stats":
             return self._file("stats.html")
         if path == "/api/stats":
@@ -1181,6 +1184,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._admin_get(path[len("/api/admin/"):], query)
         if media.is_blocked(path, engine.CFG):
             return self._send(404, "Not found", "text/plain")
+        if not query.get("nocount"):
+            picture_use.record(path)      # which pictures get shown most (picture_use.py); the report page asks not to count
         if path.startswith("/media/") or os.path.splitext(path)[1].lower() in media.VIDEO_EXT:
             return self._stream(path.lstrip("/"))
         return self._file(path.lstrip("/"))
@@ -1594,6 +1599,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------- admin --
     def _admin_get(self, what, query):
+        if what == "picture-use":
+            return self._send(200, dict(picture_use.report(int((query.get("n") or ["30"])[0] or 30)), ok=True))
         if what == "all":
             with HUB.cond:
                 cfg = engine.CFG

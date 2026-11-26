@@ -166,13 +166,13 @@ def best_run(g, p):
     best = None
     banned_here = set(g.banned(here))
     for good in e.GOODS:
-        if good in banned_here or not e.sold_here(here, good):      # a cargo this port forbids is not on her counter
+        if good in banned_here or not e.sold_to(p, here, good):      # a cargo this port forbids is not on her counter
             continue
         top = _max_buy(g, p, good, room, cash)
         if top <= 0:
             continue
         for port in e.PORTS:
-            if port == here or good in g.banned(port) or not e.sold_here(port, good):
+            if port == here or good in g.banned(port) or not e.sold_to(p, port, good):
                 continue
             mid = arrival_mid(g, port, good)
             odds = fight_odds(g, p, here, port)

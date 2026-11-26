@@ -1,0 +1,34 @@
+{
+ "_about": "The Pi's live market settings as read from Admin on 25 Nov 2026 (Cargo Tiers phase 8): cargo, market rules, rank ladder, port price multipliers and forbidden cargo. The six luxuries here are the OLD placeholder rows the Pi was seeded with; tests/tiers_sim.py and tests/tiers_market_scan.py replace them with the shipped rows.",
+ "goods": {
+  "opium": {"name": "Opium", "family_name": "Fireworks", "base": 8522, "vol": 0.5, "depth": 600, "contraband": true, "enters": 0, "leaves": 0, "ban_odds": 0},
+  "gold": {"name": "Gold", "family_name": "", "base": 6400, "vol": 0.5, "depth": 900, "contraband": false, "enters": 0, "leaves": 0, "ban_odds": 0.5},
+  "silk": {"name": "Silk", "family_name": "", "base": 3520, "vol": 0.4, "depth": 1200, "contraband": false, "enters": 0, "leaves": 0, "ban_odds": 0.1},
+  "porcelain": {"name": "Porcelain", "family_name": "", "base": 1633, "vol": 0.6, "depth": 1500, "contraband": false, "enters": 0, "leaves": 2, "ban_odds": 0},
+  "arms": {"name": "Arms", "family_name": "Ironware", "base": 2780, "vol": 0.5, "depth": 2000, "contraband": false, "enters": 0, "leaves": 2, "ban_odds": 0.75},
+  "spices": {"name": "Spices", "family_name": "", "base": 922, "vol": 0.7, "depth": 3000, "contraband": false, "enters": 0, "leaves": 2, "ban_odds": 0},
+  "tea": {"name": "Tea", "family_name": "", "base": 630, "vol": 0.8, "depth": 3000, "contraband": false, "enters": 0, "leaves": 1, "ban_odds": 0},
+  "rice": {"name": "Rice", "family_name": "", "base": 310, "vol": 0.8, "depth": 3500, "contraband": false, "enters": 0, "leaves": 1, "ban_odds": 0},
+  "marijuana": {"name": "Marijuana", "family_name": "Hemp", "base": 4840, "vol": 0.3, "depth": 2000, "contraband": false, "enters": 0, "leaves": 0, "ban_odds": 0.35}
+ },
+ "market": {"spread_base": 0.04, "spread_swing": 0.03, "impact": 0.25, "floor": 0.25, "ceiling": 4.5, "reversion": 0.3, "vol_mult": 1,
+  "start_spread": 0.15, "worth_cargo": 0.9, "depth_v2": true, "purse_enabled": true, "purse_depths": 0.75, "purse_over": 0.35,
+  "purse_boom": 1, "purse_boom_cap": 10, "sellback_depths": 0.25, "wild_goods": ["gold", "marijuana", "silk", "tea"], "wild_vol": 0.5,
+  "wild_reversion": 0.25, "wild_floor": 0.35, "wild_ceiling": 9, "runs_chance": 0.03, "runs_min": 3, "runs_max": 5,
+  "runs_drift_min": 0.3, "runs_drift_max": 0.6, "wild_calm": true, "wild_calm_vol": 0.12, "runs_pause_reversion": true},
+ "ranks": {"trader": 1000000, "merchant": 10000000, "senior_merchant": 20000000, "merchant_prince": 50000000, "taipan": 100000000,
+  "tai_pan_china_seas": 500000000, "merchant_lord": 1000000000, "hong_master": 5000000000},
+ "start": {"cash": 7500, "debt": 2000, "rep": 66},
+ "ports": {
+  "hongkong": {"mods": {"arms": 0.8, "tea": 0.9, "gold": 1.05}, "forbidden": []},
+  "shanghai": {"mods": {"silk": 0.6, "tea": 0.6, "opium": 1.35, "arms": 1.3, "spices": 1.3, "gold": 1.15}, "forbidden": ["sandalwood"]},
+  "nagasaki": {"mods": {"porcelain": 0.6, "silk": 0.85, "arms": 1.5, "spices": 1.4, "rice": 1.3, "opium": 1.2, "gold": 0.55}, "forbidden": ["ambergris"]},
+  "manila": {"mods": {"rice": 0.9, "spices": 0.9, "silk": 1.3, "porcelain": 1.3, "tea": 1.2, "gold": 0.85}, "forbidden": ["ginseng"]},
+  "saigon": {"mods": {"rice": 0.55, "spices": 0.85, "arms": 1.3, "porcelain": 1.25}, "forbidden": ["ambergris"]},
+  "bangkok": {"mods": {"rice": 0.6, "spices": 0.8, "silk": 1.25, "arms": 1.2, "tea": 1.2, "gold": 1.2}, "forbidden": ["jade"]},
+  "singapore": {"mods": {"arms": 0.85, "opium": 0.85, "tea": 1.4, "silk": 1.35, "porcelain": 1.3}, "forbidden": []},
+  "batavia": {"mods": {"spices": 0.5, "rice": 1.2, "tea": 1.3, "silk": 1.4, "arms": 1.25, "porcelain": 1.35}, "forbidden": ["jade"]},
+  "calcutta": {"mods": {"opium": 0.55, "tea": 0.8, "rice": 0.9, "silk": 1.3, "spices": 1.3, "porcelain": 1.5, "gold": 1.35}, "forbidden": ["camphor"]},
+  "foochow": {"mods": {"tea": 0.5, "porcelain": 0.85, "opium": 1.3, "arms": 1.25, "spices": 1.2, "rice": 1.15}, "forbidden": ["pearls"]}
+ }
+}

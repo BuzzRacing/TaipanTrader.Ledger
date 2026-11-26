@@ -38,11 +38,43 @@ EN = {
     "promo.cert.note": "A word from the Mayor",
     "promo.cert.key": "With the Key to the Mayor's Bedchamber. Knock twice, Captain.",
     "promo.cert.ring": "Mayor of {port} · Commissioned · ",
+    # ---- Cargo Tiers: the dealers close out the old stock (25 Nov 2026) -----------------------------------------
+    # Narration, never spoken. l.tier_buyout / l.tier_step are the Captain's Log lines (shown, not read aloud).
+    "promo.tier.title": "The market turns",
+    "promo.tier.open.0": "A boy with a sealed note finds you on the wharf. The old dealers of {port} have closed their books on you, Captain, and the Mayor would like to explain why.",
+    "promo.tier.open.1": "The Mayor of {port} has sent for the captain of {firm}. Something about the dealers, and something about a better class of cargo.",
+    "promo.tier.open.2": "The cheap and cheerful goods have been wheeled out of the back door. The Mayor of {port} wants a word before the new stock comes in the front.",
+    "promo.tier.open.3": "Word on the quay is that the small dealers cannot afford you any more, Captain {name}. The Mayor of {port} says it kindly.",
+    "promo.tier.open.4": "Candles lit, ledgers open, and a very polite clerk waiting with a cheque. The Mayor of {port} has news about your cargo.",
+    "promo.tier.open.5": "You have outgrown the old stalls, Captain. The Mayor of {port} is waiting to tell you who has been sent in to replace them.",
+    "promo.tier.cap.0": "And there is the matter of the cargo. The old dealers of {port} have closed out your stock at the full price, and finer goods are coming in.",
+    "promo.tier.cap.1": "A new rank brings a new class of trade. The common dealers have paid you off, and the luxury houses have opened their doors.",
+    "promo.tier.cap.2": "The small dealers bow out, cheque in hand, and the great houses of the China Seas come in. This is what a commission buys, Captain.",
+    "promo.tier.cap.3": "Out with the cheap and cheerful, in with the very best. The old stock is paid for, and the new stock is waiting.",
+    "promo.tier.cap.4": "One more thing before the seal cools: your old cargo has been bought out at the market price, and the luxury trade is open to you.",
+    "promo.tier.cap.5": "The market has changed its mind about you, Captain {name}. The old dealers have settled up, and finer things are for sale.",
+    "promo.tier.kind": "Notice from the Dealers",
+    "promo.tier.order": "By order of the {mayor}, and with the dealers' compliments",
+    "promo.tier.cite": "The old dealers have closed out their stock and paid you in full. Nothing was lost in the swap.",
+    "promo.tier.closed": "Closed out by the dealers",
+    "promo.tier.opened": "Now on the market",
+    "promo.tier.paid": "Paid to you",
+    "promo.tier.none": "Nothing of yours was left on the old shelves.",
+    "promo.tier.dropped": "Commissions for the old cargo were cancelled, with no fee and no blame.",
+    "promo.tier.accept": "Understood, Captain",
+    "promo.tier.sold_line": "{qty} {good} at {port}: {gain}",
+    "l.tier_buyout": "The old dealers in {port} closed out your {closed} and handed you {total} for the lot. The cheap and cheerful stay behind, Captain. {opened} are on the market now, and they are not shy about the price.",
+    "l.tier_step": "Nothing of yours was left on the old dealers' shelves, Captain. {closed} have left the market and {opened} are in. A better class of goods for a better class of house.",
+    "st.line.tier_buyout": "Cargo closed out by the dealers",
+    "l.tier_off": "The luxury dealers have packed up and left the market, Captain. They bought your {cargo} first, and paid {total} for the lot. Such fine things deserve a proper send-off.",
 }
 
 # Nothing here needs a cleaner version: the captions are narration and already family-friendly.
 FAMILY = {
     "promo.cert.key": "With the Key to the Port of {port}",
+    "l.tier_buyout": "The old dealers in {port} closed out your {closed} and paid you {total} for the lot. {opened} are on the market now.",
+    "l.tier_step": "{closed} have left the market and {opened} are in.",
+    "l.tier_off": "The luxury dealers have left the market. They bought your {cargo} first, and paid {total} for the lot.",
 }
 
-BANKS = ("promo.summons", "promo.rank")
+BANKS = ("promo.summons", "promo.rank", "promo.tier.open", "promo.tier.cap")

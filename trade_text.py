@@ -268,6 +268,28 @@ for _i, (_wink, _say, _fwink, _fsay) in enumerate(_SOLD_MARIJUANA):
     SAY[_k] = _say
     SAY_FAMILY[_k] = _fsay
 
+# Cargo Tiers luxuries (Phase 7): each has its own buy and sell bank (luxury_trade_text.py), used for every trade.
+import luxury_trade_text as _lux
+BULK_MIN_OF = {_g: 1 for _g in _lux.BOUGHT}
+for _g, _bank in _lux.BOUGHT.items():
+    PRODUCT_BUY[_g] = "m.bought." + _g
+    # loop: bought luxury
+    for _i, (_wink, _say, _fwink, _fsay) in enumerate(_bank):
+        _k = "m.bought.{}.{}".format(_g, _i)
+        EN[_k] = BUY + _wink
+        FAMILY[_k] = BUY + _fwink
+        SAY[_k] = _say
+        SAY_FAMILY[_k] = _fsay
+for _g, _bank in _lux.SOLD.items():
+    PRODUCT_SELL[_g] = "m.sold." + _g
+    # loop: sold luxury
+    for _i, (_wink, _say, _fwink, _fsay) in enumerate(_bank):
+        _k = "m.sold.{}.{}".format(_g, _i)
+        EN[_k] = SELL + _wink
+        FAMILY[_k] = SELL + _fwink
+        SAY[_k] = _say
+        SAY_FAMILY[_k] = _fsay
+
 KEYS = list(EN)
 
 # Port Authority, tax paid with nothing wrong: 15 new receipts so the officer stops saying the same one

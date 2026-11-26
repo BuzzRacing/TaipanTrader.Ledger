@@ -40,7 +40,8 @@ async function act(type, extra) {
   ui.busy = true;
   const res = await post("/api/act", Object.assign({ token, type }, extra || {}));
   ui.busy = false;
-  toast(res.ok ? res.msg : res.error, !res.ok);
+  // Her ruling is on the desk card itself; a toast over it covered the Continue button (and printed the declared sum).
+  if (!(res.ok && type === "customs_declare")) toast(res.ok ? res.msg : res.error, !res.ok);
   if (typeof Soundscape !== "undefined") Soundscape.acted(type, res);
   if (res.voice) Voice.say([Object.assign({ text: res.ok ? res.msg : res.error }, res.voice)], { group: "msg", replace: "msg" });
   return res.ok;
@@ -948,6 +949,7 @@ function gameScreen() {
     `${tabFace("tally")}<span>${te("st.open")}</span></button>` +
     `<i class="dk-gap"></i>` + meButton();
   if (ui.tab === "counter" && !me.counter) ui.tab = "port";
+  if (deskPending() && ui.tab !== "port") ui.tab = "port";     // the Market and the rest wait for the desk
   const pane = ({ market: marketTab, port: portTab, fleet: fleetTab, chart: chartTab, counter: counterTab }[ui.tab] || portTab)();
   // The Mayor's side column is one outward-clearance document: harbour charges and the cargo declaration.
   // On the Port tab the race standings sit in the side column under the port art.
@@ -2126,6 +2128,12 @@ function bankRestHtml(cls) {
     ${btn(te("bank.rest", { amount: money(br.amount) }), "bank_rest", "", "pt-go primary")}</div>`;
 }
 
+/* The Port Authority's desk is open for this house (customs.js): its declaration, or her ruling not yet closed. */
+function deskPending() {
+  const c = S.me && S.me.customs;
+  return !!c && (c.status === "declare" || c.status === "verdict");
+}
+
 /* What is worth doing in this port, most useful first. Each item can jump to the tab that does it. */
 function portTodo() {
   const me = S.me, items = [];
@@ -2135,7 +2143,7 @@ function portTodo() {
   const goLedger = spread => btn(te("tab.acct") + arrow, "acct_open", `data-v="${spread}"`, "pt-go");
   if (me.ready) items.push(["ok", te(me.dest ? "port.todo.sailing" : "port.todo.staying", { port: esc(portName(me.dest || me.port)) }), go("chart", te("tab.chart"))]);
   // Cargo that sells here for more than it cost.
-  const sells = Object.keys(me.cargo || {}).map(g => {
+  const sells = deskPending() ? [] : Object.keys(me.cargo || {}).map(g => {      // no sale hints before the declaration
     const q = me.cargo[g] - ((me.bond || {})[g] || 0), paid = paidFor(g);
     return paid === null || q <= 0 ? null : { g, q, gain: quote(g, q, "sell") - paid * q };
   }).filter(x => x && x.gain > 0).sort((a, b) => b.gain - a.gain).slice(0, 2);
@@ -3372,7 +3380,11 @@ app.addEventListener("click", async e => {
     case "acct_close": return Ledger.close();
     case "acct_spread": return Ledger.turnTo(d.v);
     case "acct_step": return Ledger.step(+d.d);
-    case "tab": ui.tab = d.tab; ui.tally = false; ui.ledger = false; render(); return;
+    case "tab":
+      // Nothing else in port, the Market least of all, until the Port Authority has been dealt with (25 Nov 2026):
+      // the prices there would give away what the hold is worth before the declaration.
+      if (deskPending() && d.tab !== "port") { toast(te("customs.first"), true); return; }
+      ui.tab = d.tab; ui.tally = false; ui.ledger = false; render(); return;
     // Under the Counter: pay her and hear the tip; then go to the Market or set the course she named.
     case "counter_pay": await act("counter", { tip: d.tip }); render(); counterHello(); return;
     case "counter_market": ui.tab = "market"; ui.tally = false; Pulse.pin(d.good); return render();

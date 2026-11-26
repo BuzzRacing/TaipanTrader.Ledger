@@ -49,7 +49,10 @@ HOME = "hongkong"
 # price, no market row, no tip, no news, no declaration line, no search. One helper decides: sold_here().
 # Cargo Tiers (24 Nov 2026): False until each captain has their own cargo table (phases 2 to 5 of the build plan).
 # While False, the rules.tiers switch does nothing and the cargo that joins at tier 1 or later stays out of play.
-TIERS_READY = False
+# Phase 2 (25 Nov 2026) adds the per-captain table (tier_of, table_of, sold_to) and the luxuries' own dice. Phases 3 to 5
+# (the per-captain filter, the step and the buyout, the promotion card) are in, so it is True from 25 Nov 2026. The
+# rules.tiers.enabled switch is still off by default: it goes on only after the content and the prices (phases 7, 8).
+TIERS_READY = True
 FORBIDDEN = {}
 
 
@@ -158,8 +161,9 @@ def configure(cfg=None, text=None):
     family = cfg["content"]["rating"] == "family"
     GOODS.clear()
     for key, g in cfg["goods"].items():
-        # Cargo Tiers (24 Nov 2026), phase 1: a cargo that joins at tier 1 or later stays out of play until each captain
-        # has their own table (TIERS_READY). The game, its dice and its tests are exactly as before.
+        # Cargo Tiers (24 Nov 2026): a cargo that joins at tier 1 or later is in the catalog (and its price runs for
+        # everyone) only while the tiers are on (TIERS_READY and rules.tiers.enabled). Off, the game, its dice and its
+        # tests are exactly as before. Which of the catalog a captain trades is table_of(p).
         if int(g.get("enters", 0) or 0) >= 1 and not (TIERS_READY and (cfg["rules"].get("tiers") or {}).get("enabled")):
             continue
         d = dict(g)
@@ -182,6 +186,8 @@ def configure(cfg=None, text=None):
     _defaults_rules = _config.DEFAULTS["rules"]
     for _group in ("estates", "contracts"):
         R[_group] = dict(_defaults_rules[_group], **(cfg["rules"].get(_group) or {}))
+    R["tiers"] = dict(_defaults_rules["tiers"], **(cfg["rules"].get("tiers") or {}))
+    R["tiers"]["steps"] = [k for k in (R["tiers"].get("steps") or ()) if k in {r["id"] for r in cfg["ranks"]}]
     FORBIDDEN.clear()
     R["forbidden"] = dict(_defaults_rules["forbidden"], **(cfg["rules"].get("forbidden") or {}))
     if R["forbidden"].get("enabled", True):
@@ -211,6 +217,56 @@ def sold_here(port, good):
 def goods_of(port):
     """The cargoes this port trades, in the cargo table's order."""
     return [g for g in GOODS if sold_here(port, g)]
+
+
+# ---- Cargo Tiers (25 Nov 2026, phase 2) -------------------------------------------------------------------
+# GOODS is the catalog: every cargo whose price runs in the world, for everyone. Each captain trades only the
+# goods of their own tier: tier 0 is the start, each rules.tiers step is one tier up. A cargo is in a captain's
+# table from the tier in its "enters" field, until the tier in its "leaves" field (0 = never leaves).
+# Off (TIERS_READY False or rules.tiers.enabled False) every captain is tier 0 and sees the original nine.
+
+def tiers_on():
+    """True when the cargo tiers are in play."""
+    return bool(TIERS_READY and (R.get("tiers") or {}).get("enabled"))
+
+
+def tier_count():
+    """How many tiers there are above the start (the number of steps)."""
+    return len((R.get("tiers") or {}).get("steps") or ())
+
+
+def tier_of(p):
+    """The tier a captain trades at: 0 with the tiers off, otherwise their stored tier, kept within the steps."""
+    if not tiers_on():
+        return 0
+    return max(0, min(tier_count(), int(p.get("tier", 0) or 0)))
+
+
+def in_table(tier, good):
+    """True when the cargo is in the table of this tier (the catalog's tier fields only; ports are not asked)."""
+    g = GOODS.get(good)
+    if not g:
+        return False
+    tier = int(tier)
+    leaves = int(g.get("leaves", 0) or 0)
+    return int(g.get("enters", 0) or 0) <= tier and not (leaves and tier >= leaves)
+
+
+def table_of(p):
+    """The cargoes in this captain's table, in the cargo table's order (not yet narrowed to a port)."""
+    t = tier_of(p)
+    return [g for g in GOODS if in_table(t, g)]
+
+
+def sold_to(p, port, good):
+    """True when this captain can see and trade this cargo here: the port trades it (sold_here) and it is in the
+    captain's own table. Where a captain sees or acts, this is the test; prices and market moves use sold_here."""
+    return sold_here(port, good) and in_table(tier_of(p), good)
+
+
+def goods_for(p, port):
+    """The cargoes this captain can trade in this port, in the cargo table's order."""
+    return [g for g in GOODS if sold_to(p, port, g)]
 
 
 def contraband():
@@ -510,6 +566,7 @@ class Game:
         if seed is None:
             seed = secrets.randbits(62)
         self.rng = random.Random(seed)
+        self._tier_seed = seed    # the luxuries' own dice are seeded from this until the game has an id (Cargo Tiers)
         if state:
             self.s = state
             self.reconcile()
@@ -664,7 +721,16 @@ class Game:
 
     def _opening(self, port, good):
         spread = R["market"]["start_spread"]
-        return self._target(port, good) * self.rng.uniform(1 - spread, 1 + spread)
+        return self._target(port, good) * self._dice_for(good, "open", port).uniform(1 - spread, 1 + spread)
+
+    def _dice_for(self, good, kind, port):
+        """The dice a cargo's price draws come from. The original nine use the game's one run of dice, as ever. A cargo
+        that joins at a tier uses a run of its own (seeded by game, month, port and cargo, the rot.py way), so the
+        tiers being on or off never moves the nine's dice or any other draw in the month (Cargo Tiers, phase 2)."""
+        if int(GOODS[good].get("enters", 0) or 0) < 1:
+            return self.rng
+        key = self.s.get("seed0") or self.s.get("game_id") or self._tier_seed     # the game's first seed: repeatable
+        return random.Random("tier:{}:{}:{}:{}:{}".format(key, kind, self.s.get("turn", 0), port, good))
 
     def banned(self, port):
         """Cargo banned in a port right now: the always-contraband goods plus any
@@ -799,6 +865,52 @@ class Game:
         month = self.s["turn"] % 12
         self.s["weather"] = {r: self._roll_region(r, month) for r in REGIONS}
 
+    def _luxury_buyout(self):
+        """Cargo Tiers, phase 6: the luxuries leave the catalog when an Admin turns the tiers off (or deletes one) in a
+        running game, so a house holding them would lose them without a word. The dealers buy them first, at the last
+        price on the book less the usual spread and the size of the order, paid in silver (about what net worth
+        counted), from the hold at the port, the home warehouse and each depot. The tier itself falls back to 0 in
+        reconcile; switching the tiers on again gives the steps (and the cards) again."""
+        s = self.s
+        if s.get("phase") == "lobby":
+            return
+        luxuries = set(_config.TIER_GOODS)
+        shipped = _config.DEFAULTS["goods"]
+        for p in s["players"].values():
+            if not isinstance(p.get("cargo"), dict):
+                continue
+            sites = [(p.get("port"), p["cargo"])]
+            if p.get("wh"):
+                sites.append((home_of(p), p["wh"]))
+            for port, d in (p.get("depots") or {}).items():
+                if isinstance(d, dict) and d.get("goods"):
+                    sites.append((port, d["goods"]))
+            basis = p.get("basis") if isinstance(p.get("basis"), dict) else {}
+            total, names = 0.0, []
+            for port, goods in sites:
+                for g in [g for g in list(goods) if g in luxuries and g not in GOODS]:
+                    q = int(goods.get(g, 0) or 0)
+                    base = shipped.get(g) or {}
+                    mid = float(((s.get("prices") or {}).get(port) or {}).get(g) or base.get("base", 0) or 0)
+                    if port in PORTS and q > 0 and mid > 0:
+                        k = R["market"]["impact"] * q / max(1.0, float(base.get("depth", 1) or 1))
+                        gain = float(math.floor(q * (mid + mid / (1 + k)) / 2 * (1 - self.spread(p, port))))
+                        unit = float(basis.get(g, gain / q))
+                        p["cash"] += gain
+                        self._book(p, "sales", gain)
+                        self._book(p, "cost", -unit * q)
+                        total += gain
+                        if base.get("name", g) not in names:
+                            names.append(base.get("name", g))
+                    del goods[g]
+            for g in [g for g in list(basis) if g in luxuries and g not in GOODS]:
+                basis.pop(g, None)
+            if names and isinstance(p.get("log"), list):
+                p["log"].append(tx("l.tier_off", cargo=", ".join(names), total=money(total)))
+            if total:
+                self._ev("finance", "tier_off", "{}: the dealers bought out {} ({})".format(p["name"], ", ".join(names), money(total)),
+                         p, amount=int(round(total)))
+
     def reconcile(self):
         """Make a saved or running game fit the current settings (ports, cargoes
         or ship types may have been added or removed in the Admin page)."""
@@ -813,6 +925,7 @@ class Game:
         s.setdefault("price_hist", [])          # the keepers' price book: month-start prices, newest last
         if "news_meta" not in s:                # games saved before news heat: old headlines start cold
             s["news_meta"] = {n: {"turn": s.get("turn", 0), "heat": 0} for n in s["news"]}
+        self._luxury_buyout()                   # Cargo Tiers: before the luxuries' prices are dropped below
         s["prices"] = {port: {g: (s["prices"].get(port, {}).get(g) or self._opening_safe(port, g)) for g in goods_of(port)}
                        for port in PORTS}
         s["shocks"] = [sh for sh in s["shocks"] if sh["port"] in PORTS and sh["good"] in GOODS and sold_here(sh["port"], sh["good"])]
@@ -844,6 +957,7 @@ class Game:
                     k += 1
                 seen.add(sh["name"])
             p["fame"] = max(0.0, float(p.get("fame", 0) or 0))
+            p["tier"] = max(0, min(tier_count(), int(p.get("tier", 0) or 0)))   # Cargo Tiers: older saves start at 0
             p["home"] = home_of(p)
             if p["port"] not in PORTS:
                 p["port"] = p["home"]
@@ -963,7 +1077,7 @@ class Game:
              "protect": 0, "ready": False, "dest": None, "orders": "fight",
              "log": [tx("l.arrive", home=PORTS[port]["name"], ship=SHIPS[st["ship"]]["name"].lower(), cash=money(cash), debt=money(st["debt"]))],
              "known": {}, "wrecks": 0, "tab": self._new_tab(), "slip": False, "basis": {}, "customs": None,
-             "gift_rep": {}}
+             "gift_rep": {}, "tier": 0}
         if captain:
             p["captain"] = captain
         p["rep"][port] = float(st["home_rep"])
@@ -1477,6 +1591,7 @@ class Game:
         if self.s["phase"] == "port":
             for captain in self.s["players"].values():
                 self._promote(captain)
+                self._check_tier(captain)
 
     def _promote(self, p):
         if self.s["phase"] != "port" or p["port"] != home_of(p) or p.get("voy") or self._customs_pending(p):
@@ -1515,6 +1630,131 @@ class Game:
         self._ev("players", "promotion", "{} was commissioned as {} in {}".format(
             p["name"], rank["title"], PORTS[p["port"]]["name"]), p, rank=rank["title"], port=p["port"],
                  promotion_id=serial)
+
+    # ---- Cargo Tiers, phase 4: the step (25 Nov 2026) --------------------------------------------------------
+    # A house climbs a tier when its worth qualifies for the rank a step names (rules.tiers.steps). It is worked out
+    # from worth, not from the commissioned rank: bankruptcy does not take the rank back, but it does take the tier
+    # back, and the climb then starts again. It only goes up, and only where a promotion can be made (home port, in
+    # port, nothing at sea, nothing at customs). Cargo that has left the table is bought out by the dealers at once.
+    def tier_for(self, p):
+        """The tier this house's worth qualifies for: one for each step whose rank its worth has reached."""
+        ids = [r["id"] for r in CFG["ranks"]]
+        qualified = rank_index(int(self.worth(p)), self.s.get("years"))
+        return sum(1 for k in (R["tiers"].get("steps") or ()) if k in ids and ids.index(k) <= qualified)
+
+    def _check_tier(self, p):
+        if not tiers_on() or self.s["phase"] != "port" or p["port"] != home_of(p) or p.get("voy") or self._customs_pending(p):
+            return
+        have, want = tier_of(p), self.tier_for(p)
+        if want > have:
+            self._tier_step(p, have, want)
+
+    def _tier_step(self, p, old, new):
+        """Move a house from one tier to a higher one: close out every cargo that is not in the new table (the hold at
+        the home port, the home warehouse, each warehouse away at its own port) at what the dealers would pay, which is
+        what net worth already counts, so the swap is worth-neutral. The dealers' purse is not spent and prices do not
+        move: it is a valuation paid in silver, not a sale into the market. Contracts, offers, lots and tips for a cargo
+        that left are dropped without penalty. The record goes in p["tier_steps"] for the card (phase 5)."""
+        s = self.s
+        out = [g for g in GOODS if in_table(old, g) and not in_table(new, g)]
+        coming = [g for g in GOODS if in_table(new, g) and not in_table(old, g)]
+        gone = {g for g in GOODS if not in_table(new, g)}
+        sites = [(p["port"], "hold", p["cargo"])]
+        if p.get("wh"):
+            sites.append((home_of(p), "wh", p["wh"]))
+        for port, d in list(depots_of(p).items()):
+            if isinstance(d, dict) and d.get("goods"):
+                sites.append((port, "depot", d["goods"]))
+        basis = p.setdefault("basis", {})
+        lines, total, cost_total = [], 0.0, 0.0
+        for g in [g for g in GOODS if g in gone]:
+            unit = None
+            for port, where, goods in sites:
+                q = int(goods.get(g, 0) or 0)
+                if q <= 0:
+                    continue
+                gain = self.dealer_value(p, port, g, q)
+                unit = basis.get(g, gain / float(q)) if unit is None else unit
+                p["cash"] += gain
+                self._book(p, "sales", gain)
+                self._book(p, "cost", -unit * q)
+                total += gain
+                cost_total += unit * q
+                lines.append({"good": g, "qty": q, "port": port, "where": where, "gain": int(round(gain))})
+                del goods[g]
+            bond = (p.get("bond") or {}).get("goods")
+            if isinstance(bond, dict):
+                bond.pop(g, None)
+            basis.pop(g, None)
+            if isinstance(p.get("net"), dict):
+                p["net"].pop(g, None)
+            if isinstance((p.get("tab") or {}).get("goods"), dict):
+                p["tab"]["goods"].pop(g, None)
+        cancelled = []
+        for k in list(p.get("contracts") or []):
+            if k.get("good") in gone:
+                cancelled.append(self._contract_text(k))
+                p["contracts"].remove(k)
+                if k.get("slot") == "year" and int(p.get("year_goal", -1)) == s["turn"] // 12:
+                    p.pop("year_goal", None)             # the year's commission is not counted as taken
+        offers = p.get("offers") or {}
+        for slot, o in list(offers.items()):
+            if o and o.get("good") in gone:
+                offers[slot] = None
+        if (p.get("lot") or {}).get("good") in gone:
+            p.pop("lot", None)
+        if isinstance(p.get("tips"), dict):
+            p["tips"] = {k: {g: x for g, x in (v or {}).items() if g not in gone} for k, v in p["tips"].items()}
+        p["hot_tips"] = [t for t in (p.get("hot_tips") or []) if t.get("good") not in gone]
+        p["tier"] = new
+        self._note_prices(p)                              # the new table's prices at home are on the book at once
+        rec = {"turn": s["turn"], "date": date_label(s["turn"]), "from": old, "to": new, "port": p["port"],
+               "goods_in": coming, "goods_out": out, "total": int(round(total)), "cost": int(round(cost_total)),
+               "lines": lines, "cancelled": cancelled, "told": False}
+        steps = p.setdefault("tier_steps", [])
+        steps.append(rec)
+        del steps[:-20]
+        self._tier_tell(p, rec)
+        self._ev("finance", "tier_step", "{} moved from tier {} to tier {}: {} in, {} out; the dealers closed out {}{}".format(
+            p["name"], old, new, ", ".join(GOODS[g]["name"] for g in coming) or "nothing",
+            ", ".join(GOODS[g]["name"] for g in out) or "nothing",
+            money(total) if lines else "nothing held", "; {} commission(s) dropped".format(len(cancelled)) if cancelled else ""),
+            p, tier_from=old, tier_to=new, goods_in=list(coming), goods_out=list(out), total=int(round(total)),
+            lines=list(lines), cancelled=list(cancelled))
+
+    def _tier_tell(self, p, rec):
+        """Phase 5, decision 11: the step is told inside the promotion. The Captain's Log gets a line; the card (a
+        `tier` block) rides on the promotion made in the same pass, or, when there is none (a house that crossed the
+        rank earlier, or the switch turned on in a running game), takes its own place in the same `promotions` queue
+        so the `promotion_ack` flow carries it. Both steps at once are one record, so one card."""
+        names = lambda ids: ", ".join(GOODS[g]["name"] for g in ids if g in GOODS) or "nothing"
+        port = PORTS[p["port"]]["name"] if p["port"] in PORTS else ""
+        p["log"].append(tx("l.tier_buyout" if rec["lines"] else "l.tier_step", port=port, total=money(rec["total"]),
+                           closed=names(rec["goods_out"]), opened=names(rec["goods_in"])))
+        sold = {}
+        for ln in rec["lines"]:
+            row = sold.setdefault(ln["good"], {"good": ln["good"], "qty": 0, "gain": 0})
+            row["qty"] += ln["qty"]
+            row["gain"] += ln["gain"]
+        block = {"from": rec["from"], "to": rec["to"], "date": rec["date"], "port": p["port"], "total": rec["total"],
+                 "goods_in": list(rec["goods_in"]), "goods_out": list(rec["goods_out"]), "sold": list(sold.values()),
+                 "cancelled": len(rec["cancelled"])}
+        queue = p.setdefault("promotions", [])
+        mate = next((k for k in reversed(queue) if k.get("kind") != "tier" and not k.get("tier")
+                     and (k.get("record") or {}).get("turn") == self.s["turn"]), None)
+        if mate is not None:
+            mate["tier"] = block
+        else:
+            ranks = CFG["ranks"]
+            rank = self.commissioned_rank(p)
+            serial = p.get("promotion_serial", 0) + 1
+            p["promotion_serial"] = serial
+            queue.append({"id": serial, "kind": "tier", "rank_id": rank["id"], "title": rank["title"], "port": p["port"],
+                          "record": {"worth": int(self.worth(p)), "ships": len(p["ships"]), "date": rec["date"],
+                                     "turn": self.s["turn"], "name": p["name"], "firm": p["firm"], "previous": None,
+                                     "next": None, "ranks": [{"id": r["id"], "title": r["title"]} for r in ranks]},
+                          "tier": block, "text": ""})
+        rec["told"] = True
 
     def _rank_view(self, p, worth):
         ranks = CFG["ranks"]
@@ -1702,7 +1942,9 @@ class Game:
         # Before her clerks come aboard the crew squirrels away a share of the silver and cargo aboard
         # (rules.hide.bankrupt). It stays with the house; the cargo rides in the new ship, as much as fits.
         hid_cash = int(max(0.0, p["cash"]) * self._hide_share()) if self._hide_on("bankrupt") else 0
-        hid = self._crew_hide(p, dict(p["cargo"]), "bankrupt", "finance")
+        # Cargo Tiers: the house starts again at tier 0, so only cargo of the start table can be hidden; the rest
+        # (the luxuries) goes to the moneylender with everything else. With the tiers off this is every cargo.
+        hid = self._crew_hide(p, {g: q for g, q in p["cargo"].items() if in_table(0, g)}, "bankrupt", "finance")
         hid_basis = {g: (p.get("basis") or {}).get(g) for g in hid if (p.get("basis") or {}).get(g) is not None}
         seized["cash"] -= hid_cash
         seized["cargo"] = {g: q - hid.get(g, 0) for g, q in seized["cargo"].items() if q - hid.get(g, 0) > 0}
@@ -1716,6 +1958,7 @@ class Game:
         p.pop("estate_costs", None)
         p.pop("estate_rep", None)
         p["basis"] = {}
+        p["tier"] = 0                          # Cargo Tiers: the climb starts again (the rank is kept, the tier is not)
         p.pop("debt_over", None)
         p.pop("debt_capped", None)
         p.pop("under_water", None)
@@ -2272,6 +2515,22 @@ class Game:
                 "mood": round(self.rng.uniform(1 - swing, 1 + swing), 4) if swing > 0 else 1.0,
                 "greed_stat": greed}
 
+    def padding_odds(self, p, port):
+        """How likely the Authority is to pad a line in this port for this house (25 Nov 2026): her own greed and
+        cunning set the base; a house she trusts is padded less (standing 100 halves it, standing 0 adds half
+        again) and so is a house that holds shares in the port (rules.customs.assess_share x the share cut, as
+        on the tax: all the shares and she never pads). Returns the parts so the desk can show the captain what
+        his standing and shares are worth to him (never the officer's own part, nor any factor drawn)."""
+        c = R["customs"]
+        st = ((CFG.get("characters") or {}).get(self.officer_of(port)) or {}).get("stats") or {}
+        greed, cunning = float(st.get("greed", 5)), float(st.get("cunning", 5))
+        rep = float(p["rep"].get(port, 50.0))
+        officer = max(0.2, 1 + (greed - 5) * 0.08 + (cunning - 5) * 0.05)
+        stand = max(0.4, 1 + float(c.get("assess_rep", 0.5)) * (50.0 - rep) / 50.0)
+        shares = max(0.0, 1.0 - float(c.get("assess_share", 1.0)) * self.share_cut(p, port))
+        chance = max(0.0, min(float(c.get("assess_pad_cap", 0.6)), float(c.get("assess_pad", 0.12)) * officer * stand * shares))
+        return {"chance": chance, "standing": stand, "shares": shares, "held": self.shares_held(p, port)}
+
     def _assess_lines(self, p, port, lines):
         """The Authority's own valuation of each cargo line (25 Nov 2026). The captain never sees what the hold
         is worth in this port before he has been to the desk, so the figure she taxes is her assessment, and she
@@ -2283,13 +2542,7 @@ class Game:
             for ln in lines:
                 ln["assess"], ln["assessed"] = 1.0, ln["value"]
             return
-        st = ((CFG.get("characters") or {}).get(self.officer_of(port)) or {}).get("stats") or {}
-        greed, cunning = float(st.get("greed", 5)), float(st.get("cunning", 5))
-        rep = float(p["rep"].get(port, 50.0))
-        # A greedy, cunning officer pads more often; a house she trusts is padded less (standing 100 halves it).
-        chance = float(c.get("assess_pad", 0.20)) * max(0.2, 1 + (greed - 5) * 0.08 + (cunning - 5) * 0.05) \
-            * max(0.4, 1 + float(c.get("assess_rep", 0.5)) * (50.0 - rep) / 50.0)
-        chance = max(0.0, min(float(c.get("assess_pad_cap", 0.6)), chance))
+        chance = self.padding_odds(p, port)["chance"]
         cut = max(0.0, float(c.get("assess_cut", 0.08)))
         for ln in lines:
             rng = random.Random("assess:{}:{}:{}:{}:{}".format(self.s.get("game_id", ""), p.get("id", p.get("name", "")),
@@ -2364,6 +2617,11 @@ class Game:
                         "rate": round(rate, 4), "base": float(PORTS[port].get("tax_rate", 0.0) or 0.0),
                         "free": rate <= 0, "home_free": at_home, "spot": spot, "lines": lines, "cx": cx, "box": box,
                         "result": None}
+        if status == "declare" and c.get("assess_on", True):
+            po = self.padding_odds(p, port)               # what standing and shares do for him, as whole percents
+            p["customs"]["pad"] = {"standing": int(round((1 - po["standing"]) * 100)), "held": po["held"],
+                                   "shares": int(round((1 - po["shares"]) * 100)),
+                                   "total": int(round((1 - po["standing"] * po["shares"]) * 100))}
         if spot:
             p["customs"]["say"] = "l.customs_spot_" + spot
         elif status == "declare":
@@ -2427,16 +2685,17 @@ class Game:
             return turn - max(seen) if seen else None
 
         ports = [k for k in PORTS if k != here]
-        held = [g for g in GOODS if p["cargo"].get(g, 0) > 0] if r.get("held_first", True) else []
+        mine = table_of(p)                        # Cargo Tiers: she only tips on cargo the house trades
+        held = [g for g in mine if p["cargo"].get(g, 0) > 0] if r.get("held_first", True) else []
         pool = []
-        for goods in ([held] if held else []) + [list(GOODS)]:
+        for goods in ([held] if held else []) + [list(mine)]:
             pool = [(port, g) for port in ports for g in goods
-                    if sold_here(here, g) and sold_here(port, g) and (age(port, g) is None or age(port, g) >= stale)]
+                    if sold_to(p, here, g) and sold_to(p, port, g) and (age(port, g) is None or age(port, g) >= stale)]
             if pool:
                 break
         if not pool:                              # every price is fresh: the oldest one she has
-            every = [(port, g) for port in ports for g in (held or list(GOODS)) if sold_here(here, g) and sold_here(port, g)] \
-                or [(port, g) for port in ports for g in GOODS if sold_here(here, g) and sold_here(port, g)]
+            every = [(port, g) for port in ports for g in (held or list(mine)) if sold_to(p, here, g) and sold_to(p, port, g)] \
+                or [(port, g) for port in ports for g in mine if sold_to(p, here, g) and sold_to(p, port, g)]
             oldest = max((age(port, g) or 0) for port, g in every)
             pool = [(port, g) for port, g in every if (age(port, g) or 0) == oldest]
         pool.sort()
@@ -2499,11 +2758,11 @@ class Game:
         home_bans = set(self.banned(here))
         # Cheap here: this month's price against its normal price here; the cheaper half of the cargoes.
         normal = {g: GOODS[g]["base"] * PORTS[here]["mods"].get(g, 1.0) for g in GOODS}
-        goods = sorted((g for g in GOODS if g not in home_bans and sold_here(here, g)),
+        goods = sorted((g for g in GOODS if g not in home_bans and sold_to(p, here, g)),
                        key=lambda g: (s["prices"][here][g] / max(0.01, normal[g]), g))
         goods = goods[:max(1, (len(goods) + 1) // 2)]
         pairs = sorted((port, g) for port in PORTS if port != here for g in goods
-                       if (port, g) not in busy and g not in self.banned(port) and sold_here(port, g))
+                       if (port, g) not in busy and g not in self.banned(port) and sold_to(p, port, g))
         if not pairs:
             return None
         port, g = rng.choice(pairs)
@@ -2640,10 +2899,6 @@ class Game:
                                                              self.s["turn"], cu.get("port", ""), good)).random()
         return max(0.0, min(1.0, lo + (hi - lo) * roll))
 
-    def bribe_cost(self, p, declared_total):
-        c, cu = R["customs"], p["customs"]
-        return int(max(c["bribe_min"], math.ceil(c["bribe_share"] * cu["rate"] * declared_total)))
-
     def _act_customs_declare(self, p, a):
         cu, c = p.get("customs"), R["customs"]
         if not cu or cu.get("status") != "declare":
@@ -2676,20 +2931,7 @@ class Game:
             declared[ln["good"]] = max(0, min(int(math.floor(base_of[ln["good"]] * top)), v))
         safe = choice in ("correct", "more")
         total_declared = sum(declared.values())
-        bribe_mult, bribe = 1.0, None
-        if a.get("bribe") and not choice:
-            cost = self.bribe_cost(p, total_declared)
-            if cost > p["cash"]:
-                raise GameError(tx("e.customs_bribe_cost", cost=money(cost)))
-            honest = max(0.02, min(0.9, c["bribe_honest"] * (1 - (cx.get("greed_stat", 5) - 5) * 0.1)))
-            if self._chance(honest, "customs_bribe_refused", "{}: the officer of {} refuses a sweetener of {}".format(
-                    p["name"], name, money(cost)), p, cost=cost):
-                bribe_mult, bribe = c["bribe_refused_mult"], {"cost": cost, "taken": False}
-                self._gain_rep(p, port, -c["bribe_rep"])
-            else:
-                p["cash"] -= cost
-                self._book(p, "pa_bribe", -cost, arrival=True)
-                bribe_mult, bribe = 1 - c["bribe_cut"], {"cost": cost, "taken": True}
+        bribe_mult, bribe = 1.0, None        # the sweetener is gone (25 Nov 2026): the four buttons are the whole desk
         box = int(cu.get("box", 0))
         out, tax_total, paid_in, fine_total, caught = [], 0, 0, 0, False
         desk_hid = {}
@@ -2945,7 +3187,7 @@ class Game:
             cash0 = p["cash"]
             held = []
             try:
-                self._act_customs_declare(p, {"values": {ln["good"]: ln["value"] for ln in cu["lines"]}})
+                self._act_customs_declare(p, {"choice": "correct"})       # filed as Pay Correct: safe, never searched or bought out
                 detail = {k: v for k, v in (self._detail or {}).items() if k != "note"}
                 detail["cash"] = [int(cash0), int(p["cash"])]
                 held, self._hold = self._hold or [], outer_hold
@@ -3010,6 +3252,7 @@ class Game:
         out["home_free"] = bool(cu.get("home_free"))
         out["spot"] = cu.get("spot")             # "home" / "shares" when a free house was stopped anyway
         out["tip"] = cu.get("tip")
+        out["pad"] = cu.get("pad")                  # standing and shares: how much less she pads him (whole percents)
         out["aloud"] = bool(cu.get("aloud", True))    # saves from before this rule: always read
         if out["home_free"]:
             say = cu.get("say") if isinstance(cu.get("say"), str) else None
@@ -3401,7 +3644,7 @@ class Game:
         A bulk purchase (trade_text.BULK_MIN or more) of a cargo with its own bank (trade_text.PRODUCT_BUY)
         draws from that bank first."""
         table = {"m.bought": trade_text.PRODUCT_BUY, "m.sold": getattr(trade_text, "PRODUCT_SELL", {})}.get(prefix)
-        own = table.get(good) if table and qty >= trade_text.BULK_MIN else None
+        own = table.get(good) if table and qty >= getattr(trade_text, "BULK_MIN_OF", {}).get(good, trade_text.BULK_MIN) else None
         if own and self._bank(own):
             return self._draw(p, own)
         for bank in (prefix, fallback or prefix):
@@ -3528,21 +3771,56 @@ class Game:
             return
         best[p["port"]] = {"profit": profit, "good": g, "qty": int(q), "turn": self.s["turn"]}
 
+    # ---- Cargo Tiers: what one captain is shown (phase 3). Stored data keeps every cargo; the screen shows the table. ----
+    def _tier_known(self, p):
+        """The prices the house has seen, without cargo outside its table."""
+        t = tier_of(p)
+        return {k: (dict(v, prices={g: x for g, x in (v.get("prices") or {}).items() if in_table(t, g)})
+                    if isinstance(v, dict) else v) for k, v in (p.get("known") or {}).items()}
+
+    def _tier_tips(self, p):
+        """The Registrar's tips on file, without cargo outside the house's table."""
+        t = tier_of(p)
+        tips = p.get("tips")
+        if not isinstance(tips, dict):
+            return tips or {}
+        return {k: {g: x for g, x in (v or {}).items() if in_table(t, g)} for k, v in tips.items()}
+
+    def _tier_purse(self, p):
+        """The dealers' purse here, for the cargo the house trades."""
+        view = self.purse_view(p["port"])
+        if view is None:
+            return None
+        t = tier_of(p)
+        return {g: v for g, v in view.items() if in_table(t, g)}
+
+    def _tier_news(self, p, lines):
+        """The headlines this captain would hear: a line that names a cargo outside their table is not for them.
+        News is one board for everybody, so the line is matched by cargo name (whole words, any case)."""
+        t = tier_of(p)
+        out = [g for g in GOODS if not in_table(t, g)]
+        if not out:
+            return list(lines)
+        pat = re.compile(r"(?<!\w)(?:{})(?!\w)".format("|".join(re.escape(GOODS[g]["name"]) for g in out)), re.I)
+        return [ln for ln in lines if not pat.search(ln)]
+
     def market_view(self, p):
         """The pulse panel under the market keeper: this port's price book, her running windfalls,
         and the house's best sale here."""
         s, port = self.s, p["port"]
-        rows = [{"turn": r["turn"], "date": date_label(r["turn"]), "prices": r["prices"].get(port, {})}
+        t = tier_of(p)
+        rows = [{"turn": r["turn"], "date": date_label(r["turn"]),
+                 "prices": {g: v for g, v in r["prices"].get(port, {}).items() if in_table(t, g)}}
                 for r in s.get("price_hist", []) if port in r.get("prices", {})]
         best = (p.get("best_sale") or {}).get(port)
         return {"hist": rows[-HIST_MONTHS:],
-                "windfalls": {w["good"]: w["kind"] for w in s.get("windfalls", []) if w["port"] == port},
+                "windfalls": {w["good"]: w["kind"] for w in s.get("windfalls", []) if w["port"] == port and in_table(t, w["good"])},
                 "best": dict(best, date=date_label(best.get("turn", 0))) if best else None}
 
     def _note_prices(self, p):
         port = p["port"]
         p["known"][port] = {"turn": self.s["turn"],
-                            "prices": {g: int(round(v)) for g, v in self.s["prices"][port].items()}}
+                            "prices": {g: int(round(v)) for g, v in self.s["prices"][port].items() if in_table(tier_of(p), g)}}
 
     # ---------------------------------------------------------- actions --
     def act(self, pid, a, present=()):
@@ -3726,8 +4004,9 @@ class Game:
         return g
 
     def _need_here(self, p, g):
-        """A cargo this port forbids is not there to manage: no buying, selling or storing it here."""
-        if not sold_here(p["port"], g):
+        """A cargo this port forbids, or one outside the captain's table (Cargo Tiers), is not there to manage:
+        no buying, selling or storing it here."""
+        if not sold_to(p, p["port"], g):
             raise GameError(tx("e.unknown_cargo"))
 
     def _trade_detail(self, p, g, q, total, end):
@@ -3782,7 +4061,7 @@ class Game:
         if self._band_rng(p, "lot").random() >= float(st.get("lot_chance", 0.0)):
             return
         risky = set(self.banned(port)) | set(contraband())
-        pool = sorted(g for g in GOODS if g not in risky and g in self.s["prices"][port])
+        pool = sorted(g for g in table_of(p) if g not in risky and g in self.s["prices"][port])
         if not pool:
             return
         rng = self._band_rng(p, "lot_what")
@@ -4508,7 +4787,8 @@ class Game:
         if year and due - turn < 3:
             due += 12                                   # late in the year: the goal runs to the next one's end
         hold = max(1, self.capacity(p))
-        legal = [g for g in GOODS if not GOODS[g].get("contraband")] or list(GOODS)
+        mine = table_of(p)                              # Cargo Tiers: a commission is only ever for cargo the house trades
+        legal = [g for g in mine if not GOODS[g].get("contraband")] or list(mine)
         others = [k for k in PORTS if k != home]
         if not others:
             return None
@@ -4533,7 +4813,8 @@ class Game:
                 kind = offer["kind"] = "delivery"
         if kind == "delivery":
             port = rng.choice(others)
-            good = rng.choice([g for g in legal if sold_here(port, g)] or [g for g in GOODS if sold_here(port, g)])
+            good = rng.choice([g for g in legal if sold_here(port, g)] or [g for g in mine if sold_here(port, g)]
+                              or [g for g in GOODS if sold_here(port, g)])
             share = float(c["hold_share_year" if year else "hold_share_short"])
             share *= self.job_grow(p, share, float(c.get("job_cap_year" if year else "job_cap_short", 1.0)))
             qty = max(int(c["min_qty"]), int(round(hold * share / 10.0)) * 10)
@@ -5533,6 +5814,7 @@ class Game:
         for p in players:
             self._note_prices(p)
             self._promote(p)
+            self._check_tier(p)
             robbery.settle(self, p)         # the Robbery Story, only if nothing else has this month's story (robbery.py)
             self._contracts_month(p)
         for n in news:
@@ -5651,14 +5933,15 @@ class Game:
         for port in PORTS:
             for g, spec in GOODS.items():
                 if not sold_here(port, g):
-                    rng.gauss(0, 0)                       # the dice it would have drawn, so nothing else shifts
+                    if int(spec.get("enters", 0) or 0) < 1:
+                        rng.gauss(0, 0)                   # the dice it would have drawn, so nothing else shifts
                     continue
                 base = spec["base"] * PORTS[port]["mods"].get(g, 1.0)
                 price = s["prices"][port][g]
                 drift = runs.get((port, g))
                 if not (drift and m.get("runs_pause_reversion")):     # a run is not pulled back while it lasts
                     price += reversion_of(g) * (self._target(port, g) - price)
-                price *= math.exp(rng.gauss(0, vol_of(g) * m["vol_mult"]))
+                price *= math.exp(self._dice_for(g, "month", port).gauss(0, vol_of(g) * m["vol_mult"]))
                 if drift:
                     price *= math.exp(drift)              # a run on a wild cargo: up or down again this month
                 w = self._windfall(port, g)
@@ -6479,7 +6762,7 @@ class Game:
             if port in (dest, origin):
                 continue
             for g in sorted(GOODS):
-                if not sold_here(port, g):
+                if not sold_to(p, port, g):
                     continue
                 usual = GOODS[g]["base"] * PORTS[port]["mods"].get(g, 1.0)
                 ratio = self.s["prices"][port][g] / max(0.01, usual)
@@ -6515,7 +6798,7 @@ class Game:
         if b["kind"] == "lord":                          # the queen's war junks carry the richer plunder
             pick = min(len(tiers) - 1, pick + int(bt.get("prize_lord_step", 1)))
         tier = tiers[pick]
-        names = [g for g in GOODS]
+        names = table_of(p)                              # Cargo Tiers: plunder is only cargo the house trades
         pool = {g: float(GOODS[g].get("depth", 100)) for g in names}      # plentiful goods turn up most
         kinds = min(len(pool), own.randint(int(tier.get("goods_min", 1)), int(tier.get("goods_max", 1))))
         chosen = []
@@ -7285,15 +7568,16 @@ class Game:
                 "collectors": self.collectors(p),
                 "bankrupt": self.bankruptcy(p), "debt_cap": int(self.debt_cap(p) or 0),
                 "ready": p["ready"], "dest": p["dest"], "orders": p["orders"],
-                "log": p["log"], "known": p["known"],
-                "tips": p.get("tips") or {},                 # the Registrar's prices: {port: {good: {turn, price}}}
+                "log": p["log"], "known": self._tier_known(p),
+                "tips": self._tier_tips(p),                  # the Registrar's prices: {port: {good: {turn, price}}}
                 # The Registrar's hot tips still to come or still running (shown under Port > Arrival and the Price Book).
-                "hot_tips": [t for t in (p.get("hot_tips") or []) if int(t.get("ends", -1)) >= s["turn"]],
-                "prices": {g: round(v, 2) for g, v in s["prices"][port].items()},
+                "hot_tips": [t for t in (p.get("hot_tips") or []) if int(t.get("ends", -1)) >= s["turn"]
+                             and in_table(tier_of(p), t.get("good"))],
+                "prices": {g: round(v, 2) for g, v in s["prices"][port].items() if in_table(tier_of(p), g)},
                 "basis": {g: round(v, 2) for g, v in (p.get("basis") or {}).items()},   # average paid per unit
                 "rot": rot.view(p),   # perishables aboard: months aged and the grace period (rot.py)
                 "spread": round(sp, 4),
-                "purse": self.purse_view(port),             # the dealers' purse here: {good: [left, size]}
+                "purse": self._tier_purse(p),               # the dealers' purse here: {good: [left, size]}
                 "dues": self.dues(p), "slip": bool(p.get("slip")), "slip_quote": self.slip_quote(p),
                 "customs": self.customs_view(p), "bond": self.sealed(p),
                 "battle": self.battle_view(p), "fights": p.get("fights") or [],
@@ -7314,7 +7598,11 @@ class Game:
                 "legend": legend.view(self, p), "legends": legend.book(self, p),   # the Legend on screen; those met
                 "honour": honour.view(self, p),      # the story of a share just earned (honour.py), or None
                 "counter": counter.view(self, p),    # Under the Counter: the tax lady's paid tips
+                "tier": tier_of(p),                  # Cargo Tiers: the table this captain trades at (0 = the start)
             }
+            if tiers_on():                           # the news is one board for all; a captain reads only their own cargo
+                heard = self._tier_news(p, s["news"])[:14]
+                out["news"], out["news_heat"] = heard, [self.news_heat(n) for n in heard]
         return out
 
     def admin_view(self, present=()):

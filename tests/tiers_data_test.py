@@ -73,14 +73,20 @@ def test_ambergris_is_a_wild_cargo():
     assert "ambergris" in config.defaults()["rules"]["market"]["wild_goods"]
 
 
-def test_engine_keeps_the_luxuries_out_of_play():
-    for enabled in (False, True):                       # the switch does nothing until TIERS_READY
+def test_the_switch_decides_whether_the_luxuries_are_in_play():
+    """TIERS_READY is True since phase 5 (25 Nov 2026), so rules.tiers.enabled alone decides."""
+    assert engine.TIERS_READY
+    for enabled in (False, True):
         cfg = config.defaults()
         cfg["rules"]["tiers"]["enabled"] = enabled
         engine.configure(cfg)
-        assert list(engine.GOODS) == NINE, (enabled, list(engine.GOODS))
-        assert not any(g in LUXURIES for ports in engine.FORBIDDEN.values() for g in ports)
-        assert engine.FORBIDDEN.get("shanghai") == {"porcelain", "rice"}, engine.FORBIDDEN
+        if enabled:
+            assert list(engine.GOODS) == NINE + list(LUXURIES), list(engine.GOODS)
+            assert engine.FORBIDDEN.get("calcutta") and "camphor" in engine.FORBIDDEN["calcutta"]
+        else:
+            assert list(engine.GOODS) == NINE, list(engine.GOODS)
+            assert not any(g in LUXURIES for ports in engine.FORBIDDEN.values() for g in ports)
+        assert engine.FORBIDDEN.get("shanghai") >= {"porcelain", "rice"}, engine.FORBIDDEN
     engine.configure(config.defaults())
 
 
@@ -155,6 +161,45 @@ def test_settings_saved_before_forbidden_cargo_get_the_whole_shipped_map():
     for key, port in cfg["ports"].items():
         assert port["forbidden"] == want[key]["forbidden"], (key, port["forbidden"])
     assert cfg["ports"]["shanghai"]["forbidden"] == ["porcelain", "rice", "sandalwood"]
+
+
+def test_the_luxuries_are_priced_for_the_pis_economy():
+    """Phase 8 (25 Nov 2026), rebalanced against the Pi's real economy (tests/pi_economy.py): the luxuries cost more than
+    opium, climb in price, swing and the money one price move takes (price x depth), and no luxury's market is thicker
+    than a retained cargo's. Numbers come from tests/tiers_market_scan.py ceiling on the Pi's settings."""
+    cfg = config.defaults()
+    goods = cfg["goods"]
+    order = ["camphor", "sandalwood", "ginseng", "jade", "pearls", "ambergris"]
+    for series in ([goods[g]["base"] for g in order], [goods[g]["vol"] for g in order],
+                   [goods[g]["base"] * goods[g]["depth"] for g in order]):
+        assert series == sorted(series), series
+    assert goods["camphor"]["base"] > 8522, "dearer than the Pi's opium"
+    assert all(goods[g]["depth"] <= 450 for g in order)
+    assert 3_000_000 <= goods["camphor"]["base"] * goods["camphor"]["depth"] <= goods["ambergris"]["base"] * goods["ambergris"]["depth"] <= 10_000_000
+    assert "ambergris" in cfg["rules"]["market"]["wild_goods"], "wild in the shipped defaults (the Pi's list differs)"
+
+
+def test_a_file_seeded_with_the_placeholder_rows_moves_to_the_balanced_ones_once():
+    """The Pi was seeded in phase 1 with placeholder rows. The first load after this change moves a row that is still
+    exactly the placeholder; a row someone edited is left alone; and it happens only once (rules.tiers.rows_v2)."""
+    raw = copy.deepcopy(config.defaults())
+    for key, (base, vol, depth) in config.TIER_OLD_ROWS.items():
+        raw["goods"][key].update(base=base, vol=vol, depth=depth)
+    raw["goods"]["jade"].update(base=12345)                  # edited by hand: stays
+    raw["rules"]["tiers"].update(seeded_v1=True, rows_v2=False)
+    cfg, errors = config.validate(raw)
+    assert not errors, errors
+    shipped = config.defaults()["goods"]
+    for key in config.TIER_GOODS:
+        if key == "jade":
+            assert cfg["goods"][key]["base"] == 12345
+        else:
+            assert (cfg["goods"][key]["base"], cfg["goods"][key]["vol"], cfg["goods"][key]["depth"]) == \
+                (shipped[key]["base"], shipped[key]["vol"], shipped[key]["depth"]), key
+    assert cfg["rules"]["tiers"]["rows_v2"] is True
+    cfg["goods"]["camphor"].update(base=5500, vol=0.08, depth=400)    # put the placeholder back by hand: not touched again
+    again, errors = config.validate(cfg)
+    assert again["goods"]["camphor"]["base"] == 5500
 
 
 if __name__ == "__main__":
