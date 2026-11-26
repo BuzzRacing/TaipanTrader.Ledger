@@ -20,29 +20,15 @@ MOMENTS = ["sighting", "broadside", "enemy_hit", "we_are_hit", "ship_lost", "boa
            "victory", "defeat"]
 
 STARTERS = [
-    {"id": "starter_portwomen", "name": "Port women: 1 clean + 5 NSFW each", "kind": "port", "subjects": [],
-     "roles": ["keeper", "shipmaster", "mayor", "taxlady"], "by": "role", "mode": "pairs", "clean": 1, "nsfw": 5,
-     "count": 3, "mood": "", "pose": True, "tag": "port-women"},
+    # Taipan Trader is clean only: every starter makes plain, fully dressed pictures.
+    {"id": "starter_portpeople", "name": "Port people: 3 each", "kind": "port", "subjects": [],
+     "roles": ["keeper", "shipmaster", "mayor", "taxlady"], "by": "role", "mode": "plain", "clean": 1, "nsfw": 0,
+     "count": 3, "mood": "", "pose": True, "tag": "port-people"},
     {"id": "starter_battle", "name": "Sea battle moments: 3 each", "kind": "scene",
      "subjects": ["seafight_pirates", "seafight_lord"], "roles": MOMENTS, "by": "role", "mode": "plain",
      "clean": 1, "nsfw": 0, "count": 3, "mood": "", "pose": True, "tag": "battle-moments"},
-    # The tax-lady desk tells and the weather pictures, as recipes (24 Nov 2026). Prompts come from recipe_scenes.py, which
-    # runs the same code as the Queue_TaxLady_*_Pairs.bat and Queue_Weather_*.bat files. The roles are recipe_scenes' own
-    # names for each exact picture; only an officer (or the crier) has prompts for them, so the others are skipped.
-    {"id": "tax_desk_faces", "name": "Port Authority desk tells: 1 clean + 1 NSFW each", "kind": "persona",
-     "subjects": [], "roles": recipe_scenes.TAX_ENTRY_ROLES, "by": "role", "mode": "pairs", "clean": 1, "nsfw": 1,
-     "count": 1, "mood": "", "pose": False, "tag": "tax-desk"},
-    {"id": "weather_nude_looks", "name": "Newspaper weather NSFW: nude, 4 poses each weather", "kind": "persona",
-     "subjects": ["crier"], "roles": recipe_scenes.WEATHER_NUDE_ROLES, "by": "role", "mode": "pairs", "clean": 0,
-     "nsfw": 4, "count": 1, "mood": "", "pose": True, "tag": "weather"},
-    {"id": "weather_topless_looks", "name": "Newspaper weather NSFW: topless, 5 poses each weather", "kind": "persona",
-     "subjects": ["crier"], "roles": recipe_scenes.WEATHER_TOPLESS_ROLES, "by": "role", "mode": "pairs", "clean": 0,
-     "nsfw": 5, "count": 1, "mood": "", "pose": True, "tag": "weather"},
-    {"id": "weather_clean_looks", "name": "Newspaper weather clean: 5 poses each weather", "kind": "persona",
-     "subjects": ["crier"], "roles": recipe_scenes.WEATHER_CLEAN_ROLES, "by": "role", "mode": "pairs", "clean": 5,
-     "nsfw": 0, "count": 1, "mood": "", "pose": True, "tag": "weather"},
-    {"id": "starter_persona", "name": "Cast top-up: 2 clean + 2 NSFW each", "kind": "persona", "subjects": [],
-     "roles": [], "by": "subject", "mode": "pairs", "clean": 2, "nsfw": 2, "count": 3, "mood": "", "pose": True,
+    {"id": "starter_persona", "name": "Cast top-up: 3 each", "kind": "persona", "subjects": [],
+     "roles": [], "by": "subject", "mode": "plain", "clean": 1, "nsfw": 0, "count": 3, "mood": "", "pose": True,
      "tag": "cast-topup"},
 ]
 
@@ -58,8 +44,14 @@ def _keys(v, limit=300):
     return [x for x in (v or []) if isinstance(x, str) and KEY.match(x)][:limit]
 
 
+ADULT = re.compile(r"nsfw|nude|naked|topless|sultry|boudoir", re.I)
+
+
 def clean_one(r):
     if not isinstance(r, dict):
+        return None
+    # Taipan Trader: a recipe saved for adult pictures (by name or by its roles) is dropped, not converted.
+    if ADULT.search(str(r.get("name") or "") + " " + " ".join(str(x) for x in r.get("roles") or [])):
         return None
     rid = str(r.get("id") or "")
     if not re.match(r"^[A-Za-z0-9_-]{1,40}$", rid):
@@ -71,9 +63,9 @@ def clean_one(r):
         "subjects": _keys(r.get("subjects")),
         "roles": _keys(r.get("roles"), 60),
         "by": "role" if r.get("by") == "role" else "subject",
-        "mode": "plain" if r.get("mode") == "plain" else "pairs",
+        "mode": "plain",                 # Taipan Trader: clean only, never NSFW + clean pairs
         "clean": _num(r.get("clean"), 0, 10, 1),
-        "nsfw": _num(r.get("nsfw"), 0, 20, 5),
+        "nsfw": 0,
         "count": _num(r.get("count"), 0, 20, 3),
         "mood": str(r.get("mood") or "").strip()[:400],
         "pose": bool(r.get("pose", True)),

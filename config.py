@@ -1569,14 +1569,6 @@ SECTIONS = [
              F("ship_names", "Merchantman names", "lines", "Names given to new Merchantmen. One per line.", max=40),
              F("escort_names", "Escort names", "lines", "Names given to new Escorts. One per line.", max=40),
              F("cargo_names", "Cargo ship names", "lines", "Names given to new Cargo ships. One per line.", max=40)]},
-         {"title": "NSFW ship names", "fields": [
-             F("nsfw_ship_names", "NSFW Merchantman names", "lines", "Used instead of the clean Merchantman names "
-               "while Family-friendly is off. Every ship also gets a clean name, shown whenever Family-friendly is on "
-               "(for the table, or one screen). One per line.", max=40),
-             F("nsfw_escort_names", "NSFW Escort names", "lines", "Used instead of the clean Escort names while "
-               "Family-friendly is off. One per line.", max=40),
-             F("nsfw_cargo_names", "NSFW Cargo ship names", "lines", "Used instead of the clean Cargo ship names "
-               "while Family-friendly is off. One per line.", max=40)]},
      ]},
     {"id": "weather", "title": "Weather & Seas", "intro": "Storm odds for each sea and what storms do.",
      "tables": [
@@ -2327,8 +2319,9 @@ def validate(raw):
         g["default_years"] = min(g["lengths"], key=lambda y: abs(y - g["default_years"]))
     if cfg["difficulty"]["level"] not in cfg["difficulty"]["presets"]:
         errors.append("Ratings: difficulty level '{}' does not exist".format(cfg["difficulty"]["level"]))
-    # Taipan Trader is family-friendly only: the adult rating cannot be switched back on.
+    # Taipan Trader is family-friendly only: the adult rating cannot be switched back on, and ships get no NSFW names.
     cfg["content"]["rating"] = "family"
+    cfg["nsfw_ship_names"], cfg["nsfw_escort_names"], cfg["nsfw_cargo_names"] = [], [], []
     rank_ids = set()
     for rank in cfg["ranks"]:
         key = rank["id"] or re.sub(r"[^a-z0-9]+", "_", rank["title"].lower()).strip("_")

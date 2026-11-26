@@ -96,6 +96,28 @@ OVERRIDES = {
     "storm.hull.2": "Our timbers are bruised from stem to stern. She needs a careful hand and a good yard.",
     "legend.palace.palace.kept.1": "There you are, you clever thing. I am Otohime, daughter of the Dragon King. You "
                                    "kept my handmaid fed and unsold, Captain. What shall I do with you?",
+
+    # "Darling" becomes "Captain": every character addresses the players as captains.
+    "battle.foe.agent.reprice.2": "Lying to a woman with a ledger. That will cost you, Captain.",
+    "battle.foe.agent.victory.2": "You should have paid, Captain. It would have been so much cheaper.",
+    "battle.foe.pirate.paid.2": "Sail on, Captain. You are under my peony now.",
+    "battle.foe.pirate.retreat.0": "Throw it all overboard, Captain. I will have my divers fetch it.",
+    "battle.foe.pirate.sighting.0": "Li Yue does not chase, Captain. She waits. And here you are.",
+    "battle.foe.pirate.spite.0": "If the cargo will not be mine, Captain, it will be the sea's.",
+    "battle.foe.pirate.victory.0": "Into the boats, Captain. My sea keeps what it takes, and your crew can row home.",
+    "legend.ledger.page.open.0": "A fishwife wrapped your mullet in a page torn from a ledger, Captain. Fine hand, red "
+                                 "ink, and a column of names that owe more than they can bear.",
+    "legend.palace.palace.freed.2": "You went, of course. Nobody says no to pearls. On the third night she asked what "
+                                    "you wanted. Careful, Captain.",
+    "legend.palace.palace.serve.1": "She smiled like a moneylender and was gone. The box hums at night, Captain. I'd "
+                                    "sleep on deck.",
+    "legend.share.say.flag.2": "Take the flag. Take the port share it buys you. Li Yue pays her debts, Captain, and "
+                               "she always comes back for what she has lent.",
+    "legend.share.say.teller_drowned.1": "You chose well, Captain, and the sea has put a port share in your name. I "
+                                         "kept it safe for you. Mind your fingers. It is still cold.",
+    "legend.share.say.teller_tavern.1": "The sea is paying you a port share, Captain. Turns out behaving yourself is "
+                                        "worth something. Don't tell my regulars. It would ruin them.",
+    "st.host.happy": "Your numbers are climbing, Captain. I adore a rising house.",
 }
 
 

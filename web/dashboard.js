@@ -725,7 +725,7 @@ const SAY = {
   fell: { who: ["gamemaster"], fb: ["taxlady", "mayor"], pri: 5, ms: 8500, lines: [
     ["{who} slips behind the ghost. Chin up, darling; the night is young.", "{who} slips behind the ghost. Chin up; the night is young."]] },
   boom: { who: ["bookmaker"], fb: ["comprador", "banker"], pri: 6, ms: 9000, lines: [
-    ["Mmm, the whole {port} floor is panting over {good}. Place your bets, sweetheart.", "The whole {port} floor is buzzing over {good}. Place your bets, sweetheart."]] },
+    ["Mmm, the whole {port} floor is panting over {good}. Place your bets, sweetheart.", "The whole {port} floor is buzzing over {good}. Place your bets, Captains."]] },
   crash: { who: ["bookmaker"], fb: ["comprador", "banker"], pri: 6, ms: 9000, lines: [
     ["{good} at {port} has dropped everything. Poor lambs. Bella will hold what's left.", "{good} at {port} has dropped like a stone. Poor lambs. Bella will mind what's left."]] },
   promotion: { who: ["taxlady"], fb: ["mayor"], pri: 6, ms: 9000, lines: [

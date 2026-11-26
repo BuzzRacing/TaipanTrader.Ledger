@@ -229,7 +229,7 @@ CHARACTERS = {
     },
     # The Accounting Ledger (20 Nov 2026): the House's own bookkeeper, on its rail button and its pages.
     "bookkeeper": {
-        "name": "Mademoiselle Céleste Vautrin", "title": "Bookkeeper of the House & Mistress of the Crimson Ledger",
+        "name": "Mademoiselle Céleste Vautrin", "title": "Bookkeeper of the House & Keeper of the House Ledger",
         "brand_link": "",
         "age": 38, "origin": "Pondicherry", "home_port": "hongkong", "color": "#8e1f2c", "portrait": "",
         "voice_id": "Olivia", "speaking_rate": 0.9,
@@ -254,7 +254,7 @@ CHARACTERS = {
         "age": 31, "origin": "Madras", "home_port": "singapore", "color": "#1f8a8a", "portrait": "",
         "voice_id": "Saanvi", "speaking_rate": 1.08,
         "delivery": "quick, merry and unhurried, a woman who is already holding your purse and is delighted to see you",
-        "catchphrase": "Mind your pockets, darling. Well, mine now.",
+        "catchphrase": "Mind your pockets, Captain. Well, mine now.",
         "bio": "Kamala learned the trade in the Madras bazaar at seven. By twenty she could lift a wedding ring in a "
                "handshake. She now runs the waterfront crowd from Singapore to Hong Kong, and she returns hats, "
                "because a gentleman should always go home decent.",
@@ -946,3 +946,5 @@ def clean(cfg, url_re, errors):
 import taipan_text  # noqa: E402  (the voice reads Taipan Trader's overridden lines as shown)
 taipan_text.apply_say(SAY)
 taipan_text.apply_say(SAY_FAMILY)
+# Screens that read the family wording directly (certificate, manual, storm voice) get Taipan's lines too.
+strings.FAMILY.update({_k: _v for _k, _v in taipan_text.OVERRIDES.items() if _k in strings.EN})
