@@ -356,7 +356,7 @@
 
     define("surf_logo", { title: "Logo / wordmark", aspect: "16:5", size: "1600 × 500 PNG", kicker: "16:5 transparent", current: G.logo, apply: setG("logo"), negative: neg.replace("text, logo, caption, border, signature, watermark", "caption, signature, watermark"),
       notes: "No baked background. Test at 320 px wide and on dark teak. Include the approved CRIMSON LEDGER wordmark beside the merchant-house seal.",
-      prompt: "Crimson Ledger emblem artwork for a wide wordmark: an antique-brass three-masted Chinese trading junk with oxblood battened sails above an open ivory merchant ledger and jade waves, circular brass rim, emblem left of stacked engraved brass lettering CRIMSON LEDGER, transparent background, readable at 320 pixels wide. " + recipeStyle });
+      prompt: "Taipan Trader emblem artwork for a wide wordmark: an antique-brass three-masted Chinese trading junk with oxblood battened sails above an open ivory merchant ledger and jade waves, circular brass rim, emblem left of stacked engraved brass lettering CRIMSON LEDGER, transparent background, readable at 320 pixels wide. " + recipeStyle });
     define("surf_favicon", { title: "Browser icon", aspect: "1:1", size: "512 × 512 PNG", kicker: "1:1", current: G.favicon, apply: setG("favicon"), negative: neg,
       notes: "Approved merchant-house seal on an oxblood lacquer tile. Test at 32 px.",
       prompt: "Approved merchant-house seal: antique-brass three-masted Chinese trading junk with oxblood battened sails above an open ivory merchant ledger and jade wave, dark jade enamel, rounded oxblood lacquer tile, bold silhouette, no lettering, designed to read at 32 pixels. " + recipeStyle });
@@ -464,7 +464,7 @@
       <section class="ab-hero" style="--ab-mobile-image:url('${KEY_ART}');background-image:linear-gradient(90deg,rgba(13,9,7,.96) 0%,rgba(13,9,7,.74) 38%,rgba(13,9,7,.06) 76%),url('${KEY_ART}')">
         <div class="ab-hero-copy"><span class="ab-kicker">Historical mode · visual canon v1.1</span>
           <h1>Silk, salt<br><em>&amp; dangerous money.</em></h1>
-          <p>Crimson Ledger is a private-release adult 1860s China Seas power fantasy: trade, appetite, kink, risk and ambition rendered with cinematic historical realism.</p>
+          <p>Taipan Trader is a private-release adult 1860s China Seas power fantasy: trade, appetite, kink, risk and ambition rendered with cinematic historical realism.</p>
           <div class="ab-tags"><span>1860 China Seas</span><span>Adults 25+ only</span><span>Nudity permitted</span><span>Private release</span></div>
         </div>
       </section>
@@ -626,7 +626,7 @@
     const constraints = familyMode
       ? "every person is unmistakably adult age 25 or older and fully dressed; no nudity, erotic framing, fetishwear or kink imagery; original faces, poses, garments and composition; natural skin; believable anatomy; historically plausible maritime details; no text, logo, border, signature or watermark"
       : "every person is unmistakably adult age 25 or older; adult glamour, bare-breasted nudity, erotic posing and costume-level consensual kink cues are permitted when selected; clear agency; original faces, poses, garments and composition; natural skin; believable anatomy; historically plausible maritime details; no text, logo, border, signature or watermark";
-    const prompt = `Use case: historical-scene\nAsset type: Crimson Ledger ${mode} ${value("asset")}\nPrimary request: ${subject} in ${value("place")}, ${value("moment")}.\nWorld and style: ${style}.\nLighting: ${value("light")}.\nTone: ${value("heat")}.\nComposition: ${value("composition")}.\nPalette: lacquer black, oxblood silk, antique brass, imperial jade, ivory linen, tobacco leather and storm blue.${cargo}${ship}\nConstraints: ${constraints}.`;
+    const prompt = `Use case: historical-scene\nAsset type: Taipan Trader ${mode} ${value("asset")}\nPrimary request: ${subject} in ${value("place")}, ${value("moment")}.\nWorld and style: ${style}.\nLighting: ${value("light")}.\nTone: ${value("heat")}.\nComposition: ${value("composition")}.\nPalette: lacquer black, oxblood silk, antique brass, imperial jade, ivory linen, tobacco leather and storm blue.${cargo}${ship}\nConstraints: ${constraints}.`;
     const out = root.querySelector("#ab-positive");
     if (out) out.value = prompt;
     if (SLOTS.studio) {

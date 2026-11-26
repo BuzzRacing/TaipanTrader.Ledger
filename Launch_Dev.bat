@@ -9,7 +9,7 @@ rem   Launch_Dev.bat stop     save and stop the test server
 rem   Launch_Dev.bat new      archive the test game and start a fresh one
 setlocal
 set "ST_DEV=1"
-if /i "%~1"=="stop" (call "%~dp0Stop_SeaTrader.bat" & exit /b)
+if /i "%~1"=="stop" (call "%~dp0Stop_TaipanTrader.bat" & exit /b)
 if /i "%~1"=="new" (call "%~dp0New_Game.bat" & exit /b)
-call "%~dp0Launch_SeaTrader.bat" %*
+call "%~dp0Launch_TaipanTrader.bat" %*
 endlocal

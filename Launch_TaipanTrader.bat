@@ -1,20 +1,20 @@
 @echo off
-rem SeaTrader launcher. Opens the game in a full-screen window.
-rem   Launch_SeaTrader.bat          player screen
-rem   Launch_SeaTrader.bat board    harbor board (for a second monitor or TV)
-rem   Launch_SeaTrader.bat table    harbor view: the game from above, on a table (TV)
-rem   Launch_SeaTrader.bat dashboard  the pit box: timing tower, ledger book, dials, tape (TV)
-rem   Launch_SeaTrader.bat admin    admin command center (an ordinary browser window)
+rem Taipan Trader launcher. Opens the game in a full-screen window.
+rem   Launch_TaipanTrader.bat          player screen
+rem   Launch_TaipanTrader.bat board    harbor board (for a second monitor or TV)
+rem   Launch_TaipanTrader.bat table    harbor view: the game from above, on a table (TV)
+rem   Launch_TaipanTrader.bat dashboard  the pit box: timing tower, ledger book, dials, tape (TV)
+rem   Launch_TaipanTrader.bat admin    admin command center (an ordinary browser window)
 rem
 rem By default the game server runs on this computer and is started if needed.
 rem To use a server on another machine (for example a Raspberry Pi), put its
 rem address on one line in server_address.txt next to this file, e.g.
 rem   crimson.ledger   (the Pi, through its proxy)
-rem   192.168.1.69:8765
+rem   192.168.1.50:8775
 rem Launch_Dev.bat always opens the copy on this computer instead.
 setlocal
 cd /d "%~dp0"
-set "PORT=8765"
+set "PORT=8775"
 set "HOST=localhost:%PORT%"
 set "REMOTE="
 rem The Pi's address. A name without a port (crimson.ledger) is sent straight there,
@@ -58,8 +58,8 @@ if not errorlevel 1 set "PY=py -3"
 %PY% --version >nul 2>nul
 if errorlevel 1 goto nopython
 
-echo Starting the Crimson Ledger server...
-start "Crimson Ledger Server" /min %PY% server.py --port %PORT%
+echo Starting the Taipan Trader server...
+start "Taipan Trader Server" /min %PY% server.py --port %PORT%
 set /a TRIES=0
 :wait
 call :ping
@@ -95,7 +95,7 @@ goto end
 
 :unreachable
 echo.
-echo Could not reach the Crimson Ledger server at %HOST%
+echo Could not reach the Taipan Trader server at %HOST%
 echo Check that it is switched on and that server_address.txt has the right address.
 echo To run the game on this computer instead, delete server_address.txt.
 echo.

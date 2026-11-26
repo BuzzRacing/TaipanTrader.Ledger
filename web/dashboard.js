@@ -697,10 +697,10 @@ const FALLBACK_WHO = {
   narrator: ["Roxana Cama", "First Mate & Queen of the Black Log", "#c9a34e"],
   bookmaker: ["Isabel “Fan-Tan Bella” da Rocha", "Bookmaker of the Golden Fan", "#e0705a"],
   pirate: ["Admiral Li Yue", "Pirate Queen of the South China Sea", "#d0644f"],
-  bosun: ["Peggy “Powder” O’Rourke", "Bosun, Master Gunner & Powder Queen", "#e0a050"],
+  bosun: ["Patrick “Powder” O’Rourke", "Bosun & Master Gunner", "#e0a050"],
   taxlady: ["Mrs. Evelyn Marlowe", "Registrar of the Merchant Houses", "#7fc4a2"],
-  crier: ["Tilly Marsh", "Gazette Crier & Queen of Rumours", "#e8d4ae"],
-  mayor: ["Her Worship the Mayor", "Mayor of the Port", "#c9a34e"]
+  crier: ["Tommy Marsh", "Gazette Crier & Keeper of Rumours", "#e8d4ae"],
+  mayor: ["The Mayor", "Mayor of the Port", "#c9a34e"]
 };
 function who(cid) {
   const c = CAST[cid] || {}, f = FALLBACK_WHO[cid] || [cid, "", "#c9a34e"];

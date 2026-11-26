@@ -21,7 +21,7 @@ virtual_roles ({key: label}) and notes (anything skipped, for example an officer
 
     tax_entry_sly, _hungry, _curious, _bored   the Port Authority officer's desk tells (3:4, role sly / idle)
     weather_nude_<kind>, weather_topless_<kind>, weather_clean_<kind>
-                                               Tilly Marsh's weather pictures for calm, fair, squalls and typhoon
+                                               Tommy Marsh's weather pictures for calm, fair, squalls and typhoon
                                                (3:4, role weather); one prompt per pose, four nude, five topless, five clean
 """
 import os
@@ -99,7 +99,7 @@ def tax_entry_prompts(cfg, notes):
 
 
 def weather_prompts(cfg, notes):
-    """{crier: {virtual role: entry}} for Tilly Marsh's weather set: what the two weather .bat files made."""
+    """{crier: {virtual role: entry}} for Tommy Marsh's weather set: what the two weather .bat files made."""
     _p, w, t = _tools()
     if w.WHO not in (cfg.get("characters") or {}):
         notes.append("There is no news crier in the cast, so no weather pictures.")

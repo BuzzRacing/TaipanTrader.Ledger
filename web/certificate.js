@@ -256,7 +256,7 @@ const Certificate = (() => {
   function calm(c) { c.shadowColor = "transparent"; c.shadowBlur = 0; c.shadowOffsetY = 0; }
 
   function paintTitle(c, F) {
-    const brand = (typeof brandName === "function" && D && D.brand && brandName(D.brand)) || "Crimson Ledger";
+    const brand = (typeof brandName === "function" && D && D.brand && brandName(D.brand)) || "Taipan Trader";
     c.textAlign = "center"; c.textBaseline = "alphabetic";
     const px = fit(c, brand, 1000, 96, s => `${s}px ${F.title}`, 48), y = 122;
     shadow(c, "#07090e", 14, 6);
@@ -597,7 +597,7 @@ const Certificate = (() => {
 
   function save() {
     if (!pngUrl || !facts) return;
-    const brand = (typeof brandName === "function" && D && D.brand && brandName(D.brand)) || "Crimson Ledger";
+    const brand = (typeof brandName === "function" && D && D.brand && brandName(D.brand)) || "Taipan Trader";
     const name = tx("cert.file", { brand, name: facts.name, date: facts.last || "" }).replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
     const a = document.createElement("a");
     a.href = pngUrl; a.download = name + ".png"; a.rel = "noopener";

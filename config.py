@@ -105,7 +105,7 @@ DEFAULTS = {
         },
     },
     "language": {"active": "en"},
-    "content": {"rating": "historical"},
+    "content": {"rating": "family"},
     "difficulty": {
         "level": "normal",
         "presets": {
@@ -756,11 +756,9 @@ SECTIONS = [
      "how hard it is, and the titles players earn.",
      "groups": [
          {"title": "Content rating", "fields": [
-             F("content.rating", "Rating", "select", "Historical is the private adult release and permits nudity, "
-               "exposed parts, erotic posing and consensual kink direction in the Art Bible. Family-friendly swaps "
-               "cargo names, uses softer wording and locks the Art Bible prompt studio to fully dressed, non-erotic art. "
-               "It does not replace artwork already uploaded under Graphics.",
-               options=[["historical", "Historical (private adult)"], ["family", "Family-friendly (sharing)"]])]},
+             F("content.rating", "Rating", "select", "Taipan Trader is family-friendly only: cargo uses its family "
+               "names, wording is clean and the Art Bible prompt studio makes fully dressed, non-erotic art.",
+               options=[["family", "Family-friendly"]])]},
          {"title": "Difficulty", "fields": [
              F("difficulty.level", "Current level", "select", "Applies to the game in progress as well as new ones.",
                options_from="difficulty.presets")]},
@@ -2329,8 +2327,8 @@ def validate(raw):
         g["default_years"] = min(g["lengths"], key=lambda y: abs(y - g["default_years"]))
     if cfg["difficulty"]["level"] not in cfg["difficulty"]["presets"]:
         errors.append("Ratings: difficulty level '{}' does not exist".format(cfg["difficulty"]["level"]))
-    if cfg["content"]["rating"] not in ("historical", "family"):
-        errors.append("Ratings: unknown content rating")
+    # Taipan Trader is family-friendly only: the adult rating cannot be switched back on.
+    cfg["content"]["rating"] = "family"
     rank_ids = set()
     for rank in cfg["ranks"]:
         key = rank["id"] or re.sub(r"[^a-z0-9]+", "_", rank["title"].lower()).strip("_")

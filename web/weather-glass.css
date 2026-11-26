@@ -1,7 +1,7 @@
 /* Crimson Ledger: the weather glass (weather-glass.js, 21 Nov 2026). Port > Newspaper, top of the right column.
    A television forecast built from 1860s parts: an oxblood title strap, one column per sea, a lower-third band
    for warnings, on a storm-blue chart with isobar rings. The card is its own container, so the columns tighten
-   and then fold two by two as it narrows. Where the Media Library has a weather picture of Tilly for a sea's
+   and then fold two by two as it narrows. Where the Media Library has a weather picture of Tommy for a sea's
    weather, she stands behind that column and the reading moves to the bottom left, clear of her face.
    EVERY KIND OF WEATHER HAS ITS OWN COLOUR (blue calm, green fair, amber squalls, red typhoon): --wxw is the wash
    and the column's edge, --wxc the bright tint of the glyph and the weather word. */
@@ -45,7 +45,7 @@
 .wxb-wind { font: 600 .8rem/1.2 var(--sans); color: color-mix(in srgb, var(--deck-ivory) 88%, transparent); }
 .wxb-swell { font: italic .78rem/1.2 var(--sans); color: var(--muted); }
 
-/* ---- one sea with Tilly behind it. Her face is in the upper middle of her picture, so that part is hers: the
+/* ---- one sea with Tommy behind it. Her face is in the upper middle of her picture, so that part is hers: the
    name is across the top, and the reading is stacked bottom left (glyph, weather, force, wind, sea) over a wash
    of the weather's colour. The glyph and the word are big and may cover her below the shoulders. The glyph sits
    above the word, not beside it: "Typhoon" beside a glyph is wider than a column. Every line of the reading is

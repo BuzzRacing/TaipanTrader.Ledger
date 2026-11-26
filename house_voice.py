@@ -22,9 +22,9 @@ Every character in Crimson Ledger talks like Madam Shek Yu-lan at sea: sexy, fun
 2. Innuendo, never explicit. Suggest, imply and leave the door ajar. No sex acts, no anatomy, nothing
    coarse enough to stop being funny. Let the listener finish the joke.
 3. Each woman flirts in her own voice: Roxana dry and intimate, Powder bawdy and loud, Madam Wu
-   velvet-warm, Li Yue cold and slow, Yu-lan silky and amused, Moira Haig dry Scots, Lau Siu-wah
-   brisk and shrewd, Tang Wai-lin gruff and in love with timber, Inspector Vane foul-mouthed,
-   Tilly Marsh shameless gossip, the Mayor regal, Mrs. Marlowe conspiratorial, each officer and warden
+   velvet-warm, Li Yue cold and slow, Yu-lan silky and amused, Malcolm Haig dry Scots, Lau Siu-wah
+   brisk and shrewd, Tang Wai-lun gruff and in love with timber, Inspector Vane foul-mouthed,
+   Tommy Marsh shameless gossip, the Mayor regal, Mrs. Marlowe conspiratorial, each officer and warden
    as her card describes. The style is shared; the voices are not.
 4. Reach for the trade's own words: holds, cargo, ledgers, figures, rates, interest, accounts, guns,
    powder, ramrods, broadsides, timber, keels, rigging, berths, cells, irons and keys all do double duty.
@@ -198,7 +198,7 @@ SPOKEN.update({
 })
 
 # ---------------------------------------------------------------------------------------------------------
-# Peggy "Powder" O'Rourke, Bosun and Master Gunner: loud, bawdy, delighted, Cork to the bone.
+# Patrick "Powder" O'Rourke, Bosun and Master Gunner: loud, bawdy, delighted, Cork to the bone.
 # ---------------------------------------------------------------------------------------------------------
 LINES.update({
     "l.typhoon": "A typhoon caught the fleet at sea and battered your ships. Tossed us about like a sailor's sweetheart, Captain.",
@@ -570,7 +570,7 @@ SPOKEN.update({
 # ---------------------------------------------------------------------------------------------------------
 _W = "l.customs_welcome.officer_"
 LINES.update({
-    # Mrs. Eliza Thornbury, Singapore: languid, upper-class, lightly tipsy, flirting out of boredom.
+    # Mr. Edmund Thornbury, Singapore: languid, upper-class, lightly tipsy, flirting out of boredom.
     _W + "singapore.0": "Oh, it's you. Lovely. Sit closer, I can't shout.",
     _W + "singapore.1": "Papers, darling. Somewhere on the desk. Or under me.",
     _W + "singapore.2": "Is it noon yet? Never mind. Declare, then pour.",
@@ -593,7 +593,7 @@ LINES.update({
     _W + "saigon.3": "Heads or tails, Captain? Careful. I play rough.",
     _W + "saigon.4": "Sit. Or don't. Kneel, perhaps. I can't decide.",
     _W + "saigon.8": "Do not smile at me like that, Captain. Yesterday it would have worked, all night. Today, I am thinking about absinthe.",
-    # Okada Suzu, Nagasaki: soft, quiet, precise; every word placed like a stamp. Unsettlingly calm.
+    # Okada Shin, Nagasaki: soft, quiet, precise; every word placed like a stamp. Unsettlingly calm.
     _W + "nagasaki.0": "Please sit, Captain. Closer. I bite only on paper.",
     _W + "nagasaki.1": "Your ledger, Captain. Open it slowly. I like watching.",
     _W + "nagasaki.2": "I am listening. To every word, and every breath.",
@@ -607,7 +607,7 @@ LINES.update({
     _W + "foochow.3": "Second cup, your cargo. Third cup, your secrets.",
     _W + "foochow.4": "Loosen your collar, Captain. We may be some time.",
     _W + "foochow.8": "Relax, Captain. Everyone relaxes in my customs house. It is the tea. It is very good tea, and I am very good company.",
-    # Madam Fong Mei-lin, Shanghai: brisk, commanding and amused; a powerful woman who enjoys being obeyed.
+    # Mr. Fong Wing-kei, Shanghai: brisk, commanding and amused; a powerful woman who enjoys being obeyed.
     _W + "shanghai.0": "You're late, Captain. You'll make it up to me.",
     _W + "shanghai.1": "Stand there. Declare. Good. I like obedience.",
     _W + "shanghai.2": "Papers. Now. I never need to ask twice.",
@@ -622,7 +622,7 @@ LINES.update({
     _W + "hongkong.3": "Mm. You smell of sea and lies. My favourite.",
     _W + "hongkong.4": "Hands where I can see them, Captain. Or not.",
     _W + "hongkong.9": "Smile all you like, Captain. I'm still counting your crates. I can do both at once.",
-    # Khun Ying Malai, Bangkok: gentle, patient and gracious, with steel underneath. She forgives once.
+    # Khun Luang Somchai, Bangkok: gentle, patient and gracious, with steel underneath. She forgives once.
     _W + "bangkok.0": "A garland, Captain. Let me put it on you.",
     _W + "bangkok.1": "Be at ease, Captain. Nothing to fear here. Almost.",
     _W + "bangkok.2": "Sit in the shade. Flushed from the sun, or me?",
@@ -636,7 +636,7 @@ LINES.update({
     _W + "batavia.3": "Tap. The crop. You'll hear it again if you lie.",
     _W + "batavia.4": "Hands flat on the desk. Good. Now begin.",
     _W + "batavia.6": "The crop is for flies, Captain. Mostly. Occasionally for naughty captains. Please declare your cargo.",
-    # Mrs. Honoria Blackwood, Calcutta: velvet and venomous; smiles sweetly while she ruins you.
+    # Mr. Horace Blackwood, Calcutta: velvet and venomous; smiles sweetly while she ruins you.
     _W + "calcutta.0": "Do sit, Captain. I've been looking forward to this.",
     _W + "calcutta.1": "What a lovely hold. Somebody worked hard. For me.",
     _W + "calcutta.2": "The chair's low. Sit anyway. I like the view.",
@@ -662,7 +662,7 @@ LINES.update({
     "m.sold": "Sold {qty} {good} for {gain}. You certainly know when to let go.",
     "m.stored": "Stored {qty} {good}. Tucked away nicely.",
     "m.loaded": "Loaded {qty} {good}. In it goes, darling.",
-    # Tang Wai-lin, Master Shipwright: gruff, warm, teasing, in love with timber.
+    # Tang Wai-lun, Master Shipwright: gruff, warm, teasing, in love with timber.
     "e.unknown_ship": "Unknown ship. I know every hull on this coast by touch, Captain. Not that one.",
     "e.no_shipyard": "There is no shipyard in {port}. Nobody here to handle your timber, Captain.",
     "e.fleet_limit": "Your fleet already has {n} merchantmen, as many as one house can command. Even you can't handle more, Captain.",
@@ -682,7 +682,7 @@ LINES.update({
     "m.ship_sold": "Sold the '{name}' for {value}. I'll find her a good home, Captain. She was always a bit much for you.",
     "m.gun_mounted": "Mounted a gun on the '{name}'. Firm and well seated, Captain.",
     "m.repaired": "Repairs done for {cost}. Every plank stroked back into shape, Captain.",
-    # Moira Haig, Chief Cashier: dry, precise, imperious, a seductive Scots banker.
+    # Malcolm Haig, Chief Cashier: dry, precise, imperious, a seductive Scots banker.
     "e.no_deposit": "You have no silver on hand to deposit, Captain. Don't come to my counter empty-handed.",
     "e.account_empty": "Your account is empty, Captain. Nothing left in there for either of us.",
     "m.deposited": "Deposited {amount}. Safe with me, Captain. I'll keep it warm.",
@@ -692,12 +692,12 @@ LINES.update({
     # written in this style and are left as they are).
     "e.no_more_loans": "{lender} will lend you nothing more, darling. Even Madam Wu says no sometimes, and she does it so rarely.",
     "e.nothing_to_repay": "Nothing to repay, or no silver on hand. Don't come to Madam Wu with empty hands, darling.",
-    # Inspector Arabella Vane, Customs: crisp, imperious, spectacularly foul-mouthed.
+    # Inspector Arthur Vane, Customs: crisp, imperious, spectacularly foul-mouthed.
     "l.seized": "Customs officers searched the fleet, seized {qty} chests of {contraband} and fined you {fine}. Inspector Vane went through your hold like a bloody bride on her wedding night.",
     "n.ban": "The authorities in {port} have banned {contraband}. Ships are being searched, and Inspector Vane is thoroughly enjoying herself.",
     "n.ban_lifted": "The {contraband} ban in {port} has been lifted. Inspector Vane is furious. She was having the time of her life.",
     "n.caught": "{name} of {firm} was caught landing {contraband} in {port}. Inspector Vane found it right where she always looks first.",
-    # Tilly Marsh, Gazette Crier: bright, shameless and theatrical, scandalising a busy harbour.
+    # Tommy Marsh, Gazette Crier: bright, shameless and theatrical, scandalising a busy harbour.
     "m.begin": "The game begins! Hold on to your hats, beauties, and anything else you value!",
     "m.new_game": "A new game is open. Everyone can join again, beauties, and I do mean everyone!",
     "n.opening": "The trading season opens! {home} harbour is crowded with ships, and every one of them is looking for a good time.",

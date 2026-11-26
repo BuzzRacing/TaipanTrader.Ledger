@@ -76,7 +76,7 @@ KINDS = {
                           # The Port Authority's result screen (23 Nov 2026, tax_results.py). Shown there and nowhere else.
                           ["tax_good", "Tax result, good: a wide 16:9 picture of her delighted, full-width at her desk when the tax is paid or she buys your cargo (tax ladies only)"],
                           ["tax_bad", "Tax result, bad: a wide 16:9 picture of her furious, full-width at her desk when she catches a lie (tax ladies only)"],
-                          ["weather", "Weather: on the quay in that month's weather, behind the Newspaper's forecast only (tag weather-calm, weather-fair, weather-squalls or weather-typhoon; Tilly's)"]],
+                          ["weather", "Weather: on the quay in that month's weather, behind the Newspaper's forecast only (tag weather-calm, weather-fair, weather-squalls or weather-typhoon; Tommy's)"]],
                 "default_role": "speaking"},
     "port": {"label": "Ports", "one": "Port", "subjects": "ports",
              "roles": [["banner", "Banner at the top of the market and port tabs"],
@@ -986,7 +986,7 @@ _public_cache = {}
 
 
 def family(cfg):
-    return ((cfg or {}).get("content") or {}).get("rating") == "family"
+    return True
 
 
 def is_family_pic(it):
@@ -1266,6 +1266,11 @@ class Jobs:
             self.wake.set()
 
     def _push(self, job):
+        # Taipan Trader is family-friendly only: a job marked NSFW is refused, whichever screen asked for it.
+        if job.get("nsfw") in (True, "yes"):
+            job.update(status="failed", error="Taipan Trader makes family-friendly pictures only.",
+                       finished=time.time(), failed=job.get("count", 1))
+            print("[media] refused an NSFW picture job for {} {}".format(job.get("kind"), job.get("subject")))
         with self.lock:
             self.jobs.append(job)
             live = [j for j in self.jobs if j["status"] in ("waiting", "running", "cancelling")]

@@ -1,7 +1,7 @@
 """SeaTrader server.
 
 Uses only the Python standard library, so there is nothing to install.
-Run:  python server.py [--port 8765] [--new] [--admin-password WORD]
+Run:  python server.py [--port 8775] [--new] [--admin-password WORD]
 
   /            player screen (phones, tablets, laptops)
   /board       harbor board for a big shared screen
@@ -1465,7 +1465,7 @@ class Handler(BaseHTTPRequestHandler):
         """The Certificate Studio (admin, 21 Nov 2026): any finished game's Captain as certificate facts, and the
         pictures to choose from. Read only: the studio paints in the browser and saves the PNG there."""
         arg = lambda k: (query.get(k) or [""])[0]
-        fam = arg("family") == "1"
+        fam = True
         try:
             if what == "games":
                 cur = journal.current()
@@ -1498,7 +1498,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, data)
             if what == "library":
                 cfg = dict(engine.CFG)
-                cfg["content"] = dict(cfg.get("content") or {}, rating="family" if fam else "adult")
+                cfg["content"] = dict(cfg.get("content") or {}, rating="family")
                 return self._send(200, {"ok": True, "media": media.public(cfg)})
         except Exception:
             crash("The Certificate Studio could not open its books", what=what)
@@ -1987,7 +1987,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "msg": "Scan done: {} new, {} missing file{} dropped.".format(
                 added, missing, "" if missing == 1 else "s")})
         if what == "safe":
-            rating = "family" if body.get("family") else "historical"
+            rating = "family"
             with HUB.cond:
                 new = json.loads(json.dumps(engine.CFG))
                 new["content"]["rating"] = rating
@@ -2403,8 +2403,8 @@ def lan_address():
 
 def main():
     global HUB
-    ap = argparse.ArgumentParser(description="Crimson Ledger game server")
-    ap.add_argument("--port", type=int, default=8765)
+    ap = argparse.ArgumentParser(description="Taipan Trader game server")
+    ap.add_argument("--port", type=int, default=8775)
     ap.add_argument("--new", action="store_true", help="archive the saved game and start a fresh one")
     ap.add_argument("--archive-only", action="store_true", help="archive the saved game and exit")
     ap.add_argument("--join-url", help="the address shown to players, e.g. http://sea.trade (default: this machine's IP and port)")
@@ -2463,14 +2463,14 @@ def main():
         httpd = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     except OSError as e:
         print("Could not open port {}: {}".format(args.port, e))
-        print("Crimson Ledger may already be running.")
+        print("Taipan Trader may already be running.")
         journal.log("ERROR", "server", "Could not open port {}: {}".format(args.port, e))
         sys.exit(1)
     httpd.daemon_threads = True
     threading.Thread(target=HUB.ticker, daemon=True).start()
     threading.Thread(target=HUB.sea_watch, daemon=True).start()
     print("")
-    print("  Crimson Ledger is running.")
+    print("  Taipan Trader is running.")
     print("  This computer:   http://localhost:{}".format(args.port))
     print("  Other devices:   {}".format(join_url))
     print("  Harbor board:    {}/board".format(join_url))

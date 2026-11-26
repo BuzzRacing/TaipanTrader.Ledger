@@ -2294,7 +2294,7 @@ EN.update({
     "counter.r_gain": "Extra, before the sea has its say", "counter.banned": "banned there: seized",
     "counter.go_market": "To the Market", "counter.go_sail": "Set the course",
     "counter.note": "Her figures allow for the dealers' cut, their purse, the tax and how prices drift by the time you land. Storms, pirates and gluts are still up to the sea.",
-    "counter.restart": "Under the Counter opens once the Crimson Ledger server is restarted.",
+    "counter.restart": "Under the Counter opens once the Taipan Trader server is restarted.",
     "port.pl.tips": "Tips under the counter",
     "e.counter_cost": "My price is {price}, Captain, and you've only {cash} aboard. I don't do favours on credit. Not that kind, anyway.",
     "e.counter_off": "The counter is closed today, Captain. Nothing passes under it.",
@@ -2560,5 +2560,7 @@ def resolve(cfg, lang=None):
     if cfg["content"]["rating"] == "family":
         if cfg["language"]["active"] == "en":
             out.update(FAMILY)
+            import taipan_text  # noqa: E402  (Taipan Trader's mixed cast and last clean-ups)
+            out.update({k: v for k, v in taipan_text.OVERRIDES.items() if k in EN})
         out.update({k: v for k, v in lang.get("family", {}).items() if k in EN})
     return out

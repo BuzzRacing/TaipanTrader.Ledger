@@ -12,10 +12,10 @@ echo This will end the current game and start a new one.
 echo The old game is kept in the saves folder.
 choice /c YN /m "Start a new game"
 if errorlevel 2 exit /b 0
-call "%~dp0Stop_SeaTrader.bat"
+call "%~dp0Stop_TaipanTrader.bat"
 set "PY=python"
 where py >nul 2>nul
 if not errorlevel 1 set "PY=py -3"
 %PY% server.py --archive-only
-call "%~dp0Launch_SeaTrader.bat"
+call "%~dp0Launch_TaipanTrader.bat"
 endlocal

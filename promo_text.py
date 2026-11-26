@@ -33,7 +33,7 @@ EN = {
     "promo.tile.ports": "Ports visited",
     "promo.tile.won": "Battles won",
     # ---- the certificate on screen 4 (23 Nov 2026) --------------------------------------------------------
-    "promo.cert.game": "Crimson Ledger",
+    "promo.cert.game": "Taipan Trader",
     "promo.cert.kind": "Certificate of Commission",
     "promo.cert.note": "A word from the Mayor",
     "promo.cert.key": "With the Key to the Mayor's Bedchamber. Knock twice, Captain.",

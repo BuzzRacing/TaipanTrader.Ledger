@@ -20,7 +20,7 @@ const lv = { code: "en", q: "", group: "", changed: false, family: false };
 
 const NAV = [
   ["Game", [["live", "Live Game"], ["captains", "Captains"], ["report", "Captain's Report"], ["certificate", "Certificate Studio"]]],
-  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["artbible", "Art Bible"], ["media", "Media Library"], ["clips", "Voices"], ["language", "Language & Text"]]],
+  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["media", "Media Library"], ["clips", "Voices"], ["language", "Language & Text"]]],
   ["Rules", [["ratings", "Ratings & Difficulty"], ["game", "Game Setup"], ["economy", "Economy"], ["goods", "Cargo"],
              ["ports", "Ports"], ["ships", "Ships"], ["weather", "Weather & Seas"], ["danger", "Pirates & Customs"]]],
   ["System", [["backup", "Backup & Access"]]],

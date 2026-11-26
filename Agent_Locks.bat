@@ -10,7 +10,7 @@ if not errorlevel 1 set "PY=py -3"
 :show
 cls
 echo ============================================================
-echo  Crimson Ledger - agent file locks
+echo  Taipan Trader - agent file locks
 echo ============================================================
 echo.
 %PY% "tools\agent_locks\file_lock.py" status

@@ -121,7 +121,7 @@ def build_prompt(cfg, bank, count, notes=""):
         row = {"spicy": x["spicy"], "clean": x["clean"] if x["twin"] else x["spicy"]}
         examples.append(json.dumps(row, ensure_ascii=False))
     system = (
-        "You write dialogue for Crimson Ledger, an adult-humoured 1860 China Seas trading game. You write new lines "
+        "You write dialogue for Taipan Trader, a light-hearted 1860 China Seas trading game. You write new lines "
         "for one character's bank of lines.\n\nTHE HOUSE STYLE (every line follows it):\n" + house_voice.HOUSE_STYLE +
         "\nEvery line comes as a pair: \"spicy\" is the house-voice wording; \"clean\" is the family-friendly twin, "
         "with the same facts and the same {names} but the innuendo removed (the wit stays).\n")

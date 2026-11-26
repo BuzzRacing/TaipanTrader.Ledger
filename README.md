@@ -1,11 +1,18 @@
-# SeaTrader
+# Taipan Trader
 
 A turn-based trading game for 1 to 8 players, set in the Far East of the 1860s and inspired by the classic Taipan. One PC runs the game; everyone plays in a web browser on their own device, and a harbor board can run on a big screen.
 
+Taipan Trader is a family-friendly fork of Crimson Ledger (D:\SeaTrader), forked 25 November 2026:
+
+- **Clean only.** The content rating is locked to Family-friendly (config.py, media.py, server.py); the adult option is gone from Admin. NSFW pictures were not copied, NSFW picture jobs are refused (media.Jobs._push), every persona prompt is the dressed look (persona_prompts_v2.py), and the Art Bible page is hidden.
+- **A mixed cast.** Sixteen characters are men (cast.MEN): the bosun, banker, comprador, shipwright, customs inspector, crier, five Port Authority officers and five wardens. Their old pictures were women and were dropped; their cards show initials until new portraits are made. taipan_text.py rewords lines about them and about "the officer" / "the warden".
+- **Runs beside Crimson Ledger.** Port 8775 (Crimson Ledger uses 8765). Launch with Launch_TaipanTrader.bat. Raspberry Pi, deploy and picture-queue scripts were left out.
+- The Inworld voice key is not copied; paste it in Admin > Voices to hear the cast.
+
 ## Play
 
-1. Double-click **Launch_SeaTrader.bat**. It starts the game server (a minimised window) and opens the player screen full screen. Alt+F4 closes the full-screen window.
-2. Other players open the address shown on the join screen (for example `http://192.168.1.20:8765`) on a phone, tablet or laptop on the same network. The first time, Windows may ask whether to allow Python through the firewall; choose Allow on private networks.
+1. Double-click **Launch_TaipanTrader.bat**. It starts the game server (a minimised window) and opens the player screen full screen. Alt+F4 closes the full-screen window.
+2. Other players open the address shown on the join screen (for example `http://192.168.1.20:8775`) on a phone, tablet or laptop on the same network. The first time, Windows may ask whether to allow Python through the firewall; choose Allow on private networks.
 3. For a second monitor or TV, double-click **Launch_HarborBoard.bat**.
 4. The first player to join is the host, who picks the game length and starts the game.
 5. To change anything about the game, double-click **Launch_Admin.bat** (see Admin below).
@@ -14,9 +21,9 @@ The bottom-left Captain portrait opens **Options**: a brass-and-lacquer desk wit
 
 | File | What it does |
 |---|---|
-| `Launch_SeaTrader.bat` | Starts the server if needed and opens the player screen |
+| `Launch_TaipanTrader.bat` | Starts the server if needed and opens the player screen |
 | `Launch_HarborBoard.bat` | Opens the big-screen harbor board |
-| `Stop_SeaTrader.bat` | Saves and stops the server |
+| `Stop_TaipanTrader.bat` | Saves and stops the server |
 | `New_Game.bat` | Archives the current game and starts a fresh one |
 | `Launch_Admin.bat` | Opens the Admin command center |
 
@@ -149,7 +156,7 @@ Players' devices join at the Pi's address. Anyone already in the game types the 
 | Stop / start | `sudo systemctl stop seatrader` / `start` |
 | Remove the service | `bash pi/uninstall.sh` |
 
-With the game on a Pi, open the Admin page from any device at `http://<the Pi's address>:8765/admin` after setting a password on the Pi with `python3 server.py --admin-password WORD`. The host can also manage a game from the player screen: the Ledger tab has **End the month now** and **Host: start a new game**. `Stop_SeaTrader.bat` and `New_Game.bat` only act on a server running on the PC.
+With the game on a Pi, open the Admin page from any device at `http://<the Pi's address>:8765/admin` after setting a password on the Pi with `python3 server.py --admin-password WORD`. The host can also manage a game from the player screen: the Ledger tab has **End the month now** and **Host: start a new game**. `Stop_TaipanTrader.bat` and `New_Game.bat` only act on a server running on the PC.
 
 ### Known limits
 

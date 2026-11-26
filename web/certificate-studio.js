@@ -315,7 +315,7 @@
     if (!canvas || !st.f || st.ok.size !== SECTIONS.length) return;
     canvas.toBlob(blob => {
       if (!blob) { hint("The picture could not be made. Try again."); return; }
-      const brand = (document.querySelector("#gname") || {}).textContent || "Crimson Ledger";
+      const brand = (document.querySelector("#gname") || {}).textContent || "Taipan Trader";
       const name = `${brand} - Captain ${st.f.name} - ${st.f.last || ""}`.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

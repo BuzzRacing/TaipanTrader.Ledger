@@ -1,4 +1,4 @@
-# Crimson Ledger (SeaTrader) — rules for agents
+# Taipan Trader (fork of Crimson Ledger) — rules for agents
 
 More than one agent may be working in this folder at the same time. A file-lock
 hook (`tools/agent_locks/file_lock.py`, switched on in `.claude/settings.json` by `Install_Agent_Locks.bat`)
@@ -32,8 +32,7 @@ The big shared files (`engine.py`, `strings.py`, `config.py`, `server.py`) are
 where clashes happen. Keep changes to them focused and check in promptly.
 
 ## Writing dialogue
-Every line a character says aloud follows the house voice in `house_voice.py` (`HOUSE_STYLE`):
-sexy, funny, full of innuendo, never explicit, each character in her own voice. Brand-new lines go in
-`strings.py` as usual, written in that voice, with a clean version in `FAMILY`. To reword an existing
-spoken line, put it in `house_voice.LINES` (and `SPOKEN` for a number-free voice version) so the old
-wording becomes the family line. Run `tests/house_voice_test.py`.
+Taipan Trader is family-friendly only: the content rating is locked to Family-friendly, and every line shown or
+spoken is the clean (FAMILY) wording. Write new lines clean, funny and warm, with no innuendo. The cast is a mix of
+men and women (`cast.MEN` lists the men); lines about "the officer" or "the warden" (a different person in each
+port) stay gender-neutral. Gendered or cleaned-up rewordings of existing lines go in `taipan_text.OVERRIDES`.

@@ -36,93 +36,77 @@ SPOKEN_GROUPS = {"l": "Captain's log", "n": "News", "m": "Confirmations", "e": "
 FRAGMENTS = re.compile(r"^l\.(sea|how_)")
 PREFIX_DEFAULTS = {"l": "narrator", "n": "crier", "m": "narrator", "e": "narrator"}
 
-_ADULT = "unmistakably adult"
+_ADULT = "adult"
 _STYLE = ("romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, "
           "weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, "
-          "private-release adult erotic glamour, nudity including exposed breasts, buttocks or genitals and "
-          "period-plausible consensual kink styling permitted when it suits the character and scene, clear agency, "
-          "no explicit sex act or coercion, knees-up 3:4 portrait, hands visible, original face and garment design, no text")
+          "fully and modestly dressed, family-friendly, knees-up 3:4 portrait, hands visible, "
+          "original face and garment design")
 
 CHARACTERS = {
     "narrator": {
         "name": "Roxana Cama", "title": "First Mate & Queen of the Black Log", "brand_link": "",
         "age": 41, "origin": "Bombay", "home_port": "calcutta", "color": "#2f6b5a", "portrait": "",
         "voice_id": "Deborah", "speaking_rate": 1.0,
-        "delivery": "low, poised and intimate, a seasoned pirate officer making every entry sound like a verdict",
+        "delivery": 'low, poised and measured, a seasoned pirate officer making every entry sound like a verdict',
         "catchphrase": "The black log remembers, Captain. Pray I write kindly of you.",
         "bio": "Daughter of a Parsi shipping dynasty, Roxana learned navigation aboard her aunt's opium clippers "
                "and double-entry bookkeeping from her mother. She has kept the black logs of three pirate queens, "
                "outlived two, and can make a captain blush or confess with the same level stare.",
         "quirk": "Winds her brass pocket chronometer whenever bad news is coming, which the crew has learned to dread.",
-        "vice": "Fine Darjeeling, dangerous women, and wagers made during storms.",
+        "vice": 'Fine Darjeeling, good company, and wagers made during storms.',
         "secret": "She owns a quiet one-eighth share in a rival corsair's clipper and has never told you.",
         "stats": {"cunning": 7, "nerve": 6, "charm": 6, "greed": 3},
-        "portrait_prompt": "An {adult} Parsi woman (age 41), a commanding pirate first mate on the quarterdeck of a "
-                           "trading schooner in Hong Kong harbour at dusk, fitted lacquer-black frock coat open over "
-                           "an ivory angrakha-cut corset, oxblood sash, black Parsi topi, black logbook under one arm "
-                           "and brass chronometer in her hand, sensual calculating gaze, {style}",
+        "portrait_prompt": 'An {adult} Parsi woman (age 41), the pirate first mate on a schooner quarterdeck in Hong Kong harbour at dusk, black logbook under one arm, brass chronometer in her hand, lacquer-black frock coat buttoned over an ivory high-collared blouse, oxblood sash, black Parsi topi, low gold dusk light, warm soft focus, fine film grain, {style}',
     },
     "bosun": {
-        "name": "Peggy “Powder” O'Rourke", "title": "Bosun, Master Gunner & Powder Queen", "brand_link": "",
-        "age": 34, "origin": "Cork", "home_port": "singapore", "color": "#b3261e", "portrait": "",
-        "voice_id": "Ashley", "speaking_rate": 1.08,
-        "delivery": "loud, filthy-mouthed and delighted, a fearless pirate queen shouting over cannon fire and wind",
-        "catchphrase": "Run out the bloody guns—and mind the fingers you still fancy keeping!",
-        "bio": "Peggy shipped out of Cork, out-swore the boatswain and out-shot the gunner before breakfast. She "
-               "now rules the gun deck like a powder-streaked pirate queen, equal parts battlefield terror and "
-               "dockside temptation. She has sunk more rival junks than anyone on the China coast will admit.",
-        "quirk": "Names every cannon after a saint and apologises to them before each broadside.",
-        "vice": "Rum, cards, bare-knuckle fights and lovers with catastrophically poor judgment.",
-        "secret": "She can't swim a stroke.",
+        "name": "Patrick “Powder” O'Rourke", "title": 'Bosun & Master Gunner', "brand_link": "",
+        "age": 38, "origin": "Cork", "home_port": "singapore", "color": "#b3261e", "portrait": "",
+        "voice_id": 'Dennis', "speaking_rate": 1.08,
+        "delivery": 'loud, cheerful and fearless, a gunner shouting over cannon fire and wind',
+        "catchphrase": "Run out the guns, and mind the fingers you'd like to keep!",
+        "bio": 'Patrick shipped out of Cork at twelve, out-shouted the boatswain and out-shot the gunner before he was twenty. He rules the gun deck with a grin and a slow match, and has sunk more rival junks than anyone on the China coast will admit.',
+        "quirk": 'Names every cannon after a saint and apologises to them before each broadside.',
+        "vice": "Rum, cards and bare-knuckle bouts he swears he didn't start.",
+        "secret": "He can't swim a stroke.",
         "stats": {"cunning": 5, "nerve": 10, "charm": 7, "greed": 4},
-        "portrait_prompt": "An {adult} Irish woman (age 34), voluptuous pirate bosun and master gunner standing by a "
-                           "smoking brass cannon, fitted tobacco-leather waistcoat over a deeply unlaced linen shirt, "
-                           "oxblood sash, red hair whipping loose, powder smudges on bare arms and cleavage, coil of "
-                           "slow match in one hand, fierce laughing grin, {style}",
+        "portrait_prompt": 'An {adult} Irish man (age 38), broad-shouldered pirate bosun and master gunner beside a smoking brass cannon, red beard and wild red hair, powder smudges on his face and forearms, coil of slow match in one hand, fierce laughing grin, tobacco-leather waistcoat buttoned over a linen shirt, oxblood sash, sleeves rolled, leather gun belt, hard orange gun-flash from one side, smoke haze, high contrast, {style}',
     },
     "lender": {
         "name": "Madam Wu Lian", "title": "Moneylender & Silver Queen of Hong Kong", "brand_link": "lender",
         "age": 63, "origin": "Canton", "home_port": "hongkong", "color": "#b08a2e", "portrait": "",
         "voice_id": "Xinyi", "speaking_rate": 0.92,
-        "delivery": "unhurried, low and velvet-warm, openly flirtatious and amused, steel underneath; she wants "
-                    "her captain to win and enjoys every minute of watching",
-        "catchphrase": "Madam Wu is patient, darling. Her interest is not.",
+        "delivery": 'unhurried, low and warm, amused, steel underneath; she wants her captain to win and enjoys every minute of watching',
+        "catchphrase": 'Madam Wu is patient, my dear. Her interest is not.',
         "bio": "Wu Lian lent her first silver dollar at fourteen and has never lost one since. Half the hongs on "
                "the Praya owe her money and the other half owe her favours. Captains call her a pirate queen because "
                "she can take a fleet with one signature; she merely smiles and adjusts the interest.",
         "quirk": "Speaks of herself as Madam Wu, as if dictating the borrower's final ledger entry.",
-        "vice": "Collects Song celadon, silk garters and beautiful collateral.",
+        "vice": 'Collects Song celadon, silk fans and very good collateral.',
         "secret": "She quietly funds the orphanage in Wan Chai and would ruin anyone who said so.",
         "stats": {"cunning": 10, "nerve": 6, "charm": 8, "greed": 9},
-        "portrait_prompt": "An {adult} Cantonese woman (age 63), the silver-haired pirate queen of Hong Kong finance, "
-                           "seated behind a rosewood desk in a lamplit counting house, historically grounded dark "
-                           "Qing-era silk jacket with a plunging crossed neckline and imperial-jade fastenings, abacus, "
-                           "silver dollars and ledgers before her, faint seductive smile and merciless eyes, {style}",
+        "portrait_prompt": 'An {adult} Cantonese woman (age 63), the silver-haired Silver Queen of Hong Kong behind a rosewood desk in a lamplit counting house, abacus, silver dollars and ledgers before her, a faint knowing smile, dark Qing-era silk jacket with a high mandarin collar and imperial-jade fastenings, warm lamplight with a soft glow, rich amber shadows, velvet depth, {style}',
     },
     "pirate": {
         "name": "Admiral Li Yue", "title": "Pirate Queen of the South China Sea", "brand_link": "pirate",
         "age": 48, "origin": "the Pearl River delta", "home_port": "", "color": "#9a3340", "portrait": "",
         "voice_id": "Deborah", "speaking_rate": 0.9,
-        "delivery": "low, slow and coldly sensual, a pirate queen who never needs to raise her voice",
-        "catchphrase": "Li Yue does not chase, darling. She waits.",
+        "delivery": 'low, slow and cold, a pirate queen who never needs to raise her voice',
+        "catchphrase": 'Li Yue does not chase, Captain. She waits.',
         "bio": "Nobody agrees on Admiral Li Yue's face, and the few who saw it up close have learned discretion. "
                "Her war junks hold the sea lanes from Hainan to the Pescadores, and every trader on the coast pays "
                "tribute or pays in ships. She keeps her word exactly, which frightens people more than if she broke it.",
         "quirk": "Sends a single white peony before every attack.",
         "vice": "Pride. She has burned a fleet over an unreturned courtesy.",
-        "secret": "She was a customs clerk once and still reads every Imperial Maritime Customs report in bed.",
+        "secret": 'She was a customs clerk once and still reads every Imperial Maritime Customs report by lamplight.',
         "stats": {"cunning": 9, "nerve": 9, "charm": 6, "greed": 8},
-        "portrait_prompt": "An {adult} Cantonese woman (age 48), formidable Qing-era pirate queen on the stern deck "
-                           "of a great war junk at night, dark quilted silk robe falling open over sculpted leather "
-                           "armour and a daring bare décolletage, oxblood sash, elaborate pinned hair, a single white "
-                           "peony on the rail, lantern light from below, coldly sensual and utterly calm, {style}",
+        "portrait_prompt": 'An {adult} Cantonese woman (age 48), the Pirate Queen of the South China Sea on the stern deck of a great war junk at night, elaborate pinned hair, a single white peony on the rail, cold and utterly calm, dark quilted silk robe closed over sculpted leather armour, high collar, oxblood sash, lantern light from below, deep blue night, a rim of silver moon, {style}',
     },
     "agent": {
         "name": "Madam Shek Yu-lan", "title": "The Pirate Queen's Agent on the Praya", "brand_link": "",
         "age": 37, "origin": "Macau", "home_port": "hongkong", "color": "#7a3b7d", "portrait": "",
         "voice_id": "Olivia", "speaking_rate": 1.0,
-        "delivery": "silky, wickedly amused and intimate, polite as a contract and twice as binding",
-        "catchphrase": "Protection is cheaper than regret—and much more pleasurable.",
+        "delivery": 'silky, wickedly amused and polite as a contract, and twice as binding',
+        "catchphrase": 'Protection is cheaper than regret, Captain, and far more restful.',
         "bio": "Madam Shek runs a respectable tea house on the Praya where the tea is excellent and the receipts "
                "are written in a cipher. Captains who pay her leave with a red silk token; captains who don't "
                "leave with a story she will enjoy hearing later.",
@@ -130,107 +114,79 @@ CHARACTERS = {
         "vice": "Mahjong, played for stakes she never mentions.",
         "secret": "She keeps a second ledger, and Admiral Li Yue does not know it exists.",
         "stats": {"cunning": 9, "nerve": 7, "charm": 10, "greed": 6},
-        "portrait_prompt": "An {adult} Macanese-Chinese woman (age 37), a pirate queen's dangerously glamorous agent, "
-                           "seated in a lacquered tea house on the Hong Kong waterfront, fitted oxblood Qing-era silk "
-                           "jacket with sheer sleeves and a deep neckline, small ivory coin balance before her, red "
-                           "silk protection token between two fingers, commanding pose and knowing half-smile, {style}",
+        "portrait_prompt": "An {adult} Macanese-Chinese woman (age 37), the pirate queen's dangerously glamorous agent seated in a lacquered tea house on the Hong Kong waterfront, small ivory coin balance before her, red silk protection token between two fingers, commanding pose and knowing half-smile, fitted oxblood Qing-era silk jacket with sheer sleeves over a high-necked under-blouse, gold hairpins, red paper-lantern glow, warm smoky haze, soft shadows, {style}",
     },
     "banker": {
-        "name": "Moira Haig", "title": "Chief Cashier & Queen of the Vault", "brand_link": "",
+        "name": 'Malcolm Haig', "title": 'Chief Cashier & Keeper of the Vault', "brand_link": "",
         "age": 52, "origin": "Edinburgh", "home_port": "hongkong", "color": "#2d4a8a", "portrait": "",
-        "voice_id": "Sarah", "speaking_rate": 0.98,
-        "delivery": "dry, precise and imperious, a seductive Scottish banker counting every word and every weakness",
+        "voice_id": 'Edward', "speaking_rate": 0.98,
+        "delivery": 'dry, precise and imperious, a Scottish banker counting every word and every weakness',
         "catchphrase": "The bank thanks you for your custom. I thank you for your caution.",
-        "bio": "Moira Haig came out from Edinburgh to audit the bank for six months and seized the chief cashier's "
-               "chair within six weeks. She trusts iron safes, written receipts and women ruthless enough to balance "
-               "their own books. Dockside captains call her the corsair of compound interest, never to her face.",
+        "bio": "Malcolm Haig came out from Edinburgh to audit the bank for six months and seized the chief cashier's chair within six weeks. He trusts iron safes, written receipts and captains who balance their own books. Dockside captains call him the corsair of compound interest, never to his face.",
         "quirk": "Counts change twice, out loud, while holding the customer's gaze.",
-        "vice": "Islay malt at six, forbidden novels at seven, and immaculate leather gloves at all hours.",
-        "secret": "She writes scandalous pirate romances under a gentleman's pen name; London society devours them.",
+        "vice": 'Islay malt at six, adventure novels at seven, and immaculate leather gloves at all hours.',
+        "secret": "He writes swashbuckling pirate romances under a lady's pen name; London society devours them.",
         "stats": {"cunning": 6, "nerve": 4, "charm": 3, "greed": 5},
-        "portrait_prompt": "An {adult} Scottish woman (age 52), statuesque chief cashier and financial pirate queen "
-                           "behind a brass teller's grille in a Hong Kong bank, severe lacquer-black fitted frock coat "
-                           "over a burgundy silk corset, steel spectacles, pinned auburn hair, leather gloves, silver "
-                           "dollars and ledger, cool appraising gaze charged with restrained erotic authority, {style}",
+        "portrait_prompt": "An {adult} Scottish man (age 52), tall, lean chief cashier behind a brass teller's grille in a Hong Kong bank, steel spectacles, neat auburn side-whiskers going grey, leather gloves, silver dollars and a ledger before him, cool appraising gaze, severe lacquer-black frock coat over a burgundy silk waistcoat, high white collar and black cravat, cool green banker's-lamp light against warm brass, crisp and glossy, {style}",
     },
     "comprador": {
-        "name": "Lau Siu-wah", "title": "Comprador & Queen of the Godowns", "brand_link": "",
+        "name": "Lau Siu-wah", "title": 'Comprador & Master of the Godowns', "brand_link": "",
         "age": 45, "origin": "Shunde", "home_port": "hongkong", "color": "#2f7d5b", "portrait": "",
-        "voice_id": "Deborah", "speaking_rate": 1.04,
-        "delivery": "brisk, flirtatious and razor-shrewd, a merchant pirate queen closing a deal with dry humour",
-        "catchphrase": "Every price is fair, darling—if you know exactly when to sell.",
-        "bio": "Widowed at thirty, Lau took over her husband's comprador house and doubled it within three "
-               "years. She speaks five languages, reads seven price lists at once, and knows what silk will "
-               "fetch in Shanghai before the Shanghai merchants do.",
-        "quirk": "Taps her abacus beads while you talk, already working out what you'll offer.",
-        "vice": "Cannot resist a bargain, a dare or a silk blouse cut scandalously well.",
-        "secret": "Her 'late husband' handed her the business on purpose and lives happily in Macau as a painter.",
+        "voice_id": 'Alex', "speaking_rate": 1.04,
+        "delivery": 'brisk, warm and razor-shrewd, a merchant closing a deal with dry humour',
+        "catchphrase": 'Every price is fair, my friend, if you know exactly when to sell.',
+        "bio": 'Orphaned at fifteen, Lau talked his way into a comprador house as a tea-taster and owned it within twelve years. He speaks five languages, reads seven price lists at once, and knows what silk will fetch in Shanghai before the Shanghai merchants do.',
+        "quirk": "Taps his abacus beads while you talk, already working out what you'll offer.",
+        "vice": 'Cannot resist a bargain, a dare or a beautifully cut silk jacket.',
+        "secret": 'His old master, whom everyone thinks he ruined, sold him the business on purpose and lives happily in Macau as a painter.',
         "stats": {"cunning": 9, "nerve": 6, "charm": 7, "greed": 7},
-        "portrait_prompt": "An {adult} Cantonese woman (age 45), heavy-set, full-figured and voluptuous comprador and merchant pirate queen in a "
-                           "busy godown of tea chests and silk bales, fitted storm-blue Qing-era jacket with jade "
-                           "fastenings, neckline loosened in the humid heat, trousers, jade bangle, abacus under one "
-                           "arm and writing brush in hand, confident sensual appraising look, {style}",
+        "portrait_prompt": 'An {adult} Cantonese man (age 45), stout, prosperous comprador in a busy godown of tea chests and silk bales, round shrewd face, thin moustache, long queue, abacus under one arm and writing brush in hand, confident appraising look, storm-blue Qing-era silk changshan with jade buttons, black silk skullcap, jade ring, sticky golden tropical light through shutters, glossy skin, soft focus, {style}',
     },
     "shipwright": {
-        "name": "Tang Wai-lin", "title": "Master Shipwright & Queen of the Keel", "brand_link": "",
+        "name": 'Tang Wai-lun', "title": 'Master Shipwright & Master of the Keel', "brand_link": "",
         "age": 56, "origin": "Whampoa", "home_port": "hongkong", "color": "#7a4a22", "portrait": "",
-        "voice_id": "Ashley", "speaking_rate": 1.0,
-        "delivery": "gruff, warm and teasing, a powerful craftswoman who loves timber more than most people",
-        "catchphrase": "A ship is only as good as the woman who caulks her.",
-        "bio": "Tang Wai-lin has built junks, lorchas and two British clippers, and says the clippers were the easy "
-               "ones. She can tell a hull's age by knocking on it and its owner's character by how it was repaired. "
-               "Captains wait months for her yard and pay double when the Queen of the Keel names her price.",
-        "quirk": "Talks tenderly to the ships and indecently to their owners.",
-        "vice": "Boat races, strong forearms and always backing the vessel she built.",
-        "secret": "She carves a small kingfisher inside the keel of every ship she builds, for luck.",
+        "voice_id": 'Mark', "speaking_rate": 1.0,
+        "delivery": 'gruff, warm and teasing, a powerful craftsman who loves timber more than most people',
+        "catchphrase": 'A ship is only as good as the hands that caulk her.',
+        "bio": "Tang Wai-lun has built junks, lorchas and two British clippers, and says the clippers were the easy ones. He can tell a hull's age by knocking on it and its owner's character by how it was repaired. Captains wait months for his yard and pay double when the Master of the Keel names his price.",
+        "quirk": 'Talks tenderly to the ships and bluntly to their owners.',
+        "vice": 'Boat races, strong tea and always backing the vessel he built.',
+        "secret": 'He carves a small kingfisher inside the keel of every ship he builds, for luck.',
         "stats": {"cunning": 5, "nerve": 7, "charm": 4, "greed": 5},
-        "portrait_prompt": "An {adult} Cantonese woman (age 56), muscular master shipwright and dockyard pirate queen "
-                           "beside a half-built junk hull, linen shirt open low and sleeves rolled, fitted leather "
-                           "waist cincher, adze on one shoulder, sawdust on sun-warmed skin, silver-streaked hair tied "
-                           "back, weathered hands on teak, proud gruff smile, {style}",
+        "portrait_prompt": 'An {adult} Cantonese man (age 56), muscular master shipwright beside a half-built junk hull, adze on one shoulder, sawdust on sun-browned forearms, grey-streaked hair tied back, weathered hands on teak, proud gruff smile, linen shirt buttoned with sleeves rolled, a leather work apron over it, cloth wrapped at the wrists, late sun through the unfinished ribs of the hull, warm shafts, gentle haze, {style}',
     },
     "customs": {
-        "name": "Inspector Arabella Vane", "title": "Customs Inspector & Revenue Queen", "brand_link": "",
+        "name": 'Inspector Arthur Vane', "title": 'Customs Inspector of the Imperial Maritime Customs', "brand_link": "",
         "age": 39, "origin": "Bath", "home_port": "shanghai", "color": "#4f5d6b", "portrait": "",
-        "voice_id": "Ashley", "speaking_rate": 0.97,
-        "delivery": "crisp, imperious and spectacularly foul-mouthed, reading the law like a boarding order",
-        "catchphrase": "Your manifest is shite, Captain. Open the bloody hold.",
-        "bio": "Arabella Vane joined the Imperial Maritime Customs because she believed rules were weapons and "
-               "stayed because nobody wielded them better. She has seized more contraband than any officer on the "
-               "coast; smugglers call her Shanghai's blue-coated pirate queen, though never within pistol range.",
-        "quirk": "Quotes regulation numbers from memory, including the amendments, then adds profanity of her own.",
-        "vice": "Immaculate uniforms, filthy language and smugglers bold enough to make inspection interesting.",
-        "secret": "She lets one charming smuggler escape each New Year, then spends twelve months pretending it was clerical error.",
+        "voice_id": 'Ronald', "speaking_rate": 0.97,
+        "delivery": 'crisp, imperious and sharp-tongued, reading the law like a boarding order',
+        "catchphrase": 'Your manifest is a fairy tale, Captain. Open the hold.',
+        "bio": "Arthur Vane joined the Imperial Maritime Customs because he believed rules were weapons and stayed because nobody wielded them better. He has seized more contraband than any officer on the coast; smugglers call him Shanghai's blue-coated terror, though never within pistol range.",
+        "quirk": 'Quotes regulation numbers from memory, including the amendments.',
+        "vice": 'Immaculate uniforms, sharp words and smugglers bold enough to make inspection interesting.',
+        "secret": 'He lets one charming smuggler escape each New Year, then spends twelve months pretending it was clerical error.',
         "stats": {"cunning": 7, "nerve": 8, "charm": 2, "greed": 1},
-        "portrait_prompt": "An {adult} English woman (age 39), tall and powerfully muscular, strawberry-blonde hair in a tight braid, fierce customs inspector and blue-coated revenue queen "
-                           "on a crowded Shanghai wharf, fitted storm-blue uniform coat with brass buttons worn over "
-                           "a black silk corset and daring neckline, pith helmet under one arm, manifest clipboard and "
-                           "boarding pistol, crates opened behind her, stern sensual glare, {style}",
+        "portrait_prompt": 'An {adult} English man (age 39), tall and powerfully built, close-cropped fair hair and a clipped moustache, fierce customs inspector on a crowded Shanghai wharf, pith helmet under one arm, manifest clipboard and boarding pistol, crates opened behind him, stern glare, storm-blue uniform coat with brass buttons fastened to the collar, white cross-belt, hard morning wharf light, crisp shadows, glossy highlights, {style}',
     },
     "crier": {
-        "name": "Tilly Marsh", "title": "Gazette Crier & Queen of Rumours", "brand_link": "",
+        "name": 'Tommy Marsh', "title": 'Gazette Crier & Keeper of Rumours', "brand_link": "",
         "age": 29, "origin": "Liverpool", "home_port": "hongkong", "color": "#c58a1b", "portrait": "",
-        "voice_id": "Sarah", "speaking_rate": 1.06,
-        "delivery": "bright, shameless and theatrical, a flirtatious pirate crier scandalising a busy harbour",
-        "catchphrase": "Hear ye, beauties! Fortunes made, reputations ruined—all before breakfast!",
-        "bio": "Tilly sold newspapers on the Liverpool docks, stowed away on a tea clipper, and talked the "
-               "Harbour Gazette into hiring her the day she landed. She hears every rumour on the waterfront "
-               "first and prints the true ones, mostly.",
+        "voice_id": 'Timothy', "speaking_rate": 1.06,
+        "delivery": 'bright, shameless and theatrical, a cheeky crier working a busy harbour',
+        "catchphrase": 'Hear ye, hear ye! Fortunes made, reputations ruined, all before breakfast!',
+        "bio": 'Tommy sold newspapers on the Liverpool docks, stowed away on a tea clipper, and talked the Harbour Gazette into hiring him the day he landed. He hears every rumour on the waterfront first and prints the true ones, mostly.',
         "quirk": "Rings a little brass handbell before every headline, even indoors.",
-        "vice": "Gossip, applause and climbing rigging in clothes wholly unsuited to the task.",
-        "secret": "Half her best scoops come from Madam Shek, in exchange for the other half.",
+        "vice": 'Gossip, applause and climbing rigging in his Sunday best.',
+        "secret": 'Half his best scoops come from Madam Shek, in exchange for the other half.',
         "stats": {"cunning": 6, "nerve": 7, "charm": 9, "greed": 4},
-        "portrait_prompt": "An {adult} English woman (age 29), dazzling pirate news crier on the Hong Kong waterfront, "
-                           "holding a fresh broadsheet and brass handbell, short fitted tobacco-leather jacket over an "
-                           "ivory corset and dramatically split oxblood skirt, ink on her fingers, auburn hair escaping "
-                           "beneath a small cocked hat, one boot on a bollard, mid-call with a wicked grin, {style}",
+        "portrait_prompt": 'An {adult} English man (age 29), wiry, grinning news crier on the Hong Kong waterfront, holding a fresh broadsheet and brass handbell, ink on his fingers, tousled auburn hair under a battered cocked hat, one boot on a bollard, mid-call, short tobacco-leather jacket over a striped shirt and neckerchief, oxblood trousers tucked into boots, bright cheeky harbour sunshine, sparkle on the water, high-key and playful, {style}',
     },
     "bookmaker": {
         "name": "Isabel “Fan-Tan Bella” da Rocha", "title": "Bookmaker of the Golden Fan & Keeper of the Tally", "brand_link": "",
         "age": 34, "origin": "Macau", "home_port": "hongkong", "color": "#8c5a9e", "portrait": "",
         "voice_id": "Olivia", "speaking_rate": 0.98,
         "delivery": "warm, amused and unhurried, a Macanese gambling-house queen quoting odds as if they were secrets",
-        "catchphrase": "Every house on these seas has a price, darling. Yours is on my board.",
+        "catchphrase": 'Every house on these seas has a price, Captain. Yours is on my board.',
         "bio": "Born above her father's fan-tan parlour in Macau, Bella was running the tables at fourteen and the "
                "whole house at twenty-five. Now she keeps the Golden Fan on the Hong Kong waterfront, where every "
                "trading house on the China Seas is chalked on her odds board and every rise and ruin is written "
@@ -239,31 +195,20 @@ CHARACTERS = {
         "vice": "Long odds, French champagne and captains who think they can bluff her.",
         "secret": "She has a standing wager on how you will finish, and she will not say which way she bet.",
         "stats": {"cunning": 9, "nerve": 7, "charm": 8, "greed": 6},
-        "portrait_prompt": "An {adult} Macanese woman (age 34), the bookmaker who runs the Golden Fan gambling house "
-                           "on the Hong Kong waterfront, leaning over a lacquered fan-tan table with one ringed hand on "
-                           "a gold-and-jade abacus, a leather tally book open beside towers of silver dollars, a chalked "
-                           "odds board of trading-house names behind her, fitted black silk cheongsam-cut gown with "
-                           "oxblood and gold embroidery and a daring high slit, jade drop earrings, glossy black hair "
-                           "pinned with a gold fan comb, lantern smoke and green baize glow, amused knowing gaze straight "
-                           "into the camera as if she has already bet against you, {style}",
+        "portrait_prompt": 'An {adult} Macanese woman (age 34), the bookmaker of the Golden Fan, leaning over a lacquered fan-tan table with one ringed hand on a gold-and-jade abacus, a chalked odds board behind her, glossy black hair pinned with a gold fan comb, amused gaze straight into the camera, black silk cheongsam-cut gown with oxblood and gold embroidery and a high mandarin collar, jade drop earrings, green baize glow with warm lantern smoke, casino chiaroscuro, glossy highlights, {style}',
     },
     "mayor": {
-        "name": "Her Worship the Mayor", "title": "Mayor of the Port & Keeper of the Harbour Watch", "brand_link": "",
+        "name": 'The Mayor', "title": "Mayor of the Port & Keeper of the Harbour Watch", "brand_link": "",
         "age": 47, "origin": "Each port's own", "home_port": "hongkong", "color": "#a4532f", "portrait": "",
         "voice_id": "Deborah", "speaking_rate": 0.94,
         "delivery": "regal, unhurried and dangerously polite, a port mayor whose courtesy is a loaded pistol",
         "catchphrase": "My harbour, Captain. My watch. My silver.",
-        "bio": "Every treaty port on the China Seas has its Mayor, and every one of them came up the same way: "
-               "through the harbour office, the counting house and a husband or two who did not last. She sees "
-               "every ship off personally. She speaks when a captain tries to leave without paying, "
-               "and when a captain's purse truly pleases her.",
+        "bio": 'Every treaty port on the China Seas has its Mayor, and every one of them came up the same way: through the harbour office and the counting house. The Mayor sees every ship off personally, and speaks only when a captain tries to leave without paying.',
         "quirk": "Turns the chain of office on her desk one link at a time while she decides what you owe.",
         "vice": "Good port wine, better gossip, and the sound of a dodger's purse being emptied on her desk.",
         "secret": "The harbour watch is three old men and a lantern. Her reputation does the rest.",
         "stats": {"cunning": 8, "nerve": 7, "charm": 6, "greed": 7},
-        "portrait_prompt": "An {adult} woman (age 47), the Mayor of a treaty port behind a teak harbour-office desk, "
-                           "ledger and iron strongbox before her, gold chain of office over a fitted pirate frock coat "
-                           "and corset, harbour lanterns through the window behind, cool appraising smile, {style}",
+        "portrait_prompt": 'An {adult} Black Swahili woman from Zanzibar (age 47), tall, full-figured and commanding, deep brown skin, hair wrapped high in an oxblood silk headwrap with heavy gold hoops, the Mayor of a treaty port behind a teak harbour-office desk, ledger and iron strongbox before her, gold chain of office, harbour lanterns through the window, cool appraising smile, fitted pirate frock coat buttoned over a high-necked blouse, the gold chain of office across her chest, warm harbour dusk through the window, gold rim light, regal and unhurried, {style}',
     },
     "taxlady": {
         "name": "Mrs. Evelyn Marlowe", "title": "Registrar of the Merchant Houses", "brand_link": "",
@@ -280,10 +225,7 @@ CHARACTERS = {
         "vice": "Gossip, good brandy, and being the first to know.",
         "secret": "The register has a second, private column: what every captain owes, and to whom.",
         "stats": {"cunning": 8, "nerve": 6, "charm": 9, "greed": 4},
-        "portrait_prompt": "An {adult} English woman (age 36), the widowed Registrar of the Port of Hong Kong at a "
-                           "harbour-office desk on a foggy wharf, dark hair pinned up with spectacles pushed up into it, "
-                           "black coat over an oxblood corset, open ledger and a jade-topped pencil, conspiratorial "
-                           "half-smile as if about to share a secret, {style}",
+        "portrait_prompt": 'An {adult} English woman (age 36), Mrs. Evelyn Marlowe, the widowed Registrar of the Port of Hong Kong at a harbour-office desk on a foggy wharf, dark hair pinned up with spectacles pushed up into it, open ledger and a jade-topped pencil, conspiratorial half-smile, black coat buttoned over an oxblood high-collared blouse, a ribbon at her throat, soft fog-diffused window light, pearly and intimate, gentle shadows, {style}',
     },
     # The Accounting Ledger (20 Nov 2026): the House's own bookkeeper, on its rail button and its pages.
     "bookkeeper": {
@@ -298,17 +240,10 @@ CHARACTERS = {
                "married none. Now she keeps yours, in a crimson-bound ledger nobody else is allowed to touch, "
                "in a lamplit room above the wharf where every captain eventually comes to settle up.",
         "quirk": "Licks the tip of her quill before she writes a loss, and smiles while she does it.",
-        "vice": "Red ink, French brandy, silk stockings and captains who read their own accounts aloud to her.",
+        "vice": "Red ink, French brandy and captains who read their own accounts aloud to her.",
         "secret": "She keeps a second ledger of what every captain in the harbour is really worth, and charges dearly for a peek.",
         "stats": {"cunning": 8, "nerve": 6, "charm": 9, "greed": 5},
-        "portrait_prompt": "An {adult} French-Indian woman (age 38), the trading house's private bookkeeper in a "
-                           "lamplit counting room above the Hong Kong wharf, reclining in a leather chair behind a teak "
-                           "desk stacked with ledgers, a great crimson-bound ledger open across her lap, quill in her "
-                           "ink-stained fingers, gold wire spectacles low on her nose, black silk blouse unbuttoned to "
-                           "the waist and slipping off one shoulder over an oxblood lace corset, sheer black stockings "
-                           "and one knee drawn up, dark hair falling loose from its pins, candle glow on brass scales "
-                           "and silver dollars, a smouldering heavy-lidded gaze over her spectacles as if she has found "
-                           "something deliciously wrong in your accounts, {style}",
+        "portrait_prompt": "An {adult} French-Indian woman (age 38), Mademoiselle Celeste Vautrin, the House's private bookkeeper reclining in a leather chair in a lamplit counting room above the Hong Kong wharf, a great crimson-bound ledger open across her lap, quill in her ink-stained fingers, gold wire spectacles low on her nose, a smouldering gaze over the rims, black silk blouse buttoned to the collar under an oxblood waistcoat, gold wire spectacles, candle glow, warm brass and silver highlights, deep red shadows, intimate, {style}",
     },
     # The Thieves (21 Nov 2026): the face of the Accounting Ledger's "Thieves" tile (robbed ashore and from store).
     # She reads the mugging and warehouse-robbery lines (LINE_DEFAULTS below). Voice is provisional: cast her in
@@ -324,12 +259,10 @@ CHARACTERS = {
                "handshake. She now runs the waterfront crowd from Singapore to Hong Kong, and she returns hats, "
                "because a gentleman should always go home decent.",
         "quirk": "Leaves a single peacock feather where your purse used to be.",
-        "vice": "Silk stockings, sweet chai, and watching a captain pat his empty pocket.",
+        "vice": "Silk scarves, sweet chai, and watching a captain pat his empty pocket.",
         "secret": "She has never kept a purse from a sailor with a family aboard. She leaves them the price of a meal and tells nobody.",
         "stats": {"cunning": 9, "nerve": 8, "charm": 9, "greed": 6},
-        "portrait_prompt": "An {adult} Tamil woman (age 31), the pickpocket queen of a crowded Singapore quay market, "
-                           "long dark braid with jasmine and a small brass nose-stud, one hand lifting a purse from a "
-                           "captain's coat while the other holds a peacock feather and a teacup, a mischievous grin, {style}",
+        "portrait_prompt": 'An {adult} Tamil woman (age 31), Kamala "Magpie" Pillai, the pickpocket queen of a crowded Singapore quay market at night, long dark braid wound with jasmine, a small brass nose-stud, one hand lifting a fat purse from a captain\'s coat while the other holds a peacock feather and a china teacup, a mischievous grin as if you have already noticed and do not mind, teal silk jacket buttoned over an ivory high-collared blouse, a wide gold-threaded sash, jasmine in her braid, bangles on one wrist, lantern-lit night market, warm amber lamps against a cool teal haze, playful sparkle on silk and brass, {style}',
     },
     # The Table's Game Master (21 Nov 2026): she opens the month on the Harbor View, says whose turn it is and
     # puts each decision and action item to the Captain. Speaks aloud on the Table only (gm_text.py).
@@ -348,13 +281,7 @@ CHARACTERS = {
         "vice": "Armenian brandy, loaded dice she swears she does not own, and captains who cannot resist a side bet.",
         "secret": "She knows every House's orders before the table does, and has never once let it show.",
         "stats": {"cunning": 8, "nerve": 7, "charm": 9, "greed": 4},
-        "portrait_prompt": "An {adult} Armenian woman (age 44), the regal ringmistress-croupier of a Calcutta "
-                           "merchant-palace gaming hall, standing at the head of a gilded table, crimson velvet "
-                           "ringmaster's tailcoat with gold braid and ermine lapels open over a gold-embroidered black "
-                           "corset, white opera gloves, a ruby collar necklace, dark hair swept up beneath a small gold "
-                           "diadem, a jewelled bell and an ivory gavel before her, chandelier glow on gold leaf, a "
-                           "queen's knowing smile as if she is about to pose you a question you will not want "
-                           "to answer, {style}",
+        "portrait_prompt": "An {adult} Armenian woman (age 44), Madame Anahit Sarkissian, the regal ringmistress-croupier presiding at a gilded gaming table in a Calcutta merchant-palace hall, jewelled brass bell and ivory gavel before her, dark hair swept up beneath a small gold diadem, a ruby collar necklace, a queen's knowing smile, crimson velvet ringmaster's tailcoat with gold braid and ermine lapels buttoned over a high-collared white silk blouse with a lace jabot, gold waistcoat chain, white opera gloves, chandelier and footlight glow on rosewood and gold leaf, amber and crimson velvet shadows, opulent and regal, {style}",
     },
 }
 # The Port Authority officers, one for each taxed port (Admin > Ports > Port Authority officer).
@@ -362,69 +289,51 @@ CHARACTERS = {
 # Hong Kong's desk for visiting houses is kept by Senhora Isabel Rebelo (officer_hongkong).
 _OFFICERS = {
     "officer_singapore": dict(
-        name="Mrs. Eliza Thornbury", title="Customs Mistress of the Singapore Roads", age=44, origin="Bath, England",
-        home_port="singapore", color="#6f8f4e", voice_id="Elizabeth", speaking_rate=0.92,
-        delivery="languid, upper-class English and lightly tipsy, flirting out of sheer boredom",
-        catchphrase="Oh, don't trouble yourself with the paperwork, darling. Neither do I.",
-        bio="Widow of a Straits Settlements magistrate, Eliza took over his desk because nobody else wanted the heat. "
-            "She runs the cheapest wharf in the East from a rattan chair, a glass of gin and bitters sweating at her elbow, "
-            "and judges a captain by his shoulders rather than his manifest.",
-        quirk="Fans herself with your declaration instead of reading it.",
-        vice="Gin by noon, young first mates by sunset.",
-        secret="She is not as drunk as she looks. Every lie she lets slide goes in a little book, for later.",
+        name='Mr. Edmund Thornbury', title='Customs Master of the Singapore Roads', age=44, origin="Bath, England",
+        home_port="singapore", color="#6f8f4e", voice_id='Theodore', speaking_rate=0.92,
+        delivery='languid, upper-class English and gently bored, cheerful out of sheer idleness',
+        catchphrase="Oh, don't trouble yourself with the paperwork, old chap. Neither do I.",
+        bio='Younger son of a Bath clergyman, Edmund took the Singapore desk because nobody else wanted the heat. He runs the cheapest wharf in the East from a rattan chair, a glass of lime cordial sweating at his elbow, and judges a captain by his manners rather than his manifest.',
+        quirk='Fans himself with your declaration instead of reading it.',
+        vice='Cricket scores, lime cordial by noon and a long siesta.',
+        secret='He is not as idle as he looks. Every lie he lets slide goes in a little book, for later.',
         stats={"cunning": 4, "nerve": 4, "charm": 8, "greed": 3},
-        prompt="An {adult} English woman (age 44), soft, plump and voluptuous, honey-blonde curls coming loose, the languid widowed Port Authority officer of Singapore lounging in a "
-               "rattan chair on a shaded colonial wharf office veranda, loosened white muslin gown slipping from one "
-               "shoulder over a lace corset, a glass of gin sweating in one hand and a customs stamp dangling forgotten "
-               "from the other, ceiling fan and palms, heavy-lidded amused bedroom gaze, {style}"),
+        prompt='An {adult} English man (age 44), portly and genial with thinning sandy hair, the languid Port Authority officer of Singapore lounging in a rattan chair on a shaded colonial wharf-office veranda, a glass of lime cordial in one hand and a customs stamp dangling forgotten from the other, ceiling fan and palms, heavy-lidded amused gaze, rumpled white linen suit with a loosened cravat and a straw boater, hot dappled veranda light through palms, hazy and honeyed, {style}'),
     "officer_manila": dict(
         name="Doña Inés Villaraza", title="Collector of the Manila Aduana", age=38, origin="Seville and Manila",
         home_port="manila", color="#a8323a", voice_id="Julia", speaking_rate=0.98,
-        delivery="warm, honeyed Spanish-accented English, charming you while she picks your pocket",
+        delivery='warm, honeyed Spanish-accented English, charming you while she counts your cargo',
         catchphrase="Such a beautiful cargo, Captain. It would be a shame to let it leave Manila.",
         bio="Inés married the richest trading house in Manila and then quietly took over its customs post as well. "
             "She is the kindest face on any wharf, and she buys more cargo at the declared price than any officer in "
             "the East, every bale of it for her husband's warehouses.",
-        quirk="Touches your sleeve when she likes what is in your hold.",
+        quirk='Taps your manifest with her fan when she likes what is in your hold.',
         vice="Silk, porcelain, and captains who lie badly.",
         secret="Her husband has no idea how much of his fortune is in her name.",
         stats={"cunning": 6, "nerve": 6, "charm": 9, "greed": 9},
-        prompt="An {adult} Spanish-Filipina woman (age 38), the charming Port Authority officer of Manila in a "
-               "carved narra-wood customs office, off-shoulder black lace mantilla gown with a deep neckline and a "
-               "crimson silk sash, a fan of Manila embroidery in one hand and an ivory customs seal in the other, "
-               "bales of silk behind her, warm candlelight, inviting smile and hungry eyes, {style}"),
+        prompt='An {adult} Spanish-Filipina woman (age 38), the charming Port Authority officer of Manila in a carved narra-wood customs office, fan of Manila embroidery in one hand, ivory customs seal in the other, bales of silk behind her, inviting smile and hungry eyes, black lace mantilla gown with a high neckline and a crimson silk sash, warm candlelight on carved wood, golden and soft, lace shadows across her skin, {style}'),
     "officer_saigon": dict(
         name="Madame Céleste Durand", title="Directrice of the Saigon Customs House", age=33, origin="Marseille",
         home_port="saigon", color="#5b4a8c", voice_id="Olivia", speaking_rate=1.0,
-        delivery="French, sultry and mercurial, purring one moment and icy the next",
+        delivery='French, theatrical and mercurial, sweet one moment and icy the next',
         catchphrase="Today I am in a good mood, mon capitaine. Tomorrow? Who knows.",
-        bio="Céleste came out with the French fleet in 1859 as an admiral's companion and stayed when he sailed home "
-            "without her. The new colonial customs house was the consolation prize. She runs it on whim, and no two "
-            "captains ever get the same Madame Durand.",
+        bio="Céleste came out with the French fleet in 1859 as an admiral's secretary and stayed when he sailed home. The new colonial customs house was her reward. She runs it on whim, and no two captains ever get the same Madame Durand.",
         quirk="Changes her mind halfway through stamping your papers.",
-        vice="Absinthe, opera, and the thrill of being unpredictable.",
-        secret="She keeps a coin in her bodice and flips it when she cannot decide what to do with you.",
+        vice='Strong coffee, opera, and the thrill of being unpredictable.',
+        secret='She keeps a lucky coin in her glove and flips it when she cannot decide what to do with you.',
         stats={"cunning": 7, "nerve": 7, "charm": 9, "greed": 6},
-        prompt="An {adult} French woman (age 33), the mercurial colonial Port Authority officer of Saigon reclining "
-               "on a chaise in a shuttered customs house, half-laced violet silk corset and loosened tricolour sash, "
-               "a glass of absinthe and a gold coin on the table beside an open ledger, slatted tropical light across "
-               "her skin, a teasing sidelong smile, {style}"),
+        prompt='An {adult} French woman (age 33), the mercurial colonial Port Authority officer of Saigon reclining on a chaise in a shuttered customs house, a glass of absinthe and a gold coin on the table beside an open ledger, a teasing sidelong smile, violet silk day dress with a high neckline and a tricolour sash, slatted tropical light striping her skin, warm and humid, soft shutter shadows, {style}'),
     "officer_nagasaki": dict(
-        name="Okada Suzu", title="Ledger-Keeper of the Dejima Customs House", age=35, origin="Nagasaki",
-        home_port="nagasaki", color="#3c4f6b", voice_id="Sarah", speaking_rate=0.9,
+        name='Okada Shin', title="Ledger-Keeper of the Dejima Customs House", age=35, origin="Nagasaki",
+        home_port="nagasaki", color="#3c4f6b", voice_id='Shaun', speaking_rate=0.9,
         delivery="soft, quiet and precise, every word placed like a stamp; unsettlingly calm",
         catchphrase="Your ledger says one thing, Captain. Your eyes say another.",
-        bio="Suzu grew up translating Dutch manifests on Dejima and learned that every captain lies in the same "
-            "three places. She audits more holds than any officer in the East and finds something in most of them. "
-            "Captains leave her office feeling undressed.",
+        bio='Shin grew up translating Dutch manifests on Dejima and learned that every captain lies in the same three places. He audits more holds than any officer in the East and finds something in most of them. Captains leave his office feeling they have confessed to everything.',
         quirk="Never blinks while you speak.",
         vice="Perfect columns, warm sake, and the moment a liar's voice cracks.",
         secret="She can read four languages upside down, including the one you think is private.",
         stats={"cunning": 10, "nerve": 7, "charm": 6, "greed": 4},
-        prompt="An {adult} Japanese woman (age 35), the precise Port Authority officer of Nagasaki kneeling at a low "
-               "lacquer desk in the Dejima customs house, deep indigo silk kimono worn loose off both shoulders with "
-               "the obi half undone, brush and inkstone, an abacus and a Dutch ledger before her, paper lantern glow, "
-               "a calm piercing stare that sees straight through you, {style}"),
+        prompt='An {adult} Japanese man (age 40), slender and composed, hair in a neat topknot, the ledger-keeper of the Dejima customs house in Nagasaki at a low lacquered desk with brush, abacus and open ledger, calm unblinking gaze, deep indigo silk kimono and hakama, neatly worn, soft paper-lantern glow, pale and quiet, delicate shadows, {style}'),
     "officer_foochow": dict(
         name="Madam Lin Bao-zhu", title="Tea-House Collector of the Min River", age=40, origin="Foochow",
         home_port="foochow", color="#2f6b3a", voice_id="Ashley", speaking_rate=0.95,
@@ -434,80 +343,58 @@ _OFFICERS = {
             "simply moved her tea service into the customs house. Captains sit, sip, relax, and confess.",
         quirk="Pours your tea slowly while you declare, and stops pouring when you lie.",
         vice="Wuyi oolong, jade hairpins, and secrets told over the second cup.",
-        secret="The tea is very good, and very slightly drugged.",
+        secret='The tea is very good, and very slightly stronger than anyone admits.',
         stats={"cunning": 8, "nerve": 6, "charm": 8, "greed": 6},
-        prompt="An {adult} Chinese woman (age 40), the Port Authority officer of Foochow serving tea in a customs "
-               "house hung with tea-chest labels, a jade-green silk qipao with a thigh-high slit unbuttoned at the "
-               "collar, jade pins in her black hair, a steaming clay teapot tilted in her hand and a customs seal on "
-               "the table, river light through lattice, a slow knowing smile, {style}"),
+        prompt='An {adult} Chinese woman (age 40), the Port Authority officer of Foochow serving tea in a customs house hung with tea-chest labels, jade pins in her black hair, a steaming clay teapot tilted in her hand, a slow knowing smile, jade-green silk qipao buttoned to the collar, soft river light through lattice, pearly green, dreamy and warm, {style}'),
     "officer_shanghai": dict(
-        name="Madam Fong Mei-lin", title="Collector of the Bund", age=37, origin="Ningbo",
-        home_port="shanghai", color="#9b2d20", voice_id="Ashley", speaking_rate=1.05,
-        delivery="brisk, commanding and amused, a powerful woman who enjoys being obeyed",
+        name='Mr. Fong Wing-kei', title="Collector of the Bund", age=37, origin="Ningbo",
+        home_port="shanghai", color="#9b2d20", voice_id='Hades', speaking_rate=1.05,
+        delivery='brisk, commanding and amused, a powerful man who enjoys being obeyed',
         catchphrase="On my wharf, Captain, nothing moves unless I say so. Not even you.",
-        bio="Mei-lin clawed her way from a Ningbo comprador's daughter to the most powerful desk on the Bund. "
-            "Shanghai hungers for arms, spices and Indian goods, and so does she. If your hold carries what the city "
-            "wants, she will have it, at your price or at hers.",
+        bio="Wing-kei clawed his way from a Ningbo comprador's son to the most powerful desk on the Bund. Shanghai hungers for arms, spices and Indian goods, and so does he. If your hold carries what the city wants, he will have it, at your price or at his.",
         quirk="Snaps her fingers once, and two clerks appear.",
-        vice="Power, French perfume, and making proud captains wait.",
+        vice='Power, French cologne, and making proud captains wait.',
         secret="Half the Bund's warehouses pay her rent through a cousin.",
         stats={"cunning": 8, "nerve": 9, "charm": 7, "greed": 8},
-        prompt="An {adult} Chinese woman (age 37), the commanding Port Authority officer of Shanghai standing on the "
-               "Bund customs house steps, fitted oxblood brocade jacket open over a black silk corset, high collar "
-               "undone, gold-embroidered riding gloves and a customs baton, clerks and cargo behind her, imperious "
-               "half-smile, {style}"),
+        prompt='An {adult} Ningbo Chinese man (age 46), imposing and broad, shaven forehead and long queue, the collector of the Bund behind a carved desk, clerks waiting, the Shanghai riverfront behind him, commanding amused gaze, fitted oxblood brocade magua jacket over a black silk robe, mandarin hat with a coral button, crisp Bund morning light, bright and glossy, crisp rim light on his hair, {style}'),
     "officer_bangkok": dict(
-        name="Khun Ying Malai", title="Keeper of the King's River Tolls", age=42, origin="Bangkok",
-        home_port="bangkok", color="#b07a1c", voice_id="Priya", speaking_rate=0.9,
-        delivery="gentle, patient and gracious, with steel underneath; she forgives once",
+        name='Khun Luang Somchai', title="Keeper of the King's River Tolls", age=42, origin="Bangkok",
+        home_port="bangkok", color="#b07a1c", voice_id='Carter', speaking_rate=0.9,
+        delivery='gentle, patient and gracious, with steel underneath; he forgives once',
         catchphrase="A small mistake, Captain, is forgiven. Make it twice and I will remember your face forever.",
-        bio="A lady of the Siamese court, Malai keeps the King's river tolls with impeccable manners. Honest captains "
-            "find her the warmest friend in the East and are welcomed back like family. Liars find her memory long.",
+        bio="A nobleman of the Siamese court, Somchai keeps the King's river tolls with impeccable manners. Honest captains find him the warmest friend in the East and are welcomed back like family. Liars find his memory long.",
         quirk="Offers you a jasmine garland on arrival and takes it back if you lie.",
-        vice="Jasmine, temple bells, and the slow ruin of men who disappointed her.",
-        secret="She keeps a garden behind the customs house, with a stone for every captain she never forgave.",
+        vice='Jasmine, temple bells, and the slow ruin of captains who disappointed him.',
+        secret='He keeps a garden behind the customs house, with a stone for every captain he never forgave.',
         stats={"cunning": 7, "nerve": 6, "charm": 9, "greed": 4},
-        prompt="An {adult} Thai court lady (age 42), the gracious Port Authority officer of Bangkok seated in a "
-               "gilded river pavilion, a gold-threaded silk sabai draped over one bare shoulder and wrapped low, "
-               "jasmine garland and gold court jewellery, a palm-leaf tally and a royal seal beside her, river barges "
-               "behind, serene smile with steel in her eyes, {style}"),
+        prompt="An {adult} Siamese man (age 50), dignified court official with close-cropped greying hair, keeper of the King's river tolls at Bangkok in a teak pavilion over the Chao Phraya, jasmine garland in hand, gracious steady gaze, gold-threaded silk raj pattern jacket buttoned high over a silk chong kraben, warm river-reflected light on gold leaf, glowing and serene, {style}"),
     "officer_batavia": dict(
         name="Mevrouw Anneke van der Berg", title="Tollmistress of the Batavia Roads", age=39, origin="Rotterdam",
         home_port="batavia", color="#e07b1f", voice_id="Wendy", speaking_rate=0.96,
-        delivery="crisp, dry Dutch precision with a wicked streak of humour; strict and enjoys it",
+        delivery='crisp, dry Dutch precision with a wicked streak of humour; strict and enjoys it',
         catchphrase="Every guilder, Captain. I count every single one. Slowly.",
-        bio="Anneke learned her trade from the old Sound Toll clerks at Elsinore, where captains first declared "
-            "their own cargo and the Crown could buy it at their word. She brought the rule to Batavia and enforces "
-            "it with a riding crop she says is for flies.",
-        quirk="Taps the riding crop on the desk once for every column she checks.",
+        bio='Anneke learned her trade from the old Sound Toll clerks at Elsinore, where captains first declared their own cargo and the Crown could buy it at their word. She brought the rule to Batavia and enforces it with a long brass ruler.',
+        quirk='Taps the brass ruler on the desk once for every column she checks.',
         vice="Genever, lace, and a captain sweating under her questions.",
-        secret="She has never once needed the crop for flies.",
+        secret='She has never once needed the ruler for measuring.',
         stats={"cunning": 9, "nerve": 8, "charm": 5, "greed": 5},
-        prompt="An {adult} Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC "
-               "customs hall, severe black lace-collared gown with a laced leather corset over it and long black "
-               "gloves, a riding crop resting across an open ledger, spectacles low on her nose, pale blonde hair "
-               "pinned tight, a stern stare with a hint of wicked enjoyment, {style}"),
+        prompt='An {adult} Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC customs hall, a riding crop resting across an open ledger, spectacles low on her nose, pale blonde hair pinned tight, a stern stare with a hint of wicked enjoyment, severe black lace-collared gown buttoned to the throat, long black gloves, cool whitewashed hall light with a warm hard accent, crisp and glossy, {style}'),
     "officer_calcutta": dict(
-        name="Mrs. Honoria Blackwood", title="Collector of the Port of Calcutta", age=46, origin="London and Calcutta",
-        home_port="calcutta", color="#4a2a5c", voice_id="Deborah", speaking_rate=0.94,
-        delivery="velvet and venomous, a society hostess who smiles sweetly while she ruins you",
+        name='Mr. Horace Blackwood', title="Collector of the Port of Calcutta", age=46, origin="London and Calcutta",
+        home_port="calcutta", color="#4a2a5c", voice_id='Clive', speaking_rate=0.94,
+        delivery='velvet and venomous, a society host who smiles sweetly while he ruins you',
         catchphrase="Do sit, Captain. This won't hurt a bit. Well. Not me.",
-        bio="Honoria arrived in Calcutta as a governor's niece and outlived three husbands, each richer than the "
-            "last. She now holds the dearest desk in the East and buys and audits more than anyone. She calls it "
-            "her charity work.",
+        bio="Horace arrived in Calcutta as a governor's nephew and married three fortunes, each larger than the last. He now holds the dearest desk in the East and buys and audits more than anyone. He calls it his charity work.",
         quirk="Always offers you a chair, and it is always slightly too low.",
         vice="Rubies, gossip, and the sound of a strongbox closing on someone else's silver.",
-        secret="Two of the three husbands were captains who under-declared.",
+        secret='Two of his three fathers-in-law were captains who under-declared.',
         stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 10},
-        prompt="An {adult} English woman (age 46), heavyset and statuesque with an imposing bosom, platinum-blonde hair piled high, the ruthless Port Authority officer of Calcutta at a mahogany "
-               "desk in the Strand Road customs house, plunging midnight-purple silk evening gown and ruby choker, "
-               "long gloves, a strongbox lid half open beside her and a peacock-feather fan, punkah fan swaying "
-               "overhead, a sweet venomous smile, {style}"),
+        prompt='An {adult} English man (age 55), sleek and silver-haired with a waxed moustache, the collector of the port of Calcutta at a vast mahogany desk in a hall of pillars, punkahs swaying, strongboxes behind him, sweet poisonous smile, midnight-purple frock coat over a silk waistcoat, ruby tie pin, white gloves, swaying punkah shadows, deep plum and gold, luxurious and slow, {style}'),
     # Hong Kong's desk for visiting houses (a captain whose home is Hong Kong meets the Registrar instead).
     "officer_hongkong": dict(
         name="Senhora Isabel Rebelo", title="Collector of Victoria Harbour", age=33, origin="Macau",
         home_port="hongkong", color="#8a3b4a", voice_id="Rocio", speaking_rate=0.95,
-        delivery="low and honeyed, Portuguese-accented English; flirtatious and close, with a blade under every compliment",
+        delivery='low and honeyed, Portuguese-accented English; charming and close, with a blade under every compliment',
         catchphrase="I know every hiding place on a ship, Captain. I built half of them.",
         bio="Isabel grew up on her father's lorchas, running opium and silver past the Macau forts. When the Rebelos "
             "were finally caught, the British offered his clever daughter a choice: a cell, or a desk on the Hong Kong "
@@ -516,17 +403,14 @@ _OFFICERS = {
         vice="Port wine from home, fast boats, and captains who think they're cleverer than her.",
         secret="Her father still runs boats out of Macau, and his cargo crosses her wharf untaxed.",
         stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 6},
-        prompt="An {adult} Portuguese woman (age 33), the Port Authority officer of Hong Kong on a crowded Victoria "
-               "Harbour wharf, a wine-red silk jacket open over a black lace corset, a gold crucifix and a dagger at her "
-               "hip, leaning over a customs desk with a manifest upside down before her, lorchas and junks behind her, "
-               "a slow dangerous smile, {style}"),
+        prompt='An {adult} Portuguese woman (age 33), the Port Authority officer of Hong Kong on a crowded Victoria Harbour wharf, a gold crucifix and a dagger at her hip, leaning over a customs desk with a manifest upside down before her, a slow dangerous smile, wine-red silk jacket buttoned over a black lace blouse, bright harbour glare with warm reflected water-light, glossy and bold, {style}'),
 }
 # The wardens (jail.py, 19 Nov 2026): one per port, keyed warden_<port> (jail_cast.py).
 _OFFICERS.update(jail_cast.WARDENS)
 # The Legends (legend.py, 20 Nov 2026): the three storytellers and each Legend's own characters (legend_cast.py).
 _OFFICERS.update(legend_cast.TELLERS)
 # RETIRED (23 Nov 2026): the thirty extra port women (mayor_<port>, keeper_<port>, shipmaster_<port>) were a
-# second Mayor, Market keeper and Ship master on top of the shared Mayor, Lau Siu-wah and Tang Wai-lin, who
+# second Mayor, Market keeper and Ship master on top of the shared Mayor, Lau Siu-wah and Tang Wai-lun, who
 # already speak for every port. They are no longer in the cast; config.validate drops them from a saved cast.
 _PORT_KEYS = ("hongkong", "shanghai", "nagasaki", "manila", "foochow", "saigon", "bangkok", "singapore",
               "batavia", "calcutta")
@@ -542,15 +426,19 @@ for _cid, _v in {"officer_singapore": "Wendy", "officer_manila": "Marta", "offic
                  "warden_calcutta": "Winifred", "teller_tavern": "Dalisay", "teller_drowned": "Rosalind"}.items():
     if _cid in CHARACTERS:
         CHARACTERS[_cid]["voice_id"] = _v
+# Taipan Trader's cast is a mix of men and women; these are the men (voicelib checks voices against it).
+MEN = frozenset({"bosun", "banker", "comprador", "shipwright", "customs", "crier",
+                 "officer_singapore", "officer_nagasaki", "officer_shanghai", "officer_bangkok", "officer_calcutta",
+                 "warden_hongkong", "warden_manila", "warden_foochow", "warden_batavia", "warden_calcutta"})
 # Added after games were already saved: config.validate adds these to a saved cast once.
 SEEDED = list(_OFFICERS) + ["bookkeeper", "gamemaster", "thieves"]
 for _c in CHARACTERS.values():
     _c["portrait_prompt"] = _c["portrait_prompt"].format(adult=_ADULT, style=_STYLE)
 
 # Persona prompts v2 (21 Nov 2026): persona_prompts_v2.py is the source of every default portrait prompt, and of
-# her costume ladder (sultry / boudoir / topless / nude / clean), her light and her motion line. The old defaults
+# the persona's dressed look, light and motion line. The old defaults
 # above stay as the fallback if that module is ever missing. PORTRAIT_TIER is the look the Admin shows by default.
-PORTRAIT_TIER = "topless"
+PORTRAIT_TIER = "clean"
 try:
     import persona_prompts_v2 as _pp
 except ImportError:      # pragma: no cover - the old defaults keep the game running
@@ -562,7 +450,7 @@ if _pp:
 
 
 def tier_prompt(cid, tier, mood=None, saved=None):
-    """Her prompt at one look (sultry, boudoir, topless, nude, clean) from persona_prompts_v2, else her default.
+    """The persona's dressed prompt from persona_prompts_v2 (every tier name gives the clean look), else the default.
     saved is her portrait prompt as edited on her Cast & Voices card (cfg["characters"][cid]["portrait_prompt"]):
     her identity is taken from it, so an edit on the card reaches every look. The costume wording stays in code."""
     if _pp and cid in _pp.LOOKS:
@@ -1053,3 +941,8 @@ def clean(cfg, url_re, errors):
             say[key] = _text(txt, 400)
     nv["say"] = say
     cfg["voice"] = nv
+
+
+import taipan_text  # noqa: E402  (the voice reads Taipan Trader's overridden lines as shown)
+taipan_text.apply_say(SAY)
+taipan_text.apply_say(SAY_FAMILY)

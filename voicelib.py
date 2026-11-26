@@ -141,11 +141,16 @@ def public():
             "history": data["history"][:5]}
 
 
+def _men():
+    import cast
+    return cast.MEN
+
+
 def check_cast(characters, data=None):
     """Casting problems, worst first: [{"character", "voice_id", "problem", "detail"}].
 
     problem is one of: none (no voice set), gone (left Inworld), unknown (never in the saved
-    list), male (the voice is listed as male), shared (several characters use the same voice)."""
+    list), male (the voice is listed for the other gender: cast.MEN are the men), shared (several characters use the same voice)."""
     data = data or load()
     voices, have = data["voices"], bool(data["voices"])
     users, out = {}, []
@@ -164,8 +169,9 @@ def check_cast(characters, data=None):
         elif v and v.get("gone_at"):
             out.append({"character": cid, "voice_id": vid, "problem": "gone",
                         "detail": "No longer offered by Inworld; new lines will fail."})
-        elif v and v.get("gender") == "male":
-            out.append({"character": cid, "voice_id": vid, "problem": "male", "detail": "Listed as a male voice."})
+        elif v and v.get("gender") in ("male", "female") and (v["gender"] == "male") != (cid in _men()):
+            out.append({"character": cid, "voice_id": vid, "problem": "male",
+                        "detail": "Listed as a {} voice.".format(v["gender"])})
         elif len(users.get(vid, [])) > 1:
             out.append({"character": cid, "voice_id": vid, "problem": "shared",
                         "detail": "Also used by " + ", ".join(x for x in users[vid] if x != cid) + "."})
