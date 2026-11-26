@@ -403,11 +403,7 @@ class Hub:
         return out
 
     def _jail_story(self, me):
-        """What the jail story (web/jail.js, 20 Nov 2026) says aloud, found on the month's log by its wording
-        so the Captain's Log reading limit cannot drop it: the line of whoever caught the Captain, the
-        warden's line as the door shuts, and the warden's line when she walks free. Each is {text, clip}
-        (clip is None with voices off). The screens play these themselves and the log reading stays quiet
-        over them (player.js). None when nobody is locked up."""
+        """Voice clips for the warden's dialogue and the accuser's line from the Captain's Log."""
         jv = me.get("jail") or {}
         if not (jv.get("jail") or jv.get("freed")):
             return None
@@ -435,7 +431,14 @@ class Hub:
         out = {"caught": pick(caught.get(j.get("charge"), ())) if j.get("fresh") else None,
                "warden": pick(["l.jail_" + c for c in engine.jail.CHARGES]) if j else None,
                "free": pick(["l.jail_release"]) if jv.get("freed") and not j else None}
-        return out if any(out.values()) else {"caught": None, "warden": None, "free": None}
+        freed = jv.get("freed") or {}
+        dialogue = j.get("dialogue") or {}
+        for slot, text, who in (("warden", dialogue.get("irons"), j.get("warden")),
+                                ("month", dialogue.get("month"), j.get("warden")),
+                                ("free", freed.get("dialogue") if not j else None, freed.get("warden"))):
+            if text and who:
+                out[slot] = {"text": text, "clip": plan._clip(text, who) if plan.ready() else None}
+        return out
 
     def _robbery_story(self, me):
         """What the Robbery Story (web/robbery.js, 22 Nov 2026) says aloud: Magpie's own line for this robbery, found on
@@ -1176,7 +1179,7 @@ class Handler(BaseHTTPRequestHandler):
             if not self._admin_ok():
                 return self._deny()
             return self._admin_get(path[len("/api/admin/"):], query)
-        if media.is_blocked(path, engine.CFG) and not self._admin_ok():
+        if media.is_blocked(path, engine.CFG):
             return self._send(404, "Not found", "text/plain")
         if path.startswith("/media/") or os.path.splitext(path)[1].lower() in media.VIDEO_EXT:
             return self._stream(path.lstrip("/"))
@@ -1433,7 +1436,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _certificate_get(self, query):
         """The Voyage Certificate (certificate.py, 21 Nov 2026): what is written on the asking Captain's
-        certificate, the women who can stand on its right, and each one's spoken line with its clip."""
+        certificate, the speakers who can stand on its right, and each one's spoken line with its clip."""
         gid, pid, seat = self._certificate_seat(query.get("token", [""])[0])
         if not pid:
             return self._send(200, {"ok": False})
@@ -1444,7 +1447,7 @@ class Handler(BaseHTTPRequestHandler):
             if data:
                 plan = voice.PLAN
                 clean = media.family(engine.CFG)              # a family-friendly table hears the clean wording
-                for w in data["women"]:
+                for w in data["speakers"]:
                     w["name"] = cast.display_name(engine.CFG, w["who"])
                     if clean:
                         w["text"] = w["family"]
@@ -1487,11 +1490,11 @@ class Handler(BaseHTTPRequestHandler):
                 data = certificate.facts(gid, pid, career_games=career.get("games"))
                 if not data:
                     return self._send(200, {"ok": False, "error": "That Captain is not in the closing books."})
-                for w in data["women"]:
+                for w in data["speakers"]:
                     w["name"] = cast.display_name(engine.CFG, w["who"])
                     if fam:
                         w["text"] = w["family"]
-                have = {w["who"] for w in data["women"]}
+                have = {w["who"] for w in data["speakers"]}
                 data["others"] = [{"who": c, "name": cast.display_name(engine.CFG, c)}
                                   for c in ("gamemaster", "taxlady", "bosun", "pirate", "agent", "lender") if c not in have]
                 data.pop("recipe", None)
@@ -1654,7 +1657,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "examples": artbible_examples(), "aspects": imagegen.ASPECTS})
         if what == "media/library":
             v = media.admin_view(engine.CFG)
-            v.update(ok=True, jobs=media.JOBS.list(), queue=media.JOBS.summary(), aspects=imagegen.ASPECTS, recipes=recipes.load())
+            v.update(ok=True, jobs=media.JOBS.list(), queue=media.JOBS.summary(), aspects=imagegen.ASPECTS,
+                     master_aspects=list(imagegen.MASTER_SIZES), recipes=recipes.load())
             return self._send(200, v)
         if what == "media/jobs":
             return self._send(200, {"ok": True, "jobs": media.JOBS.list(), "queue": media.JOBS.summary()})
@@ -2030,9 +2034,23 @@ class Handler(BaseHTTPRequestHandler):
             roles_ok = {r[0] for r in media.KINDS[kind]["roles"]}
             roles = [r for r in body.get("roles") or [] if r in roles_ok]
             w, h = imagegen.ASPECTS[aspect]
+            if body.get("master") is True:
+                if aspect not in imagegen.MASTER_SIZES:
+                    return self._send(200, {"ok": False, "error": "Choose 3:4 or 16:9 for a 2K master."})
+                w, h = imagegen.MASTER_SIZES[aspect]
+            reference_id = str(body.get("reference_id") or "")
+            if reference_id:
+                try:
+                    if kind != "persona":
+                        raise media.MediaError("Identity references are for persona portraits.")
+                    media.identity_reference(reference_id, subject, cfg)
+                except media.MediaError as exc:
+                    return self._send(200, {"ok": False, "error": str(exc)})
             job = media.JOBS.add(kind, subject, roles, prompt[:6000], w, h, count, nsfw,
                                  tags=media._tags(body.get("tags") or ""), aspect=aspect,
-                                 replaces=str(body.get("replaces") or ""))
+                                 replaces=str(body.get("replaces") or ""), reference_id=reference_id)
+            if job["status"] == "failed":
+                return self._send(200, {"ok": False, "error": job["error"]})
             journal.log("INFO", "admin", "Media library: queued {} picture(s) for {}/{}".format(
                 count, kind, subject or "-"), **self._via())
             return self._send(200, {"ok": True, "job": job["id"], "msg": "Queued {} picture{}. Each is filed as it "
@@ -2060,12 +2078,14 @@ class Handler(BaseHTTPRequestHandler):
                 aspect = min(imagegen.ASPECTS, key=lambda a: abs(imagegen.ASPECTS[a][0] / imagegen.ASPECTS[a][1] - w0 / h0))
             else:
                 aspect = "3:4"
-            w, h = imagegen.ASPECTS[aspect]
+            w, h = (w0, h0) if (w0, h0) in imagegen.MASTER_SIZES.values() else imagegen.ASPECTS[aspect]
             kind = it["kind"] if it.get("kind") in media.KINDS else "other"
             nsfw = "yes" if it.get("nsfw") else "no"
             job = media.JOBS.add(kind, it.get("subject") or "", it.get("roles") or [], prompt[:6000], w, h, 1, nsfw,
                                  tags=it.get("tags") or [], aspect=aspect, replaces=iid,
-                                 seed=seed if mode == "same" else None)
+                                 seed=seed if mode == "same" else None, reference_id=it.get("reference_id") or "")
+            if job["status"] == "failed":
+                return self._send(200, {"ok": False, "error": job["error"]})
             journal.log("INFO", "admin", "Media library: {} {} ({}/{}){}".format(
                 "regen" if mode == "same" else "reroll", it.get("url"), kind, it.get("subject") or "-",
                 " seed {}".format(seed) if mode == "same" else ""), **self._via())
@@ -2111,44 +2131,30 @@ class Handler(BaseHTTPRequestHandler):
                 "Painting {} variant{} on seed {}. They land beside the original, tagged ab-test.".format(
                     len(prompts), "" if len(prompts) == 1 else "s", seed))})
         if what == "video":
-            # Anthony, 20 Nov 2026: make 10-second looping clips from library pictures (Wan 2.2 on the farm).
-            # One picture ("id"), or a pair: "nsfw_id" + "clean_id". In a pair the pair button decides the
-            # rating (the NSFW clip is NSFW, the clean clip is not); both share the motion and the seeds.
-            items = {i["id"]: i for i in media.load(cfg)["items"]}
+            if body.get("nsfw_id") or body.get("clean_id"):
+                return self._send(200, {"ok": False, "error": "Choose one family-friendly picture."})
+            iid = str(body.get("id") or "")
+            it = next((i for i in media.load(cfg)["items"] if i["id"] == iid), None)
+            if not it or it["type"] != "image" or not it.get("subject"):
+                return self._send(200, {"ok": False, "error": "Choose a filed picture with a subject."})
             motion = " ".join(str(body.get("motion") or "").split())[:1000]
             if len(motion) < 10:
                 return self._send(200, {"ok": False, "error": "Describe the movement (at least 10 characters) first."})
+            if it["nsfw"] or not it["enabled"] or imagegen.adult_prompt(motion):
+                return self._send(200, {"ok": False, "error": "Choose an enabled family-friendly picture and movement."})
             try:
                 count = max(1, min(4, int(body.get("count") or 1)))
             except (TypeError, ValueError):
                 count = 1
-            tags = media._tags(body.get("tags") or "")
             seeds = [secrets.randbits(48) for _ in range(count)]
-            pair_ids = [str(body.get("nsfw_id") or ""), str(body.get("clean_id") or "")]
-            if any(pair_ids):
-                if not all(x in items for x in pair_ids) or pair_ids[0] == pair_ids[1]:
-                    return self._send(200, {"ok": False, "error": "Choose two different pictures for the pair."})
-                sources = [(items[pair_ids[0]], "yes", tags), (items[pair_ids[1]], "no",
-                                                                list(dict.fromkeys(tags + ["clean"])))]
-                pair = "p" + secrets.token_hex(4)
-            else:
-                iid = str(body.get("id") or "")
-                if iid not in items:
-                    return self._send(200, {"ok": False, "error": "That picture is no longer in the library."})
-                sources, pair = [(items[iid], "auto", tags)], ""
-            for it, _n, _t in sources:
-                if it["type"] != "image" or not it.get("subject"):
-                    return self._send(200, {"ok": False, "error": "Clips are made from a filed picture (with a subject)."})
-            jobs = [media.JOBS.add_video(it, motion, seeds, nsfw, tg, pair=pair, seconds=10, loop=True,
-                                         width=it.get("width") or 0, height=it.get("height") or 0)
-                    for it, nsfw, tg in sources]
-            journal.log("INFO", "admin", "Media library: queued {} clip(s) from {}{}".format(
-                count * len(sources), ", ".join(it["url"] for it, *_ in sources), " (pair {})".format(pair) if pair else ""),
-                **self._via())
-            n = count * len(sources)
-            return self._send(200, {"ok": True, "jobs": [j["id"] for j in jobs], "pair": pair,
-                                    "msg": "Queued {} clip{}. Each takes a while on the farm and is filed as it "
-                                    "finishes.".format(n, "" if n == 1 else "s")})
+            job = media.JOBS.add_video(it, motion, seeds, "no", media._tags(body.get("tags") or ""),
+                                       seconds=10, loop=True, width=it.get("width") or 0, height=it.get("height") or 0)
+            if job["status"] == "failed":
+                return self._send(200, {"ok": False, "error": job["error"]})
+            journal.log("INFO", "admin", "Media library: queued {} clip(s) from {}".format(count, it["url"]),
+                        **self._via())
+            return self._send(200, {"ok": True, "jobs": [job["id"]],
+                                    "msg": "Queued {} clip{}.".format(count, "" if count == 1 else "s")})
         if what == "queue":     # stop all / reorder / pause a lane / clear finished
             return self._send(200, media.JOBS.command(body))
         if what == "cancel":
@@ -2261,7 +2267,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(audio)
 
     def _cast_status(self):
-        return {"key": voice.key_status(), "cache": voice.cache_info(), "stats": dict(voice.STATS)}
+        return {"key": voice.key_status(), "cache": voice.cache_info(), "stats": dict(voice.STATS), "men": sorted(cast.MEN)}
 
     def _cast_info(self):
         text = engine.TEXT

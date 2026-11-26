@@ -39,6 +39,7 @@ cache/
 web/media/
 web/uploads/
 Artwork/
+.art-review/
 Inspiration_Artwork/
 config/media.json.tmp
 

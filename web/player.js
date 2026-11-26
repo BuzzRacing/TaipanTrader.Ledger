@@ -526,8 +526,10 @@ function deckArt(inGame) {
     if (cx) { Stage.idle(cx.key, cx.html, cx.name, cx.note); return; }
   }
   // In the Mayor's Parlour the stage shows the port's Mayor.
-  const woman = cxOpen ? null : mayorOpen() ? STAGE_WOMEN.chart : STAGE_WOMEN[ui.tab];
-  const womanImg = woman ? stageWomanHtml(me.port, woman.role) : "";
+  const woman = cxOpen ? null : mayorOpen() ? STAGE_CAST.chart : STAGE_CAST[ui.tab];
+  const womanImg = woman?.cast
+    ? Media.html("persona", woman.cast, "portrait", "stg-img", VS.cast?.[woman.cast]?.portrait || "", { video: true, slot: "stage" })
+    : woman ? stageWomanHtml(me.port, woman.role) : "";
   document.getElementById("deck").classList.toggle("woman", !!womanImg);
   if (womanImg) {
     Stage.idle(me.port + "#" + woman.role, womanImg, te(woman.title, { port: portName(me.port) }), S.date);
@@ -538,15 +540,11 @@ function deckArt(inGame) {
              portName(me.port), S.date);
 }
 
-/* The women on the stage: while the Market tab is open, the keeper behind the stalls; while the
-   Fleet tab is open, the ship master; while the Set sail tab is open, the town's lady mayor, who sees the ships off. Media Library > Ports > (port) pictures
-   with the "Market keeper", "Ship master", "Mayor" or "Tax lady" role; a port without its own borrows one from another port. One pick per port
-   visit, so she does not flicker on redraws. */
-const STAGE_WOMEN = {
-  market: { role: "keeper", title: "market.title" },
-  fleet: { role: "shipmaster", title: "fleet.master" },
+const STAGE_CAST = {
+  market: { role: "keeper", cast: "comprador", title: "market.title" },
+  fleet: { role: "shipmaster", cast: "shipwright", title: "fleet.master" },
   chart: { role: "mayor", title: "chart.mayor" },
-  counter: { role: "taxlady", title: "counter.stage" },     // Under the Counter: the port's tax lady
+  counter: { role: "taxlady", cast: "taxlady", title: "counter.stage" },
 };
 /* Stage titles until the server is restarted with the current strings.py. */
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {},
@@ -640,7 +638,7 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
     "voy.left": "{n} months left", "voy.left_1": "Final month", "voy.closed": "The books are closed",
     "voy.close": "Books close {date}", "voy.seal": "終", "voy.aria": "Voyage: {date}. {left}. Books close {end}." });
 const womanPick = {};
-/* Cast members who are port women: while the Mayor speaks, the stage shows the picture for the port the
+/* Port cast members: while the Mayor speaks, the stage shows the picture for the port the
    house is in (deck.js Stage asks for it), not one portrait for every port.
    The Registrar (cast "taxlady") and the Port Authority officers (officer_<port>) are NOT here (23 Nov 2026):
    a port's "Tax lady" pictures are its Ledger tax collector, a different woman, so the stage used to show
@@ -660,30 +658,18 @@ function stageFace(cid) {
   // your standing there); the keeper and the ship master are always the ones of the port the house is in.
   const own = /^(mayor|keeper|shipmaster)_(.+)$/.exec(cid || "");
   if (own) return stageWomanHtml(own[1] === "mayor" && D.ports[own[2]] ? own[2] : S.me.port, own[1]);
-  // An officer with no picture of her own at all (no persona media, no profile portrait) borrows her own
-  // port's Tax lady pictures, as her desk does (customs.js herPictures); anyone else shows her own.
-  if (/^officer_/.test(cid || "") && (D.ports[S.me.port] || {}).officer === cid
-      && !Media.has("persona", cid, "", { video: true, strict: true }) && !((VS.cast || {})[cid] || {}).portrait) {
-    return stageWomanHtml(S.me.port, "taxlady");
-  }
   return "";
 }
 
-/* The tab rail shows a picture instead of an icon: the same woman the stage shows for that tab where
-   there is one (Market: the market keeper, Fleet: the ship master, Ledger: the tax lady, Set sail: the
-   mayor), the port the house is in for Port (and for Set sail without a mayor), and a cast member's
-   profile picture for the rest (Advice: the first mate, Tally Book:
-   the bookmaker). Repaint any of them in the Media Library and the tab follows. The SVG
-   icon is the fallback when there is no picture at all. */
 const TAB_FACES = {
-  market: { woman: "keeper", cast: "comprador" },
-  fleet: { woman: "shipmaster", cast: "shipwright" },
+  market: { cast: "comprador" },
+  fleet: { cast: "shipwright" },
   port: { port: true },
   advice: { cast: "narrator" },
   tally: { cast: "bookmaker" },
   acct: { cast: "bookkeeper" },                         // the Accounting Ledger: the House's bookkeeper
   chart: { woman: "mayor", port: true },
-  counter: { woman: "taxlady", cast: "taxlady" },          // Under the Counter: the port's tax lady
+  counter: { cast: "taxlady" },
 };
 function tabFaceUrl(k) {
   const f = TAB_FACES[k], me = S.me;
@@ -2939,7 +2925,7 @@ function fleetTab() {
 /* ---------------------------------------------------------------- chart -- */
 /* Under the Counter (20 Nov 2026, engine counter.py): the port's tax lady sells a tip, paid before she
    talks. Her price is a share of what the tip is worth to you, rising with your rank. Her picture is on
-   the stage (STAGE_WOMEN.counter) and on the rail (TAB_FACES.counter), never twice on one screen. Two tips
+   the stage (STAGE_CAST.counter) and on the rail (TAB_FACES.counter), never twice on one screen. Two tips
    for now, more to come: a full hold (what to buy here, where to sell it) and what you're carrying (where
    to sell the hold). A tip bought this visit stays on her counter, free to read, until you sail. */
 const COUNTER_TIPS = ["run", "hold"];
@@ -2954,24 +2940,15 @@ function counterTab() {
     <div class="uc-offers">${offers}</div>
     <p class="uc-note muted">${te("counter.note")}</p></section>`;
 }
-/* Under the Counter on the Newspaper (21 Nov 2026): the same offers and reveals as the old rail tab (counterOffer,
-   counterReveal), set as a shop. The tax lady's plain portrait stands behind the counter, dim and sepia until you
-   pay for a tip; when you have, she leans in and the light comes up (counter.css .leaning). One still per port per
-   month, so she never flickers on a redraw, and none at all when the Media Library has no picture of her. */
-function counterPortrait(port) {
-  let list = plainWomen(port, "taxlady", false);
-  if (!list.length) list = plainWomen(Object.keys(D.ports), "taxlady", false);
-  if (!list.length) return "";
-  const key = "uc:" + port + ":" + S.turn;
-  let it = list.find(i => i.id === womanPick[key]);
-  if (!it) { it = list[Math.floor(Math.random() * list.length)]; womanPick[key] = it.id; }
-  return it.u || "";
+function counterPortrait() {
+  const pic = Media.choose("persona", "taxlady", "portrait", { slot: "counter", mode: "fixed" });
+  return pic?.u || VS.cast?.taxlady?.portrait || "";
 }
 function counterPanel() {
   const me = S.me, c = me.counter;
   if (!c) return "";
   const bought = c.bought || {}, paid = COUNTER_TIPS.some(tip => bought[tip]);
-  const pic = counterPortrait(me.port);
+  const pic = counterPortrait();
   const offers = COUNTER_TIPS.map(tip => counterOffer(tip, (c.offers || {})[tip] || {}, bought[tip])).join("");
   return `<section class="card uc uc-shop${paid ? " leaning" : ""}${pic ? "" : " nopic"}">
     <div class="uc-window">${pic ? `<img class="uc-lady" src="${esc(pic)}" alt="">` : ""}

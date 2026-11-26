@@ -1,18 +1,4 @@
 {
-  "personas": {
-    "gamemaster": {
-      "host": "table-host.webp",
-      "sly": "table-sly.webp",
-      "happy": "table-happy.webp"
-    },
-    "narrator": {
-      "underway": "table-underway-v1.webp",
-      "storm": "table-storm.webp"
-    },
-    "bosun": {
-      "speaking": "table-angry.webp",
-      "angry": "table-angry.webp"
-    }
-  },
-  "cabin": "table-cabin.webp"
+  "personas": {},
+  "cabin": ""
 }

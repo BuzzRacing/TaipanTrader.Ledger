@@ -1,12 +1,11 @@
-/* Crimson Ledger: the weather glass. Port > Newspaper, top of the right-hand column (21 Nov 2026).
+/* Taipan Trader: the weather glass. Port > Newspaper, top of the right-hand column (21 Nov 2026).
 
    A television forecast built from 1860s parts: an oxblood title strap, one column per sea, a lower-third band
-   for warnings. Behind each column stands the Gazette's own weather girl, Tommy Marsh (cast key "crier"),
+   for warnings. Behind each column stands the Gazette's own weather reporter, Tommy Marsh (cast key "crier"),
    reporting from the quay and plainly at the mercy of that sea's weather.
 
    HER PICTURES come from the Media Library: Personas > Tommy Marsh, role "weather", tagged weather-calm,
-   weather-fair, weather-squalls or weather-typhoon (tools/queue_weather_pictures.py makes them as NSFW + clean
-   pairs). media.js keeps anything in that role or tagged weather to this one slot. A screen that may show NSFW
+   weather-fair, weather-squalls or weather-typhoon. media.js keeps anything in that role or tagged weather to this one slot. A screen that may show NSFW
    prefers the pictures not tagged "clean"; a family-friendly screen is only ever sent the clean ones. Each sea
    keeps one picture for the month (so redraws do not reshuffle them), seas with the same weather get different
    pictures while there are enough, and a new month deals again.

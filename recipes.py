@@ -1,7 +1,7 @@
 """Media recipes: saved "fill to target" batches for Admin > Media Library (Anthony, 21 Nov 2026).
 
 A recipe says what to fill (a kind, some subjects, some roles), how to count it (per subject or per subject and role),
-and the target (for pairs: N clean + N NSFW; for plain pictures: N). The Media Library page counts what is filed
+and the target number of pictures. The Media Library page counts what is filed
 and still queued, previews the shortfall and queues only that. Recipes live in config/media_recipes.json, so they are
 the same from every browser and survive a restart. config/ is not touched by Deploy_To_Pi.bat.
 """
@@ -9,8 +9,6 @@ import json
 import os
 import re
 import threading
-
-import recipe_scenes
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATH = os.path.join(ROOT, "config", "media_recipes.json")

@@ -234,7 +234,7 @@ const Promotion = (() => {
         <section class="pm-cert" role="dialog" aria-modal="true" aria-labelledby="pm-title">
           <i class="pm-co tl"></i><i class="pm-co tr"></i><i class="pm-co bl"></i><i class="pm-co br"></i>
           <p class="pm-c-order">${tfb("fleet.promotion_order", "By order of the {mayor}", { mayor })}</p>
-          <p class="pm-c-game">${tfb("promo.cert.game", "Crimson Ledger")}</p>
+          <p class="pm-c-game">${tfb("promo.cert.game", "Taipan Trader")}</p>
           <p class="pm-c-kind"><span>${tfb("promo.cert.kind", "Certificate of Commission")}</span></p>
           <p class="pm-c-to">${tfb("fleet.promotion_to", "Captain {name}", { name: captain.name })}</p>
           <p class="pm-c-house">${tfb("fleet.promotion_house", "of {firm}", { firm: house })}</p>

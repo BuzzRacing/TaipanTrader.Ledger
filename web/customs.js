@@ -95,7 +95,7 @@ const Customs = (() => {
   const MOOD_SETS = { sly: ["sly"], sad: ["sad", "hungry"], idle: ["idle", "bored"], happy: ["happy"], over: ["bored"] };
   const MOOD_FALLBACK = { sly: ["hungry"] };
   function moodPictures(c, state) {
-    const list = herPictures(c);
+    const list = officerPictures(c);
     if (state === "welcome") return list;
     const pool = (words, roles) => list.filter(i => words.some(w => inMood(i, w)) || roles.some(r => i.r.includes(r)));
     let m;
@@ -493,17 +493,12 @@ const Customs = (() => {
     return false;
   }
 
-  function herPictures(c) {
+  function officerPictures(c) {
     const seen = new Set(), own = [];
     const add = i => { if (i && i.u && !seen.has(i.u)) { seen.add(i.u); own.push(i); } };
     if (c.officer) Media.items("persona", [c.officer], "", true).forEach(add);
     const prof = ((VS.cast || {})[c.officer] || {}).portrait;
     if (prof) add({ id: prof, u: prof, t: "image", r: [] });
-    // A homecoming Registrar is not the local port officer, even when they share a desk.
-    if (!own.length && c.officer && (D.ports[c.port] || {}).officer === c.officer) {
-      Media.items("port", [c.port], "", true)
-        .filter(i => i.r.some(r => r === "taxlady" || r.startsWith("taxlady_"))).forEach(add);
-    }
     return own;
   }
 
@@ -513,7 +508,7 @@ const Customs = (() => {
   function stage() {
     const c = cu();
     if (!c || S.me.ready) { onScreen.stage = ""; return null; }
-    const own = herPictures(c);
+    const own = officerPictures(c);
     const busy = u => u === onScreen.art || u === onScreen.greet;
     const k = key(c);
     let it = own.find(i => i.u === stagePick[k] && !busy(i.u));

@@ -11,10 +11,10 @@ from urllib.request import Request, urlopen
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(ROOT, "config", "imagegen.json")
-MAX_IMAGE_BYTES = 16 * 1024 * 1024
+MAX_IMAGE_BYTES = 24 * 1024 * 1024
 ADULT_PROMPT = re.compile(
-    r"EXPLICIT PRIVATE ADULT PORTRAIT|\bcompletely (?:naked|topless)\b|\bbare breasts (?:are )?(?:fully )?"
-    r"(?:visible|shown)|\bfull nudity is required\b",
+    r"\b(?:nude|nudity|naked|topless|breasts?|cleavage|buttocks|genital\w*|erotic\w*|kink\w*|"
+    r"lingerie|boudoir|nsfw|burlesque|bedroom (?:eyes|gaze)|private-release adult)\b",
     re.I,
 )
 
@@ -39,19 +39,9 @@ def _settings():
     return cfg, base, workflow
 
 
-def render_profile(cfg, prompt):
-    """Use the configured adult checkpoint only for blunt, affirmative adult prompts."""
-    out = dict(cfg)
-    if ADULT_PROMPT.search(str(prompt or "")) and isinstance(cfg.get("adult_profile"), dict):
-        out.update(cfg["adult_profile"])
-    return out
-
-
-def _workflow_path(cfg):
-    workflow = os.path.abspath(os.path.join(ROOT, str(cfg.get("workflow") or "")))
-    if not workflow.startswith(ROOT + os.sep) or not os.path.isfile(workflow):
-        raise ImageGenError("The portrait workflow file is missing.")
-    return workflow
+def adult_prompt(prompt):
+    wording = re.sub(r"\b(?:no|without) (?:nudity|cleavage|nsfw|erotic poses?)\b", "", prompt or "", flags=re.I)
+    return bool(ADULT_PROMPT.search(wording))
 
 
 def _json(url, method="GET", body=None, timeout=30):
@@ -80,6 +70,7 @@ ASPECTS = {
     "3:2": (1248, 832),
     "3:4": (1024, 1360),
 }
+MASTER_SIZES = {"3:4": (1536, 2048), "16:9": (2048, 1152)}
 
 
 def _pick_checkpoint(base, wanted):
@@ -107,7 +98,7 @@ def generate_portrait(prompt, character):
     return data
 
 
-def generate_image(prompt, prefix, width, height, negative=None, seed=None):
+def generate_image(prompt, prefix, width, height, negative=None, seed=None, reference_path=None):
     """Render one image on the farm. Returns (png_bytes, seed). Pass seed to re-render a known picture
     (Media Library "Regen"); leave it out for a fresh random one."""
     prompt = str(prompt or "").strip()
@@ -115,15 +106,17 @@ def generate_image(prompt, prefix, width, height, negative=None, seed=None):
         raise ImageGenError("Write a prompt before generating.")
     if len(prompt) > 6000:
         raise ImageGenError("The prompt is longer than 6,000 characters.")
+    if adult_prompt(prompt):
+        raise ImageGenError("Use a family-friendly picture prompt.")
     cfg, base, workflow_path = _settings()
-    cfg = render_profile(cfg, prompt)
-    workflow_path = _workflow_path(cfg)
     with open(workflow_path, encoding="utf-8") as f:
         workflow = json.load(f)
     seed = int(seed) if isinstance(seed, int) and 0 <= seed < 2 ** 63 else secrets.randbits(48)
     neg = str(cfg.get("negative_prompt") or "") if negative is None else str(negative)[:4000]
     steps = int(cfg.get("steps") or 25)
     if "{{PROMPT}}" in json.dumps(workflow):
+        if reference_path:
+            raise ImageGenError("Identity references require the Qwen Image 2.1 workflow.")
         # Placeholder workflow (Juggernaut XL / SDXL, 22 Nov 2026): the graph says where each value goes.
         workflow = fill_placeholders(workflow, {
             "CHECKPOINT": _pick_checkpoint(base, cfg.get("checkpoint")), "PROMPT": prompt, "NEGATIVE": neg,
@@ -131,8 +124,27 @@ def generate_image(prompt, prefix, width, height, negative=None, seed=None):
             "CFG": float(cfg.get("cfg") or 4.5), "SAMPLER": str(cfg.get("sampler_name") or "dpmpp_2m_sde"),
             "SCHEDULER": str(cfg.get("scheduler") or "karras"), "PREFIX": prefix})
     else:
-        # Original Qwen Image 2.1 workflow: fixed node numbers.
-        workflow["4"]["inputs"]["prompt"] = prompt
+        if reference_path:
+            # Keep the upload and render on the same worker. The text-to-image enhancer rewrites edits as captions.
+            base = str(cfg.get("reference_base_url") or "").rstrip("/")
+            if urlparse(base).scheme not in ("http", "https") or not urlparse(base).hostname:
+                raise ImageGenError("Configure the dedicated ComfyUI reference worker first.")
+            workflow.pop("11", None)
+            workflow.pop("10", None)
+            workflow["12"] = {"class_type": "LoadImage", "inputs": {"image": _upload_image(base, reference_path)}}
+            workflow["4"]["inputs"].update({
+                "prompt": "Create a family-friendly portrait of the same person as <image1>. "
+                          "Preserve their facial identity, age and distinctive features. " + prompt,
+                "vae": ["3", 0],
+                "images.image_1": ["12", 0],
+            })
+        elif "11" in workflow:
+            workflow["11"]["inputs"]["prompt"] = (
+                "Describe this image as one English paragraph. Preserve the specified people, genders, ages, "
+                "clothing, place, year, composition and object counts. Keep everyone fully dressed. "
+                "Only describe the image.\n\n" + prompt)
+        else:
+            workflow["4"]["inputs"]["prompt"] = prompt
         workflow["4"]["inputs"]["negative_prompt"] = neg
         workflow["5"]["inputs"]["width"] = int(width)
         workflow["5"]["inputs"]["height"] = int(height)
@@ -154,7 +166,9 @@ def generate_image(prompt, prefix, width, height, negative=None, seed=None):
         history = _json(base + "/history/" + prompt_id, timeout=30).get(prompt_id) or {}
         status = history.get("status") or {}
         if status.get("status_str") == "error":
-            raise ImageGenError("The image farm could not render that image.")
+            failure = next((detail for event, detail in status.get("messages", []) if event == "execution_error"), {})
+            raise ImageGenError("The image farm could not render that image. " +
+                                str(failure.get("exception_message") or "")[:250])
         for output in (history.get("outputs") or {}).values():
             images = output.get("images") or []
             if images:
@@ -212,7 +226,7 @@ VIDEO_DEFAULTS = {
     "shift": 8.0,
     "timeout_seconds": 3600,
     "negative_prompt": "blurry, low quality, flicker, jitter, morphing face, melting hands, extra fingers, extra limbs, "
-                       "deformed keys, text, watermark, subtitles, extra people, a man, men, static frame",
+                       "deformed keys, text, watermark, subtitles, extra people, static frame",
 }
 MAX_VIDEO_BYTES = 300 * 1024 * 1024
 VIDEO_OUT_EXT = (".mp4", ".webm", ".mov", ".m4v")

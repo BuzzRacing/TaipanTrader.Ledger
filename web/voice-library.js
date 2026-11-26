@@ -1,5 +1,5 @@
 /* Crimson Ledger Admin: Voice Library.
-   One page of every Inworld voice in the saved list (women by default). Under each voice sit
+   One page of every Inworld voice in the saved list. Under each voice sit
    the cards of the personas who speak with it, so it is plain who has which voice and which
    voices nobody has. Play a voice, mark it, note it, and assign a persona to it right there.
    The list is a saved snapshot (voicelib.py): it only changes when "Check Inworld for changes"
@@ -13,7 +13,7 @@
     lib: null, err: "", loading: false, checking: false, off: false,
     playing: "",            // "<voice id>|<character key or nothing>"
     audio: null, queue: false, order: [],
-    f: { who: "female", lang: "", age: "", src: "", cast: "", mark: "", q: "", rejected: false },
+    f: { who: "all", lang: "", age: "", src: "", cast: "", mark: "", q: "", rejected: false },
   };
   const $m = () => document.getElementById("main");
   const e = s => esc(s);
@@ -75,15 +75,16 @@
     const id = (C()[cid].voice_id || "").trim(), v = row(id);
     if (!id) return "No voice yet";
     if (!voices().length) return "";
-    if (!v) return "Her voice “" + id + "” is not in the list";
-    if (v.gone_at) return "Her voice " + v.name + " has gone from Inworld";
-    if (v.gender === "male") return "Has a male voice (" + v.name + ")";
+    if (!v) return "Voice “" + id + "” is not in the list";
+    if (v.gone_at) return "Voice " + v.name + " has gone from Inworld";
+    const expected = A.cast?.men?.includes(cid) ? "male" : "female";
+    if (A.cast?.men && ["male", "female"].includes(v.gender) && v.gender !== expected) return "Voice is listed as " + v.gender + " (" + v.name + ")";
     return "";
   }
 
   /* ------------------------------------------------------------ filter -- */
-  function pool() {            // voices allowed by the Women / unlabelled / everyone choice
-    return voices().filter(v => st.f.who === "all" || v.gender === "female" || (st.f.who === "open" && v.gender !== "male"));
+  function pool() {
+    return voices().filter(v => st.f.who === "all" || (st.f.who === "open" ? !["male", "female"].includes(v.gender) : v.gender === st.f.who));
   }
   function filtered() {
     const f = st.f, q = f.q.trim().toLowerCase();
@@ -109,14 +110,14 @@
 
   /* ------------------------------------------------------------ render -- */
   function statusCard() {
-    const lib = st.lib, all = voices().filter(v => !v.gone_at), women = all.filter(v => v.gender === "female");
+    const lib = st.lib, all = voices().filter(v => !v.gone_at);
     const h = lib.history[0];
     const change = h ? `Last change ${e(day(h.at))}: ${h.added.length} new, ${h.removed.length} gone${h.back.length ? ", " + h.back.length + " back" : ""}.` : "";
     const hasKey = A.cast && A.cast.key && A.cast.key.has_key;
-    const taken = women.filter(v => users(v.id).length).length;
+    const taken = all.filter(v => users(v.id).length).length;
     const top = lib.refreshed_at
-      ? `<p><b>${women.length} women's voices</b> in the saved list (${women.filter(v => lang2(v) === "en").length} English), out of ${all.length} voices in all,
-           ${all.filter(v => v.source !== "SYSTEM").length} of them your own. <b>${taken}</b> have a persona, <b>${women.length - taken}</b> have none.
+      ? `<p><b>${all.length} voices</b> in the saved list (${all.filter(v => lang2(v) === "en").length} English),
+           ${all.filter(v => v.source !== "SYSTEM").length} of them your own. <b>${taken}</b> have a persona, <b>${all.length - taken}</b> have none.
            Last checked with Inworld on <b>${e(day(lib.refreshed_at))}</b>. ${change}</p>`
       : `<p><b>No list saved yet.</b> Fetch it once from Inworld; the game then keeps its own copy.</p>`;
     return `<section class="card vl-status">
@@ -124,7 +125,7 @@
         <button type="button" class="${lib.refreshed_at ? "" : "primary"}" data-vlcheck="1" ${st.checking || !hasKey ? "disabled" : ""}>
           ${st.checking ? "Asking Inworld…" : lib.refreshed_at ? "Check Inworld for changes" : "Fetch the voice list"}</button></div>
       ${hasKey ? "" : `<p class="err">No Inworld key yet. Add it under Cast &amp; Voices first.</p>`}
-      <p class="help">This list only changes when you press the button. A voice ID always sounds the same, so a persona keeps her voice
+      <p class="help">This list only changes when you press the button. A voice ID always sounds the same, so a persona keeps their voice
         for as long as Inworld offers it. Checking shows what is new and flags any persona whose voice has gone.</p>
       <div class="f vl-sample"><label><span>The line every voice reads</span></label>
         <textarea id="vlsample" rows="2" maxlength="300">${e(lib.sample_text)}</textarea>
@@ -134,7 +135,7 @@
     </section>`;
   }
 
-  /* A persona's card. Under a voice it can play her catchphrase in that voice. */
+  /* A persona's card. Under a voice it can play the persona’s catchphrase in that voice. */
   function personaCard(cid, voiceId, note) {
     const c = C()[cid];
     return `<div class="vl-persona" style="--cv:${e(c.color)}" title="${e(c.title || "")}">
@@ -150,7 +151,7 @@
     const list = Object.keys(C()).map(cid => [cid, problem(cid)]).filter(([, p]) => p);
     if (!list.length) return "";
     return `<section class="card vl-needs"><h2>Needing a voice <span class="muted">(${list.length})</span></h2>
-      <p class="help">Find a voice below and choose her under “Assign a persona”.</p>
+      <p class="help">Find a voice below and choose the persona under “Assign a persona”.</p>
       <div class="vl-personas">${list.map(([cid, p]) => personaCard(cid, "", p)).join("")}</div></section>`;
   }
 
@@ -162,7 +163,7 @@
     const opt = (v, label, cur) => `<option value="${e(v)}" ${cur === v ? "selected" : ""}>${e(label)}</option>`;
     return `<section class="card vl-filters">
       <div class="vl-filter-row">
-        <label><span>Show</span><select data-vlf="who">${opt("female", "Women", f.who)}${opt("open", "Women and unlabelled", f.who)}${opt("all", "Every voice", f.who)}</select></label>
+        <label><span>Show</span><select data-vlf="who">${opt("all", "Every voice", f.who)}${opt("female", "Women", f.who)}${opt("male", "Men", f.who)}${opt("open", "Unlabelled", f.who)}</select></label>
         <label><span>Personas</span><select data-vlf="cast">${opt("", "Any", f.cast)}${opt("free", "No persona yet (" + count(v => !users(v.id).length) + ")", f.cast)}${opt("taken", "Has a persona (" + count(v => users(v.id).length) + ")", f.cast)}${opt("shared", "Shared by several (" + count(v => users(v.id).length > 1) + ")", f.cast)}</select></label>
         <label><span>Language</span><select data-vlf="lang">${opt("", "All languages", f.lang)}${langs.map(l => opt(l, langName(l) + " (" + count(v => lang2(v) === l) + ")", f.lang)).join("")}</select></label>
         <label><span>Age</span><select data-vlf="age">${opt("", "Any age", f.age)}${ages.map(a => opt(a, a.charAt(0).toUpperCase() + a.slice(1), f.age)).join("")}</select></label>
@@ -205,7 +206,7 @@
         <div class="vl-side">
           <div class="vl-marks">${Object.keys(RATE).map(r => `<button type="button" class="vl-mark${m.rating === r ? " on" : ""}" data-vlmark="${r}"
               title="${RATE[r]}">${RATE_ICON[r]} ${RATE[r]}</button>`).join("")}</div>
-          <input type="text" class="vl-note" data-vlnote="1" value="${e(m.note)}" maxlength="300" placeholder="Note: who she could be, what she sounds like…">
+          <input type="text" class="vl-note" data-vlnote="1" value="${e(m.note)}" maxlength="300" placeholder="Note: possible roles, what the voice sounds like…">
         </div>
       </div>
       <div class="vl-cast">
@@ -238,7 +239,7 @@
     m.querySelectorAll("[data-vlplay]").forEach(b => {
       const on = st.playing === b.dataset.vlplay + "|" + (b.dataset.vlas || "");
       b.classList.toggle("on", on);
-      b.textContent = b.classList.contains("vl-big") ? (on ? "■" : "▶") : (on ? "■ Stop" : "▶ In her words");
+      b.textContent = b.classList.contains("vl-big") ? (on ? "■" : "▶") : (on ? "■ Stop" : "▶ In character");
     });
     const playingVoice = st.playing.split("|")[0];
     m.querySelectorAll("[data-vlrow]").forEach(r => r.classList.toggle("playing", !!st.playing && playingVoice === r.dataset.vlrow));
@@ -270,9 +271,7 @@
     paint();
   }
 
-  /* If Inworld sent no gender labels at all, "Women" would show nothing: widen the view. */
   function unlabelled() {
-    if (st.f.who === "female" && voices().length && !voices().some(v => v.gender === "female")) st.f.who = "open";
   }
 
   /* -------------------------------------------------------------- server -- */
@@ -299,7 +298,7 @@
     st.playing = "";
   }
   function halt() { st.queue = false; stop(); paint(); }
-  function audition(id, cid) { // what a voice reads: the shared line, or a persona's catchphrase at her speed
+  function audition(id, cid) { // what a voice reads: the shared line, or a persona's catchphrase at the configured speed
     const c = cid && C()[cid];
     const character = { voice_id: id, speaking_rate: c ? c.speaking_rate : 1, delivery: c ? c.delivery : "" };
     return { character, text: c ? c.catchphrase : st.lib.sample_text, model_id: CFG.voice.model_id, temperature: CFG.voice.temperature };
@@ -395,7 +394,7 @@
       halt();
       c.voice_id = id;
       refreshDirty();
-      redraw();                 // her card moves from one voice to the other, and the counts change
+      redraw();                 // the card moves from one voice to the other, and the counts change
       return toast(shown(cid) + " now speaks with " + vname(id) + (old && old !== id ? " (was " + vname(old) + ")" : "") + ". Save & apply to keep it.");
     }
     if (d.vlf && d.vlf !== "q") {

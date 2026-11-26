@@ -17,7 +17,7 @@ WARDENS = {
         prompt="An {adult} English man (age 52), tall, broad-shouldered and grizzled with iron-grey mutton-chop whiskers, the governor of Victoria Gaol in Hong Kong in 1860, standing at an open iron cell door with one hand on the bars and a great ring of brass keys at his belt, lamplight on whitewashed stone, a dry, knowing half-smile, dark blue gaoler's frock coat buttoned to the collar, wide leather belt, lamplight on whitewashed stone, cold grey-gold, striped with shadows of bars, {style}"),
     "warden_singapore": dict(
         name="Miss Rosalind Pell", title="Keeper of the Pearl's Hill Lock-up", age=36, origin="Penang",
-        home_port="singapore", color="#4f7a5a", voice_id="Elizabeth", speaking_rate=0.96,
+        home_port="singapore", color="#4f7a5a", voice_id="Maisie", speaking_rate=1.06,
         delivery="bright, brisk and teasing, a colonial officer's daughter who enjoys her work far too much",
         catchphrase="Do make yourself at home, Captain. You'll be here a while.",
         bio="Born in the Penang garrison and raised among soldiers, Rosalind took the Pearl's Hill lock-up as a lark "
@@ -29,7 +29,7 @@ WARDENS = {
         prompt="An {adult} English woman (age 36), Miss Rosalind Pell, slim with sun-browned skin and chestnut curls pinned up loosely, the keeper of the Pearl's Hill lock-up in Singapore leaning against barred teak doors, a pith helmet tipped back, a ring of keys twirled on one finger, a bright teasing smile, playful and in charge, crisp white linen officer's tunic buttoned to the collar, pith helmet, key ring at her belt, slatted tropical sunlight striping skin and teak, bright and warm, {style}"),
     "warden_manila": dict(
         name='Don Remigio Salcedo', title="Alcaide of the Bilibid", age=48, origin="Manila",
-        home_port="manila", color="#7a2a2f", voice_id='Dominus', speaking_rate=0.95,
+        home_port="manila", color="#7a2a2f", voice_id='Ignacio', speaking_rate=0.90,
         delivery='velvet Spanish-accented English; pious on the surface, merciless underneath',
         catchphrase="Pray, Captain. It passes the time.",
         bio="A retired colonel, Remigio keeps the Bilibid with a rosary in one hand and the keys in the other. He hears every prisoner's confession and forgets none of them.",
@@ -40,7 +40,7 @@ WARDENS = {
         prompt='An {adult} Spanish man (age 48), lean and severe with a trimmed black beard, the alcaide of the Bilibid prison in Manila in 1860, a rosary in one hand and a ring of keys in the other, stone archway and iron grille behind him, cold pious gaze, black military frock coat buttoned to the throat with a crimson sash, candlelight gold on old stone, warm and heavy, {style}'),
     "warden_saigon": dict(
         name="Madame Odile Marchetti", title="Gardienne of the Saigon Maison Centrale", age=41, origin="Corsica",
-        home_port="saigon", color="#4b3d6e", voice_id="Olivia", speaking_rate=1.0,
+        home_port="saigon", color="#4b3d6e", voice_id="Hélène", speaking_rate=0.89,
         delivery="smoky Corsican-French, amused and bored; she has seen every kind of prisoner",
         catchphrase="Every captain says he is innocent. Every one.",
         bio="A Corsican who came out with the colonial garrison, Odile runs the new Maison Centrale with a cigarette "
@@ -52,7 +52,7 @@ WARDENS = {
         prompt='An {adult} Corsican-French woman (age 41), Madame Odile Marchetti, lean with olive skin and cropped black hair, the gardienne of the Maison Centrale in Saigon seated on a stool before a cell, a hand of playing cards fanned against the bars, a thin smile on her lips, an amused, bored, dangerous look, military coat buttoned to the collar over a white blouse, pistol belt, cards in one hand, shuttered tropical bars of light across her skin, cigarette smoke curling, {style}'),
     "warden_nagasaki": dict(
         name="Kuroda Hisa", title="Warden of the Sakuramachi Gaol", age=44, origin="Nagasaki",
-        home_port="nagasaki", color="#2f3e57", voice_id="Sarah", speaking_rate=0.88,
+        home_port="nagasaki", color="#2f3e57", voice_id="Hina", speaking_rate=0.90,
         delivery="quiet, formal and utterly calm; she speaks as if reading the sentence aloud",
         catchphrase="The days are long here, Captain. Count them.",
         bio="Hisa keeps the Sakuramachi gaol as her father did, by the old rules. Foreigners or not, every prisoner "
@@ -64,7 +64,7 @@ WARDENS = {
         prompt="An {adult} Japanese woman (age 44), Kuroda Hisa, slender and composed, black hair in a tight samurai-wife's knot, the warden of the Sakuramachi gaol kneeling upright on a tatami platform before a wooden lattice cell, a brush and an open register before her, a ring of iron keys beside her knee, a perfectly calm unreadable stare, dark indigo kimono neatly worn and tied with the obi, keys at her knee, paper lantern glow on pale skin, soft amber, deep still shadows, {style}"),
     "warden_foochow": dict(
         name='Master Chen Yue-ming', title="Keeper of the Min River Yamen Cells", age=50, origin="Foochow",
-        home_port="foochow", color="#355e3b", voice_id='Blake', speaking_rate=0.94,
+        home_port="foochow", color="#355e3b", voice_id='Yichen', speaking_rate=0.89,
         delivery='soft and patient, a yamen keeper who bargains in whispers',
         catchphrase="Even a cell has a price, Captain. Just not one you can pay.",
         bio='Yue-ming has kept the yamen cells on the Min River for twenty years and outlasted three magistrates. Tea merchants, smugglers and princes have all slept on his straw.',
@@ -75,7 +75,7 @@ WARDENS = {
         prompt="An {adult} Fujianese man (age 50), wiry and patient with a long grey queue and a thin beard, the keeper of the Min River yamen cells in Foochow in 1860, seated by a wooden cell door with a teapot and a single cup, lantern light, soft knowing smile, plain dark blue yamen official's robe, black cap, smoky lantern light, warm and soft, river mist at the bars, {style}"),
     "warden_shanghai": dict(
         name="Madam Tang Xiu-ying", title="Gaoler of the Mixed Court", age=39, origin="Suzhou",
-        home_port="shanghai", color="#7d2418", voice_id="Ashley", speaking_rate=1.04,
+        home_port="shanghai", color="#7d2418", voice_id="Jing", speaking_rate=1.03,
         delivery="crisp, cold and commanding; she gives orders, never conversation",
         catchphrase="On your feet, Captain. You are in my house now.",
         bio="Xiu-ying keeps the cells of the Mixed Court, where foreign captains and Chinese thieves sleep side by "
@@ -87,7 +87,7 @@ WARDENS = {
         prompt='An {adult} Chinese woman (age 39), Madam Tang Xiu-ying, tall and athletic with a sharp jaw and strong legs, black hair in a long braid over one shoulder, the gaoler of the Mixed Court cells in Shanghai striding down a stone corridor of iron-barred cells, a bamboo rod resting on her shoulder, a cold commanding stare, black riding jacket buttoned to the collar, gloves and boots, leather key strap across her chest, cold blue gaslight on stone, hard and clean, {style}'),
     "warden_bangkok": dict(
         name="Khun Ying Prapai", title="Keeper of the King's Prison", age=46, origin="Bangkok",
-        home_port="bangkok", color="#9a6a17", voice_id="Priya", speaking_rate=0.9,
+        home_port="bangkok", color="#9a6a17", voice_id="Serene", speaking_rate=0.91,
         delivery="gracious and gentle, with perfect court manners; never unkind, never merciful",
         catchphrase="The King is patient, Captain. So am I.",
         bio="A lady of the court given the keys of the King's prison as an honour, Prapai keeps her prisoners fed, "
@@ -99,7 +99,7 @@ WARDENS = {
         prompt="An {adult} Thai court lady (age 46), Khun Ying Prapai, graceful and full-figured with short court-style hair, the keeper of the King's prison at a teak-barred cell in a gilded courtyard, a lotus bud in one hand and a ring of keys in the other, a gracious immovable smile, gold-threaded silk sabai draped neatly over a fitted silk blouse, gold armlets, warm river light on gold and teak, soft haze, {style}"),
     "warden_batavia": dict(
         name='Mijnheer Hendrik Visser', title='Cipier of the Stadhuis Cells', age=45, origin="Amsterdam",
-        home_port="batavia", color="#c06a1a", voice_id='Dennis', speaking_rate=0.95,
+        home_port="batavia", color="#c06a1a", voice_id='Erik', speaking_rate=0.97,
         delivery="clipped Dutch precision with a dry, wicked humour",
         catchphrase="Rules, Captain. I have a great many of them.",
         bio='Hendrik keeps the cells under the Batavia Stadhuis exactly as the Company kept them for two hundred years. He posts the rules on every door, and adds one for every prisoner who breaks one.',
@@ -110,7 +110,7 @@ WARDENS = {
         prompt='An {adult} Dutch man (age 45), stout and red-cheeked with a clipped fair beard, the gaoler of the Batavia Stadhuis cells in 1860, reading from a long printed list of rules beneath whitewashed vaults, keys at his belt, dry wicked smile, black coat with a starched white collar, buttoned waistcoat, lantern light in a vaulted brick cellar, warm orange against cold shadow, {style}'),
     "warden_calcutta": dict(
         name='Mr. Lionel Hartley', title="Superintendent of the Presidency Jail", age=49, origin="Bristol and Calcutta",
-        home_port="calcutta", color="#4a2848", voice_id='Edward', speaking_rate=0.93,
+        home_port="calcutta", color="#4a2848", voice_id='Winston', speaking_rate=0.94,
         delivery="sweet, fatherly and quietly terrifying; he calls every prisoner 'my boy' or 'my dear'",
         catchphrase="There, there, my dear. It's only a few months.",
         bio="Lionel came out as a magistrate's clerk and ended up running the Presidency Jail. He is the kindest superintendent it has ever had, and nobody has ever escaped it.",

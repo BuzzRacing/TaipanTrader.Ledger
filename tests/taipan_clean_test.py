@@ -10,6 +10,7 @@ sys.path.insert(0, ROOT)
 
 import cast                # noqa: E402
 import config              # noqa: E402
+import imagegen            # noqa: E402
 import media               # noqa: E402
 import persona_prompts_v2  # noqa: E402
 import strings             # noqa: E402
@@ -33,7 +34,13 @@ check(media.family(cfg) and media.family({"content": {"rating": "historical"}}),
 
 with open(os.path.join(ROOT, "config", "media.json"), encoding="utf-8") as f:
     lib = json.load(f)
-check(not [i["id"] for i in lib["items"] if i.get("nsfw")], "no NSFW pictures in the Media Library")
+blocked_portraits = {i["url"] for i in lib["items"] if i.get("nsfw")}
+check(not [cid for cid, c in cfg["characters"].items() if c.get("portrait") in blocked_portraits],
+      "cast cards do not reference flagged portraits")
+check(not [i["id"] for i in lib["items"] if i.get("nsfw") and i.get("enabled")],
+      "legacy pictures flagged for review are disabled")
+check(not [i["id"] for i in lib["items"] if imagegen.adult_prompt(i.get("prompt"))],
+      "no inherited adult prompts can be reused from the Media Library")
 
 import threading  # noqa: E402
 jobs = media.Jobs.__new__(media.Jobs)
@@ -41,6 +48,8 @@ jobs.lock, jobs.jobs, jobs.wake = threading.Lock(), [], threading.Event()
 jobs._save_locked = lambda: None
 check(jobs._push({"nsfw": "yes", "count": 1, "status": "waiting"})["status"] == "failed", "NSFW picture jobs are refused")
 check(jobs._push({"nsfw": False, "count": 1, "status": "waiting"})["status"] == "waiting", "clean picture jobs still queue")
+check(jobs._push({"nsfw": "no", "prompt": "A topless portrait", "count": 1, "status": "waiting"})["status"] == "failed",
+      "a clean tag cannot override an adult prompt")
 for cid in persona_prompts_v2.LOOKS:
     p = persona_prompts_v2.build(cid, "nude")
     check(not ADULT.search(p), "{}: the nude tier gives the dressed look".format(cid))

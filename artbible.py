@@ -35,7 +35,7 @@ FARM_SUBFOLDER = "SeaTrader/artbible"
 
 STYLE = ("romanticized cinematic historical realism set in the China Seas in 1860, family-friendly maritime "
          "adventure with confident fully dressed adult characters, humid salt haze, natural skin, believable "
-         "anatomy, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, ivory "
+         "anatomy, weathered maritime materials, porcelain indigo, jade silk, sail ochre, ivory "
          "and storm blue, premium tabletop-game key art, richly textured, dramatic but plausible lighting")
 NEGATIVE = ("minor, teen, child, youthful face, school uniform, age ambiguity, modern clothing, zipper, latex, "
             "stiletto heel, modern ship, electric light, generic fantasy armor, steampunk machinery, cosplay "
@@ -67,14 +67,14 @@ EXAMPLES = {
     "lt-storm": ("16:9", 186007, "storm breaking over the South China Sea, a single shaft of sunlight striking a "
                  "barque under reefed sails, dark storm blue sea"),
     "mat-still": ("1:1", 186008, "still life of salt-stained teak, tarred rope, a hammered patinated brass compass, "
-                  "worn black-brown leather satchel, heavy oxblood silk, ivory linen and a celadon porcelain bowl"),
+                  "worn black-brown leather satchel, heavy indigo silk, ivory linen and a celadon porcelain bowl"),
     "tier1": ("3:4", 186009, "an unmistakably adult (age 32) woman harbor agent in a lantern-lit market at dusk, "
-              "damp hair, fitted waist, open-collared linen shirt and dark waistcoat, close confident eye contact, "
-              "restrained sensuality through gaze, tailoring and posture, hands visible holding a ledger, "
+              "high-collared linen shirt and indigo waistcoat, direct eye contact, "
+              "holding a ledger in both hands, "
               "fully dressed"),
     "tier2": ("3:4", 186010, "an unmistakably adult (age 34) trading-house proprietor in a candlelit counting room, "
-              "oxblood silk gown with corsetry and a deep neckline, commanding pose, one hand resting on a brass "
-              "strongbox, adult glamour, fully dressed"),
+              "jade silk jacket with a high collar, upright pose, one hand resting on a brass "
+              "strongbox, fully dressed"),
     "as-masthead": ("3:1", 186011, "panoramic China Seas harbor at dusk with a clipper in the right third, dark "
                     "quiet negative space on the left and center for a title"),
     "as-bg": ("16:9", 186012, "low-contrast misty harbor at dawn, soft detail only at the edges, quiet empty center, "

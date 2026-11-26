@@ -314,7 +314,7 @@ def main():
     c, rate = engine.R["customs"], PORTS["calcutta"]["tax_rate"]
     buy, audit = odds[50]
     assert rate * 2000 > buy * 2000 + audit * c["fine_mult"] * rate * 2000, (rate, odds[50])
-    # 8. Her greetings: 30 shared plus 15 of each officer's own. A house hears all of an officer's lines
+    # 8. Each officer uses their own greetings. A house hears all of an officer's lines
     #    before any comes round again, never the same one twice running, and every one is matched back
     #    to its key and read by that port's officer.
     keys = ["l.customs_welcome.{}".format(i) for i in range(30)]
@@ -333,16 +333,19 @@ def main():
     for officer in officers:
         own = ["l.customs_welcome.{}.{}".format(officer, i) for i in range(15)]
         assert all(k in engine.TEXT for k in own) and "l.customs_welcome.{}.15".format(officer) not in engine.TEXT
-        said = [g._pa_greeting(p, officer) for _ in range(135)]
+        said = [g._pa_greeting(p, officer) for _ in range(45)]
         for n in range(3):
-            assert sorted(said[n * 45:(n + 1) * 45]) == sorted(keys + own), officer
+            assert sorted(said[n * 15:(n + 1) * 15]) == sorted(own), officer
         assert all(a != b for a, b in zip(said, said[1:])), officer
-        assert said[:45] != said[45:90]                                   # each deck is shuffled afresh
+        assert said[:15] != said[15:30]
+    assert {g._pa_greeting(p, "custom_officer") for _ in keys} == set(keys)
     for port, info in PORTS.items():
         officer = cfg["ports"].get(port, {}).get("officer") or info.get("officer")
         if not officer or officer not in chars:
             continue
-        for k in keys + ["l.customs_welcome.{}.{}".format(officer, i) for i in range(15) if officer != "taxlady"]:
+        own = ["l.customs_welcome.{}.{}".format(officer, i) for i in range(15)]
+        own.append("l.customs_welcome.{}.clear".format(officer))
+        for k in keys + (own if officer != "taxlady" else []):
             line = engine.tx(k, line=chars[officer].get("catchphrase", ""), port=info["name"], rate="3%")
             found, fields = voice.PLAN.matcher.match(line)
             assert found == k, (port, k, found)

@@ -52,24 +52,21 @@ except Exception:
     note("The preview could not load the game's code (Python {}):\n{}".format(sys.version.split()[0], traceback.format_exc()))
     sys.exit(1)
 
-WOMEN = ["bosun", "pirate", "agent", "lender", "taxlady", "gamemaster"]
+SPEAKERS = ["bosun", "pirate", "agent", "lender", "taxlady", "gamemaster"]
 
 
-def fixture(cfg, family):
-    fcfg = dict(cfg, content=dict(cfg.get("content") or {}, rating="family")) if family else cfg
+def fixture(cfg):
     text = dict(strings.resolve(cfg))
-    if family:
-        text.update(strings.FAMILY)
-    lib = media.public(fcfg)
+    lib = media.public(cfg)
     crest = next((lst[0]["u"] for lst in (lib["items"].get("house") or {}).values() if lst), "")
     return {"strings": text, "ports": cfg["ports"], "goods": cfg["goods"], "brand": cfg["brand"],
-            "graphics": media.safe_graphics(cfg.get("graphics"), fcfg), "ranks": cfg["ranks"],
-            "cast": cast.public_cast(cfg), "media": lib, "crest": crest, "family": bool(family)}
+            "graphics": media.safe_graphics(cfg.get("graphics"), cfg), "ranks": cfg["ranks"],
+            "cast": media.safe_cast(cast.public_cast(cfg), cfg), "media": lib, "crest": crest, "family": True}
 
 
-def women(cfg, first, port, bad):
-    """Every woman who can stand on the right, the asked-for one first, each with her line for this finish."""
-    order = [first] + [w for w in WOMEN + ["officer_" + port] if w != first]
+def speakers(cfg, first, port, bad):
+    """Certificate speakers in order, with their lines for this finish."""
+    order = [first] + [w for w in SPEAKERS + ["officer_" + port] if w != first]
     out = []
     for cid in order:
         if cid not in cfg["characters"]:
@@ -98,7 +95,7 @@ def facts(cfg, q):
                                            "port": "saigon" if "saigon" in cfg["ports"] else port, "qty": 6250,
                                            "profit": 18_200_000},
             "battles": 4 if bad else 31, "won": 1 if bad else 23, "sunk": 3 if bad else 47,
-            "women": women(cfg, one("who", "bosun"), port, bad), "recipe": None}
+            "speakers": speakers(cfg, one("who", "bosun"), port, bad), "recipe": None}
 
 
 PAGE = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -151,15 +148,16 @@ def handler(cfg):
             url = urlparse(self.path)
             path, q = url.path, parse_qs(url.query)
             if path == "/":
-                family = q.get("family", [""])[0] == "1"
                 safe = lambda o: json.dumps(o, ensure_ascii=True).replace("</", "<\\/")
-                html = PAGE.replace("FIXTURE", safe(fixture(cfg, family))).replace("FACTS", safe(facts(cfg, q)))
+                html = PAGE.replace("FIXTURE", safe(fixture(cfg))).replace("FACTS", safe(facts(cfg, q)))
                 html = html.replace("QUICK", "true" if q.get("quick", [""])[0] == "1" else "false")
                 return self._send(html, "text/html")
             if path == "/theme.css":
                 return self._send(config.theme_css(cfg), "text/css")
             if path == "/fonts.css":
                 return self._send(config.fonts_css(cfg, fonts.local_css()), "text/css")
+            if media.is_blocked(path, cfg):
+                return self.send_error(404)
             web = (ROOT / "web").resolve()
             target = (web / unquote(path).lstrip("/")).resolve()
             inside = web == target or web in target.parents
@@ -186,10 +184,9 @@ def main():
     note("Voyage Certificate preview is running at {}  (Python {})".format(url, sys.version.split()[0]))
     print("Leave this window open while you look. Close it to stop the preview.")
     print("Other looks, typed after the address:")
-    for tail, what in (("?bad=1", "a bad finish: kinder wording and her teasing line"),
+    for tail, what in (("?bad=1", "a bad finish with its own line"),
                        ("?rivals=3&place=2", "a game with rivals"),
-                       ("?port=saigon&who=pirate", "another home port and another woman on the right"),
-                       ("?family=1", "as a family-friendly screen sees it"),
+                       ("?port=saigon&who=pirate", "another home port and speaker"),
                        ("?quick=1", "no arriving layers")):
         print("  {}{:26} {}".format(url, tail, what))
     sys.stdout.flush()

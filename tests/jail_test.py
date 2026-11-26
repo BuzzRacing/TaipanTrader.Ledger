@@ -255,9 +255,7 @@ def test_the_plea_cost_reaches_the_release_card():
     assert g.view("p1")["me"]["jail"]["jail"]["fine"] == 0
 
 
-def test_the_story_voice_finds_its_lines_on_the_log():
-    """server.py finds the accuser's line, the warden's line and the release line by their wording, so the
-    Captain's Log reading limit (two lines a month) cannot drop the one the story is waiting for."""
+def test_the_story_voice_reads_the_warden_dialogue_and_preserves_the_accuser():
     import server
     import voice
     setup()
@@ -268,21 +266,25 @@ def test_the_story_voice_finds_its_lines_on_the_log():
     p["log"] = [engine.tx("l.slip_caught", port=port), engine.tx("l.jail_slip", port=port, months=1, s="")]
     me = g.view("p1")["me"]
     story = server.Hub._jail_story(None, me)
-    assert story["caught"]["text"] == p["log"][0] and story["warden"]["text"] == p["log"][1]
+    j = me["jail"]["jail"]
+    assert story["caught"]["text"] == p["log"][0]
+    assert story["warden"]["text"] == j["dialogue"]["irons"]
+    assert story["month"]["text"] == jail.E().tx("jail.warden." + j["port"] + ".month_last")
     assert story["free"] is None
     # an arrest with no spoken accuser still gets the warden
     p["jail"] = None
     jail.lock_up(g, p, 1, "standing", fresh=True)
     p["log"] = [engine.tx("l.jail_standing", port=port, months=1, s="")]
     story = server.Hub._jail_story(None, g.view("p1")["me"])
-    assert story["caught"] is None and story["warden"]["text"] == p["log"][0]
+    assert story["caught"] is None and story["warden"]["text"] == j["dialogue"]["irons"]
     # the release card finds the warden's goodbye
     p["jail"] = None
     p["jail_freed"] = {"port": p["port"], "months": 1, "charge": "standing", "drunk": 0, "spoiled": {}, "turn": 1,
                        "fine": 0, "paid": 0, "floor": 10}
     p["log"] = [engine.tx("l.jail_release", port=port)]
     story = server.Hub._jail_story(None, g.view("p1")["me"])
-    assert story["free"]["text"] == p["log"][0] and story["warden"] is None
+    assert story["free"]["text"] == engine.tx("jail.warden." + j["port"] + ".free")
+    assert story["warden"] is None
     # nothing locked up: nothing to say
     p["jail_freed"] = None
     assert server.Hub._jail_story(None, g.view("p1")["me"]) is None

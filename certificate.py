@@ -1,15 +1,15 @@
-"""Crimson Ledger: the Voyage Certificate (21 Nov 2026; project doc "SeaTrader Voyage Certificate").
+"""Taipan Trader: the Voyage Certificate (21 Nov 2026; project doc "SeaTrader Voyage Certificate").
 
 When the books close every Captain is handed a certificate: a 1920 x 1080 wallpaper drawn in the browser
-(web/certificate.js) with the home port behind, the home Mayor on the left and, on the right, the woman who
-defined the voyage. This module works out what is written on it and who she is:
+(web/certificate.js) with the home port behind, the home Mayor on the left and, on the right, the cast member who
+defined the voyage. This module works out what is written on it and who speaks:
 
-    facts(gid, pid, ...)   one house's certificate: the figures (from finale.book), the headline, the women
+    facts(gid, pid, ...)   one house's certificate: the figures (from finale.book), the headline, the speakers
                            who could stand on the right (in order, first = the one the voyage earned), each
-                           with her one spoken line, and the saved recipe if this certificate was drawn before
+                           with one spoken line, and the saved recipe if this certificate was drawn before
     recipe_get / recipe_set   which pictures a certificate used, so it opens the same way next time
 
-Who she is, first rule that fits (candidates(); the rest follow as "Change the pictures" steps through them):
+Who speaks, first rule that fits (candidates(); the rest follow as "Change the pictures" steps through them):
     8 or more fights won                                     Powder O'Rourke        (bosun)
     most fights were against the war fleet                   Admiral Li Yue         (pirate)
     4 or more fights, mostly against ordinary pirates        Madam Shek Yu-lan      (agent)
@@ -51,7 +51,7 @@ def _cast(cid):
 
 
 def candidates(h):
-    """The women who could stand on the right of this house's certificate, the earned one first."""
+    """The speakers who could stand on the right of this house's certificate, the earned one first."""
     out = []
     won, war, pir = h.get("won") or 0, h.get("fights_war") or 0, h.get("fights_pirate") or 0
     interest = h.get("interest") or 0
@@ -137,11 +137,11 @@ def facts(gid, pid, career_games=None):
     mood = "bad" if bad else "good"
     ports = engine.PORTS
     home = h.get("home") if h.get("home") in ports else ""
-    women = []
+    speakers = []
     for cid in candidates(h):
         key = _pick(gid, pid, cid, mood)
         text, fam = _say(key, name=h["name"], firm=h["firm"]) if key else ("", "")
-        women.append({"who": cid, "key": key, "text": text, "family": fam,
+        speakers.append({"who": cid, "key": key, "text": text, "family": fam,
                       "port": cid[len("officer_"):] if cid.startswith("officer_") else ""})
     sale = h.get("best_sale")
     return {
@@ -153,7 +153,7 @@ def facts(gid, pid, career_games=None):
         "career": career_place(h.get("worth") or 0, years, career_games),
         "best_sale": sale and {"good": sale["good"], "port": sale["port"], "qty": sale["qty"], "profit": sale["profit"]},
         "battles": h.get("battles") or 0, "won": h.get("won") or 0, "sunk": h.get("sunk") or 0,
-        "women": women, "recipe": recipe_get(gid, pid),
+        "speakers": speakers, "recipe": recipe_get(gid, pid),
     }
 
 

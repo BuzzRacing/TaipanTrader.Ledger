@@ -16,13 +16,13 @@
   font: 1.1rem/1.4 Alegreya, Georgia, serif;
   color: var(--linen);
   background: var(--ink);
-  --ink: #15100c;
-  --brass: #c9a34e;
-  --linen: #f1e3c5;
+  --ink: #0b161d;
+  --brass: #d6a84e;
+  --linen: #eef1e2;
   .scenery { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
   .harbor, .shade, .mist { position: absolute; inset: 0; }
   .harbor {
-    background: url("/assets/ceremony-harbor.png") center / cover;
+    background: linear-gradient(135deg, #0b161d80, #1f5f7a44, #163e3966), url("/assets/ceremony-harbor.png") center / cover;
     animation: ceremony-drift 11s cubic-bezier(.19,.65,.25,1) both;
   }
   .shade {
@@ -65,7 +65,7 @@
     text-shadow: 0 .12em .22em var(--ink), 0 0 .8em var(--ink);
     margin: 0;
   }
-  .wordmark { filter: drop-shadow(0 3px 0 #5a3217) drop-shadow(0 6px 14px #07090e); }
+  .wordmark { filter: drop-shadow(0 3px 0 #2c4655) drop-shadow(0 6px 14px #07090e); }
   .wordmark .title {
     font-size: clamp(2.05rem, 8vw, 7.25rem);
     overflow-wrap: anywhere;
@@ -102,7 +102,7 @@
     display: inline-block;
     font: 3.5rem/1.2 Georgia, serif;
     color: var(--linen);
-    text-shadow: 0 2px 3px #15100c, 0 0 14px #15100c;
+    text-shadow: 0 2px 3px #0b161d, 0 0 14px #0b161d;
     animation: ceremony-tick .9s both;
   }
   .winner {
@@ -110,7 +110,7 @@
     margin: auto;
     padding: 1.2rem 2rem;
     animation: ceremony-title-rise 1.2s both;
-    background: radial-gradient(ellipse, #15100ce0 20%, transparent 74%);
+    background: radial-gradient(ellipse, #0b161de0 20%, transparent 74%);
     text-shadow: 0 2px 12px var(--ink);
   }
   .winner h2 { font-size: clamp(2.5rem, 7vw, 5.5rem); line-height: 1; margin: .2em 0; }
@@ -120,7 +120,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     text-align: left;
-    border: .45rem solid #392318;
+    border: .45rem solid #1c2c36;
     border-radius: .65rem;
     background: linear-gradient(90deg, #dfc398, var(--linen) 47%, #a97e52 50%, #e6cfa7 52%, var(--linen) 95%, #dfc398);
     box-shadow: 0 1rem 4rem #000a;
@@ -130,12 +130,12 @@
   .ledger h2 { margin: 0 0 .6rem; font-size: 1.65rem; }
   .ledger p, .ledger td { font-size: 1.12rem; }
   .ledger table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  .ledger :is(td, th) { border-bottom: 1px solid #6b452d55; padding: .45rem 0; }
+  .ledger :is(td, th) { border-bottom: 1px solid #385d6455; padding: .45rem 0; }
   .ledger :is(td, th):last-child { text-align: right; padding-left: .5rem; }
 
   @media (max-width: 38rem) {
     .ledger { grid-template-columns: 1fr; background: var(--linen); }
-    .ledger section + section { border-top: 1px solid #6b452d55; }
+    .ledger section + section { border-top: 1px solid #385d6455; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; }
@@ -207,8 +207,8 @@
 .ceremony.has-results { place-items: start center; }
 .ceremony.has-results .frame { width: min(84rem, 100%); padding: clamp(.6rem, 2.4vh, 1.6rem) clamp(.4rem, 1.6vw, 1.2rem); }
 .ceremony .lg-book {
-  --oxblood: #7d2318;
-  --sepia: #6b452d;
+  --oxblood: #1f5f7a;
+  --sepia: #385d64;
   --gilt: #a8772c;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
@@ -218,15 +218,15 @@
 }
 .ceremony .lg-book::before {        /* the gutter's stitching */
   content: ""; position: absolute; top: 4%; bottom: 4%; left: 50%; width: 0;
-  border-left: 2px dashed #6b452d40; pointer-events: none;
+  border-left: 2px dashed #385d6440; pointer-events: none;
 }
 .ceremony .lg-page { padding: clamp(.9rem, 2.2vw, 1.8rem) clamp(1rem, 2.6vw, 2.2rem); min-width: 0; position: relative; }
-.ceremony .lg-page h2 { font: 400 1.65em/1.1 MedievalSharp, Alegreya, serif; margin: 0 0 .55rem; color: #2a170e; }
+.ceremony .lg-page h2 { font: 400 1.65em/1.1 MedievalSharp, Alegreya, serif; margin: 0 0 .55rem; color: #1b2a33; }
 .ceremony .lg-page h3 {
   font: 400 1.12em/1.2 MedievalSharp, Alegreya, serif; margin: 1rem 0 .45rem; color: var(--oxblood);
   display: flex; align-items: center; gap: .6rem;
 }
-.ceremony .lg-page h3::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, #7d231866, transparent); }
+.ceremony .lg-page h3::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, #1f5f7a66, transparent); }
 .ceremony .lg-book.lg-turn-fwd .lg-right, .ceremony .lg-book.lg-turn-back .lg-left {
   animation: lg-flip .7s cubic-bezier(.3,.7,.2,1) both; transform-origin: var(--hinge, left) center;
 }
@@ -242,15 +242,15 @@
   height: clamp(11rem, 30vh, 17rem); margin: 0 0 .6rem;
 }
 .ceremony .lg-portrait, .ceremony .lg-hero-clip {
-  position: relative; overflow: hidden; border-radius: .3rem; background: #2a170e;
-  box-shadow: 0 0 0 1px #2a170e88, 0 0 0 4px #c9a34e55, 0 .45rem 1.2rem #2a170e66;
+  position: relative; overflow: hidden; border-radius: .3rem; background: #1b2a33;
+  box-shadow: 0 0 0 1px #1b2a3388, 0 0 0 4px #d6a84e55, 0 .45rem 1.2rem #1b2a3366;
 }
 .ceremony .lg-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block;
   animation: lg-hero 14s ease-out both; }
 .ceremony .lg-portrait .lg-initial { display: grid; place-items: center; height: 100%; font-size: 5em; }
 .ceremony .lg-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   filter: sepia(.12); animation: lg-hero 14s ease-out both; }
-.ceremony .lg-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, #15100cd9); }
+.ceremony .lg-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, #0b161dd9); }
 .ceremony .lg-hero-cap {
   position: absolute; right: .8rem; left: .8rem; bottom: .5rem; margin: 0; color: var(--linen); text-align: right;
   font: italic 1em Alegreya, serif; letter-spacing: .04em; text-shadow: 0 1px 4px #000;
@@ -260,7 +260,7 @@
 .ceremony .lg-who h2 { font-size: 1.5em; margin: 0; }
 .ceremony .lg-who h2 em { font-style: normal; color: var(--oxblood); }
 .ceremony .lg-firm { display: flex; align-items: center; gap: .45rem; margin: .2rem 0 0; color: var(--sepia); flex-wrap: wrap; }
-.ceremony .lg-firm b { color: #2a170e; }
+.ceremony .lg-firm b { color: #1b2a33; }
 .ceremony :is(.lg-crest) { width: 3rem; height: 3rem; object-fit: contain; flex: none; display: inline-block; border-radius: .2rem; }
 .ceremony i.lg-crest { width: .6rem; height: 2.4rem; border-radius: .15rem; }
 .ceremony .lg-seal { width: 3rem; height: 3rem; object-fit: contain; margin-left: .5rem; filter: drop-shadow(0 1px 2px #0006); }
@@ -268,36 +268,36 @@
 .ceremony .lg-tale::first-letter { font: 2.4em/.8 "Ceremony Title", serif; float: left; margin: .12em .12em 0 0; color: var(--oxblood); }
 .ceremony .lg-chart { margin: .4rem 0 0; }
 .ceremony .lg-fortune { width: 100%; height: auto; display: block; overflow: visible; }
-.ceremony .lg-line { fill: none; stroke: #6b2416; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round;
+.ceremony .lg-line { fill: none; stroke: #226783; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round;
   stroke-dasharray: 1; stroke-dashoffset: 1; animation: lg-draw 2.4s .3s cubic-bezier(.4,.1,.2,1) forwards; }
 .ceremony .lg-area { animation: lg-ink 1.6s 1.4s both; }
-.ceremony .lg-zero { stroke: #6b452d55; stroke-dasharray: 2 3; }
-.ceremony .lg-peak { fill: #d7ad5c; stroke: #2a170e; stroke-width: 1; animation: lg-pop .5s 2.4s both; transform-box: fill-box; transform-origin: center; }
-.ceremony .lg-end { fill: #6b2416; }
-.ceremony .lg-peak-label { font: 600 9px Alegreya, serif; fill: #2a170e; animation: lg-ink .6s 2.5s both; }
-.ceremony .lg-chart figcaption { display: flex; justify-content: space-between; font-size: .85em; color: var(--sepia); border-top: 1px solid #6b452d55; padding-top: .25rem; }
+.ceremony .lg-zero { stroke: #385d6455; stroke-dasharray: 2 3; }
+.ceremony .lg-peak { fill: #d7ad5c; stroke: #1b2a33; stroke-width: 1; animation: lg-pop .5s 2.4s both; transform-box: fill-box; transform-origin: center; }
+.ceremony .lg-end { fill: #226783; }
+.ceremony .lg-peak-label { font: 600 9px Alegreya, serif; fill: #1b2a33; animation: lg-ink .6s 2.5s both; }
+.ceremony .lg-chart figcaption { display: flex; justify-content: space-between; font-size: .85em; color: var(--sepia); border-top: 1px solid #385d6455; padding-top: .25rem; }
 
 /* Spread 1, right: standings and honours */
 .ceremony .lg-standings { list-style: none; margin: 0; padding: 0; }
 .ceremony .lg-row {
   display: grid; grid-template-columns: 1.7rem auto 1fr 5rem auto; align-items: center; gap: .65rem;
-  padding: .42rem .35rem; border-bottom: 1px solid #6b452d40; cursor: pointer; border-radius: .25rem;
+  padding: .42rem .35rem; border-bottom: 1px solid #385d6440; cursor: pointer; border-radius: .25rem;
   font-variant-numeric: tabular-nums; transition: background .2s;
 }
 .ceremony .lg-row:hover, .ceremony .lg-row:focus-visible { background: #a8772c1f; outline: none; }
-.ceremony .lg-row.on { background: #7d23181a; box-shadow: inset 3px 0 0 var(--oxblood); }
+.ceremony .lg-row.on { background: #1f5f7a1a; box-shadow: inset 3px 0 0 var(--oxblood); }
 .ceremony .lg-place {
   width: 1.55rem; height: 1.55rem; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .9em;
-  background: #6b452d26; color: #2a170e;
+  background: #385d6426; color: #1b2a33;
 }
 .ceremony .lg-row.p1 .lg-place { background: radial-gradient(#ffe7a6, #c9932f); box-shadow: 0 0 0 1px #8a5e1d; }
-.ceremony .lg-row.p2 .lg-place { background: radial-gradient(#f4f1ea, #a9a59c); box-shadow: 0 0 0 1px #77736a; }
-.ceremony .lg-row.p3 .lg-place { background: radial-gradient(#f0c39a, #a9683a); box-shadow: 0 0 0 1px #77461f; }
+.ceremony .lg-row.p2 .lg-place { background: radial-gradient(#f4f1ea, #a9a59c); box-shadow: 0 0 0 1px #3a5d70; }
+.ceremony .lg-row.p3 .lg-place { background: radial-gradient(#f0c39a, #a9683a); box-shadow: 0 0 0 1px #3a5d70; }
 .ceremony .lg-row-who { display: grid; min-width: 0; }
 .ceremony .lg-row-who b, .ceremony .lg-row-who small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ceremony .lg-row-who small { color: var(--sepia); font-size: .82em; }
 .ceremony .lg-spark { width: 5rem; height: 1.4rem; overflow: visible; }
-.ceremony .lg-spark path { fill: none; stroke: #7d2318; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.ceremony .lg-spark path { fill: none; stroke: #1f5f7a; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .ceremony .lg-row-worth { font-weight: 700; text-align: right; }
 .ceremony .lg-honours { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .5rem; }
 .ceremony .lg-honour {
@@ -314,7 +314,7 @@
   color: #fff3d1; background: radial-gradient(circle at 35% 30%, #d9a94c, #7d4f16); box-shadow: inset 0 0 0 2px #f6d68e88, 0 1px 3px #0005;
 }
 .ceremony .lg-honour.h-sea_wolf i, .ceremony .lg-honour.h-hard_luck i { background: radial-gradient(circle at 35% 30%, #b8432f, #551208); }
-.ceremony .lg-honour b { font: 400 1em/1.1 MedievalSharp, Alegreya, serif; color: #2a170e; }
+.ceremony .lg-honour b { font: 400 1em/1.1 MedievalSharp, Alegreya, serif; color: #1b2a33; }
 .ceremony .lg-honour span { font-size: .85em; font-weight: 700; color: var(--oxblood); }
 .ceremony .lg-honour small { font-size: .8em; color: var(--sepia); }
 
@@ -324,28 +324,28 @@
 .ceremony .lg-tile.has-pic { grid-column: span 3; }
 .ceremony .lg-tile {
   position: relative; padding: .5rem .6rem .45rem; border-radius: .35rem; min-width: 0;
-  background: #fffaf02e; border: 1px solid #6b452d38; box-shadow: inset 0 0 1.4rem #a8772c14;
+  background: #fffaf02e; border: 1px solid #385d6438; box-shadow: inset 0 0 1.4rem #a8772c14;
   display: grid; align-content: start; animation: lg-ink .5s both;
 }
 .ceremony .lg-tile:nth-child(n+4) { animation-delay: .12s; } .ceremony .lg-tile:nth-child(n+7) { animation-delay: .24s; }
 .ceremony .lg-tile:nth-child(n+10) { animation-delay: .36s; }
 .ceremony .lg-tile.wide:not(.has-pic) { grid-column: span 4; }
 .ceremony .lg-tile small { font: 600 .72em/1.2 Alegreya, serif; letter-spacing: .08em; text-transform: uppercase; color: var(--sepia); }
-.ceremony .lg-tile b { font: 700 1.55em/1.15 Alegreya, serif; color: #2a170e; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ceremony .lg-tile b { font: 700 1.55em/1.15 Alegreya, serif; color: #1b2a33; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .ceremony .lg-tile b i { font-style: normal; font-size: .62em; color: var(--sepia); font-weight: 400; }
 .ceremony .lg-tile span:not(.lg-count) { font-size: .8em; color: var(--sepia); }
 .ceremony .lg-tile.gold { background: linear-gradient(135deg, #ffe9b04d, #c9932f2e); border-color: #a8772c88; }
-.ceremony .lg-tile.gold b { color: #6b4210; font-size: 1.85em; }
-.ceremony .lg-tile.red b { color: var(--oxblood); }
+.ceremony .lg-tile.gold b { color: #345365; font-size: 1.85em; }
+.ceremony .lg-tile.red b { color: #b5462a; }
 .ceremony .lg-tile.has-pic { display: grid; grid-template-columns: minmax(6rem, 42%) 1fr; gap: .7rem; padding: .4rem; align-items: stretch; }
-.ceremony .lg-tile-pic { border-radius: .25rem; overflow: hidden; min-height: 6.6rem; box-shadow: 0 0 0 1px #2a170e66, 0 2px 6px #0005; }
+.ceremony .lg-tile-pic { border-radius: .25rem; overflow: hidden; min-height: 6.6rem; box-shadow: 0 0 0 1px #1b2a3366, 0 2px 6px #0005; }
 .ceremony .lg-tile-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ceremony .lg-tile-text { display: grid; align-content: center; min-width: 0; }
 
 /* Spread 2, right: chronicle and cargoes */
 .ceremony .lg-chronicle { list-style: none; margin: 0; padding: 0 0 0 .3rem; position: relative; }
 .ceremony .lg-chronicle::before { content: ""; position: absolute; left: 1.75rem; top: .6rem; bottom: .6rem; width: 2px;
-  background: linear-gradient(#7d231888, #a8772c88); }
+  background: linear-gradient(#1f5f7a88, #a8772c88); }
 .ceremony .lg-chronicle li { display: grid; grid-template-columns: 3rem 4.6rem 1fr; align-items: center; gap: .6rem;
   padding: 0; position: relative; animation: lg-ink .5s both; }
 .ceremony .lg-chronicle li:nth-child(2) { animation-delay: .08s; } .ceremony .lg-chronicle li:nth-child(3) { animation-delay: .16s; }
@@ -353,7 +353,7 @@
 .ceremony .lg-chronicle li:nth-child(6) { animation-delay: .4s; } .ceremony .lg-chronicle li:nth-child(7) { animation-delay: .48s; }
 .ceremony .lg-chronicle li:nth-child(8) { animation-delay: .56s; }
 .ceremony .lg-ch-icon { width: 3rem; height: 3rem; border-radius: .3rem; display: grid; place-items: center; overflow: hidden;
-  background: #f1e3c5; box-shadow: 0 0 0 1px #2a170e66, 0 0 0 3px #c9a34e66, 0 2px 5px #0005; z-index: 1; }
+  background: #eef1e2; box-shadow: 0 0 0 1px #1b2a3366, 0 0 0 3px #d6a84e66, 0 2px 5px #0005; z-index: 1; }
 .ceremony .lg-ch-icon > * { width: 100%; height: 100%; object-fit: cover; }
 .ceremony .lg-ch-icon .lg-ch-seal { object-fit: contain; padding: .12rem; }
 .ceremony .lg-ch-icon i { display: grid; place-items: center; font: normal 1.7rem/1 "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", serif;
@@ -361,22 +361,22 @@
 .ceremony .ch-blow .lg-ch-icon i, .ceremony .ch-prize .lg-ch-icon i { background: radial-gradient(circle at 35% 30%, #b8432f, #551208); }
 .ceremony .lg-chronicle time { font: 600 .82em Alegreya, serif; color: var(--sepia); font-variant-numeric: tabular-nums; }
 .ceremony .lg-chronicle p { margin: 0; font-size: .95em; }
-.ceremony .ch-blow p { color: var(--oxblood); }
+.ceremony .ch-blow p { color: #b5462a; }
 .ceremony .lg-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .ceremony .lg-bars li { display: grid; grid-template-columns: 3.8rem 6.5rem 1fr auto; align-items: center; gap: .5rem; font-variant-numeric: tabular-nums; }
 .ceremony .lg-bars .lg-gicon { width: 3.8rem; height: 2.6rem; object-fit: cover; border-radius: .25rem; box-shadow: 0 1px 2px #0005; }
 .ceremony .lg-bar-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ceremony .lg-bar { height: 1rem; border-radius: .35rem; background: #6b452d22; overflow: hidden; }
+.ceremony .lg-bar { height: 1rem; border-radius: .35rem; background: #385d6422; overflow: hidden; }
 .ceremony .lg-bar i { display: block; height: 100%; width: var(--w); border-radius: inherit;
-  background: linear-gradient(90deg, #7d2318, #c9932f); animation: lg-grow 1.3s .4s cubic-bezier(.3,.7,.2,1) both; transform-origin: left; }
+  background: linear-gradient(90deg, #1f5f7a, #c9932f); animation: lg-grow 1.3s .4s cubic-bezier(.3,.7,.2,1) both; transform-origin: left; }
 
 /* The book's page turns */
 .ceremony .lg-nav { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: .7rem; }
-.ceremony .lg-flip { border: 1px solid var(--brass); background: #15100ccc; color: var(--linen); font: inherit; padding: .35rem 1rem;
+.ceremony .lg-flip { border: 1px solid var(--brass); background: #0b161dcc; color: var(--linen); font: inherit; padding: .35rem 1rem;
   border-radius: .25rem; cursor: pointer; }
 .ceremony .lg-flip:disabled { opacity: .35; cursor: default; }
 .ceremony .lg-dots { display: flex; gap: .4rem; }
-.ceremony .lg-dots i { width: .55rem; height: .55rem; border-radius: 50%; background: #f1e3c555; box-shadow: 0 0 0 1px #c9a34e88; }
+.ceremony .lg-dots i { width: .55rem; height: .55rem; border-radius: 50%; background: #eef1e255; box-shadow: 0 0 0 1px #d6a84e88; }
 .ceremony .lg-dots i.on { background: var(--brass); }
 .ceremony .lg-nav + .actions .details { margin-top: .5rem; }
 
@@ -385,7 +385,7 @@
   animation: lg-pop .9s .2s both; }
 .ceremony .lg-win-card > img:first-child, .ceremony .lg-win-card .lg-initial {
   width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; border-radius: .35rem; display: grid; place-items: center;
-  border: 4px solid #d7ad5c; box-shadow: 0 0 0 3px #2a170e, 0 0 3rem #e6bd6855, 0 .8rem 2rem #000c; background: #1d120c;
+  border: 4px solid #d7ad5c; box-shadow: 0 0 0 3px #1b2a33, 0 0 3rem #e6bd6855, 0 .8rem 2rem #000c; background: #0e171b;
 }
 .ceremony .lg-win-seal { position: absolute; right: -1.4rem; bottom: -1rem; width: 40%; filter: drop-shadow(0 .2rem .5rem #000c); }
 .ceremony .lg-win-epithet { font: italic 1.4rem Alegreya, serif; color: #f6cf80; margin-top: .4rem !important; animation: lg-ink 1s .8s both; }
@@ -393,7 +393,7 @@
 @media (max-width: 52rem) {
   .ceremony .lg-book { grid-template-columns: 1fr; background: var(--linen); }
   .ceremony .lg-book::before { display: none; }
-  .ceremony .lg-book .lg-page + .lg-page { border-top: 1px solid #6b452d55; }
+  .ceremony .lg-book .lg-page + .lg-page { border-top: 1px solid #385d6455; }
   .ceremony .lg-tiles { grid-template-columns: repeat(4, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {

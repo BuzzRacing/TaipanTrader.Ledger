@@ -416,6 +416,11 @@ def speakers(L):
             continue        # a Legend open on screen while its wording was shortened: skip the lines now gone
         who = lines[i][0]
         out.append((L["teller"] if who == legend_tales.T else who, legend_tales._key(tid, ch["id"], name, i)))
+    trail = L.get("trail") or []
+    if trail and L.get("beats") and L["beats"][0][0] == trail[0]:
+        key = "legend.frame.{}.{}".format(L["teller"], min(L["ch"], 2))
+        if key in E().TEXT:
+            out.insert(0, (L["teller"], key))
     return out
 
 

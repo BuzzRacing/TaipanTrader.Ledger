@@ -20,7 +20,7 @@ const lv = { code: "en", q: "", group: "", changed: false, family: true };   // 
 
 const NAV = [
   ["Game", [["live", "Live Game"], ["captains", "Captains"], ["report", "Captain's Report"], ["certificate", "Certificate Studio"]]],
-  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["media", "Media Library"], ["clips", "Voices"], ["language", "Language & Text"]]],
+  ["Identity", [["brand", "Brand"], ["theme", "Look & Style"], ["graphics", "Graphics"], ["artbible", "Art Bible"], ["media", "Media Library"], ["clips", "Voices"], ["language", "Language & Text"]]],
   ["Rules", [["ratings", "Ratings & Difficulty"], ["game", "Game Setup"], ["economy", "Economy"], ["goods", "Cargo"],
              ["ports", "Ports"], ["ships", "Ships"], ["weather", "Weather & Seas"], ["danger", "Pirates & Customs"]]],
   ["System", [["backup", "Backup & Access"]]],
@@ -118,8 +118,8 @@ function refreshDirty() {
 /* Header emblem and browser tab icon follow Graphics > Browser icon (the Art Bible's brass mark). */
 function brandMark() {
   const banner = CFG?.graphics?.admin_masthead_bg || "";
-  $(".masthead").style.backgroundImage = banner ? `url(${JSON.stringify(banner)})` : "none";
-  const url = (CFG && CFG.graphics && CFG.graphics.favicon) || "/assets/branding/crimson-ledger-icon-v01.png";
+  $(".masthead").style.backgroundImage = banner ? `linear-gradient(105deg, #0b161dd9, #163e3944), url(${JSON.stringify(banner)})` : "";
+  const url = (CFG && CFG.graphics && CFG.graphics.favicon) || "/assets/branding/taipan-trader-mark.svg";
   if ($("#gmark").getAttribute("src") !== url) $("#gmark").src = url;
   if ($("#favicon").getAttribute("href") !== url) $("#favicon").href = url;
   const logo = CFG?.graphics?.logo || "";

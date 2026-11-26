@@ -39,6 +39,7 @@ import threading
 import time
 
 import config
+from imagegen import adult_prompt
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(ROOT, "web")
@@ -394,6 +395,9 @@ def _clean_item(it):
         "added": str(it.get("added") or "")[:20],
         "replaces": str(it.get("replaces") or "") if ITEM_RE.match(str(it.get("replaces") or "")) else "",
     }
+    reference_id = str(it.get("reference_id") or "")
+    if out["type"] == "image" and ITEM_RE.fullmatch(reference_id):
+        out["reference_id"] = reference_id
     # Clips made from a picture (Anthony, 20 Nov 2026: videos in the Media Library). "from_item" is the
     # picture it was made from (its poster), "pair" links the clean and NSFW clips made together.
     if out["type"] == "video":
@@ -421,6 +425,17 @@ def path_for(url):
         return None
     p = os.path.normpath(os.path.join(WEB, url.lstrip("/")))
     return p if p.startswith(WEB + os.sep) else None
+
+
+def identity_reference(item_id, subject, cfg=None):
+    item = next((it for it in load(cfg)["items"] if it["id"] == item_id), None)
+    if (not item or item["kind"] != "persona" or item["subject"] != subject or not subject
+            or item["type"] != "image" or not item["enabled"] or not item["reviewed"] or item["nsfw"]):
+        raise MediaError("Choose a reviewed, enabled family-friendly portrait of this persona.")
+    path = path_for(item["url"])
+    if not path or not os.path.isfile(path) or os.path.splitext(path)[1].lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+        raise MediaError("The reference portrait must be a local PNG, JPEG or WebP.")
+    return path
 
 
 def _exists(url):
@@ -1116,8 +1131,8 @@ def safe_graphics(graphics, cfg):
     if not family(cfg):
         return g
     for slot, _label in BRAND_SLOTS:
-        if slot in g:
-            g[slot] = safe_url(g.get(slot) or "", "brand", slot, cfg, "main")
+        if g.get(slot):
+            g[slot] = safe_url(g[slot], "brand", slot, cfg, "main")
     for group, kind, role in (("ports", "port", "banner"), ("ships", "ship", "card"), ("goods", "cargo", "icon")):
         for k in list((g.get(group) or {}).keys()):
             g[group][k] = safe_url(g[group][k], kind, k, cfg, role)
@@ -1135,13 +1150,16 @@ def safe_cast(public_cast, cfg):
 
 def admin_view(cfg):
     lib = load(cfg)
+    blocked = blocked_urls(cfg)
     items = []
     for it in lib["items"]:
+        if it["nsfw"] or it["url"] in blocked:
+            continue
         d = dict(it)
         d["missing"] = not _exists(it["url"])
         items.append(d)
     in_use = {u for u, *_ in _config_refs(cfg)}
-    counts = {"total": len(items), "nsfw": sum(1 for i in items if i["nsfw"]),
+    counts = {"total": len(items),
               "video": sum(1 for i in items if i["type"] == "video"),
               "review": sum(1 for i in items if not i["reviewed"]),
               "bytes": sum(i["bytes"] for i in items)}
@@ -1151,13 +1169,13 @@ def admin_view(cfg):
     except Exception:
         prompts = {"captain": {}, "house": {}}
     try:
-        import tax_results                    # the tax ladies' wide result pictures: prompts for the Recipe
+        import tax_results                    # the Port Authority's wide result pictures: prompts for the Recipe
         scene_prompts = tax_results.all_prompts(cfg.get("characters"))
     except Exception:
         scene_prompts = {}
     virtual_roles, scene_notes = {}, []
     try:
-        import recipe_scenes                  # the tax-lady desk faces and the weather set (were .bat files)
+        import recipe_scenes                  # the customs desk faces and weather set
         extra, virtual_roles, scene_notes = recipe_scenes.all_prompts(cfg)
         for subject, entries in extra.items():
             scene_prompts.setdefault(subject, {}).update(entries)
@@ -1267,7 +1285,7 @@ class Jobs:
 
     def _push(self, job):
         # Taipan Trader is family-friendly only: a job marked NSFW is refused, whichever screen asked for it.
-        if job.get("nsfw") in (True, "yes"):
+        if job.get("nsfw") in (True, "yes") or adult_prompt(job.get("prompt")):
             job.update(status="failed", error="Taipan Trader makes family-friendly pictures only.",
                        finished=time.time(), failed=job.get("count", 1))
             print("[media] refused an NSFW picture job for {} {}".format(job.get("kind"), job.get("subject")))
@@ -1282,19 +1300,21 @@ class Jobs:
         return job
 
     def add(self, kind, subject, roles, prompt, width, height, count, nsfw, negative=None, tags=(), aspect="",
-            replaces="", seed=None):
+            replaces="", seed=None, reference_id=""):
         job = {"id": "j" + secrets.token_hex(4), "kind": kind, "subject": subject, "roles": list(roles),
                "tags": list(tags), "prompt": prompt, "negative": negative, "width": width, "height": height,
                "aspect": aspect, "count": count, "done": 0, "failed": 0, "items": [], "nsfw": nsfw,
                "status": "waiting", "error": "", "started": time.time(), "finished": None,
                "replaces": replaces if ITEM_RE.match(replaces or "") else "",
                # Anthony, 20 Nov 2026: a fixed seed re-renders a known picture (Media Library quick "Regen").
-               "seed": seed if isinstance(seed, int) and seed >= 0 else None}
+               "seed": seed if isinstance(seed, int) and seed >= 0 else None, "reference_id": reference_id}
         return self._push(job)
 
     def add_video(self, source, motion, seeds, nsfw, tags=(), pair="", seconds=10, loop=True, width=0, height=0):
         """Queue clips made from one library picture: one clip per seed. nsfw is "yes" or "no" (the pair button
         decides it) or "auto" (a single clip copies its picture's flag)."""
+        if source.get("nsfw") or source.get("enabled") is False:
+            nsfw = "yes"
         seeds = [int(x) for x in seeds if isinstance(x, int) and 0 <= x < 2 ** 63][:8] or [secrets.randbits(48)]
         job = {"id": "j" + secrets.token_hex(4), "type": "video", "kind": source["kind"], "subject": source["subject"],
                "roles": list(source.get("roles") or []), "tags": list(tags), "prompt": str(motion or "")[:1000],
@@ -1462,6 +1482,11 @@ class Jobs:
 
     # ----------------------------------------------------------- workers --
     def _run_video(self, job):
+        source = next((it for it in load()["items"] if it["id"] == job["source_id"]), None)
+        if (source and (source["nsfw"] or not source["enabled"])) or adult_prompt(job["prompt"]) or job.get("nsfw") in (True, "yes"):
+            job["failed"] = job["count"] - job["done"]
+            job["error"] = "Taipan Trader makes clips from enabled family-friendly pictures only."
+            return
         src = path_for(job["source_url"])
         if not src or not os.path.isfile(src):
             job["failed"] = job["count"]
@@ -1549,20 +1574,26 @@ class Jobs:
                         break
                     try:
                         fixed = {"seed": job["seed"]} if job.get("seed") is not None else {}
+                        if job.get("reference_id"):
+                            if job["kind"] != "persona":
+                                raise MediaError("Identity references are for persona portraits.")
+                            fixed["reference_path"] = identity_reference(job["reference_id"], job["subject"])
+                        if adult_prompt(job["prompt"]) or job.get("nsfw") in (True, "yes"):
+                            raise MediaError("Taipan Trader makes family-friendly pictures only.")
                         t0 = job["item_started"] = time.time()
                         data, seed = self.render(job["prompt"], "seatrader/{}-{}".format(job["kind"], job["subject"] or "item"),
                                                  job["width"], job["height"], job["negative"], **fixed)
                         self._note("picture", time.time() - t0)
-                        nsfw = nsfw_from_prompt(job["prompt"], {"new_nsfw": job["nsfw"]})
                         data, ext = compact_picture(data)
-                        it = add_bytes(data, ext, job["kind"], job["subject"], job["roles"], job["tags"], nsfw,
+                        it = add_bytes(data, ext, job["kind"], job["subject"], job["roles"], job["tags"], False,
                                        "generated", job["prompt"], seed, stem="{}-{}".format(job["kind"], job["subject"]),
-                                       reviewed=not nsfw, replaces=job.get("replaces") or "")
+                                       reviewed=False, replaces=job.get("replaces") or "",
+                                       extra={"reference_id": job["reference_id"]} if job.get("reference_id") else None)
                         job["items"].append(it["id"])
                         job["done"] += 1
                         if self.log:
-                            self.log("INFO", "Media library: generated {} for {}/{} (seed {}{})".format(
-                                it["url"], job["kind"], job["subject"], seed, ", NSFW" if nsfw else ""))
+                            self.log("INFO", "Media library: generated {} for {}/{} (seed {})".format(
+                                it["url"], job["kind"], job["subject"], seed))
                     except Exception as e:      # the farm being down must not stop the queue
                         job["failed"] += 1
                         job["error"] = str(e)[:300]

@@ -2,10 +2,10 @@
 strings.EN / strings.FAMILY at import, so every line can be edited in Admin > Language & Text. Group "cert".
 
 The certificate is the wallpaper a Captain is handed when the books close: home port behind, home Mayor on the
-left, the woman who defined the voyage on the right. She reads ONE short line as the seal lands. Her lines are
+left, the cast member who defined the voyage on the right. They read one short line as the seal lands. The lines are
 the banks below: cert.say.<who>.<good|bad>.<n>, written in the house voice (house_voice.HOUSE_STYLE), each
-woman in her own voice, with a clean version in FAMILY. No numbers in any of them, so each is recorded once
-and replays for free. Every Port Authority officer shares the "officer" bank and reads it in her own voice.
+speaker in their own voice, with a clean version in FAMILY. No numbers in any of them, so each is recorded once
+and replays for free. Every Port Authority officer shares the "officer" bank and reads it in their own voice.
 """
 
 EN = {
@@ -48,7 +48,7 @@ EN = {
     "cert.change": "Change the pictures",
     "cert.continue": "Continue to the Ledger",
     "cert.close": "Close",
-    "cert.again": "Hear her again",
+    "cert.again": "Hear the line again",
     "cert.hold": "On an iPad, press and hold the picture and choose Save to Photos.",
     "cert.working": "Sealing your certificate…",
     "cert.failed": "The certificate could not be drawn. The Ledger of the Voyage has every figure.",
@@ -88,7 +88,7 @@ EN = {
     "cert.say.lender.bad.0": "Madam Wu's books say you owe her, and her heart says you tried. Sadly, darling, only one of them charges interest.",
     "cert.say.lender.bad.1": "Never mind, Captain. Come back with a junk and a hopeful face. Madam Wu enjoyed you so much the first time.",
 
-    # ---- the Port Authority officers (shared bank; each reads it in her own voice) -----------------
+    # ---- the Port Authority officers (shared bank; each reads it in their own voice) -----------------
     "cert.say.officer.good.0": "The Port Authority congratulates you, Captain. We have been through your holds so often I feel we have been properly introduced.",
     "cert.say.officer.good.1": "A fine certificate. I stamped a great deal of your paper this voyage, Captain, and I must say you declare beautifully when you put your mind to it.",
     "cert.say.officer.good.2": "You paid this port more than any other, Captain. I have told the girls at the desk to smile when they search you.",

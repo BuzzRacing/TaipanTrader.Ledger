@@ -19,9 +19,8 @@
     drawer: { open: false, mode: "gen", src: "" }, pickQ: "", jobsPop: false, cov: false,
     rec: { open: false, draft: null, busy: false, prog: "" }, recipes: [],
     rulesDraft: null, timers: {},
-    // Videos (Anthony, 20 Nov 2026): the Make video panel and the side-by-side Compare of a clean + NSFW pair.
-    vid: { open: false, src: "", partner: "", pair: false, motion: "", clean: "", preset: "idle", count: 2, tags: "" },
-    cmp: "",
+    // Videos use one source picture.
+    vid: { open: false, src: "", motion: "", preset: "idle", count: 2, tags: "" },
   };
   const $ = id => document.getElementById(id);
   const e = s => esc(s);
@@ -30,7 +29,7 @@
 
   /* --------------------------------------------------------- helpers -- */
   const kinds = () => (M.lib ? M.lib.kinds : {});
-  const items = () => (M.lib ? M.lib.items : []);
+  const items = () => (M.lib ? M.lib.items.filter(i => !i.nsfw) : []);
   const byId = id => items().find(i => i.id === id);
   function subjectsFor(kind) {
     const known = ((M.lib && M.lib.subjects[kind]) || []).map(x => x.slice());
@@ -54,42 +53,17 @@
   // Clips made from a picture keep its id (from_item); a clean + NSFW pair made together shares a pair id.
   const clipsOf = id => items().filter(i => i.type === "video" && i.from_item === id);
   const posterOf = i => { const p = i && i.from_item ? byId(i.from_item) : null; return p && !p.missing ? p.url : ""; };
-  const pairOf = pid => items().filter(i => i.type === "video" && i.pair === pid);
   // Motion prompts describe movement only: the look, the clothes and the rating come from the picture.
-  // Anthony, 22 Nov 2026: 20 general presets, blunt and exact so the video model has nothing to guess.
-  // [label, motion, group, clean twin]. A NSFW preset carries a tamer "clean twin" for the clean half of a pair.
+  // Presets describe motion and use the source picture for appearance.
   const END = " Steady camera, smooth natural motion.";
   const MOTIONS = {
-    idle: ["Breathe and blink", "She stands still and breathes slowly, chest and shoulders rising and falling gently, blinks every two to three seconds, a faint closed-mouth smile, loose strands of hair stirring in a light breeze. Nothing else moves." + END, "clean"],
-    look: ["Turn to camera", "She starts looking slightly away, turns her head to look straight into the camera, holds eye contact for three seconds with a slow smile, then looks away again to where she began. Her body stays still." + END, "clean"],
-    speaking: ["Talk to camera", "She talks directly to the camera, lips moving steadily as if telling a story, head tilting, eyebrows lifting, one hand gesturing to stress each point, a playful smile between sentences, then she goes still." + END, "clean"],
-    wave: ["Wave hello", "She raises one hand to shoulder height and waves at the camera with three slow side-to-side waves, smiling warmly and nodding once, then lowers her hand to where it began." + END, "clean"],
-    walk: ["Walk toward camera", "She walks slowly toward the camera with a confident hip sway, four unhurried steps, skirts swishing, then stops, smiles and holds eye contact, then walks backward to where she began." + END, "clean"],
-    prop: ["Play with what she holds", "She plays with the object in her hand: turns it over, tosses it a few inches into the air and catches it, then holds it up beside her face with a knowing smile and lowers it again. Her other hand rests on her hip." + END, "clean"],
-    kiss: ["Wink and blow a kiss", "She winks at the camera, presses two fingertips to her lips, blows a kiss toward the camera with a small forward lean, smiles, and returns to her starting pose." + END, "clean"],
-    hair: ["Flick her hair", "She tosses her head and flicks her hair back over one shoulder with one hand, runs her fingers through it from temple to ends, glances at the camera with a smile, and lets her hand drop." + END, "clean"],
-    laugh: ["Laugh out loud", "She laughs out loud, shoulders shaking, head tipping back a little, the back of one hand pressed to her mouth, eyes crinkled, then catches her breath, grins at the camera and settles." + END, "clean"],
-    hips: ["Hands on hips, sway", "She plants both hands on her hips and sways slowly from one hip to the other, chin lifted, one eyebrow raised, a knowing smile, holding eye contact with the camera, then stops centred." + END, "clean"],
-    gust: ["Wind lifts her skirt (breezy business)", "A strong gust hits her from the side. Her skirt and petticoats blow up to her waist, showing her stockings, garters and bloomered backside. She gasps, laughs, grabs the hem with both hands and pushes it back down, hair whipping across her face, then smooths it flat." + END, "nsfw",
-      "A strong gust hits her from the side. Her skirt and hair blow sideways. She laughs, grabs the hem with both hands and holds it down at her knees so nothing shows, then smooths it flat." + END],
-    bend: ["Bend over (the rear view)", "She turns her back to the camera, bends forward at the waist with straight legs and her backside toward the camera, skirt riding up to show her stockings and bloomers, hips swaying slowly, then looks back over her shoulder with a wink and straightens up." + END, "nsfw",
-      "She turns her back to the camera, bends forward at the waist as if picking something off the ground, skirt staying down, then looks back over her shoulder with a wink and straightens up." + END],
-    unbutton: ["Unbutton her blouse (loose ends)", "Looking into the camera, she undoes her blouse buttons one at a time from the collar down, four buttons, slowly, then parts the fabric with both hands to show her cleavage and bites her lower lip." + END, "nsfw",
-      "Looking into the camera, she undoes just the top button at her collar, fans her neck with one hand as if the room is warm, and smiles." + END],
-    shimmy: ["Shimmy her bust (a bustling trade)", "She presses her upper arms together to push her breasts together and up, then shimmies her shoulders fast from side to side so her breasts bounce and jiggle, grinning at the camera, then stops and lets her arms drop." + END, "nsfw",
-      "She shimmies her shoulders fast from side to side, laughing, hands on her hips, grinning at the camera, then stops." + END],
-    hitch: ["Hitch her skirt (hem and haw)", "She grips her skirt hem in both hands and slowly hitches it up to the top of her thighs, showing stocking tops and garters, holds it there for two seconds with a cheeky smile, then drops it with a laugh." + END, "nsfw",
-      "She grips her skirt hem in both hands and lifts it just to the ankle to show her boots, holds it for two seconds with a cheeky smile, then lets it drop." + END],
-    peekaboo: ["Flash and cover (peek-a-boo)", "She pulls her neckline down with both hands for one second to flash her breasts, then covers them with her forearms, laughing and wide-eyed, then lowers her arms, tugs the neckline back up and winks." + END, "nsfw",
-      "She tugs her neckline modestly higher with both hands, smooths her collar, laughs and winks at the camera." + END],
-    wiggle: ["Wiggle her backside (tail wind)", "She turns her back to the camera and wiggles her hips side to side, her bottom jiggling under her skirt, one hand lifting the hem at the back for a second, then glances over her shoulder with a grin and turns back to face the camera." + END, "nsfw",
-      "She turns her back to the camera and sways her hips side to side, skirt swishing, glances over her shoulder with a grin and turns back to face the camera." + END],
-    garter: ["Adjust her garter (tied up)", "She lifts one foot onto a nearby chair or crate, slides her skirt up her thigh and adjusts her stocking garter, runs her hand up her thigh, looks at the camera with a slow smile, then puts her foot down and drops the skirt." + END, "nsfw",
-      "She lifts one foot onto a nearby chair or crate and fixes the lace of her boot, brushes her skirt flat over her knee, looks at the camera with a slow smile, then puts her foot down." + END],
-    lean: ["Lean in (cleavage on deck)", "She leans forward toward the camera with her forearms resting on a surface so her cleavage fills the lower frame, whispers something with a wink, holds for two seconds, then leans back upright." + END, "nsfw",
-      "She leans forward toward the camera with her elbows on a surface and her chin on her hands, whispers something with a wink, then leans back upright." + END],
-    spank: ["Slap her own backside (a stern word)", "She turns her back to the camera and gives her own backside a firm playful slap with one hand, the flesh and skirt jiggling, then looks back over her shoulder with a wink and a smirk and turns to face the camera." + END, "nsfw",
-      "She turns her back to the camera and gives her skirt a playful pat with one hand as if dusting it off, then looks back over her shoulder with a wink and turns to face the camera." + END],
+    idle: ["Breathe and blink", "The subject breathes slowly and blinks naturally, with a faint smile." + END, "clean"],
+    look: ["Turn to camera", "The subject turns toward the camera, holds eye contact, then looks back." + END, "clean"],
+    speaking: ["Talk to camera", "The subject speaks to the camera, gestures briefly with one hand, then settles." + END, "clean"],
+    wave: ["Wave hello", "The subject raises one hand, waves three times, then lowers it." + END, "clean"],
+    walk: ["Walk toward camera", "The subject takes four measured steps, pauses, and returns to the starting position." + END, "clean"],
+    prop: ["Inspect an object", "The subject turns the object in one hand to examine it, then sets it down." + END, "clean"],
+    laugh: ["Laugh out loud", "The subject laughs, shoulders shaking briefly, then takes a breath and settles." + END, "clean"],
   };
   // Which movement a clip was made with (Anthony, 22 Nov 2026): its motion-<name> tag, else matched from the movement text
   // it saved (so clips made before the tags existed still filter). Old Jailer clips group under "keys".
@@ -99,32 +73,21 @@
     if (t) return String(t).slice(7);
     const m = String(i.motion || "").trim();
     if (!m) return "";
-    const hit = Object.entries(MOTIONS).find(([, v]) => v[1] === m || v[3] === m);
+    const hit = Object.entries(MOTIONS).find(([, v]) => v[1] === m);
     if (hit) return hit[0];
     return /heavy iron keys/.test(m) ? "keys" : "custom";
   }
   const motionLabel = k => MOTIONS[k] ? MOTIONS[k][0].replace(/\s*\(.*\)$/, "") : k === "keys" ? "Keys (old Jailer)" : k === "custom" ? "Own words" : String(k).replace(/[-_]/g, " ");
   const motionSel = cur => {
     const opts = grp => Object.entries(MOTIONS).filter(([, v]) => v[2] === grp).map(([k, v]) => `<option value="${k}"${k === cur ? " selected" : ""}>${e(v[0])}</option>`).join("");
-    return `<optgroup label="Everyday (clean)">${opts("clean")}</optgroup><optgroup label="Cheeky (NSFW)">${opts("nsfw")}</optgroup><option value="own"${cur === "own" ? " selected" : ""}>My own words</option>`;
+    return `<optgroup label="Everyday (clean)">${opts("clean")}</optgroup><option value="own"${cur === "own" ? " selected" : ""}>My own words</option>`;
   };
-  // The other half of a pair: the newest picture of the same subject on the other side of the NSFW line
-  // (a "clean" tag counts as clean), else any other picture of that subject.
-  function suggestPartner(src) {
-    if (!src || !src.tags) return "";
-    const pics = items().filter(i => i.type === "image" && i.kind === src.kind && i.subject === src.subject && i.id !== src.id && !i.missing);
-    const isClean = i => !i.nsfw || i.tags.includes("clean");
-    const want = pics.filter(i => isClean(i) !== isClean(src));
-    const pool = (want.length ? want : pics).slice().sort((a, b) => String(b.added).localeCompare(String(a.added)));
-    return pool[0] ? pool[0].id : "";
-  }
   function openVideo(id) {
     const i = byId(id);
-    if (!i || i.type !== "image") return;
-    M.vid.open = true; M.vid.src = id; M.vid.partner = suggestPartner(i); M.cmp = "";
+    if (!i || i.type !== "image" || !i.enabled) return;
+    M.vid.open = true; M.vid.src = id;
     M.drawer = { open: true, mode: "vid", src: id };
-    M.vid.pair = !!M.vid.partner;
-    if (!M.vid.motion) { M.vid.motion = MOTIONS[M.vid.preset][1]; M.vid.clean = MOTIONS[M.vid.preset][3] || ""; }
+    if (!M.vid.motion) M.vid.motion = MOTIONS[M.vid.preset][1];
     if (!M.vid.tags && i.tags.some(t => t.includes("jail"))) M.vid.tags = "jail warden";
   }
 
@@ -132,35 +95,26 @@
     if (!M.vid.open) return "";
     const src = byId(M.vid.src);
     if (!src) return "";
-    const pics = items().filter(i => i.type === "image" && i.kind === src.kind && i.subject === src.subject && i.id !== src.id && !i.missing);
-    const partner = M.vid.pair ? byId(M.vid.partner) : null;
-    // In a pair the pair button decides the rating: the NSFW-flagged picture makes the NSFW clip.
-    const [nsfwPic, cleanPic] = partner ? ((src.nsfw && !src.tags.includes("clean")) || !partner.nsfw || partner.tags.includes("clean") ? [src, partner] : [partner, src]) : [src, null];
-    const n = M.vid.count * (partner ? 2 : 1);
-    const face = (i, label) => `<figure class="ml-vid-pic"><img src="${e(i.url)}" alt=""><figcaption><b>${label}</b>${i.nsfw ? ' <em class="nsfw">NSFW</em>' : ""}${i.tags.includes("clean") ? " <em>clean</em>" : ""}</figcaption></figure>`;
+    const n = M.vid.count;
     const running = M.jobs.filter(j => j.type === "video" && ["waiting", "running", "cancelling"].includes(j.status));
     return `<section class="card ml-vid"><h2>▶ Make video <small>Wan 2.2 · 12 s loop</small></h2>
       <p class="help">The clip starts and ends on the picture, so it loops without a jump. Describe the <b>movement only</b>:
-        her look, clothes and rating come from the picture. Each clip takes a while on the farm and is filed under
+        the person and clothing come from the picture. Each clip takes a while on the farm and is filed under
         <b>${e(kinds()[src.kind].one)} · ${e(subjectName(src.kind, src.subject))}</b> with the picture's roles, marked "needs review".</p>
-      <div class="ml-vid-pics">${partner ? face(nsfwPic, "NSFW clip from") + face(cleanPic, "Clean clip from") : face(src, "Clip from")}</div>
+      <div class="ml-vid-pics"><figure class="ml-vid-pic"><img src="${e(src.url)}" alt=""></figure></div>
       <div class="ml-gen-grid">
-        <label class="ml-check"><input type="checkbox" data-mlvidf="pair"${M.vid.pair ? " checked" : ""}${pics.length ? "" : " disabled"}> Make a pair (clean + NSFW)</label>
-        ${M.vid.pair ? `<label>Other picture<select data-mlvidf="partner">${pics.map(i => `<option value="${e(i.id)}"${i.id === M.vid.partner ? " selected" : ""}>${e((i.title || i.tags.join(", ") || i.url.split("/").pop()).slice(0, 60))}${i.nsfw ? " (NSFW)" : ""}</option>`).join("")}</select></label>` : ""}
         <label>Movement<select data-mlvidf="preset">${motionSel(M.vid.preset)}</select></label>
-        <label>Takes${partner ? " each" : ""}<input type="number" min="1" max="4" value="${M.vid.count}" data-mlvidf="count"></label>
+        <label>Takes<input type="number" min="1" max="4" value="${M.vid.count}" data-mlvidf="count"></label>
         <label class="ml-grow">Tags<input type="text" value="${e(M.vid.tags)}" data-mlvidf="tags" placeholder="jail warden, night"></label>
       </div>
       <textarea rows="4" class="code" data-mlvidf="motion" id="mlvidmotion">${e(M.vid.motion)}</textarea>
-      ${M.vid.pair && M.vid.clean ? `<label class="ml-cleantwin"><span>Clean half uses this softer movement <small>(the NSFW half uses the one above)</small></span><textarea rows="3" class="code" data-mlvidf="clean" id="mlvidclean">${e(M.vid.clean)}</textarea></label>` : ""}
       <div class="row"><button type="button" class="primary" data-mlvidgo="1">Make ${n} clip${n === 1 ? "" : "s"}</button>
         <button type="button" class="link" data-mlvidclose="1">close</button>
-        <span class="help">${partner ? "Both halves use the same movement and the same seeds, so you compare like with like. " : ""}${running.length ? `${running.length} video job${running.length === 1 ? "" : "s"} in the queue.` : ""}</span></div>
+        <span class="help">${running.length ? `${running.length} video job${running.length === 1 ? "" : "s"} in the queue.` : ""}</span></div>
     </section>`;
   }
 
-  // Side by side: every take of a pair, NSFW on the left, clean on the right, matched by seed.
-  // ---- A/B test a phrase (Anthony, 22 Nov 2026): same seed, one wording change, side by side ----
+
   function abVariants(srcId) {
     const src = byId(srcId);
     if (!src) return [];
@@ -212,32 +166,8 @@
         ${made ? `<button type="button" data-mlabview="${e(src.id)}">Compare ${made} so far</button>` : ""}</div></details>`;
   }
 
-  function comparePanel() {
-    if (!M.cmp) return "";
-    const clips = pairOf(M.cmp);
-    if (!clips.length) return "";
-    const seeds = [...new Set(clips.map(c => c.seed))];
-    const cell = c => !c ? `<div class="ml-cmp-cell empty">not made yet</div>` : `<div class="ml-cmp-cell${c.enabled ? "" : " off"}">
-        <video src="${e(c.url)}"${posterOf(c) ? ` poster="${e(posterOf(c))}"` : ""} muted loop playsinline preload="auto" data-mlcmpv="1"></video>
-        <p><b>${c.nsfw ? "NSFW" : "Clean"}</b> · ${c.seconds || "?"} s${c.loop ? " loop" : ""} · ${fmtBytes(c.bytes || 0)}${c.render_s ? ` · ${Math.round(c.render_s / 60)} min to render` : ""}${!c.reviewed ? ' · <em>needs review</em>' : ""}</p>
-        ${c.motion ? `<details><summary>movement</summary><p class="mono ml-prompt">${e(c.motion)}</p></details>` : ""}
-        <div class="row"><button type="button" data-mlcmpset="${e(c.id)}" data-f="reviewed" data-v="1"${c.reviewed ? " disabled" : ""}>✓ Keep</button>
-          <button type="button" data-mlcmpset="${e(c.id)}" data-f="enabled" data-v="${c.enabled ? "0" : "1"}">${c.enabled ? "Switch off" : "Switch on"}</button>
-          <button type="button" class="danger" data-mlcmpdel="${e(c.id)}">🗑</button></div></div>`;
-    const first = clips[0];
-    return `<section class="card ml-cmp"><h2>Compare: ${e(subjectName(first.kind, first.subject))} <small>${e(first.model || "")}</small></h2>
-      <p class="help mono">${e(first.motion || "")}</p>
-      <div class="row"><button type="button" class="primary" data-mlcmpplay="1">▶ Play all from the start</button><button type="button" data-mlcmppause="1">❚❚ Pause</button><button type="button" class="link" data-mlcmpclose="1">close</button></div>
-      ${seeds.map(sd => `<div class="ml-cmp-row"><span class="ml-cmp-seed">seed ${e(sd)}</span>${cell(clips.find(c => c.seed === sd && c.nsfw))}${cell(clips.find(c => c.seed === sd && !c.nsfw))}</div>`).join("")}
-    </section>`;
-  }
-
-  /* ---- Find by port & job (Anthony, 22 Nov 2026) ----
-     A woman is filed under her own name (Personas) or under her port (Ports > port, role mayor, keeper...), so the
-     Kind > Subject rail could never show "the Mayor of Hong Kong" or "the Jailer of Bangkok" in one view.
-     portOf() and jobOf() read both places, so Port + Job pull every picture of her together. */
   const portKeys = () => ((M.lib && M.lib.subjects.port) || []).map(x => x[0]);
-  const JOBS = [["mayor", "Mayor"], ["jailer", "Jailer / warden"], ["taxlady", "Tax lady / customs"], ["keeper", "Market keeper"], ["shipmaster", "Ship master"],
+  const JOBS = [["mayor", "Mayor"], ["jailer", "Jailer / warden"], ["taxlady", "Registrar / customs"], ["keeper", "Market keeper"], ["shipmaster", "Ship master"],
     ["lender", "Moneylender"], ["banker", "Banker"], ["comprador", "Comprador"], ["shipwright", "Shipwright"], ["crier", "Crier"],
     ["bookmaker", "Bookmaker"], ["agent", "Pirate queen's agent"], ["pirate", "Pirate queen"], ["bosun", "Bosun"], ["narrator", "First mate"],
     ["thieves", "Thieves (Magpie)"], ["legend", "Legends: storytellers, characters, scenes"], ["bookkeeper", "Bookkeeper"], ["gamemaster", "Game Master"]];
@@ -278,7 +208,7 @@
     return out;
   }
   const roleHit = (i, r) => i.roles.some(x => x === r || x.startsWith(r + "_")) || i.tags.some(t => String(t).toLowerCase() === r);
-  // Wallpapers, weather pictures and storm pictures belong to a woman's scenery, not to her port. With a Port or Job
+  // Wallpapers, weather pictures and storm pictures belong to a persona’s scenery, not to her port. With a Port or Job
   // chosen and no Role picked, they stay out of the way; pick the Role (Wallpaper, Weather, Storm) to see them.
   const SCENERY = ["wallpaper", "weather", "storm", "tax_good", "tax_bad"];
   // A persona's scene roles with prompts of their own (the tax ladies' wide result pictures, tax_results.py).
@@ -303,8 +233,6 @@
       if (M.type === "pair") { if (i.type !== "video" || !i.pair) return false; }
       else if (M.type === "hasvid") { if (i.type !== "image" || !clipsOf(i.id).length) return false; }
       else if (M.type && i.type !== M.type) return false;
-      if (M.nsfw === "sfw" && i.nsfw) return false;
-      if (M.nsfw === "nsfw" && !i.nsfw) return false;
       if (M.nsfw === "off" && i.enabled) return false;
       if (M.review && i.reviewed) return false;
       if (M.tag && !i.tags.includes(M.tag)) return false;
@@ -373,14 +301,6 @@
       : `<img class="${cls}" src="${e(i.url)}" alt="" loading="lazy">`;
   }
 
-  function familySwitch() {
-    const fam = CFG.content.rating === "family";
-    return `<button type="button" class="ml-safe${fam ? " on" : ""}" data-mlsafe="${fam ? "0" : "1"}" title="Switch the whole game between the private adult release and family-friendly">
-      <span class="ml-safe-knob"></span><span><b>${fam ? "Family-friendly ON" : "Family-friendly OFF"}</b>
-      <small>${fam ? "NSFW is hidden on every screen" : "NSFW pictures and clips can show"}</small></span></button>`;
-  }
-
-
   // Anthony, 20 Nov 2026: quick Regen (same prompt + seed) and Reroll (same prompt, new seed), beside Trash and Approve.
   // tag is "button" on grid tiles and "span" inside subject cards (those are buttons already).
   function quickRedo(i, tag) {
@@ -394,7 +314,7 @@
 
   /* ---- Gallery 2: filter rail, view toggle, chips ---- */
   const scopeItems = () => items().filter(i => inFind(i) && (!M.kind || i.kind === M.kind) && (!M.subject || i.subject === M.subject));
-  const RATINGS = [["", "All"], ["sfw", "Family-friendly"], ["nsfw", "NSFW"], ["off", "Switched off"]];
+
 
   function findBox() {
     const all = items();
@@ -408,7 +328,7 @@
     return `<div class="ml-rail-sec ml-find"><h3>Find by port &amp; job</h3>
       <label>Port<select data-mlfind="port"><option value="">Any port</option>${ports.map(([k, n]) => `<option value="${e(k)}"${k === M.port ? " selected" : ""}>${e(n)} (${portN[k] || 0})</option>`).join("")}</select></label>
       <label>Job<select data-mlfind="job"><option value="">Any job</option>${jobs.map(j => `<option value="${e(j)}"${j === M.job ? " selected" : ""}>${e(jobLabel(j))} (${jobN[j] || 0})</option>`).join("")}</select></label>
-      <p class="help">Pulls her pictures from Personas <em>and</em> Ports together, in any kind. With a Port alone, wallpapers, weather and storm pictures stay hidden until you pick that Role below; pick a Job and all of her pictures show.</p></div>`;
+      <p class="help">Pulls pictures from Personas <em>and</em> Ports together, in any kind. With a Port alone, wallpapers, weather and storm pictures stay hidden until you pick that Role below; pick a Job and all matching pictures show.</p></div>`;
   }
 
   function rail() {
@@ -430,7 +350,7 @@
     return `<aside class="ml-rail" aria-label="Filters">
       <div class="ml-rail-sec"><h3>Quick views</h3><div class="ml-presets">
         <button type="button" data-mlpreset="review">Needs review</button><button type="button" data-mlpreset="vidreview">Videos to review</button>
-        <button type="button" data-mlpreset="clips">Pictures with clips</button><button type="button" data-mlpreset="nsfw">NSFW</button><button type="button" data-mlpreset="off">Switched off</button>
+        <button type="button" data-mlpreset="clips">Pictures with clips</button><button type="button" data-mlpreset="off">Switched off</button>
         <button type="button" data-mlcovtoggle="1" class="${M.cov ? "on" : ""}">Coverage &amp; gaps</button>
         <button type="button" data-mlrecopen="1" class="${M.rec.open ? "on" : ""}">Recipes</button>
         <button type="button" data-mlpreset="clear" class="link">Clear all</button></div></div>
@@ -438,11 +358,10 @@
       <div class="ml-rail-sec"><h3>Kind</h3><div class="ml-list">${kindBtns}<button type="button" data-mlkind="" class="${M.kind === "" ? "on" : ""}"><span>Everything</span><i>${all.length}</i></button></div></div>
       ${subs.length ? `<div class="ml-rail-sec"><h3>${e(K.one)}</h3><div class="ml-list ml-scroll">${subBtns}</div></div>` : ""}
       <div class="ml-rail-sec"><h3>Role</h3><select data-mlf="role"><option value="">Any</option>${K ? roles.map(([k, n]) => `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n.split(":")[0])}</option>`).join("") : allRoles().map(([g, rs]) => `<optgroup label="${e(g)}">${rs.map(([k, n]) => `<option value="${e(k)}"${k === M.role ? " selected" : ""}>${e(n)}</option>`).join("")}</optgroup>`).join("")}</select></div>
-      <div class="ml-rail-sec"><h3>Rating</h3><div class="ml-seg ml-seg-v">${RATINGS.map(([k, n]) => `<button type="button" data-mlrating="${k}" class="${M.nsfw === k ? "on" : ""}">${n}</button>`).join("")}</div></div>
       <div class="ml-rail-sec"><h3>Status</h3><div class="ml-list">
         <button type="button" data-mlreview="1" class="${M.review ? "on" : ""}"><span>Needs review</span><i>${nReview}</i></button>
         <button type="button" data-mlstatus="hasvid" class="${M.type === "hasvid" ? "on" : ""}"><span>Has clips</span><i>${nClips}</i></button></div></div>
-      ${mkeys.length ? `<div class="ml-rail-sec"><h3>Movement</h3><div class="ml-list ml-scroll">${mkeys.map(k => `<button type="button" data-mlmotion="${M.motion === k ? "" : e(k)}" class="${M.motion === k ? "on" : ""}"><span>${e(motionLabel(k))}${MOTIONS[k] && MOTIONS[k][2] === "nsfw" ? ' <em class="nsfw">NSFW</em>' : ""}</span><i>${mcount[k] || 0}</i></button>`).join("")}</div></div>` : ""}
+      ${mkeys.length ? `<div class="ml-rail-sec"><h3>Movement</h3><div class="ml-list ml-scroll">${mkeys.map(k => `<button type="button" data-mlmotion="${M.motion === k ? "" : e(k)}" class="${M.motion === k ? "on" : ""}"><span>${e(motionLabel(k))}</span><i>${mcount[k] || 0}</i></button>`).join("")}</div></div>` : ""}
       ${tags.length ? `<div class="ml-rail-sec"><h3>Tags</h3><div class="ml-tagcloud">${tags.map(([t, n]) => `<button type="button" data-mltag="${e(M.tag === t ? "" : t)}" class="${M.tag === t ? "on" : ""}">${e(t)} <i>${n}</i></button>`).join("")}</div></div>` : ""}
     </aside>`;
   }
@@ -451,7 +370,7 @@
     const sc = scopeItems();
     const n = { "": sc.length, image: sc.filter(i => i.type === "image").length, video: sc.filter(i => i.type === "video").length, pair: sc.filter(i => i.type === "video" && i.pair).length };
     const cur = ["", "image", "video", "pair"].includes(M.type) ? M.type : "";
-    return `<div class="ml-seg ml-view">${[["", "All"], ["image", "Pictures"], ["video", "Videos"], ["pair", "Pairs"]].map(([k, t]) =>
+    return `<div class="ml-seg ml-view">${[["", "All"], ["image", "Pictures"], ["video", "Videos"]].map(([k, t]) =>
       `<button type="button" data-mlview="${k}" class="${cur === k ? "on" : ""}">${t} <i>${n[k]}</i></button>`).join("")}</div>`;
   }
 
@@ -464,7 +383,7 @@
     if (M.subject) add("subject", subjectName(M.kind, M.subject));
     if (M.role) add("role", "Role: " + (M.kind ? roleName(M.kind, M.role) : (allRoles().flatMap(g => g[1]).find(r => r[0] === M.role) || [0, M.role])[1]));
     if (M.type === "hasvid") add("type", "Has clips");
-    if (M.nsfw) add("nsfw", (RATINGS.find(r => r[0] === M.nsfw) || [0, M.nsfw])[1]);
+    if (M.nsfw === "off") add("nsfw", "Switched off");
     if (M.review) add("review", "Needs review");
     if (M.tag) add("tag", "#" + M.tag);
     if (M.motion) add("motion", "Movement: " + motionLabel(M.motion));
@@ -481,9 +400,8 @@
       <div class="ml-seg ml-dens" title="Tile size">${[["s", "S"], ["m", "M"], ["l", "L"]].map(([k, t]) => `<button type="button" data-mldens="${k}" class="${M.density === k ? "on" : ""}">${t}</button>`).join("")}</div>
       <div class="ml-actions">
         <button type="button" class="primary" data-mlnew="1">+ New</button>
-        <label class="ml-check" title="Tag what you upload next as NSFW"><input type="checkbox" data-mlf="upNsfw"${M.upNsfw ? " checked" : ""}> NSFW</label>
         <label class="pick ml-up">Upload…<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,video/mp4,video/webm,video/quicktime,.m4v" data-mlupload="1"></label>
-        <button type="button" data-mlscan="1" title="Pick up files dropped into web/media/&lt;kind&gt;/&lt;subject&gt;/ (a folder named nsfw tags them)">Scan</button>
+        <button type="button" data-mlscan="1" title="Pick up files dropped into web/media/&lt;kind&gt;/&lt;subject&gt;/">Scan</button>
         <button type="button" data-mlrules="1" class="${M.rulesOpen ? "on" : ""}">Rules</button>
       </div></div>`;
   }
@@ -496,104 +414,32 @@
   // Starter prompts for the ten sea battle moments, one set per enemy (see SeaTrader Sea Battle).
   // Your fleet is always a small merchant trading fleet; the enemy changes.
   const BATTLE_ENEMY = {
-    seafight_pirates: "a pack of ragged South China Sea pirate junks with patched rust-brown battened sails, painted eyes on their bows, swivel guns and crowded decks of fierce women pirates",
-    seafight_lord: "the pirate queen's great war fleet of heavy black-lacquered war junks with blood-red battened sails, banners and pennants, gilded sterns, rows of bronze cannon, disciplined crews of women warriors"
+    seafight_pirates: "a pack of ragged South China Sea pirate junks with patched rust-brown battened sails, painted eyes on their bows, swivel guns and crowded decks of fierce pirates",
+    seafight_lord: "the pirate queen's great war fleet of heavy black-lacquered war junks with blood-red battened sails, banners and pennants, gilded sterns, rows of bronze cannon, disciplined crews"
   };
   const BATTLE_MOMENTS = {
-    sighting: "Wide view from the quarterdeck of a merchant clipper crewed by women: on the hazy horizon {enemy} appear and close in, a woman lookout pointing from the rigging, women sailors rushing to the guns, tense calm before battle",
-    broadside: "A merchant clipper fires a full broadside, a rippling line of cannon flashes and thick white powder smoke rolling over the water, women gun crews heaving at the guns, {enemy} beyond the smoke, low dynamic angle",
-    enemy_hit: "One of {enemy} is struck and going down: shattered mast falling, sails torn and burning, hull listing into the sea, splinters and spray, the merchant fleet's guns still smoking in the foreground with women gunners cheering",
-    we_are_hit: "Enemy roundshot slams into the deck of a merchant ship: splintering rail, a torn sail, rigging snapping, women sailors ducking and bracing, smoke and spray, {enemy} firing close alongside",
-    ship_lost: "A merchant ship of the trading fleet is lost: broken-backed, dismasted and on fire, sinking stern first into a dark sea, women sailors in boats pulling away, {enemy} circling in the smoke, sombre mood",
-    boarding: "{enemy} grapple alongside a merchant ship and the women pirates swarm aboard over the rail, cutlasses and boarding pikes raised, cargo chests and tea crates being hauled across, the merchant's women crew fighting back, chaos and smoke, dramatic but not gory",
-    got_away: "A merchant clipper under every stitch of sail running clear before a fresh wind, wake foaming, {enemy} falling far behind in the haze, relief and triumph among the women crew on deck, golden light breaking through cloud",
-    retreat: "A merchant ship breaking away from battle, her women crew heaving bales, chests and crates of cargo over the side to lighten her, crates floating in the wake, sails straining, {enemy} firing parting shots through the smoke",
-    victory: "After the battle the merchant fleet sails on battered but victorious, women crews cheering in the rigging, the wreckage and smoke of {enemy} drifting on the water behind, warm sunset light",
-    defeat: "Total defeat at sea: the whole merchant fleet burning and sinking under a darkening sky, only wreckage, floating cargo and an empty lifeboat left, {enemy} triumphant in the smoke with their women crews at the rails, grim and sombre"
+    sighting: "Wide view from the quarterdeck of a merchant clipper with a mixed crew: on the hazy horizon {enemy} appear and close in, a woman lookout pointing from the rigging, sailors rushing to the guns, tense calm before battle",
+    broadside: "A merchant clipper fires a full broadside, a rippling line of cannon flashes and thick white powder smoke rolling over the water, gun crews heaving at the guns, {enemy} beyond the smoke, low dynamic angle",
+    enemy_hit: "One of {enemy} is struck and going down: shattered mast falling, sails torn and burning, hull listing into the sea, splinters and spray, the merchant fleet's guns still smoking in the foreground with gunners cheering",
+    we_are_hit: "Enemy roundshot slams into the deck of a merchant ship: splintering rail, a torn sail, rigging snapping, sailors ducking and bracing, smoke and spray, {enemy} firing close alongside",
+    ship_lost: "A merchant ship of the trading fleet is lost: broken-backed, dismasted and on fire, sinking stern first into a dark sea, sailors in boats pulling away, {enemy} circling in the smoke, sombre mood",
+    boarding: "{enemy} grapple alongside a merchant ship and the pirates swarm aboard over the rail, cutlasses and boarding pikes raised, cargo chests and tea crates being hauled across, the merchant's crew fighting back, chaos and smoke, dramatic but not gory",
+    got_away: "A merchant clipper under every stitch of sail running clear before a fresh wind, wake foaming, {enemy} falling far behind in the haze, relief and triumph among the crew on deck, golden light breaking through cloud",
+    retreat: "A merchant ship breaking away from battle, her crew heaving bales, chests and crates of cargo over the side to lighten her, crates floating in the wake, sails straining, {enemy} firing parting shots through the smoke",
+    victory: "After the battle the merchant fleet sails on battered but victorious, crews cheering in the rigging, the wreckage and smoke of {enemy} drifting on the water behind, warm sunset light",
+    defeat: "Total defeat at sea: the whole merchant fleet burning and sinking under a darkening sky, only wreckage, floating cargo and an empty lifeboat left, {enemy} triumphant in the smoke with their crews at the rails, grim and sombre"
   };
-  // Pirate Queen sandbox: every crew on both sides is women only (Anthony, 17 Nov 2026).
-  const BATTLE_WOMEN = "every sailor, gunner, officer and pirate in the picture is a woman, all-female crews of fierce sea-women with long braided or tied-back hair, women only";
+  const BATTLE_CREW = "mixed crews of fully dressed adult men and women in period maritime workwear on both sides";
   function battlePrompt(subject, role, style) {
     const enemy = BATTLE_ENEMY[subject];
     const moment = BATTLE_MOMENTS[role] || "A sea battle between a small merchant trading fleet and {enemy}, cannon smoke, spray and torn sails, wide cinematic view";
-    return `${moment.replace("{enemy}", enemy)}, ${BATTLE_WOMEN}, 16:9 wide cinematic composition, ${style}`;
+    return `${moment.replace("{enemy}", enemy)}, ${BATTLE_CREW}, 16:9 wide cinematic composition, ${style}`;
   }
 
-
-  // Who each port's market keeper, ship master, mayor and tax lady is (Anthony, 17 Nov 2026): a real mix of
-  // heritage, age, build and hair across the 40 women, so no two ports paint the same face.
-  // who = age, heritage and build; hair; dress = her clothes. The role prompt adds her props and setting.
-  const PORT_WOMEN = {
-    hongkong: {
-      keeper:     { who: "petite, slender Hakka Chinese woman of 26 with a heart-shaped face", hair: "glossy black hair coiled in twin buns bound with red silk cord", dress: "a close-fitting oxblood silk jacket with gold frogging, unbuttoned low at the throat" },
-      shipmaster: { who: "tall, powerfully muscular Black Mozambican-Portuguese woman of 38 raised in Macau, deep brown skin, broad strong shoulders", hair: "close-cropped natural hair under a gold-braided black tricorn", dress: "a fitted black lacquer naval coat with oxblood silk lining worn open over a low-cut linen shirt, sleeves pushed up over sculpted forearms" },
-      mayor:      { who: "heavyset, full-figured, deeply glamorous Cantonese matriarch of 58 with a soft double chin and shrewd eyes", hair: "silver-streaked black hair swept up with gold pins", dress: "a voluminous imperial-jade brocade robe falling open over a gold-embroidered bodice" },
-      taxlady:    { who: "curvy, freckled Irish woman of 31 with green eyes", hair: "a riot of copper-red curls barely pinned up", dress: "a fitted black lacquer waistcoat over a loose ivory silk blouse slipping off one freckled shoulder" }
-    },
-    shanghai: {
-      keeper:     { who: "plump, full-figured, voluptuous Ningbo Chinese woman of 44 with a round, rosy face", hair: "black hair in a lacquered bun with gold hairpins", dress: "a snug peony-red silk jacket straining across her bosom, top frog buttons left undone" },
-      shipmaster: { who: "tall, broad-shouldered, athletic Punjabi Sikh woman of 35 with a strong jaw and kohl-dark eyes", hair: "a long thick black braid over one shoulder and a steel kara on her wrist", dress: "a fitted saffron-and-black naval coat open over a close silk kurti, cutlass at her hip" },
-      mayor:      { who: "statuesque, curvaceous Swedish woman of 45 with ice-blue eyes", hair: "ash-blonde hair in a crown braid with loose tendrils", dress: "a low-cut midnight-blue velvet gown with bare shoulders under a black lacquer captain's coat" },
-      taxlady:    { who: "slender, elegant Korean woman of 29 with a long neck and cool gaze", hair: "black hair in a low chignon held by a silver binyeo pin", dress: "a short cropped jeogori jacket in plum silk tied loosely over a high-waisted crimson skirt, bare collarbones" }
-    },
-    nagasaki: {
-      keeper:     { who: "soft, full-figured, matronly Japanese woman of 52 with laughing eyes and fine smile lines", hair: "greying hair in a marumage with tortoiseshell combs", dress: "an indigo kimono worn loose and low off both shoulders, obi tied carelessly" },
-      shipmaster: { who: "lean, wiry, hard-muscled Japanese woman of 33 with a thin scar on one cheek", hair: "black hair pulled into a high warrior's topknot", dress: "a black lacquer coat over a loosely wrapped dark kimono open to the sternum, a short sword at her sash" },
-      mayor:      { who: "striking Dutch-Japanese Eurasian woman of 40 with hazel eyes and a slim, curvy figure", hair: "honey-brown hair swept up Dutch-fashion with a jade comb", dress: "a Dejima-merchant gown of ivory silk with a deep square neckline under a black lacquer coat" },
-      taxlady:    { who: "curvy, buxom African-American woman of 34, a New Bedford whaler's widow, rich dark brown skin and full lips", hair: "hair wrapped high in an oxblood silk headscarf, gold hoops in her ears", dress: "a fitted black waistcoat over a loose white blouse falling off one shoulder" }
-    },
-    manila: {
-      keeper:     { who: "petite, curvy Tagalog Filipina of 24 with warm brown skin and dimples", hair: "long loose black hair tucked with sampaguita flowers", dress: "a sheer piña-fibre baro blouse over a low bodice and a bright saya skirt" },
-      shipmaster: { who: "muscular, sun-browned Tausug Moro woman of 41, a famed corsair, with fierce dark eyes", hair: "hair bound under a patterned headwrap with a gold pin", dress: "a fitted black jacket open over a wrapped silk breastcloth, a kris dagger in her sash" },
-      mayor:      { who: "heavyset, imposing Spanish-Filipina mestiza grand dame of 62 with a commanding bosom and a wicked smile", hair: "silver hair under a tall tortoiseshell comb and black lace mantilla", dress: "a black lace off-shoulder gown with a deep neckline and a crimson sash" },
-      taxlady:    { who: "slender, sharp-featured Chinese-Filipina mestiza of 30", hair: "a long black braid wound with gold thread", dress: "a fitted embroidered kimona blouse unbuttoned at the throat over a striped saya" }
-    },
-    saigon: {
-      keeper:     { who: "slender, graceful Vietnamese woman of 28 with a long elegant neck", hair: "long black hair wound into a black velvet khăn vấn turban", dress: "a close-fitting silk áo tấc gown of deep teal, side slits to the hip, collar open" },
-      shipmaster: { who: "tall, powerfully built Senegalese woman of 36 with very dark skin and high cheekbones", hair: "intricate braids under a madras-check headtie", dress: "a French naval coat with gold epaulettes worn open over bare skin and a wrapped indigo breastcloth" },
-      mayor:      { who: "plump, voluptuous French woman of 50 with a sensual mouth and knowing eyes", hair: "strawberry-blonde curls going silver, piled high", dress: "a low-cut violet silk gown with a laced corset and a tricolour sash" },
-      taxlady:    { who: "curvy, sun-gold Khmer woman of 33 with full lips", hair: "short cropped black hair in the Khmer fashion and gold earrings", dress: "a wrapped silk sampot and a fitted short jacket open over a sheer breastcloth" }
-    },
-    bangkok: {
-      keeper:     { who: "heavy, round-faced, jolly Teochew-Thai woman of 47 with a generous figure", hair: "black hair in a neat bun with a jasmine sprig", dress: "a loose silk blouse slipping off one round shoulder over a pha nung wrap" },
-      shipmaster: { who: "athletic, hard-bodied Malay woman of 31 with sun-browned skin", hair: "black hair in a tight knot under a songket headcloth", dress: "a short fitted baju jacket open over a wrapped breastcloth, sarong hitched to the knee" },
-      mayor:      { who: "wiry, sharp-featured Siamese noblewoman of 55 with fine lines and steel in her eyes", hair: "short cropped grey hair in the old court style", dress: "a gold-threaded sabai draped over one bare shoulder and heavy gold court jewellery" },
-      taxlady:    { who: "voluptuous Gujarati woman of 37 with a gold nose ring and kohl-lined eyes", hair: "long oiled black hair in a thick plait", dress: "a vivid bandhani silk sari draped low over a short fitted choli, bare midriff" }
-    },
-    singapore: {
-      keeper:     { who: "full-figured, soft-curved Peranakan Nyonya of 39 with a coy smile", hair: "black hair in a sanggul bun with gold kerosang pins", dress: "a sheer lace-embroidered kebaya over a close batik sarong" },
-      shipmaster: { who: "sinewy, scarred, sun-darkened Bugis sea-captain of 43", hair: "long black hair tied back with a red cord", dress: "a fitted black coat open over a wrapped silk breastcloth, a kris at her waist" },
-      mayor:      { who: "heavyset, voluptuous Tamil woman of 49 with dark skin, a gold nose ring and commanding eyes", hair: "long black hair in a jasmine-wound plait", dress: "a deep crimson Kanchipuram silk sari draped low over a short fitted blouse, heavy gold temple jewellery" },
-      taxlady:    { who: "tall, slender Swahili woman of 32 from Zanzibar with deep brown skin and an elegant neck", hair: "hair wrapped in a bright kanga headwrap, gold coins at her brow", dress: "a fitted black waistcoat over a loose white blouse open at the throat and a kanga wrapped at the hip" }
-    },
-    batavia: {
-      keeper:     { who: "slender, golden-skinned Javanese woman of 30 with almond eyes", hair: "black hair in a konde bun ringed with melati jasmine", dress: "a sheer kebaya of pale rose over a close batik kain" },
-      shipmaster: { who: "big-boned, muscular, sun-reddened Dutch woman of 37 with forearms like a stevedore's", hair: "a heavy flaxen-blonde braid", dress: "a VOC-blue coat open over a deeply unlaced linen shirt, sleeves rolled" },
-      mayor:      { who: "plump, comfortable Indo (Dutch-Javanese) matriarch of 60 with a sly smile", hair: "grey hair in a neat bun with a gold pin", dress: "a white lace kebaya over a batik sarong, a gold chain heavy on her bosom" },
-      taxlady:    { who: "curvy Malagasy woman of 28 with dark brown skin and wide-set eyes", hair: "tight curls pinned up in small knots", dress: "a fitted black bodice and a lamba shawl slipping from her shoulders" }
-    },
-    calcutta: {
-      keeper:     { who: "plump, curvy Bengali woman of 35 with large dark eyes", hair: "long oiled black hair in a loose knot, sindoor in her parting", dress: "a red-bordered white sari draped without a blouse in the old Bengal fashion, bare shoulder" },
-      shipmaster: { who: "tall, powerful Siddi (Afro-Indian) woman of 40 with very dark skin and broad shoulders", hair: "short tight curls and a silver ring in one ear", dress: "a black lacquer naval coat open over a fitted silk choli, cutlass at her hip" },
-      mayor:      { who: "heavyset, imposing Bengali zamindar's widow of 64 with a heavy-lidded, appraising stare", hair: "white hair drawn back severely", dress: "a fine white muslin sari draped over one bare shoulder, heavy gold bangles" },
-      taxlady:    { who: "slender Anglo-Indian woman of 27 with olive skin and grey eyes", hair: "chestnut hair in a loose Victorian chignon", dress: "a low-cut emerald silk bodice under a fitted black jacket" }
-    },
-    foochow: {
-      keeper:     { who: "sun-browned, strong-armed Tanka boatwoman of 33 with a wide easy grin", hair: "black hair under a woven bamboo hat tied with ribbons", dress: "a faded blue jacket open over a red breastcloth and rolled trousers" },
-      shipmaster: { who: "stocky, heavy, immensely strong Hoklo Chinese woman of 51 with a broken nose", hair: "an iron-grey braid", dress: "a black quilted jacket open over a tight bound breastcloth, sleeves torn off at the shoulders" },
-      mayor:      { who: "full-figured, freckled Scottish woman of 42 from the tea trade", hair: "flame-red hair loose down her back", dress: "a tartan sash over a low-cut black silk gown and an open lacquer coat" },
-      taxlady:    { who: "curvy Hui Muslim Chinese woman of 36 with grey-green eyes", hair: "hair under a dark silk cap and veil thrown back", dress: "a close-fitting dark green silk jacket with the collar open" }
-    }
-  };
-  function portWoman(subject, role) {
-    const w = (PORT_WOMEN[subject] || {})[role];
-    return w || { who: "woman in her thirties", hair: "glossy black hair pinned with jade and gold", dress: "a close-fitting embroidered oxblood silk jacket open at the throat" };
-  }
 
   // What each ship type looks like (18 Nov 2026: the fleet's three classes). The library lists a ship as
   // "her name · her class · what she does", and the starting prompt describes the class, not the name, so a
   // renamed type ("Blood Moon") still comes out as an East Indiaman. Unknown types fall back to the name.
-  // Women only on deck (the Pirate Queen sandbox), as in the battle pictures.
   const SHIP_LOOK = {
     junk: "a Chinese trading junk with battened red-brown lug sails, a high carved stern and a painted eye on the bow, a few small guns on deck",
     lorcha: "a Macanese lorcha: a European-built hull with Chinese battened junk sails, trim and quick, a handful of brass guns along the rail",
@@ -608,20 +454,20 @@
     cargo: "a broad, deep-bellied unarmed cargo ship sitting low in the water under a mountain of cargo",
     trader: "an armed merchant trading ship with cargo and guns"
   };
-  const SHIP_WOMEN = "her crew are all women, sea-women in rolled shirtsleeves and sashes, women only";
+  const SHIP_CREW = "a mixed crew of adult men and women in period maritime workwear";
   function shipPrompt(subject, role, style) {
     const spec = ((CFG && CFG.ships) || {})[subject] || {};
     const look = SHIP_LOOK[subject] || SHIP_ROLE_LOOK[spec.role || "trader"] || ("a " + (spec.name || subject));
-    if (role === "battle") return `${look}, in the thick of a sea battle against pirate junks off the China coast in 1860, cannon smoke, muzzle flashes and spray, ${spec.role === "escort" ? "she steams ahead of the merchant convoy to take the enemy's fire" : spec.role === "cargo" ? "she lumbers at the back of the convoy behind the escorts as shot splashes around her" : "she fires a broadside from the line of the convoy"}, ${SHIP_WOMEN}, wide cinematic view, ${style}`;
-    if (role === "sailing") return `${look}, under way on the South China Sea in 1860, ${spec.role === "escort" ? "steaming at the head of a merchant convoy, black smoke trailing" : spec.role === "cargo" ? "sailing at the rear of a merchant convoy, an escort steamer ahead" : "full sail, spray over the bow"}, golden late light, wide view, ${SHIP_WOMEN}, ${style}`;
-    return `Ship portrait of ${look}, 1860s China Seas, the whole ship side-on and filling the frame, detailed rigging and weathered hull, calm harbour water, ${SHIP_WOMEN}, ${style}`;
+    if (role === "battle") return `${look}, in the thick of a sea battle against pirate junks off the China coast in 1860, cannon smoke, muzzle flashes and spray, ${spec.role === "escort" ? "she steams ahead of the merchant convoy to take the enemy's fire" : spec.role === "cargo" ? "she lumbers at the back of the convoy behind the escorts as shot splashes around her" : "she fires a broadside from the line of the convoy"}, ${SHIP_CREW}, wide cinematic view, ${style}`;
+    if (role === "sailing") return `${look}, under way on the South China Sea in 1860, ${spec.role === "escort" ? "steaming at the head of a merchant convoy, black smoke trailing" : spec.role === "cargo" ? "sailing at the rear of a merchant convoy, an escort steamer ahead" : "full sail, spray over the bow"}, golden late light, wide view, ${SHIP_CREW}, ${style}`;
+    return `Ship portrait of ${look}, 1860s China Seas, the whole ship side-on and filling the frame, detailed rigging and weathered hull, calm harbour water, ${SHIP_CREW}, ${style}`;
   }
 
   const PERSONA_MOODS = {
-    speaking: "caught mid-sentence, lips parted, one hand raised as she makes her point",
-    happy: "a broad, triumphant, delighted smile, eyes bright, good news written all over her face",
+    speaking: "caught mid-sentence, lips parted, one hand raised to make a point",
+    happy: "a broad, triumphant, delighted smile, eyes bright, good news written across the face",
     angry: "narrowed eyes, jaw set, a sharp warning gesture, plainly furious at bad news",
-    sly: "a sly conspiratorial half-smile and a knowing wink, leaning in close as if sharing a secret, one finger raised to her lips",
+    sly: "a sly conspiratorial half-smile and a knowing wink, leaning in close as if sharing a secret, one finger raised briefly",
     idle: "a relaxed, unguarded moment, looking off to one side, lost in thought"
   };
   function personaPrompt(subject, mood) {
@@ -638,21 +484,31 @@
     if (kind === "captain" || kind === "house") return ((M.lib && M.lib.prompts && M.lib.prompts[kind]) || {})[subject] || "";
     const style = "romanticized cinematic historical realism, China Seas 1860, humid salt haze, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, dramatic but plausible lighting, no text";
     const name = subjectName(kind, subject);
-    if (kind === "port" && role === "mayor_congrats") {
-      const w = portWoman(subject, "mayor");
-      return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, a former pirate queen who is now the lady mayor of ${name} in 1860, standing in her harbour-office parlour and congratulating the viewer on a hard-won promotion: both arms opened wide toward the camera in warm, generous gratitude and welcome, palms turned up, a radiant proud smile, eyes shining, direct eye contact, ${w.hair}, ${w.dress}, worn open at the throat and shoulders, a gold mayor's chain of office across her bare décolletage, a sealed ivory letter of commission with a red wax seal on the teak desk behind her, a brass strongbox, a harbour window with masts beyond, warm candle and lantern glow, her head, both outstretched hands and her waist all inside the frame with room around them, shallow depth of field, sensual private-release erotic glamour, ${style}`;
-    }
-    if (kind === "port" && role && role.startsWith("mayor_")) {
-      const rank = role.slice(6), title = (CFG.ranks.find(r => r.id === rank) || {}).title || rank;
-      const audience = ((M.lib.promotion_styles || {})[rank] || {}).audience || "a formal harbour-office commission";
-      const w = portWoman(subject, "mayor");
-      return `Bespoke ceremonial portrait of the lady mayor of ${name}, for the ${title} promotion certificate. Keep the same recognizable adult mayor as her other portraits: ${w.who}, ${w.hair}, her own civic gold chain. ${audience}. Proud warm acknowledgement, direct eye contact, waist-up composition with her face in the upper third, fully dressed, a period ivory commission on a teak desk, richly textured believable materials, no modern objects, no text, no frame, ${style}`;
-    }
     if (kind === "scene" && BATTLE_ENEMY[subject]) return battlePrompt(subject, role, style);
-    if (kind === "port" && role === "keeper") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, who runs a trading stall in the ${name} market in 1860, looking straight into the camera with a slow, knowing, inviting half-smile and heavy-lidded bedroom eyes, ${w.hair}, ${w.dress}, bare skin glowing with humid heat, brass scales, tea chests, silk bolts and porcelain behind her, warm lantern glow and soft humid haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
-    if (kind === "port" && role === "shipmaster") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry, dangerous ${w.who}, the ship master who rules the ${name} shipyard in 1860, giving the viewer a cold, wicked evil eye: narrowed kohl-lined eyes, one brow raised, chin slightly lowered, a cruel knowing half-smile, direct eye contact, ${w.hair}, ${w.dress}, a brass spyglass in one gloved hand, sweat-sheened skin, a ship's hull on the slipway, rigging and coiled rope behind her, lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
-    if (kind === "port" && role === "mayor") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, a former pirate queen who is now the lady mayor of ${name} in 1860 and keeps the town's ledger and collects its taxes, seated at a heavy teak desk and looking straight into the camera with a sly, appraising, seductive half-smile, as if she already knows what you owe her and how you will pay, direct eye contact, ${w.hair}, ${w.dress}, worn open at the throat and shoulders, a gold mayor's chain of office across her bare décolletage, a quill in one ringed hand, an open leather-bound ledger, a brass strongbox spilling silver dollars, tax seals and a cutlass hung on the wall behind her, warm candle and lantern glow, harbour window haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
-    if (kind === "port" && role === "taxlady") { const w = portWoman(subject, role); return `Waist-up portrait of a breathtakingly beautiful, sultry ${w.who}, the tax collector who works the ${name} waterfront in 1860 and takes the town's cut of every cargo, standing at the foot of the gangway with an open tally book and a brass-bound strongbox, looking straight into the camera with a sweet, merciless, teasing smile and one raised eyebrow, direct eye contact, ${w.hair}, ${w.dress}, a jade customs seal on a cord resting against her bare skin, a brass stamp and a pen in her gloved hands, sacks of silver dollars, stamped cargo chests, a ship's hull and rigging behind her, warm lantern glow and harbour haze, shallow depth of field, she is the centre of the frame, sensual private-release erotic glamour, ${style}`; }
+    if (kind === "port" && role) {
+      const cfg = CFG.characters || {};
+      const mayor = role === "mayor" || role.startsWith("mayor_");
+      const cid = mayor ? "mayor" : { keeper: "comprador", shipmaster: "shipwright", taxlady: "taxlady" }[role]
+        || (role.startsWith("taxlady_") ? CFG.ports?.[subject]?.officer : "");
+      if (cid) {
+        const person = cfg[cid]?.portrait_prompt || `A fully dressed adult ${mayor ? "mayor" : "port official"} in period clothing`;
+        const action = {
+          keeper: "checking the weight of tea on brass scales in a busy trading stall",
+          shipmaster: "inspecting a timber hull on the slipway, with rope and rigging nearby",
+          taxlady: "reviewing an open ledger at the Registrar’s desk",
+          taxlady_bored: "waiting patiently over the ledger",
+          taxlady_curious: "studying a manifest with interest",
+          taxlady_hungry: "taking particular interest in an unfamiliar cargo",
+          taxlady_tax: "stamping a customs receipt",
+          taxlady_buyout: "weighing a purchase offer",
+          taxlady_caught: "firmly indicating a discrepancy on the manifest",
+          mayor: "reviewing port accounts with a quill and open ledger",
+          mayor_congrats: "congratulating a captain, both hands open in welcome beside a letter of commission",
+        }[role] || ((M.lib?.promotion_styles || {})[role.slice(6)] || {}).audience || "presenting a formal commission";
+        const identity = person.split(", romanticized")[0];
+        return `${identity}, ${action}, set the scene in ${name} in 1860, waist-up composition, fully dressed, ${style}`;
+      }
+    }
     if (kind === "port") return `The port of ${name} in the 1860s seen from the water, busy trading harbour with junks, lorchas and clipper ships at anchor, waterfront godowns and hongs, ${style}`;
     if (kind === "ship") return shipPrompt(subject, role, style);
     // A family picture is of the cargo's family-friendly name (Opium -> Fireworks), not the cargo itself.
@@ -666,14 +522,13 @@
     return `${name}, ${style}`;
   }
 
-  /* ---- Coverage grid + clean-twin check (Anthony, 21 Nov 2026) ---- */
-  const isClean = i => !i.nsfw || i.tags.includes("clean");
+  /* ---- Coverage grid ---- */
   // Starting prompt and shape for one subject + role (the same ones ticking that role in the drawer would give).
   function roleStart(kind, subject, role) {
     let prompt = defaultPrompt(kind, subject, role || undefined), aspect = ASPECT_FOR[kind] || "3:4";
     if (kind === "persona" && role && PERSONA_MOODS[role]) prompt = personaPrompt(subject, role);
     const sp = scenePrompt(kind, subject, role);
-    if (sp) { prompt = sp.nsfw; aspect = sp.aspect || "16:9"; }
+    if (sp) { prompt = sp.clean; aspect = sp.aspect || "16:9"; }
     if (kind === "port" && role && (["keeper", "shipmaster", "mayor", "taxlady"].includes(role) || role.startsWith("mayor_"))) aspect = "3:4";
     if (kind === "ship" && role) aspect = role === "card" ? "3:2" : "16:9";
     if (kind === "scene" && BATTLE_ENEMY[subject] && role) aspect = "16:9";
@@ -687,46 +542,23 @@
       const subs = subjectsFor(kind), roles = K.roles;
       const pics = items().filter(i => i.kind === kind && i.type === "image" && !i.missing);
       const cell = (s, r, list) => {
-        const n = list.length, c = list.filter(isClean).length;
-        const cls = n === 0 ? "c0" : c === 0 ? "cnsfw" : n < 2 ? "c1" : "c2";
-        return `<td><button type="button" class="ml-cov ${cls}" data-mlcov="${e(s)}|${e(r)}" title="${n} picture${n === 1 ? "" : "s"}, ${c} family-friendly. Click to generate one${r ? " for this role" : ""}.">${n}<small>${c} clean</small></button></td>`;
+        const n = list.length;
+        const cls = n === 0 ? "c0" : n < 2 ? "c1" : "c2";
+        return `<td><button type="button" class="ml-cov ${cls}" data-mlcov="${e(s)}|${e(r)}" title="${n} picture${n === 1 ? "" : "s"}. Click to generate one${r ? " for this role" : ""}.">${n}</button></td>`;
       };
       grid = `<div class="ml-covwrap"><table class="ml-covtable"><thead><tr><th></th><th>Any role</th>${roles.map(([k, n]) => `<th title="${e(n)}">${e(n.replace(/^[^:]*:\s*/, "").slice(0, 40) || n)}</th>`).join("")}<th>Total</th></tr></thead><tbody>
         ${subs.map(([s, name]) => { const mine = pics.filter(i => i.subject === s);
           return `<tr><th><button type="button" class="link" data-mlsubject="${e(s)}" data-mlcovoff="1">${e(name)}</button></th>${cell(s, "", mine.filter(i => !i.roles.length))}${roles.map(([k]) => cell(s, k, mine.filter(i => i.roles.includes(k)))).join("")}<td class="ml-covtot">${mine.length}</td></tr>`; }).join("")}
         </tbody></table></div>
-        <p class="help"><span class="ml-covkey c0"></span> none <span class="ml-covkey cnsfw"></span> only NSFW (vanishes when family-friendly is on) <span class="ml-covkey c1"></span> one <span class="ml-covkey c2"></span> two or more. Click any cell to open the drawer with that role's prompt.</p>`;
+        <p class="help"><span class="ml-covkey c0"></span> none <span class="ml-covkey c1"></span> one <span class="ml-covkey c2"></span> two or more. Click any cell to open the drawer with that role's prompt.</p>`;
     }
-    // Subjects with NSFW pictures but no family-friendly one: invisible to player screens while family-friendly is on.
-    const groups = {};
-    items().filter(i => i.type === "image" && !i.missing).forEach(i => { const k = i.kind + ":" + i.subject; (groups[k] = groups[k] || []).push(i); });
-    const gaps = Object.values(groups).filter(g => g[0].subject && g.some(i => i.nsfw) && !g.some(isClean))
-      .sort((a, b) => b.length - a.length).slice(0, 40);
-    const twins = gaps.length ? `<h3>No family-friendly picture yet <small>${gaps.length}${gaps.length === 40 ? "+" : ""} subject${gaps.length === 1 ? "" : "s"}</small></h3>
-      <div class="ml-twins">${gaps.map(g => { const n = g.filter(i => i.nsfw).sort(byAdded)[0], src = g.filter(i => i.prompt).sort(byAdded)[0];
-        return `<div class="ml-twin"><img src="${e(n.url)}" alt="" loading="lazy"><span><b>${e(subjectName(n.kind, n.subject))}</b><small>${e((kinds()[n.kind] || {}).one || n.kind)} · ${g.length} NSFW</small></span>
-          ${src ? `<button type="button" data-mltwin="${e(src.id)}">Make clean twin</button>` : `<small>no saved prompt</small>`}</div>`; }).join("")}</div>`
-      : `<p class="help">Every subject with an NSFW picture also has a family-friendly one.</p>`;
-    return `<section class="card ml-coverage"><h2>Coverage <small>${K ? e(K.label) : "pick a kind"}</small> ${K ? `<button type="button" data-mlcovrec="1" title="Open a recipe that fills this grid up to a target">Fill gaps with a recipe…</button>` : ""}</h2>${grid}${twins}</section>`;
+    return `<section class="card ml-coverage"><h2>Coverage <small>${K ? e(K.label) : "pick a kind"}</small> ${K ? `<button type="button" data-mlcovrec="1" title="Open a recipe that fills this grid up to a target">Fill gaps with a recipe…</button>` : ""}</h2>${grid}</section>`;
   }
 
   /* ---- Recipes: saved "fill to target" batches (Anthony, 21 Nov 2026) ---- */
-  const NUDE = "completely nude, her clothes fallen away, bare breasts and body shown openly, only her jewellery and the props of her trade left on her";
-  const CLEAN_STYLE = "fully and modestly clothed, high neckline, no nudity, no cleavage, romanticized cinematic historical realism, China Seas 1860, humid salt haze, natural skin, weathered maritime materials, lacquer black, oxblood silk, antique brass, imperial jade, waist-up 3:4 portrait, hands visible, original face and garment design, no text";
-  // Undressed wording in the profile prompts, made decent for the clean version (same list as tools/queue_persona_pairs.py).
-  const DECENT = [
-    [/worn loose off both shoulders with the obi half undone/g, "neatly worn and tied"], [/off-shoulder /g, ""], [/slipping from one shoulder/g, "worn neatly"],
-    [/draped over one bare shoulder/g, "draped neatly"], [/half-laced /g, ""], [/loosened /g, ""],
-    [/with a thigh-high slit unbuttoned at the collar/g, "buttoned to the collar"], [/open over a black lace corset/g, "buttoned over a black lace blouse"],
-    [/open over a black silk corset, high collar undone/g, "with the high collar buttoned"], [/with a laced leather corset over it/g, ""],
-    [/plunging /g, "high-necked "], [/with a deep neckline/g, ""], [/\bundone\b/g, "fastened"], [/across her skin/g, "across the room"], [/bedroom gaze/g, "gaze"],
-    [/sensual private-release erotic glamour,? ?/g, ""],
-    [/black silk blouse unbuttoned to the waist and slipping off one shoulder over an oxblood lace corset/g, "black silk blouse buttoned to the collar under an oxblood waistcoat"],
-    [/sheer black stockings and one knee drawn up, /g, ""], [/reclining in/g, "seated in"], [/a smouldering heavy-lidded gaze/g, "a knowing gaze"], [/ deliciously/g, ""],
-  ];
-  const POSES = ["a three-quarter view glancing back over one shoulder", "leaning a hip against a table, hands visible", "seated and leaning forward with her elbows on the table",
-    "a closer framing on her face and shoulders", "standing tall, chin lifted, hands clasped in front", "caught turning toward the camera mid-step",
-    "one hand on her hip, head tilted, a knowing look", "a low camera angle looking slightly up at her"];
+  const POSES = ["three-quarter view with a glance over one shoulder", "standing beside a table, hands visible",
+    "seated with elbows on the table", "close framing on face and shoulders", "standing with hands clasped",
+    "turning toward the camera mid-step", "one hand resting on the rail", "a low camera angle"];
   const CAMERAS = ["a different camera angle from a higher viewpoint", "a closer, tighter framing", "a wider view showing more of the scene", "a low, dramatic camera angle"];
   // A copied prompt may already end with a pose from an earlier run: strip those so poses never pile up.
   function stripPose(p) {
@@ -734,18 +566,10 @@
     for (let again = true; again;) { again = false; for (const x of POSES.concat(CAMERAS)) if (p.endsWith(", " + x)) { p = p.slice(0, -(x.length + 2)); again = true; } }
     return p;
   }
-  const stylePart = p => { const at = p.indexOf(", romanticized"); return at > 0 ? [p.slice(0, at), p.slice(at + 2)] : [p, ""]; };
-  const nsfwText = (base, mood) => { const [d, t] = stylePart(base); return `${d}${mood ? ", " + mood : ""}, ${NUDE}${t ? ", " + t : ""}`; };
-  function cleanText(base, mood) {
-    let [d] = stylePart(base);
-    DECENT.forEach(([re, rep]) => { d = d.replace(re, rep); });
-    d = d.replace(/ {2,}/g, " ").replace(/\s+,/g, ",");
-    return `${d}${mood ? ", " + mood : ""}, ${CLEAN_STYLE}`;
-  }
   const slug = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
-  const newRecipe = () => ({ id: "r" + Math.random().toString(36).slice(2, 9), name: "New recipe", kind: M.kind || "persona", subjects: [], roles: [], by: "subject", mode: "plain",
-    clean: 1, nsfw: 0, count: 3, mood: "", pose: true, tag: "", last_run: "", last_made: 0 });
-  const womanRole = r => !!r && (["keeper", "shipmaster", "mayor", "taxlady"].includes(r) || r.startsWith("mayor_"));
+  const newRecipe = () => ({ id: "r" + Math.random().toString(36).slice(2, 9), name: "New recipe", kind: M.kind || "persona", subjects: [], roles: [], by: "subject",
+    count: 3, mood: "", pose: true, tag: "", last_run: "", last_made: 0 });
+  const personRole = r => !!r && (["keeper", "shipmaster", "mayor", "taxlady"].includes(r) || r.startsWith("mayor_"));
 
   function recTargets(r) {
     const K = kinds()[r.kind]; if (!K) return [];
@@ -753,7 +577,7 @@
     const roles = r.by === "role" ? (r.roles.length ? r.roles : K.roles.map(x => x[0])) : [""];
     const out = [];
     subs.forEach(s => roles.forEach(role => {
-      if (virtualRoles()[role] && !scenePrompt(r.kind, s, role)) return;     // only the women who have prompts for it
+      if (virtualRoles()[role] && !scenePrompt(r.kind, s, role)) return;     // only cast members who have prompts for it
       out.push({ s, role });
     }));
     return out;
@@ -772,24 +596,20 @@
   function recPlan(r) {
     return recTargets(r).map(t => {
       const have = recPics(r, t).filter(i => i.enabled);
-      let pendC = 0, pendN = 0;
       const sp = recSpec(r, t);
-      M.jobs.filter(j => j.type !== "video" && ACTIVE.includes(j.status) && j.kind === r.kind && j.subject === t.s && (sp ? specHit(sp, j.roles, j.tags) : recRoleOk(r, t, j.roles || [])))
-        .forEach(j => { const left = Math.max(0, (j.count || 0) - (j.done || 0) - (j.failed || 0)); if (j.nsfw === "no") pendC += left; else pendN += left; });
-      const haveC = have.filter(isClean).length, haveN = have.length - haveC;
-      let needC, needN;
-      if (r.mode === "plain") { needC = 0; needN = Math.max(0, r.count - have.length - pendC - pendN); }
-      else { needC = Math.max(0, r.clean - haveC - pendC); needN = Math.max(0, r.nsfw - haveN - pendN); }
-      const K = kinds()[r.kind] || {};
+      const pending = M.jobs.filter(j => j.type !== "video" && j.nsfw !== "yes" && ACTIVE.includes(j.status) && j.kind === r.kind && j.subject === t.s
+        && (sp ? specHit(sp, j.roles, j.tags) : recRoleOk(r, t, j.roles || [])))
+        .reduce((sum, j) => sum + Math.max(0, (j.count || 0) - (j.done || 0) - (j.failed || 0)), 0);
+      const short = Math.max(0, r.count - have.length - pending);
       const label = subjectName(r.kind, t.s) + (t.role ? " · " + roleName(r.kind, t.role) : "");
-      return { t, label, haveC, haveN, pendC, pendN, needC, needN, plain: r.mode === "plain" };
+      return { t, label, have: have.length, pending, short };
     });
   }
-  // The prompts for one target: personas use their own cast prompt (pair rule), everything else copies its own pictures.
+
   function recPrompts(r, t) {
-    // Her wide result pictures are not portraits: they have their own prompts and shape, the same ones the batch used.
+    // Port Authority result art has its own wide framing.
     const sp = scenePrompt(r.kind, t.s, t.role);
-    if (sp) return { nsfwP: sp.nsfw, cleanP: sp.clean, plainP: sp.clean || sp.nsfw, aspect: sp.aspect || "16:9", person: false,
+    if (sp) return { prompt: sp.clean, aspect: sp.aspect || "16:9", person: false,
       fixed: !!sp.role, tags: sp.tags || null, variants: sp.variants || null };
     const pics = recPics(r, t).filter(i => i.prompt && i.prompt.length >= 20).sort(byAdded);
     const loose = pics.length ? pics : items().filter(i => i.type === "image" && !i.missing && i.kind === r.kind && i.subject === t.s && i.prompt && i.prompt.length >= 20).sort(byAdded);
@@ -797,39 +617,30 @@
     const rs = roleStart(r.kind, t.s, t.role);
     let mood = r.mood;
     if (persona && !mood && t.role && PERSONA_MOODS[t.role]) mood = PERSONA_MOODS[t.role];
-    let nsfwP, cleanP, plainP;
-    if (persona) { nsfwP = nsfwText(persona, mood); cleanP = cleanText(persona, mood); plainP = persona + (mood ? ", " + mood : ""); }
-    else {
-      const nPic = loose.find(i => i.nsfw) || loose[0], cPic = loose.find(isClean);
-      const nBase = stripPose((nPic && nPic.prompt) || rs.prompt);
-      nsfwP = nBase + (r.mood ? ", " + r.mood : "");
-      cleanP = cPic ? stripPose(cPic.prompt) + (r.mood ? ", " + r.mood : "") : cleanText(nBase, r.mood);
-      plainP = stripPose((loose[0] && loose[0].prompt) || rs.prompt) + (r.mood ? ", " + r.mood : "");
-    }
     const sample = loose[0];
+    const base = persona || sample?.prompt || rs.prompt;
+    const prompt = stripPose(base) + (mood ? ", " + mood : "");
     const aspect = persona ? "3:4" : (t.role ? rs.aspect : (sample ? shapeOf(sample) : rs.aspect));
-    const person = r.kind === "persona" || r.kind === "captain" || womanRole(t.role);
-    return { nsfwP, cleanP, plainP, aspect, person };
+    const person = r.kind === "persona" || r.kind === "captain" || personRole(t.role);
+    return { prompt, aspect, person };
   }
 
   function recipesPanel() {
     const R = M.rec; if (!R.open) return "";
     const d = R.draft;
-    const list = M.recipes.map(x => `<button type="button" data-mlrec="pick" data-id="${e(x.id)}" class="${d && d.id === x.id ? "on" : ""}"><b>${e(x.name)}</b><small>${e((kinds()[x.kind] || {}).label || x.kind)} · ${x.mode === "plain" ? x.count + " each" : x.clean + " clean + " + x.nsfw + " NSFW"}${x.last_run ? " · ran " + e(x.last_run) : ""}</small></button>`).join("");
+    const list = M.recipes.map(x => `<button type="button" data-mlrec="pick" data-id="${e(x.id)}" class="${d && d.id === x.id ? "on" : ""}"><b>${e(x.name)}</b><small>${e((kinds()[x.kind] || {}).label || x.kind)} · ${x.count + " each"}${x.last_run ? " · ran " + e(x.last_run) : ""}</small></button>`).join("");
     let form = `<p class="help">Pick a recipe, or start a new one. A recipe counts what is already filed or waiting on the farm and paints only what is short.</p>`, prev = "";
     if (d) {
-      d.mode = "plain";             // Taipan Trader: clean only, so a recipe never paints NSFW halves
       const K = kinds()[d.kind] || { roles: [], one: "Subject", label: d.kind };
       const subs = subjectsFor(d.kind);
       const ports = d.kind === "persona" ? [...new Set(Object.values(CFG.characters).map(c => c.home_port).filter(Boolean))] : [];
       const saved = M.recipes.some(x => x.id === d.id);
       const plan = recPlan(d);
-      const needC = plan.reduce((a, p) => a + p.needC, 0), needN = plan.reduce((a, p) => a + p.needN, 0), total = needC + needN;
+      const total = plan.reduce((a, p) => a + p.short, 0);
       form = `<div class="ml-rec-grid">
         <label class="wide">Name<input type="text" value="${e(d.name)}" data-mlrecf="name"></label>
         <label>What<select data-mlrecf="kind">${KIND_ORDER.filter(k => kinds()[k]).map(k => `<option value="${k}"${k === d.kind ? " selected" : ""}>${e(kinds()[k].label)}</option>`).join("")}</select></label>
         <label>Count<select data-mlrecf="by"><option value="subject"${d.by === "subject" ? " selected" : ""}>per ${e((K.one || "subject").toLowerCase())}</option><option value="role"${d.by === "role" ? " selected" : ""}>per ${e((K.one || "subject").toLowerCase())} and role</option></select></label>
-        <label>Kind of picture<select data-mlrecf="mode"><option value="pairs"${d.mode === "pairs" ? " selected" : ""}>Pairs: NSFW + clean</option><option value="plain"${d.mode === "plain" ? " selected" : ""}>Plain pictures (no rating split)</option></select></label>
       </div>
       <div class="ml-rec-pick"><div class="ml-rec-pickhead"><b>${e(K.one || "Subjects")}s</b> <small>${d.subjects.length ? d.subjects.length + " chosen" : "all " + subs.length}</small>
         <button type="button" class="link" data-mlrec="allsubs">all</button><button type="button" class="link" data-mlrec="nosubs">none</button>
@@ -839,10 +650,7 @@
         <button type="button" class="link" data-mlrec="allroles">all</button><button type="button" class="link" data-mlrec="noroles">none</button></div>
         <div class="ml-rec-checks">${K.roles.concat(d.kind === "persona" ? Object.entries(virtualRoles()) : []).map(([k, n]) => `<label class="ml-check" title="${e(n)}"><input type="checkbox" data-mlrecrole="${k}"${d.roles.includes(k) ? " checked" : ""}> ${e(n.split(":")[0])}</label>`).join("")}</div></div>` : ""}
       <div class="ml-rec-sliders">
-        ${d.mode === "plain"
-          ? `<label>Pictures each <b id="mlrecv-count">${d.count}</b><input type="range" min="0" max="20" value="${d.count}" data-mlrecf="count"></label>`
-          : `<label>Clean each <b id="mlrecv-clean">${d.clean}</b><input type="range" min="0" max="10" value="${d.clean}" data-mlrecf="clean"></label>
-             <label>NSFW each <b id="mlrecv-nsfw">${d.nsfw}</b><input type="range" min="0" max="20" value="${d.nsfw}" data-mlrecf="nsfw"></label>`}</div>
+        <label>Pictures each <b id="mlrecv-count">${d.count}</b><input type="range" min="0" max="20" value="${d.count}" data-mlrecf="count"></label></div>
       <div class="ml-rec-grid">
         <label class="wide">Mood or extra wording <small>(optional, added to every prompt)</small><input type="text" value="${e(d.mood)}" data-mlrecf="mood" placeholder="e.g. hungry, a hungry predatory smile"></label>
         <label>Tag new pictures<input type="text" value="${e(d.tag)}" data-mlrecf="tag" placeholder="${e(slug(d.name) || "recipe")}"></label>
@@ -850,12 +658,12 @@
       </div>
       <div class="row"><button type="button" class="primary" data-mlrec="save">${saved ? "Save" : "Save recipe"}</button>
         <button type="button" data-mlrec="dup">Save as copy</button>${saved ? `<button type="button" class="danger" data-mlrec="del">Delete</button>` : ""}</div>`;
-      const rows = plan.filter(p => p.needC || p.needN || p.pendC || p.pendN).slice(0, 80);
-      const first = plan.filter(p => p.needC || p.needN).slice(0, 4).map(p => { const pr = recPrompts(d, p.t);
-        return `<details class="ml-rec-pr"><summary>${e(p.label)}</summary>${p.plain ? `<p class="mono">${e(pr.plainP)}</p>` : `${p.needN ? `<p class="mono"><b>NSFW:</b> ${e(pr.nsfwP)}</p>` : ""}${p.needC ? `<p class="mono"><b>Clean:</b> ${e(pr.cleanP)}</p>` : ""}`}</details>`; }).join("");
-      prev = `<h3>Preview <small>${plan.length} target${plan.length === 1 ? "" : "s"} · ${total ? `<b>${total}</b> picture${total === 1 ? "" : "s"} short (${needC} clean, ${needN} ${d.mode === "plain" ? "plain" : "NSFW"})` : "nothing short"}</small></h3>
+      const rows = plan.filter(p => p.short || p.pending).slice(0, 80);
+      const first = plan.filter(p => p.short).slice(0, 4).map(p => { const pr = recPrompts(d, p.t);
+        return `<details class="ml-rec-pr"><summary>${e(p.label)}</summary><p class="mono">${e(pr.prompt)}</p></details>`; }).join("");
+      prev = `<h3>Preview <small>${plan.length} target${plan.length === 1 ? "" : "s"} · ${total ? `<b>${total}</b> picture${total === 1 ? "" : "s"} short` : "nothing short"}</small></h3>
         ${rows.length ? `<div class="ml-covwrap ml-rec-table"><table class="ml-covtable"><thead><tr><th></th><th>Have</th><th>Waiting</th><th>Short</th></tr></thead><tbody>${rows.map(p => `<tr><th>${e(p.label)}</th>
-          <td>${p.plain ? p.haveC + p.haveN : `${p.haveC} clean · ${p.haveN} NSFW`}</td><td>${p.pendC + p.pendN || "–"}</td><td class="${p.needC || p.needN ? "ml-short" : ""}">${p.plain ? p.needN : `${p.needC} clean · ${p.needN} NSFW`}</td></tr>`).join("")}</tbody></table></div>` : `<p class="help">Everything is at or above target (counting pictures waiting on the farm).</p>`}
+          <td>${p.have}</td><td>${p.pending || "–"}</td><td class="${p.short ? "ml-short" : ""}">${p.short}</td></tr>`).join("")}</tbody></table></div>` : `<p class="help">Everything is at or above target (counting pictures waiting on the farm).</p>`}
         ${first ? `<p class="help">Prompts for the first few:</p>${first}` : ""}
         ${d.kind === "persona" && ((M.lib || {}).scene_notes || []).length ? `<p class="help">Left out: ${((M.lib || {}).scene_notes || []).map(e).join(" ")}</p>` : ""}
         <div class="row"><button type="button" class="primary" data-mlrec="run"${total && !R.busy ? "" : " disabled"}>${R.busy ? e(R.prog || "Queueing…") : `Queue ${total} picture${total === 1 ? "" : "s"}`}</button>
@@ -873,29 +681,27 @@
   async function recRun() {
     const d = M.rec.draft, R = M.rec;
     await load(true);                     // fresh counts, including anything the farm has finished or queued since
-    const plan = recPlan(d), total = plan.reduce((a, p) => a + p.needC + p.needN, 0);
+    const plan = recPlan(d), total = plan.reduce((a, p) => a + p.short, 0);
     if (!total) { toast("Nothing is short."); return drawRec(); }
     if (total > 60 && !confirm(`This queues ${total} pictures on the farm. Go ahead?`)) return;
     R.busy = true; let made = 0, failed = 0, last = "";
     const tag = d.tag || slug(d.name) || "recipe";
     for (const p of plan) {
-      if (!p.needC && !p.needN) continue;
+      if (!p.short) continue;
       const pr = recPrompts(d, p.t), pool = pr.person ? POSES : CAMERAS;
       const sp = recSpec(d, p.t);
       const roles = sp ? [sp.role] : p.t.role ? [p.t.role] : d.roles.slice();
-      const batches = p.plain ? [["auto", p.needN, pr.plainP, ""]] : [["yes", p.needN, pr.nsfwP, ""], ["no", p.needC, pr.cleanP, "clean"]];
-      for (const [nsfw, n, base, extra] of batches) {
-        if (!n || !base) continue;      // a recipe picture with no prompt on this side (weather looks have only one) is left alone
-        const have = nsfw === "no" ? p.haveC + p.pendC : p.haveN + p.pendN;
-        const own = pr.variants && (nsfw === "no" ? pr.variants.clean : pr.variants.nsfw);     // one prompt per pose (the weather set)
-        const jobs = d.pose && own && own.length ? Array.from({ length: n }, (_, i) => [1, own[(have + i) % own.length]])
-          : d.pose && !pr.fixed ? Array.from({ length: n }, (_, i) => [1, `${base}, ${pool[(have + i) % pool.length]}`]) : [[n, base]];
-        for (const [count, prompt] of jobs) {
-          const tags = pr.tags ? pr.tags.concat(nsfw === "no" ? ["clean"] : []).join(", ") : [tag, extra].filter(Boolean).join(", ");
-          const res = await api("media/generate", { kind: d.kind, subject: p.t.s, roles, prompt, aspect: pr.aspect, count: Math.min(8, count), nsfw, tags });
-          if (res.ok) made += count; else { failed += count; last = res.error || last; }
-          R.prog = `Queued ${made} of ${total}…`; drawRec();
-        }
+      const { short, have, pending } = p;
+      const own = pr.variants;
+      const jobs = d.pose && own?.length ? Array.from({ length: short }, (_, i) => [1, own[(have + pending + i) % own.length]])
+        : d.pose && !pr.fixed ? Array.from({ length: short }, (_, i) => [1, pr.prompt + ", " + pool[(have + pending + i) % pool.length]])
+        : Array.from({ length: Math.ceil(short / 8) }, (_, i) => [Math.min(8, short - i * 8), pr.prompt]);
+      for (const [count, prompt] of jobs) {
+        if (!prompt) continue;
+        const tags = pr.tags ? pr.tags.join(", ") : tag;
+        const res = await api("media/generate", { kind: d.kind, subject: p.t.s, roles, prompt, aspect: pr.aspect, count, nsfw: "no", tags });
+        if (res.ok) made += count; else { failed += count; last = res.error || last; }
+        R.prog = "Queued " + made + " of " + total + "…"; drawRec();
       }
     }
     R.busy = false; R.prog = "";
@@ -933,7 +739,7 @@
       if (el.value) dr.subjects = Object.entries(CFG.characters).filter(([k, c]) => c.home_port === el.value).map(([k]) => k);
       return drawRec();
     }
-    const k = d.mlrecf, num = ["clean", "nsfw", "count"].includes(k);
+    const k = d.mlrecf, num = k === "count";
     dr[k] = el.type === "checkbox" ? el.checked : num ? Number(el.value) : el.value;
     if (num) { const b = $("mlrecv-" + k); if (b) b.textContent = el.value; if (ev.type === "change") drawRec(); return; }
     if (k === "kind") { dr.subjects = []; dr.roles = []; return drawRec(); }
@@ -953,7 +759,7 @@
     const kind = it ? it.kind : (M.kind || "persona"), K = kinds()[kind] || { roles: [] };
     const subs = subjectsFor(kind);
     const subject = it ? it.subject : (M.subject || (subs[0] ? subs[0][0] : ""));
-    Object.assign(M.gen, { kind, subject, forKey: kind + ":" + subject });
+    Object.assign(M.gen, { kind, subject, forKey: kind + ":" + subject, identity: false, master: false });
     if (it) {
       M.gen.prompt = it.prompt || defaultPrompt(kind, subject);
       M.gen.roles = it.roles.slice(); M.gen.aspect = shapeOf(it); M.gen.tags = it.tags.join(", ");
@@ -972,7 +778,7 @@
     const subject = g.subject || (subs[0] ? subs[0][0] : "");
     const key = kind + ":" + subject;
     if (g.forKey !== key) {
-      Object.assign(g, { kind, subject, forKey: key, prompt: defaultPrompt(kind, subject), aspect: ASPECT_FOR[kind] || "3:4", roles: K.default_role ? [K.default_role] : [] });
+      Object.assign(g, { kind, subject, forKey: key, prompt: defaultPrompt(kind, subject), aspect: ASPECT_FOR[kind] || "3:4", roles: K.default_role ? [K.default_role] : [], identity: false, master: false });
     }
     const aspects = Object.keys((M.lib && M.lib.aspects) || { "3:4": 1 });
     const q = M.pickQ.trim().toLowerCase();
@@ -980,7 +786,6 @@
       .sort(byAdded).slice(0, 6);
     const noSeed = src && src.seed == null;
     return `<div class="ml-dcols"><div class="ml-dleft">
-      ${g.twin ? `<p class="ml-twinhint"><b>Clean twin.</b> NSFW tag is set to <b>Never</b> and the tag <i>clean</i> is added. Reword the prompt to remove nudity or erotic styling before painting.</p>` : ""}
       ${src ? `<div class="ml-src"><img src="${e(src.url)}" alt=""><div><b>${e(src.title || subjectName(src.kind, src.subject))}</b><small>${e(subjectName(src.kind, src.subject))}${src.seed != null ? " · seed " + e(src.seed) : ""}</small>
         <div class="row"><button type="button" data-mlquickredo="${e(src.id)}" data-mode="same" class="${noSeed ? "none" : ""}" title="Same prompt, same seed">↻ Regen</button>
         <button type="button" data-mlquickredo="${e(src.id)}" data-mode="new" title="Same prompt, new seed">🎲 Reroll</button>
@@ -996,13 +801,14 @@
         <label>${e(K.one || "Subject")}<select data-mlgenf="subject">${subs.map(([k, n]) => `<option value="${e(k)}"${k === subject ? " selected" : ""}>${e(n)}</option>`).join("")}</select></label>
         <label>Shape<select data-mlgenf="aspect">${aspects.map(a => `<option${a === g.aspect ? " selected" : ""}>${e(a)}</option>`).join("")}</select></label>
         <label>How many<input type="number" min="1" max="8" value="${g.count}" data-mlgenf="count"></label>
-        <label class="wide">NSFW tag<select data-mlgenf="nsfw">${[["auto", "Read the prompt"], ["yes", "Always NSFW"], ["no", "Never NSFW"]].map(([k, n]) => `<option value="${k}"${k === g.nsfw ? " selected" : ""}>${n}</option>`).join("")}</select></label>
         <label class="wide">Tags<input type="text" value="${e(g.tags)}" data-mlgenf="tags" placeholder="night, rain, close-up"></label>
       </div>
       ${K.roles.length ? `<details class="ml-rolesbox"${g.roles.length ? "" : " open"}><summary>Roles <small>${g.roles.length ? g.roles.map(r => e(roleName(kind, r))).join(", ") : "any"}</small></summary><div class="ml-roles">${K.roles.map(([k, n]) => `<label class="ml-check"><input type="checkbox" data-mlgenrole="${k}"${g.roles.includes(k) ? " checked" : ""}> ${e(n)}</label>`).join("")}</div></details>` : ""}
       ${src && src.type === "image" && src.seed != null ? abBox(src) : ""}
       </div><div class="ml-dright">
       <textarea rows="9" class="code ml-prompt-box" data-mlgenf="prompt" id="mlgenprompt" placeholder="Describe the picture…">${e(g.prompt)}</textarea>
+      ${src && src.kind === "persona" && src.subject === subject && kind === "persona" && src.type === "image" && src.reviewed && src.enabled && !src.nsfw && !src.missing ? `<label><input type="checkbox" id="mlidentity" data-mlgenf="identity"${g.identity ? " checked" : ""}> Use this picture as the identity reference</label>` : ""}
+      ${(M.lib.master_aspects || []).includes(g.aspect) ? `<label><input type="checkbox" id="mlmaster" data-mlgenf="master"${g.master ? " checked" : ""}> Render a native 2K master</label>` : ""}
       <div class="row"><button type="button" class="primary" data-mlgo="${e(kind)}|${e(subject)}">Paint ${g.count} picture${g.count == 1 ? "" : "s"}</button>
         <span class="help">Filed under ${e(K.one || "")} · ${e(subjectName(kind, subject))}</span></div>
       </div></div>`;
@@ -1046,7 +852,7 @@
       const when = j.status === "running" ? "running now · done " + eta(j.eta_s) : waiting ? (j.eta_s == null ? "on hold" : "starts in " + eta(j.start_s) + " · done " + eta(j.eta_s)) : "stopping after this one";
       return `<li class="${e(j.status)}" data-jid="${e(j.id)}">
         <b>${waiting ? "#" + (j.pos || "") + " " : ""}${e(subjectName(j.kind, j.subject))}</b>
-        <span>${n ? "▶ " : ""}${j.done}/${j.count} ${n ? (j.nsfw === "yes" ? "NSFW clips" : j.nsfw === "no" ? "clean clips" : "clips") : "painted"}${j.failed ? `, ${j.failed} failed` : ""}${j.resumed ? " · resumed after restart" : ""} · ${when}${j.progress ? " · " + e(j.progress) : ""}</span>
+        <span>${n ? "▶ " : ""}${j.done}/${j.count} ${n ? "clips" : "painted"}${j.failed ? `, ${j.failed} failed` : ""}${j.resumed ? " · resumed after restart" : ""} · ${when}${j.progress ? " · " + e(j.progress) : ""}</span>
         ${j.error ? `<small>${e(j.error)}</small>` : ""}
         <i class="ml-jobbtns">${waiting ? `<button type="button" class="link" title="Run first" data-mlq="top|${e(j.id)}">⤒</button><button type="button" class="link" title="Move up" data-mlq="up|${e(j.id)}">▲</button><button type="button" class="link" title="Move down" data-mlq="down|${e(j.id)}">▼</button>` : ""}
         ${["waiting", "running"].includes(j.status) ? `<button type="button" class="link" data-mlcancel="${e(j.id)}">stop</button>` : ""}</i></li>`;
@@ -1093,7 +899,6 @@
       <h3>Options</h3><div class="ml-gen-grid">
         <label>While a line is read<select data-mlopt="speaker_card"><option value="card"${O.speaker_card === "card" ? " selected" : ""}>Large speaker card (picture or clip)</option><option value="badge"${O.speaker_card === "badge" ? " selected" : ""}>Small round badge</option></select></label>
         <label>Harbor board gallery<select data-mlopt="board_gallery"><option value="1"${O.board_gallery ? " selected" : ""}>Show port pictures</option><option value="0"${!O.board_gallery ? " selected" : ""}>Off</option></select></label>
-        <label>New generated pictures<select data-mlopt="new_nsfw"><option value="auto"${O.new_nsfw === "auto" ? " selected" : ""}>NSFW if the prompt asks for it</option><option value="yes"${O.new_nsfw === "yes" ? " selected" : ""}>Always start NSFW</option><option value="no"${O.new_nsfw === "no" ? " selected" : ""}>Never start NSFW</option></select></label>
       </div>
       <div class="row"><button type="button" class="primary" data-mlrulesave="1">Save rules</button><button type="button" class="link" data-mlrulereset="1">undo changes</button></div></section>`;
   }
@@ -1103,7 +908,7 @@
     const inUse = M.lib.in_use.includes(i.url);
     return `<div class="ml-tile${on ? " on" : ""}${i.enabled ? "" : " off"}${i.nsfw ? " nsfw" : ""}" data-mlitem="${e(i.id)}" tabindex="0">
       <div class="ml-art"${i.width && i.height ? ` style="aspect-ratio:${i.width} / ${i.height}"` : ""}>${thumb(i, "ml-img")}
-        <span class="ml-badges">${i.primary && i.kind !== "persona" ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? `<b>▶ ${i.seconds ? i.seconds + " s" : "video"}${i.loop ? " ⟲" : ""}</b>` : ""}${i.type === "video" && i.pair ? '<b class="pair" title="Part of a clean + NSFW pair">pair</b>' : ""}${i.type === "image" && clipsOf(i.id).length ? `<b title="Clips made from this picture">▶ ${clipsOf(i.id).length}</b>` : ""}${i.nsfw ? '<b class="nsfw">NSFW</b>' : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span>
+        <span class="ml-badges">${i.primary && i.kind !== "persona" ? '<b class="star" title="Primary (used when the rule is Fixed)">★</b>' : ""}${i.type === "video" ? `<b>▶ ${i.seconds ? i.seconds + " s" : "video"}${i.loop ? " ⟲" : ""}</b>` : ""}${i.type === "image" && clipsOf(i.id).length ? `<b title="Clips made from this picture">▶ ${clipsOf(i.id).length}</b>` : ""}${!i.reviewed ? '<b class="rev">review</b>' : ""}${inUse ? '<b class="use" title="Used by a setting (cast portrait or Graphics page)">in use</b>' : ""}${!i.enabled ? "<b>off</b>" : ""}</span>
         <span class="ml-quick"><button type="button" class="ml-quickdel" data-mlquickdel="${e(i.id)}" title="Delete (moves it to the media trash)" aria-label="Delete">🗑</button>
         ${!i.reviewed ? `<button type="button" class="ml-quickok" data-mlquickok="${e(i.id)}" title="Approve (marks it reviewed)" aria-label="Approve">✓</button>` : ""}${quickRedo(i, "button")}${i.type === "image" && !i.missing ? `<button type="button" class="ml-quickvid ml-quickedit" data-mledit="${e(i.id)}" title="Edit the prompt and regenerate" aria-label="Edit and regenerate">✎</button>` : ""}${i.type === "image" && !i.missing && i.subject ? `<button type="button" class="ml-quickvid" data-mlvidfrom="${e(i.id)}" title="Make a video from this picture" aria-label="Make a video">▶</button>` : ""}</span></div>
       <div class="ml-cap"><b>${e(i.title || subjectName(i.kind, i.subject))}</b>
@@ -1122,7 +927,6 @@
         ? `<video src="${e(i.url)}"${posterOf(i) ? ` poster="${e(posterOf(i))}"` : ""} controls loop playsinline></video>` : `<a href="${e(i.url)}" target="_blank" rel="noopener"><img src="${e(i.url)}" alt=""></a>`}</div>
       ${videoBits(i)}
       <div class="ml-switches">
-        <button type="button" class="ml-nsfw${i.nsfw ? " on" : ""}" data-mlset="nsfw" data-v="${i.nsfw ? "0" : "1"}">${i.nsfw ? "NSFW" : "Family-friendly"}</button>
         ${i.kind !== "persona" ? `<button type="button" class="${i.primary ? "on" : ""}" data-mlset="primary" data-v="${i.primary ? "0" : "1"}" title="Shown when the rule is Fixed">★ ${i.primary ? "Primary" : "Make primary"}</button>` : ""}
         <button type="button" class="${i.enabled ? "on" : ""}" data-mlset="enabled" data-v="${i.enabled ? "0" : "1"}">${i.enabled ? "In rotation" : "Switched off"}</button>
         ${!i.reviewed ? `<button type="button" data-mlset="reviewed" data-v="1">Mark reviewed</button>` : ""}
@@ -1152,12 +956,11 @@
     if (i.type === "image") {
       const clips = clipsOf(i.id);
       return `<div class="ml-vidbits">${!i.missing && i.subject ? `<button type="button" class="primary" data-mlvidfrom="${e(i.id)}">▶ Make video…</button>` : ""}
-        ${clips.length ? `<span>Clips from this picture:</span><span class="ml-vidstrip">${clips.map(c => `<button type="button" class="ml-vidthumb" data-mlpick="${e(c.id)}" title="${e((c.nsfw ? "NSFW · " : "") + (c.seconds || "") + " s")}"><img src="${e(i.url)}" alt=""><b>▶</b></button>`).join("")}</span>` : ""}</div>`;
+        ${clips.length ? `<span>Clips from this picture:</span><span class="ml-vidstrip">${clips.map(c => `<button type="button" class="ml-vidthumb" data-mlpick="${e(c.id)}" title="${e(c.seconds || "" + " s")}"><img src="${e(i.url)}" alt=""><b>▶</b></button>`).join("")}</span>` : ""}</div>`;
     }
     const src = i.from_item ? byId(i.from_item) : null;
     return `<div class="ml-vidbits">
       ${src ? `<span>Made from</span><button type="button" class="ml-vidthumb" data-mlpick="${e(src.id)}"><img src="${e(src.url)}" alt=""></button>` : ""}
-      ${i.pair ? `<button type="button" class="primary" data-mlcmp="${e(i.pair)}">Compare the pair</button>` : ""}
       <p class="help">${[i.seconds ? i.seconds + " s" : "", i.loop ? "loops" : "", i.model, i.render_s ? Math.round(i.render_s / 60) + " min to render" : "", i.width ? i.width + " × " + i.height : ""].filter(Boolean).map(e).join(" · ")}</p>
       ${i.motion ? `<details><summary>Movement</summary><p class="mono ml-prompt">${e(i.motion)}</p></details>` : ""}</div>`;
   }
@@ -1166,7 +969,6 @@
     if (M.sel.size < 2) return "";
     const K = kinds()[M.kind];
     return `<div class="card ml-bulk"><b>${M.sel.size} selected</b>
-      <button type="button" data-mlbulk="nsfw">Tag NSFW</button><button type="button" data-mlbulk="sfw">Family-friendly</button>
       <button type="button" data-mlbulk="on">In rotation</button><button type="button" data-mlbulk="off">Switch off</button>
       <button type="button" data-mlbulk="reviewed">Mark reviewed</button>
       <input type="text" id="mlbulktag" placeholder="tag">
@@ -1187,14 +989,14 @@
     document.body.classList.add("ml-active");
     document.body.classList.toggle("ml-navmin", M.navMin);
     const c = M.lib.counts, list = filtered();
-    return head("Media Library", "", familySwitch()) +
-      `<div class="ml-stats"><span><b>${c.total}</b> items</span><span><b>${c.video}</b> video</span><span><b>${c.nsfw}</b> NSFW</span>
+    return head("Media Library", "") +
+      `<div class="ml-stats"><span><b>${c.total}</b> items</span><span><b>${c.video}</b> video</span>
         ${c.review ? `<button type="button" class="link ml-stat-review" data-mlreviewall="1" title="Show every item that needs review"><b>${c.review}</b> need review</button>` : `<span><b>0</b> need review</span>`}<span><b>${fmtBytes(c.bytes)}</b> on disk</span>
         <span class="ml-showing">showing <b>${list.length}</b></span></div>
       <div class="ml-shell2${M.railOpen ? "" : " norail"}${M.drawer.open && M.dsize !== "full" ? " withdrawer" : ""}${M.drawer.open ? " dz-" + (M.dsize || "wide") : ""}">
         ${M.railOpen ? rail() : ""}
         <div class="ml-main">
-          ${toolbar()}${chips()}${uploadBar()}${comparePanel()}${abPanel()}${rulesPanel()}${bulk()}
+          ${toolbar()}${chips()}${uploadBar()}${abPanel()}${rulesPanel()}${bulk()}
           ${recipesPanel()}${M.cov ? coverage() : ""}
           <div class="ml-body${M.sel.size === 1 ? " with-detail" : ""}${CFG.content.rating === "family" ? " ml-family" : ""}"${M.cov ? " hidden" : ""}>
             <div class="ml-grid d-${M.density}">${list.map(tile).join("") || `<p class="muted ml-empty">Nothing matches. Clear a filter, upload, or press + New to generate.</p>`}</div>
@@ -1218,7 +1020,7 @@
     const K = kinds()[kind];
     const subject = M.subject || "";
     if (!subject && kind !== "other" && !confirm(`Upload to ${K.label} without choosing a ${K.one.toLowerCase()}? Choose one in the "${K.one}" box first to file them properly.\n\nOK uploads them unsorted.`)) return;
-    const nsfw = M.upNsfw || M.nsfw === "nsfw" ? "1" : "0";
+    const nsfw = "0";
     const roles = M.role || (K.default_role || "");
     [...files].forEach(f => {
       const u = { name: f.name, pct: 0, err: "" };
@@ -1285,7 +1087,6 @@
     if (d.mlrailtoggle) { M.railOpen = !M.railOpen; try { localStorage.setItem("ml.rail", M.railOpen ? "1" : "0"); } catch (_) {} return redraw(); }
     if (d.mldens) { M.density = d.mldens; try { localStorage.setItem("ml.density", M.density); } catch (_) {} return redraw(); }
     if (d.mlview !== undefined) { M.type = d.mlview; M.sel.clear(); return redraw(); }
-    if (d.mlrating !== undefined) { M.nsfw = d.mlrating; M.sel.clear(); return redraw(); }
     if (d.mlstatus) { M.type = M.type === d.mlstatus ? "" : d.mlstatus; M.sel.clear(); return redraw(); }
     if (d.mlmotion !== undefined) { M.motion = d.mlmotion; if (M.motion && M.type !== "video" && M.type !== "pair") M.type = "video"; M.sel.clear(); return redraw(); }
     if (d.mltag !== undefined) { M.tag = d.mltag; M.sel.clear(); return redraw(); }
@@ -1301,13 +1102,13 @@
       const p = d.mlpreset;
       M.kind = ""; M.subject = ""; M.role = ""; M.port = ""; M.job = ""; M.type = ""; M.nsfw = ""; M.review = false; M.tag = ""; M.motion = ""; M.q = ""; M.sel.clear(); M.cov = false;
       if (p === "review") M.review = true; else if (p === "vidreview") { M.review = true; M.type = "video"; }
-      else if (p === "clips") M.type = "hasvid"; else if (p === "nsfw") M.nsfw = "nsfw"; else if (p === "off") M.nsfw = "off";
+      else if (p === "clips") M.type = "hasvid"; else if (p === "off") M.nsfw = "off";
       return redraw();
     }
     if (d.mlcovtoggle) { M.cov = !M.cov; return redraw(); }
     if (d.mlrecopen) { M.rec.open = !M.rec.open; if (M.rec.open && !M.rec.draft) M.rec.draft = M.recipes[0] ? JSON.parse(JSON.stringify(M.recipes[0])) : null; return redraw(); }
     if (d.mlcovrec) {
-      const r = newRecipe(); r.kind = M.kind; r.name = (kinds()[M.kind] || {}).label + " gap fill"; r.by = "role"; r.roles = ((kinds()[M.kind] || {}).roles || []).map(x => x[0]); r.clean = 1; r.nsfw = 2;
+      const r = newRecipe(); r.kind = M.kind; r.name = (kinds()[M.kind] || {}).label + " gap fill"; r.by = "role"; r.roles = ((kinds()[M.kind] || {}).roles || []).map(x => x[0]);
       M.rec = { open: true, draft: r, busy: false, prog: "" }; M.cov = false; redraw(); return window.scrollTo(0, 0);
     }
     if (d.mlrec !== undefined) { ev.preventDefault(); return recClick(el); }
@@ -1315,12 +1116,6 @@
       const [sub, role] = d.mlcov.split("|"), kind = M.kind, rs = roleStart(kind, sub, role);
       Object.assign(M.gen, { kind, subject: sub, forKey: kind + ":" + sub, prompt: rs.prompt, aspect: rs.aspect, roles: role ? [role] : [], tags: "", nsfw: "auto", twin: false });
       M.vid.open = false; M.drawer = { open: true, mode: "gen", src: "" };
-      return redraw();
-    }
-    if (d.mltwin) {
-      const it = byId(d.mltwin); if (!it) return;
-      openGen(it); M.gen.nsfw = "no"; M.gen.twin = true;
-      M.gen.tags = it.tags.filter(t => t !== "clean").concat("clean").join(", ");
       return redraw();
     }
     if (d.mlnew) { openGen(null); return redraw(); }
@@ -1385,33 +1180,15 @@
     if (d.mlvidclose) { M.vid.open = false; M.drawer.open = false; return redraw(); }
     if (d.mlvidgo) {
       const motion = (($("mlvidmotion") || {}).value || M.vid.motion).trim();
-      const src = byId(M.vid.src), partner = M.vid.pair ? byId(M.vid.partner) : null;
+      const src = byId(M.vid.src);
       if (!src) return toast("That picture is no longer in the library.", true);
       const mk = MOTIONS[M.vid.preset] && motion === MOTIONS[M.vid.preset][1] ? M.vid.preset : "custom";
-      let body = { motion, count: M.vid.count, tags: [M.vid.tags, "motion-" + mk].filter(Boolean).join(", ") };
-      if (partner) {
-        const srcNsfw = src.nsfw && !src.tags.includes("clean"), partnerClean = !partner.nsfw || partner.tags.includes("clean");
-        const [n, c] = srcNsfw || partnerClean ? [src, partner] : [partner, src];
-        body = Object.assign(body, { nsfw_id: n.id, clean_id: c.id });
-        const clean = (($("mlvidclean") || {}).value || M.vid.clean || "").trim();
-        if (clean.length >= 10) body.clean_motion = clean;
-      } else {
-        body.id = src.id;
-        const preset = MOTIONS[M.vid.preset];
-        if (preset && preset[2] === "nsfw" && motion === preset[1] && (!src.nsfw || src.tags.includes("clean")) &&
-            !confirm("This movement is the NSFW one but the picture is clean. Make it anyway? (Tick Make a pair to give the clean half its softer twin.)")) return;
-      }
+      const body = { id: src.id, motion, count: M.vid.count, tags: [M.vid.tags, "motion-" + mk].filter(Boolean).join(", ") };
       el.disabled = true;
       const res = await api("media/video", body);
       el.disabled = false;
       toast(res.ok ? res.msg : res.error, !res.ok);
       if (res.ok) { M.drawer.open = false; M.vid.open = false; M.type = "video"; return load(true); }
-      return;
-    }
-    if (d.mlcmp) { M.cmp = d.mlcmp; M.vid.open = false; M.drawer.open = false; redraw(); return window.scrollTo(0, 0); }
-    if (d.mlcmpclose) { M.cmp = ""; return redraw(); }
-    if (d.mlcmpplay || d.mlcmppause) {
-      document.querySelectorAll("[data-mlcmpv]").forEach(v => { if (d.mlcmpplay) { v.currentTime = 0; v.play().catch(() => {}); } else v.pause(); });
       return;
     }
     if (d.mlabgo) {
@@ -1461,16 +1238,6 @@
       M.last = id;
       return redraw();
     }
-    if (d.mlsafe !== undefined) {
-      const fam = d.mlsafe === "1";
-      el.disabled = true;
-      const res = await api("media/safe", { family: fam });
-      if (!res.ok) { el.disabled = false; return toast(res.error, true); }
-      patchSaved(c => { c.content.rating = res.rating; });
-      toast(res.msg);
-      return load(true);
-    }
-
     if (d.mljobs) { M.jobsOpen = !M.jobsOpen; try { localStorage.setItem("ml.jobsOpen", M.jobsOpen ? "1" : "0"); } catch (_) {} return redraw(); }
     if (d.mlrules) { M.rulesOpen = !M.rulesOpen; return redraw(); }
     if (d.mlscan) {
@@ -1484,7 +1251,8 @@
       const prompt = ($("mlgenprompt") || {}).value || M.gen.prompt;
       el.disabled = true;
       const res = await api("media/generate", { kind, subject, roles: M.gen.roles, prompt, aspect: M.gen.aspect,
-        count: M.gen.count, nsfw: M.gen.nsfw, tags: M.gen.tags });
+        count: M.gen.count, nsfw: "no", tags: M.gen.tags,
+        reference_id: $("mlidentity")?.checked ? M.drawer.src : "", master: !!$("mlmaster")?.checked });
       el.disabled = false;
       toast(res.ok ? res.msg : res.error, !res.ok);
       if (res.ok) return load(true);
@@ -1547,7 +1315,7 @@
         return load(true);
       }
       const map = {
-        nsfw: [{ nsfw: true }], sfw: [{ nsfw: false }], on: [{ enabled: true }], off: [{ enabled: false }], reviewed: [{ reviewed: true }],
+        on: [{ enabled: true }], off: [{ enabled: false }], reviewed: [{ reviewed: true }],
         addtag: [{}, { add_tags: [tag] }], deltag: [{}, { remove_tags: [tag] }],
         addrole: [{}, { add_roles: [role] }], delrole: [{}, { remove_roles: [role] }],
         move: [{ kind: M.kind, subject: move }],
@@ -1579,6 +1347,8 @@
     if (d.mlabf) { M.ab[d.mlabf] = el.value; return; }
     if (d.mlgenf) {
       const k = d.mlgenf;
+      if (k === "identity" || k === "master") { M.gen[k] = el.checked; return; }
+      if (k === "aspect") { M.gen.aspect = el.value; M.gen.master = false; return redraw(); }
       if (k === "subject") { M.gen.subject = el.value; M.gen.forKey = ""; return redraw(); }
       if (k === "kind") { M.gen.kind = el.value; const sb = subjectsFor(el.value); M.gen.subject = sb[0] ? sb[0][0] : ""; M.gen.forKey = ""; return redraw(); }
       M.gen[k] = k === "count" ? Math.max(1, Math.min(8, parseInt(el.value, 10) || 1)) : el.value;
@@ -1589,12 +1359,12 @@
       M.gen.roles = M.gen.roles.filter(r => r !== d.mlgenrole);
       if (el.checked) M.gen.roles.push(d.mlgenrole);
       // A market keeper, ship master, mayor or tax lady is a portrait of her, not a harbour view: swap the starting prompt, shape and roles.
-      const womanRoles = ["keeper", "shipmaster", "mayor", "taxlady"].concat(
+      const personRoles = ["keeper", "shipmaster", "mayor", "taxlady"].concat(
         (kinds().port.roles || []).map(r => r[0]).filter(r => r.startsWith("mayor_")));
-      if (womanRoles.includes(d.mlgenrole) && el.checked && M.gen.kind === "port") {
+      if (personRoles.includes(d.mlgenrole) && el.checked && M.gen.kind === "port") {
         const subject = M.gen.forKey.split(":")[1] || "";
         const box = $("mlgenprompt"), now = (box && box.value) || M.gen.prompt;
-        const stock = [undefined].concat(womanRoles).some(r => now === defaultPrompt("port", subject, r));
+        const stock = [undefined].concat(personRoles).some(r => now === defaultPrompt("port", subject, r));
         if (!now.trim() || stock) M.gen.prompt = defaultPrompt("port", subject, d.mlgenrole);
         M.gen.roles = [d.mlgenrole]; M.gen.aspect = "3:4";
         return redraw();
@@ -1644,9 +1414,7 @@
     if (d.mlpickq) { M.pickQ = el.value; clearTimeout(M.timers.p); M.timers.p = setTimeout(redraw, 200); return; }
     if (d.mlvidf) {
       const k = d.mlvidf;
-      if (k === "pair") { M.vid.pair = el.checked; if (M.vid.pair && !M.vid.partner) M.vid.partner = suggestPartner(byId(M.vid.src) || {}); return redraw(); }
-      if (k === "partner") { M.vid.partner = el.value; return redraw(); }
-      if (k === "preset") { M.vid.preset = el.value; if (MOTIONS[el.value]) { M.vid.motion = MOTIONS[el.value][1]; M.vid.clean = MOTIONS[el.value][3] || ""; } return redraw(); }
+      if (k === "preset") { M.vid.preset = el.value; if (MOTIONS[el.value]) M.vid.motion = MOTIONS[el.value][1]; return redraw(); }
       if (k === "count") { M.vid.count = Math.max(1, Math.min(4, parseInt(el.value, 10) || 1)); if (ev.type === "change") redraw(); return; }
       if (k === "motion") { M.vid.motion = el.value; if (M.vid.preset !== "own" && MOTIONS[M.vid.preset] && el.value !== MOTIONS[M.vid.preset][1]) M.vid.preset = "own"; return; }
       M.vid[k] = el.value;

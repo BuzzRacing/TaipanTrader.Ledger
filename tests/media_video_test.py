@@ -79,6 +79,7 @@ try:
     media.TRASH_DIR = os.path.join(media.MEDIA_DIR, "_trash")
     media.UPLOAD_DIR = os.path.join(media.WEB, "uploads")
     media.LIB_FILE = os.path.join(tmp, "config", "media.json")
+    media.JOBS_FILE = os.path.join(tmp, "config", "media_jobs.json")
     os.makedirs(media.UPLOAD_DIR)
     cfg = config.defaults()
     cfg["content"]["rating"] = "historical"
@@ -118,41 +119,53 @@ try:
         if all(j["status"] in ("done", "failed") for j in (jn, jc)):
             break
         time.sleep(0.05)
-    assert jn["status"] == "done" and jc["status"] == "done", (jn, jc)
+    assert jn["status"] == "failed" and jc["status"] == "done", (jn, jc)
     clips = [i for i in media.load(cfg)["items"] if i["type"] == "video"]
-    assert len(clips) == 4, clips
+    assert len(clips) == 2, clips
     by = {(c["from_item"], c["seed"]): c for c in clips}
     for sd in seeds:
-        a, b = by[(nude["id"], sd)], by[(clean["id"], sd)]
-        assert a["nsfw"] and not b["nsfw"], "NSFW clip from the NSFW picture, clean clip from the clean one"
-        assert a["pair"] == b["pair"] == "pabcdef12" and a["seconds"] == 12 and a["loop"]
-        assert not a["reviewed"] and not b["reviewed"], "new clips wait for review"
-        assert a["roles"] == ["portrait", "speaking"] and "clean" in b["tags"]
-        assert a["model"].startswith("Wan 2.2") and a["motion"].startswith("She walks")
+        b = by[(clean["id"], sd)]
+        assert not b["nsfw"] and not b["reviewed"]
+        assert b["pair"] == "pabcdef12" and b["seconds"] == 12 and b["loop"]
+        assert b["roles"] == ["portrait", "speaking"] and "clean" in b["tags"]
+        assert b["model"].startswith("Wan 2.2") and b["motion"].startswith("She walks")
 
     # 3. Player screens: clips carry their picture as poster; family-friendly drops the NSFW clip and picture.
     pub = {i["id"]: i for i in media.public(cfg)["items"]["persona"]["warden_hongkong"]}
-    c0 = by[(nude["id"], 11)]
-    assert pub[c0["id"]]["po"] == nude["url"]
+    assert nude["id"] not in pub
     cfg["content"]["rating"] = "family"
     pub = {i["id"]: i for i in media.public(cfg)["items"]["persona"]["warden_hongkong"]}
-    assert c0["id"] not in pub and nude["id"] not in pub
+    assert nude["id"] not in pub
     assert pub[by[(clean["id"], 22)]["id"]]["po"] == clean["url"]
 
-    # 4. A single clip copies its picture's flag; clips survive a reload with their links.
-    j1 = media.JOBS.add_video(nude, "She stands swinging a ring of keys", [5], "auto", [], width=768, height=1024)
+    # 4. A clean tag cannot bypass the source's rating. A clean clip keeps its link across reloads.
+    bad = media.JOBS.add_video(nude, "She stands swinging a ring of keys", [5], "no")
+    assert bad["status"] == "failed"
+    j1 = media.JOBS.add_video(clean, "She stands swinging a ring of keys", [5], "auto", [], width=768, height=1024)
     for _ in range(200):
         if j1["status"] in ("done", "failed"):
             break
         time.sleep(0.05)
     single = [i for i in media.load(cfg)["items"] if i["type"] == "video" and i["seed"] == 5][0]
-    assert single["nsfw"] and single["pair"] == "" and single["from_item"] == nude["id"]
+    assert not single["nsfw"] and single["pair"] == "" and single["from_item"] == clean["id"]
     media._cache["mtime"] = None
     again = [i for i in media.load(cfg)["items"] if i["id"] == single["id"]][0]
-    assert again["from_item"] == nude["id"] and again["seconds"] == 12
+    assert again["from_item"] == clean["id"] and again["seconds"] == 12
+
+    import server
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    route = SimpleNamespace(_send=lambda status, body: body, _via=lambda: {})
+    motion = "The officer reads a letter and sets it down."
+    request = lambda **body: server.Handler._media_post(route, "video", {"motion": motion, **body})
+    assert not request(nsfw_id=nude["id"], clean_id=clean["id"])["ok"]
+    assert not request(id=nude["id"])["ok"]
+    assert not request(id=clean["id"], motion="The subject poses topless at the rail.")["ok"]
+    with patch.object(server.journal, "log"):
+        assert request(id=clean["id"])["ok"]
 
     # 5. A missing picture fails cleanly, and the farm being down never stops the queue.
-    gone = dict(nude, url="/media/persona/warden_hongkong/nope.png")
+    gone = dict(clean, url="/media/persona/warden_hongkong/nope.png")
     j2 = media.JOBS.add_video(gone, "She stands swinging a ring of keys", [6], "auto")
     for _ in range(100):
         if j2["status"] in ("done", "failed"):

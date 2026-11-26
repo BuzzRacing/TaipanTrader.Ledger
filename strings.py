@@ -1129,6 +1129,16 @@ EN = {
     "l.customs_welcome.29": "{line} You know the rule of this desk, Captain: you name your cargo's worth, you pay {rate} of it, and if your price is too modest, I buy at it. Name it wisely.",
     # Each officer's own greetings (l.customs_welcome.<officer>.N): 0-4 short, 5-9 medium, 10-14 full.
     # They are shuffled into her deck with the shared 30 above (engine.Game._pa_greeting).
+    "l.customs_welcome.officer_singapore.clear": "All clear. Splendid. I can go back to doing very little with great care.",
+    "l.customs_welcome.officer_manila.clear": "You're clear, Captain. Come back when there's something in the hold I can admire.",
+    "l.customs_welcome.officer_saigon.clear": "Already clear? And I had a whole speech prepared. Go on, Captain.",
+    "l.customs_welcome.officer_nagasaki.clear": "The blank space is correct, Captain. I have checked it. You may pass.",
+    "l.customs_welcome.officer_foochow.clear": "You're clear, Captain. The tea can wait until you've tied up properly.",
+    "l.customs_welcome.officer_shanghai.clear": "Clear. Clerk, next ship. Captain, enjoy Shanghai.",
+    "l.customs_welcome.officer_bangkok.clear": "Nothing more at this desk, Captain. The river is yours for the afternoon.",
+    "l.customs_welcome.officer_batavia.clear": "Cleared. Even a clean page deserves a straight stamp.",
+    "l.customs_welcome.officer_calcutta.clear": "No business for my desk today. How very fortunate for your desk.",
+    "l.customs_welcome.officer_hongkong.clear": "Clear to go. Mind the ferry coming up on your port side. Nobody ever does.",
     "l.customs_welcome.officer_singapore.0": "Oh, it's you. Lovely. Sit.",
     "l.customs_welcome.officer_singapore.1": "Papers, darling. Somewhere on the desk.",
     "l.customs_welcome.officer_singapore.2": "Is it noon yet? Never mind. Declare.",

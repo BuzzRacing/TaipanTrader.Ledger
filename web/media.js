@@ -40,7 +40,7 @@ const Media = (() => {
        "wallpaper"  role wallpaper or tagged
                     wallpaper / master-shot           -> the Ledger's faded page backdrop only (opts.scene = "wallpaper")
        "certificate" tagged certificate (21 Nov 2026) -> the Voyage Certificate only (opts.scene = "certificate"):
-                    its port backdrops and the women composed at one side of a wide, dark frame. Checked
+                    its port backdrops and the cast composed at one side of a wide, dark frame. Checked
                     first, because those pictures also carry the wallpaper tags (an older media.js keeps
                     them off every other screen by those).
        "weather"    role weather or tagged

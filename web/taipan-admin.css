@@ -2,25 +2,18 @@
    Made by tools/taipan_admin_css.py; edit that, not this file. */
 :root {
   --bg: #0d1a22; --panel: #142a37; --panel-2: #1b3545; --line: #2d5163; --ink: #e6efe8; --muted: #9db3ad;
-  --brass: #d9a441; --red: #c0533a; --green: #5fbf9b; --field: #0f2029;
+  --primary: #1f5f7a; --brass: #d9a441; --red: #c0533a; --green: #5fbf9b; --field: #0f2029;
   --title: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
   --serif: "IM Fell English SC", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --sans: "Libre Caslon Text", "Palatino Linotype", Palatino, Georgia, serif;
   --special: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
 }
-/* Taipan Trader has no NSFW, so every NSFW control in Admin is hidden (the game is locked to family-friendly and
-   the server refuses NSFW picture jobs anyway). */
-/* Media Library: the switch, NSFW quick view, Rating filter, NSFW upload tick, per-picture NSFW toggle. */
-.ml-safe, [data-mlpreset="nsfw"], .ml-rail-sec:has([data-mlrating]), label.ml-check:has(> input[data-mlf="upNsfw"]),
-.ml-tile .ml-nsfw, .ml-tile em.nsfw { display: none !important; }
-/* Image generator: the NSFW tag, and the rule for new pictures. */
-label:has(> select[data-mlgenf="nsfw"]), label:has(> select[data-mlopt="new_nsfw"]) { display: none !important; }
-/* Make video: clean + NSFW pairs, the cheeky movements, the NSFW compare. */
-label.ml-check:has(> input[data-mlvidf="pair"]), label:has(> select[data-mlvidf="partner"]), label.ml-cleantwin,
-optgroup[label^="Cheeky"] { display: none !important; }
-/* Recipes: pairs vs plain (always plain here) and the NSFW count. Coverage: the clean-twin check. */
-label:has(> select[data-mlrecf="mode"]), label:has(> input[data-mlrecf="nsfw"]), .ml-twins,
-.ml-twins + .help, .ml-coverage .help:has(.ml-covkey.cnsfw) { display: none !important; }
+button.primary, label.ml-up, .gx-actions label.pick { background: var(--primary); border-color: var(--green); color: var(--ink); }
+#art-bible {
+  --ab-oxblood: var(--primary); --ab-brass: var(--brass); --ab-jade: var(--green); --ab-ivory: var(--ink);
+}
+#art-bible .ab-title { display: block; }
+#art-bible .ab-hero { background-color: var(--bg); }
 /* Dialogue Banks: only the wording the game uses is shown, and only the clean wording is edited. A line with a
    clean twin shows the twin; a line without one is used as written, so its first wording stays visible. */
 label:has(> textarea[data-bkf="spicy"]), label:has(> textarea[data-bkf="say"]),
@@ -32,8 +25,6 @@ label.bk-dlab:has(> textarea[data-f="spicy"]), label.bk-dlab:has(> textarea[data
 .bk-lines thead th:nth-child(2)::after { content: "Wording used (no clean twin yet)"; font-size: .8rem; }
 .bk-lines thead th:nth-child(3)::after { content: "Clean wording used"; font-size: .8rem; }
 .bk-lines:not(:has(td .bk-none)) th:nth-child(2), .bk-lines:not(:has(td .bk-none)) td:nth-child(2) { display: none; }
-/* Certificate Studio: always family-friendly pictures. */
-label.cs-check:has(> #cs-fam) { display: none !important; }
 /* Language & Text: the family-wording view is the only wording here. */
 label:has(> input[data-langfamily]) { display: none !important; }
 

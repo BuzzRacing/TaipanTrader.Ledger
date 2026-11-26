@@ -64,10 +64,10 @@
  },
  "graphics": {
   "logo": "",
-  "favicon": "/assets/branding/crimson-ledger-icon-v01.png",
-  "masthead_bg": "/uploads/historical-masthead.webp",
-  "page_bg": "/uploads/historical-page.webp",
-  "board_bg": "/uploads/historical-board.webp",
+  "favicon": "/assets/branding/taipan-trader-mark.svg",
+  "masthead_bg": "/assets/ceremony-harbor.png",
+  "page_bg": "/assets/ceremony-harbor.png",
+  "board_bg": "/assets/ceremony-harbor.png",
   "chart_bg": "/uploads/artbible-surf-chart-275d3e83.webp",
   "goods": {
    "opium": "/uploads/historical-cargo-opium.webp",
@@ -154,28 +154,46 @@
   },
   {
    "id": "trader",
-   "worth": 10000,
+   "worth": 1000000,
    "title": "Trader"
   },
   {
    "id": "merchant",
-   "worth": 50000,
+   "worth": 10000000,
    "title": "Merchant"
   },
   {
    "id": "senior_merchant",
-   "worth": 200000,
+   "worth": 20000000,
    "title": "Senior Merchant"
   },
   {
    "id": "merchant_prince",
-   "worth": 500000,
+   "worth": 50000000,
    "title": "Merchant Prince"
   },
   {
    "id": "taipan",
-   "worth": 1000000,
+   "worth": 100000000,
    "title": "Taipan"
+  },
+  {
+   "id": "tai_pan_china_seas",
+   "worth": 500000000,
+   "title": "Tai-Pan of the China Seas",
+   "scales": true
+  },
+  {
+   "id": "merchant_lord",
+   "worth": 1000000000,
+   "title": "Merchant Lord",
+   "scales": true
+  },
+  {
+   "id": "hong_master",
+   "worth": 5000000000,
+   "title": "Hong Master",
+   "scales": true
   }
  ],
  "rules": {
@@ -211,11 +229,35 @@
    "floor": 0.25,
    "ceiling": 4.5,
    "reversion": 0.3,
-   "vol_mult": 1.0,
+   "vol_mult": 1,
    "start_spread": 0.15,
+   "worth_cargo": 0.9,
+   "depth_v2": true,
+   "purse_enabled": true,
+   "purse_depths": 0.75,
+   "purse_over": 0.35,
+   "purse_boom": 1,
+   "purse_boom_cap": 10,
+   "sellback_depths": 0.25,
+   "wild_goods": [
+    "gold",
+    "silk",
+    "tea"
+   ],
+   "wild_vol": 0.5,
+   "wild_reversion": 0.25,
+   "wild_floor": 0.35,
+   "wild_ceiling": 9,
+   "runs_chance": 0.03,
+   "runs_min": 3,
+   "runs_max": 5,
+   "runs_drift_min": 0.3,
+   "runs_drift_max": 0.6,
+   "wild_calm": true,
+   "wild_calm_vol": 0.12,
+   "runs_pause_reversion": true,
    "rep_per_value": 3500,
-   "rep_trade_cap": 2.0,
-   "worth_cargo": 0.9
+   "rep_trade_cap": 2.0
   },
   "bank": {
    "bank_rate": 0.005,
@@ -493,74 +535,90 @@
   "opium": {
    "name": "Opium",
    "family_name": "Fireworks",
-   "base": 6200.0,
-   "vol": 0.2,
-   "depth": 60,
+   "base": 8522.0,
+   "vol": 0.5,
+   "depth": 600,
    "contraband": true,
-   "ban_odds": 0.0
+   "ban_odds": 0,
+   "enters": 0,
+   "leaves": 0
   },
   "gold": {
    "name": "Gold",
    "family_name": "",
-   "base": 3400.0,
-   "vol": 0.1,
-   "depth": 90,
+   "base": 6400.0,
+   "vol": 0.5,
+   "depth": 900,
    "contraband": false,
-   "ban_odds": 0.5
+   "ban_odds": 0.5,
+   "enters": 0,
+   "leaves": 0
   },
   "silk": {
    "name": "Silk",
    "family_name": "",
-   "base": 1520.0,
-   "vol": 0.3,
-   "depth": 160,
+   "base": 3520.0,
+   "vol": 0.4,
+   "depth": 1200,
    "contraband": false,
-   "ban_odds": 0.0
+   "ban_odds": 0.1,
+   "enters": 0,
+   "leaves": 0
   },
   "porcelain": {
    "name": "Porcelain",
    "family_name": "",
-   "base": 850.0,
-   "vol": 0.4,
-   "depth": 250,
+   "base": 1633.0,
+   "vol": 0.6,
+   "depth": 1500,
    "contraband": false,
-   "ban_odds": 0.0
+   "ban_odds": 0,
+   "enters": 0,
+   "leaves": 2
   },
   "arms": {
    "name": "Arms",
    "family_name": "Ironware",
-   "base": 433.0,
-   "vol": 0.2,
-   "depth": 250,
+   "base": 2780.0,
+   "vol": 0.5,
+   "depth": 2000,
    "contraband": false,
-   "ban_odds": 0.0
+   "ban_odds": 0.75,
+   "enters": 0,
+   "leaves": 2
   },
   "spices": {
    "name": "Spices",
    "family_name": "",
-   "base": 177.0,
-   "vol": 0.1,
-   "depth": 450,
+   "base": 922.0,
+   "vol": 0.7,
+   "depth": 3000,
    "contraband": false,
-   "ban_odds": 0.0
+   "ban_odds": 0,
+   "enters": 0,
+   "leaves": 2
   },
   "tea": {
    "name": "Tea",
    "family_name": "",
-   "base": 99.0,
-   "vol": 0.6,
-   "depth": 500,
+   "base": 630.0,
+   "vol": 0.8,
+   "depth": 3000,
    "contraband": false,
-   "ban_odds": 0.0
+   "ban_odds": 0,
+   "enters": 0,
+   "leaves": 1
   },
   "rice": {
    "name": "Rice",
    "family_name": "",
-   "base": 40.0,
-   "vol": 0.2,
-   "depth": 1200,
+   "base": 310.0,
+   "vol": 0.8,
+   "depth": 3500,
    "contraband": false,
-   "ban_odds": 0.0
+   "ban_odds": 0,
+   "enters": 0,
+   "leaves": 1
   },
   "general": {
    "name": "General Cargo",
@@ -890,7 +948,7 @@
  },
  "ships": {
   "junk": {
-   "name": "Velvet Cutlass",
+   "name": "Junk",
    "hold": 60,
    "hull": 100,
    "slots": 4,
@@ -898,7 +956,7 @@
    "fast": false
   },
   "lorcha": {
-   "name": "Crimson Mistress",
+   "name": "Lorcha",
    "hold": 120,
    "hull": 140,
    "slots": 8,
@@ -906,7 +964,7 @@
    "fast": true
   },
   "barque": {
-   "name": "Black Orchid",
+   "name": "Barque",
    "hold": 250,
    "hull": 200,
    "slots": 12,
@@ -914,7 +972,7 @@
    "fast": false
   },
   "clipper": {
-   "name": "Scarlet Widow",
+   "name": "Tea Clipper",
    "hold": 180,
    "hull": 160,
    "slots": 10,
@@ -922,7 +980,7 @@
    "fast": true
   },
   "indiaman": {
-   "name": "Blood Moon",
+   "name": "East Indiaman",
    "hold": 500,
    "hull": 320,
    "slots": 24,
@@ -932,24 +990,24 @@
  },
  "ship_names": [
   "White Pearl",
-  "Opium Moon",
+  "Harvest Moon",
   "Pearl Diver",
   "Ivory Queen",
   "Scarlet Tally",
   "Queen's Revenge",
-  "Red Lantern",
-  "Crimson Purse",
+  "Paper Lantern",
+  "Golden Purse",
   "Jade Empress",
   "Plum Blossom",
   "Silk Serpent",
   "Pearl River Rose",
-  "Jasmine Smoke",
-  "The Jewelry Box",
+  "Jasmine Breeze",
+  "The Lacquer Box",
   "Dragon's Bride",
-  "Silver Tongue",
+  "Silver Wake",
   "Monsoon Bride",
   "Typhoon Lily",
-  "Black Widow",
+  "Black Swan",
   "Sea Viper",
   "Cobra Queen",
   "Siam Princess",
@@ -971,7 +1029,7 @@
    "origin": "Bombay",
    "home_port": "calcutta",
    "color": "#2f6b5a",
-   "portrait": "/media/persona/narrator/persona-narrator-a78c1a90.webp",
+   "portrait": "",
    "voice_id": "Maisie",
    "speaking_rate": 1.0,
    "delivery": "low, poised and measured, a seasoned pirate officer making every entry sound like a verdict",
@@ -989,7 +1047,7 @@
    "portrait_prompt": "An adult Parsi woman (age 41), the pirate first mate on a schooner quarterdeck in Hong Kong harbour at dusk, black logbook under one arm, brass chronometer in her hand, lacquer-black frock coat buttoned over an ivory high-collared blouse, oxblood sash, black Parsi topi, low gold dusk light, warm soft focus, fine film grain, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "bosun": {
-   "name": "Patrick “Powder” O'Rourke",
+   "name": "Patrick \u201cPowder\u201d O'Rourke",
    "title": "Bosun & Master Gunner",
    "brand_link": "",
    "age": 38,
@@ -1046,7 +1104,7 @@
    "origin": "the Pearl River delta",
    "home_port": "",
    "color": "#9a3340",
-   "portrait": "/media/persona/pirate/persona-pirate-326b5d2a.webp",
+   "portrait": "",
    "voice_id": "Hina",
    "speaking_rate": 1.0,
    "delivery": "low, slow and cold, a pirate queen who never needs to raise her voice",
@@ -1214,14 +1272,14 @@
    "portrait_prompt": "An adult English man (age 29), wiry, grinning news crier on the Hong Kong waterfront, holding a fresh broadsheet and brass handbell, ink on his fingers, tousled auburn hair under a battered cocked hat, one boot on a bollard, mid-call, short tobacco-leather jacket over a striped shirt and neckerchief, oxblood trousers tucked into boots, bright cheeky harbour sunshine, sparkle on the water, high-key and playful, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "bookmaker": {
-   "name": "Isabel “Fan-Tan Bella” da Rocha",
+   "name": "Isabel \u201cFan-Tan Bella\u201d da Rocha",
    "title": "Bookmaker of the Golden Fan & Keeper of the Tally",
    "brand_link": "",
    "age": 34,
    "origin": "Macau",
    "home_port": "hongkong",
    "color": "#8c5a9e",
-   "portrait": "/uploads/portrait-bookmaker-2ed8ebda.webp",
+   "portrait": "",
    "voice_id": "Jing",
    "speaking_rate": 1.2,
    "delivery": "warm, amused and unhurried, a Macanese gambling-house queen quoting odds as if they were secrets",
@@ -1246,7 +1304,7 @@
    "origin": "Each port's own",
    "home_port": "hongkong",
    "color": "#a4532f",
-   "portrait": "/media/persona/mayor/persona-mayor-1f4625b9.webp",
+   "portrait": "",
    "voice_id": "Johanna",
    "speaking_rate": 1.0,
    "delivery": "regal, unhurried and dangerously polite, a port mayor whose courtesy is a loaded pistol",
@@ -1271,7 +1329,7 @@
    "origin": "Portsmouth, England",
    "home_port": "hongkong",
    "color": "#3f6e6a",
-   "portrait": "/media/persona/taxlady/persona-taxlady-6e44244c.webp",
+   "portrait": "",
    "voice_id": "Yoona",
    "speaking_rate": 1.0,
    "delivery": "warm, teasing and conspiratorial; a widow who knows everyone's business and enjoys letting you in on a little of it",
@@ -1297,8 +1355,8 @@
    "home_port": "singapore",
    "color": "#6f8f4e",
    "portrait": "",
-   "voice_id": "Theodore",
-   "speaking_rate": 1.0,
+   "voice_id": "Desmond",
+   "speaking_rate": 0.96,
    "delivery": "languid, upper-class English and gently bored, cheerful out of sheer idleness",
    "catchphrase": "Oh, don't trouble yourself with the paperwork, old chap. Neither do I.",
    "bio": "Younger son of a Bath clergyman, Edmund took the Singapore desk because nobody else wanted the heat. He runs the cheapest wharf in the East from a rattan chair, a glass of lime cordial sweating at his elbow, and judges a captain by his manners rather than his manifest.",
@@ -1314,19 +1372,19 @@
    "portrait_prompt": "An adult English man (age 44), portly and genial with thinning sandy hair, the languid Port Authority officer of Singapore lounging in a rattan chair on a shaded colonial wharf-office veranda, a glass of lime cordial in one hand and a customs stamp dangling forgotten from the other, ceiling fan and palms, heavy-lidded amused gaze, rumpled white linen suit with a loosened cravat and a straw boater, hot dappled veranda light through palms, hazy and honeyed, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "officer_manila": {
-   "name": "Doña Inés Villaraza",
+   "name": "Do\u00f1a In\u00e9s Villaraza",
    "title": "Collector of the Manila Aduana",
    "brand_link": "",
    "age": 38,
    "origin": "Seville and Manila",
    "home_port": "manila",
    "color": "#a8323a",
-   "portrait": "/uploads/portrait-officer_manila-b8a53d03.webp",
-   "voice_id": "Nour",
+   "portrait": "",
+   "voice_id": "Maricel",
    "speaking_rate": 1.0,
    "delivery": "warm, honeyed Spanish-accented English, charming you while she counts your cargo",
    "catchphrase": "Such a beautiful cargo, Captain. It would be a shame to let it leave Manila.",
-   "bio": "Inés married the richest trading house in Manila and then quietly took over its customs post as well. She is the kindest face on any wharf, and she buys more cargo at the declared price than any officer in the East, every bale of it for her husband's warehouses.",
+   "bio": "In\u00e9s married the richest trading house in Manila and then quietly took over its customs post as well. She is the kindest face on any wharf, and she buys more cargo at the declared price than any officer in the East, every bale of it for her husband's warehouses.",
    "quirk": "Taps your manifest with her fan when she likes what is in your hold.",
    "vice": "Silk, porcelain, and captains who lie badly.",
    "secret": "Her husband has no idea how much of his fortune is in her name.",
@@ -1339,7 +1397,7 @@
    "portrait_prompt": "An adult Spanish-Filipina woman (age 38), the charming Port Authority officer of Manila in a carved narra-wood customs office, fan of Manila embroidery in one hand, ivory customs seal in the other, bales of silk behind her, inviting smile and hungry eyes, black lace mantilla gown with a high neckline and a crimson silk sash, warm candlelight on carved wood, golden and soft, lace shadows across her skin, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "officer_saigon": {
-   "name": "Madame Céleste Durand",
+   "name": "Madame Marguerite Durand",
    "title": "Directrice of the Saigon Customs House",
    "brand_link": "",
    "age": 33,
@@ -1347,11 +1405,11 @@
    "home_port": "saigon",
    "color": "#5b4a8c",
    "portrait": "",
-   "voice_id": "Oksana",
-   "speaking_rate": 1.0,
+   "voice_id": "H\u00e9l\u00e8ne",
+   "speaking_rate": 1.04,
    "delivery": "French, theatrical and mercurial, sweet one moment and icy the next",
    "catchphrase": "Today I am in a good mood, mon capitaine. Tomorrow? Who knows.",
-   "bio": "Céleste came out with the French fleet in 1859 as an admiral's secretary and stayed when he sailed home. The new colonial customs house was her reward. She runs it on whim, and no two captains ever get the same Madame Durand.",
+   "bio": "Marguerite came out with the French fleet in 1859 as an admiral's secretary and stayed when he sailed home. The new colonial customs house was her reward. She runs it on whim, and no two captains ever get the same Madame Durand.",
    "quirk": "Changes her mind halfway through stamping your papers.",
    "vice": "Strong coffee, opera, and the thrill of being unpredictable.",
    "secret": "She keeps a lucky coin in her glove and flips it when she cannot decide what to do with you.",
@@ -1372,21 +1430,21 @@
    "home_port": "nagasaki",
    "color": "#3c4f6b",
    "portrait": "",
-   "voice_id": "Shaun",
+   "voice_id": "Satoshi",
    "speaking_rate": 0.9,
    "delivery": "soft, quiet and precise, every word placed like a stamp; unsettlingly calm",
    "catchphrase": "Your ledger says one thing, Captain. Your eyes say another.",
    "bio": "Shin grew up translating Dutch manifests on Dejima and learned that every captain lies in the same three places. He audits more holds than any officer in the East and finds something in most of them. Captains leave his office feeling they have confessed to everything.",
    "quirk": "Never blinks while you speak.",
    "vice": "Perfect columns, warm sake, and the moment a liar's voice cracks.",
-   "secret": "She can read four languages upside down, including the one you think is private.",
+   "secret": "He can read four languages upside down, including the one you think is private.",
    "stats": {
     "cunning": 10,
     "nerve": 7,
     "charm": 6,
     "greed": 4
    },
-   "portrait_prompt": "An adult Japanese man (age 40), slender and composed, hair in a neat topknot, the ledger-keeper of the Dejima customs house in Nagasaki at a low lacquered desk with brush, abacus and open ledger, calm unblinking gaze, deep indigo silk kimono and hakama, neatly worn, soft paper-lantern glow, pale and quiet, delicate shadows, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
+   "portrait_prompt": "An adult Japanese man (age 35), slender and composed, hair in a neat topknot, the ledger-keeper of the Dejima customs house in Nagasaki at a low lacquered desk with brush, abacus and open ledger, calm unblinking gaze, deep indigo silk kimono and hakama, neatly worn, soft paper-lantern glow, pale and quiet, delicate shadows, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "officer_foochow": {
    "name": "Madam Lin Bao-zhu",
@@ -1396,9 +1454,9 @@
    "origin": "Foochow",
    "home_port": "foochow",
    "color": "#2f6b3a",
-   "portrait": "/uploads/portrait-officer_foochow-2991db6f.webp",
-   "voice_id": "Asuka",
-   "speaking_rate": 1.0,
+   "portrait": "",
+   "voice_id": "Mei",
+   "speaking_rate": 0.95,
    "delivery": "unhurried and smoky, a tea-house hostess who negotiates like a pirate",
    "catchphrase": "Sit, Captain. Drink my tea. Then we will talk about what you really carry.",
    "bio": "Bao-zhu ran the finest tea house on the Min River before the treaty made Foochow a customs port. She simply moved her tea service into the customs house. Captains sit, sip, relax, and confess.",
@@ -1422,21 +1480,21 @@
    "home_port": "shanghai",
    "color": "#9b2d20",
    "portrait": "",
-   "voice_id": "Hades",
-   "speaking_rate": 1.05,
+   "voice_id": "Ming",
+   "speaking_rate": 1.08,
    "delivery": "brisk, commanding and amused, a powerful man who enjoys being obeyed",
    "catchphrase": "On my wharf, Captain, nothing moves unless I say so. Not even you.",
    "bio": "Wing-kei clawed his way from a Ningbo comprador's son to the most powerful desk on the Bund. Shanghai hungers for arms, spices and Indian goods, and so does he. If your hold carries what the city wants, he will have it, at your price or at his.",
-   "quirk": "Snaps her fingers once, and two clerks appear.",
+   "quirk": "Snaps his fingers once, and two clerks appear.",
    "vice": "Power, French cologne, and making proud captains wait.",
-   "secret": "Half the Bund's warehouses pay her rent through a cousin.",
+   "secret": "Half the Bund's warehouses pay him rent through a cousin.",
    "stats": {
     "cunning": 8,
     "nerve": 9,
     "charm": 7,
     "greed": 8
    },
-   "portrait_prompt": "An adult Ningbo Chinese man (age 46), imposing and broad, shaven forehead and long queue, the collector of the Bund behind a carved desk, clerks waiting, the Shanghai riverfront behind him, commanding amused gaze, fitted oxblood brocade magua jacket over a black silk robe, mandarin hat with a coral button, crisp Bund morning light, bright and glossy, crisp rim light on his hair, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
+   "portrait_prompt": "An adult Ningbo Chinese man (age 37), imposing and broad, shaven forehead and long queue, the collector of the Bund behind a carved desk, clerks waiting, the Shanghai riverfront behind him, commanding amused gaze, fitted oxblood brocade magua jacket over a black silk robe, mandarin hat with a coral button, crisp Bund morning light, bright and glossy, crisp rim light on his hair, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "officer_bangkok": {
    "name": "Khun Luang Somchai",
@@ -1447,8 +1505,8 @@
    "home_port": "bangkok",
    "color": "#b07a1c",
    "portrait": "",
-   "voice_id": "Carter",
-   "speaking_rate": 0.9,
+   "voice_id": "Boonleng",
+   "speaking_rate": 0.91,
    "delivery": "gentle, patient and gracious, with steel underneath; he forgives once",
    "catchphrase": "A small mistake, Captain, is forgiven. Make it twice and I will remember your face forever.",
    "bio": "A nobleman of the Siamese court, Somchai keeps the King's river tolls with impeccable manners. Honest captains find him the warmest friend in the East and are welcomed back like family. Liars find his memory long.",
@@ -1461,7 +1519,7 @@
     "charm": 9,
     "greed": 4
    },
-   "portrait_prompt": "An adult Siamese man (age 50), dignified court official with close-cropped greying hair, keeper of the King's river tolls at Bangkok in a teak pavilion over the Chao Phraya, jasmine garland in hand, gracious steady gaze, gold-threaded silk raj pattern jacket buttoned high over a silk chong kraben, warm river-reflected light on gold leaf, glowing and serene, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
+   "portrait_prompt": "An adult Siamese man (age 42), dignified court official with close-cropped greying hair, keeper of the King's river tolls at Bangkok in a teak pavilion over the Chao Phraya, jasmine garland in hand, gracious steady gaze, gold-threaded silk raj pattern jacket buttoned high over a silk chong kraben, warm river-reflected light on gold leaf, glowing and serene, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "officer_batavia": {
    "name": "Mevrouw Anneke van der Berg",
@@ -1472,7 +1530,7 @@
    "home_port": "batavia",
    "color": "#e07b1f",
    "portrait": "",
-   "voice_id": "Yulia",
+   "voice_id": "Katrien",
    "speaking_rate": 1.0,
    "delivery": "crisp, dry Dutch precision with a wicked streak of humour; strict and enjoys it",
    "catchphrase": "Every guilder, Captain. I count every single one. Slowly.",
@@ -1486,7 +1544,7 @@
     "charm": 5,
     "greed": 5
    },
-   "portrait_prompt": "An adult Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC customs hall, a riding crop resting across an open ledger, spectacles low on her nose, pale blonde hair pinned tight, a stern stare with a hint of wicked enjoyment, severe black lace-collared gown buttoned to the throat, long black gloves, cool whitewashed hall light with a warm hard accent, crisp and glossy, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
+   "portrait_prompt": "An adult Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC customs hall, a long brass ruler resting across an open ledger, spectacles low on her nose, pale blonde hair pinned tight, a stern stare with a flicker of dry amusement, severe black lace-collared gown buttoned to the throat, long black gloves, cool whitewashed hall light with a warm hard accent, crisp and glossy, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "officer_calcutta": {
    "name": "Mr. Horace Blackwood",
@@ -1498,7 +1556,7 @@
    "color": "#4a2a5c",
    "portrait": "",
    "voice_id": "Clive",
-   "speaking_rate": 1.0,
+   "speaking_rate": 0.94,
    "delivery": "velvet and venomous, a society host who smiles sweetly while he ruins you",
    "catchphrase": "Do sit, Captain. This won't hurt a bit. Well. Not me.",
    "bio": "Horace arrived in Calcutta as a governor's nephew and married three fortunes, each larger than the last. He now holds the dearest desk in the East and buys and audits more than anyone. He calls it his charity work.",
@@ -1511,7 +1569,7 @@
     "charm": 8,
     "greed": 10
    },
-   "portrait_prompt": "An adult English man (age 55), sleek and silver-haired with a waxed moustache, the collector of the port of Calcutta at a vast mahogany desk in a hall of pillars, punkahs swaying, strongboxes behind him, sweet poisonous smile, midnight-purple frock coat over a silk waistcoat, ruby tie pin, white gloves, swaying punkah shadows, deep plum and gold, luxurious and slow, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
+   "portrait_prompt": "An adult English man (age 46), sleek and silver-haired with a waxed moustache, the collector of the port of Calcutta at a vast mahogany desk in a hall of pillars, punkahs swaying, strongboxes behind him, sweet poisonous smile, midnight-purple frock coat over a silk waistcoat, ruby tie pin, white gloves, swaying punkah shadows, deep plum and gold, luxurious and slow, romanticized 1860 China Seas photograph, elegant fully dressed styling, natural skin, confident direct gaze, hands in frame, 3:4 portrait"
   },
   "officer_hongkong": {
    "name": "Senhora Isabel Rebelo",
@@ -1521,9 +1579,9 @@
    "origin": "Macau",
    "home_port": "hongkong",
    "color": "#8a3b4a",
-   "portrait": "/uploads/portrait-officer_hongkong-5f81cb49.webp",
-   "voice_id": "Rocio",
-   "speaking_rate": 0.95,
+   "portrait": "",
+   "voice_id": "Leonor",
+   "speaking_rate": 1.01,
    "delivery": "low and honeyed, Portuguese-accented English; charming and close, with a blade under every compliment",
    "catchphrase": "I know every hiding place on a ship, Captain. I built half of them.",
    "bio": "Isabel grew up on her father's lorchas, running opium and silver past the Macau forts. When the Rebelos were finally caught, the British offered his clever daughter a choice: a cell, or a desk on the Hong Kong wharves. She chose the desk, and every smuggler on the coast has regretted it since.",
@@ -1552,5 +1610,52 @@
   "custom_news": "crier",
   "lines": {},
   "say": {}
- }
+ },
+ "nsfw_ship_names": [],
+ "nsfw_escort_names": [],
+ "nsfw_cargo_names": [],
+ "escort_names": [
+  "Iron Maiden",
+  "Sea Hawk",
+  "Valkyrie",
+  "Fury",
+  "Kestrel",
+  "Medusa",
+  "Gorgon",
+  "Banshee",
+  "Firebrand",
+  "Lady Vengeance",
+  "Scarlet Fang",
+  "Widow's Wrath",
+  "Steel Heron",
+  "Harpy",
+  "Thunder Queen",
+  "Thunder Belle",
+  "Tempest",
+  "Red Fury",
+  "Cutlass Kate",
+  "Mary Rose"
+ ],
+ "cargo_names": [
+  "Golden Hoard",
+  "Silk Purse",
+  "Treasure Chest",
+  "Rich Harvest",
+  "Dowager Empress",
+  "Laden Lady",
+  "Cornucopia",
+  "Bountiful",
+  "Ample Grace",
+  "Spice Queen",
+  "Tea Duchess",
+  "Bengal Matron",
+  "Bombay Belle",
+  "Coromandel Countess",
+  "Golden Fleece",
+  "Deep Hold",
+  "Full Purse",
+  "Heavy Heart",
+  "Plenty",
+  "Big Bertha"
+ ]
 }

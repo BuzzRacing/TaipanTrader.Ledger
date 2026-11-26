@@ -723,7 +723,7 @@ LINES.update({
     "n.customs_caught": "{name} of {firm} was caught lying to the Port Authority of {port}. She had them sweating, beauties!",
     "n.jail": "{name} of {firm} was locked up in {port} for {months} month{s}: {why}. The warden's got a new favourite, beauties!",
     # The wardens (jail_text.py; read by the warden of the port the house is in).
-    "l.jail_standing": "Your name in {port} is mud. The warden's women were waiting on the wharf: {months} month{s} in the {port} gaol, Captain. She's had your cell made up specially.",
+    "l.jail_standing": "Your name in {port} is mud. The warden's guards were waiting on the wharf: {months} month{s} in the {port} gaol, Captain. Your cell is ready.",
     "l.jail_hostile": "{port} has no love for your house. You were marched off the wharf in irons: {months} month{s} in the {port} gaol. The warden does like you in irons.",
     "l.jail_contraband": "The contraband was enough for the warden. You go below with it: {months} month{s} in the {port} gaol. She keeps the contraband. And you.",
     "l.jail_slip": "The Mayor of {port} wanted more than her double dues. Your fleet stays at anchor and you sit {months} month{s} in her gaol. The warden will keep you company.",
@@ -771,7 +771,7 @@ SPOKEN.update({
     "n.fight_paid": "{name} of {firm} paid pirates off {port} to pass. Paid to be left alone, beauties, and who can blame them?",
     "n.fight_plundered": "{name} of {firm} was boarded and plundered off {port}. Their hold's been thoroughly rummaged!",
     "n.fight_broke_off": "{name} of {firm} fought off pirates off {port}. Pushed them right back, beauties!",
-    "l.jail_standing": "Your name in {port} is mud, Captain. My women were waiting for you on the wharf. You'll be my guest a while. I've had your cell made up specially.",
+    "l.jail_standing": "Your name in {port} is mud, Captain. My guards were waiting for you on the wharf. You'll be my guest a while. I've had your cell made up specially.",
     "l.jail_hostile": "{port} has no love for your house, Captain. Into the irons with you. They suit you.",
     "l.jail_contraband": "The contraband goes in my storeroom, Captain. And you go in my cell. I'm keeping you both.",
     "l.jail_slip": "Slipping away in the dark, Captain? The Mayor asked me to keep you. Your ships stay where they are, and so do you, with me.",

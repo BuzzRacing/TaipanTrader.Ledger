@@ -21,7 +21,7 @@ import voicefloor
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--gallery', default='http://192.168.1.69:8765')
+    parser.add_argument('--gallery', default='http://127.0.0.1:8775')
     parser.add_argument('--port', type=int, default=18887)
     parser.add_argument('--test-audio', action='store_true', help='Use a quiet test tone instead of paid cast synthesis')
     args = parser.parse_args()

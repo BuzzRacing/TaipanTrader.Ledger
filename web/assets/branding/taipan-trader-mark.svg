@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Taipan Trader</title>
+  <circle cx="32" cy="32" r="30" fill="#12283a" stroke="#3f9a7f" stroke-width="3"/>
+  <path fill="#d6a84e" d="M30 9v28H14l5-7 3-8 4-8zm4 5 7 5 6 8 4 10H34z"/>
+  <path fill="#12283a" d="M18 26h28v2H18zm-3 6h34v2H15z"/>
+  <path fill="#eef1e2" d="M10 40h44l-8 7H18z"/>
+  <path fill="none" stroke="#3f9a7f" stroke-width="3" stroke-linecap="round" d="M13 51q5-4 10 0t10 0 10 0 8 0"/>
+</svg>

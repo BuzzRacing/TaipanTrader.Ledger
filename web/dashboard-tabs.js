@@ -216,7 +216,7 @@ const DashTabs = (() => {
     if (!items.length) return `<p class="pw-note">${esc(empty)}</p>`;
     return `<ul class="pw-list cc-wire">${items.map(e => {
       const h = house(e.pid), when = e.turn != null ? dateOfTurn(e.turn) : "";
-      return `<li style="--house:${h ? hcol(h) : "#8a2219"}"><span class="pw-dot"></span><b>${tapeText(e)}</b><small>${esc(when)}</small></li>`;
+      return `<li style="--house:${h ? hcol(h) : "#1f5f7a"}"><span class="pw-dot"></span><b>${tapeText(e)}</b><small>${esc(when)}</small></li>`;
     }).join("")}</ul>`;
   }
   const told = () => (F.tape || []).filter(e => tapeText(e));

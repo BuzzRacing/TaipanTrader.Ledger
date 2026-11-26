@@ -299,7 +299,7 @@ const Jail = (() => {
       // 2. the irons
       beats.push(Object.assign({}, base, {
         kind: "irons", who: j.warden, bg: cellUrl(port), eyebrow: te("jail.eyebrow", { port: name }), title: te("jail.arrested"),
-        cap: bankLine("jail.irons", key, { port: name, months: j.months, s }), say: sayOf("warden") }));
+        cap: j.dialogue?.irons || bankLine("jail.irons", key, { port: name, months: j.months, s }), say: sayOf("warden") }));
       // 3. the sentence
       beats.push(Object.assign({}, base, {
         kind: "hold", who: j.warden, bg: cellUrl(port), eyebrow: te("jail.eyebrow", { port: name }), title: te("jail.arrested"),
@@ -313,14 +313,15 @@ const Jail = (() => {
       // a sentence taken in place of a fine: no arrest, but the door still shuts first
       beats.push(Object.assign({}, base, {
         kind: "irons", who: j.warden, bg: cellUrl(port), eyebrow: te("jail.eyebrow", { port: name }), title: te("jail.arrested"),
-        cap: bankLine("jail.irons", key, { port: name, months: j.months, s }), say: sayOf("warden") }));
+        cap: j.dialogue?.irons || bankLine("jail.irons", key, { port: name, months: j.months, s }), say: sayOf("warden") }));
       remember(introKey);
     }
     const lastMonth = j.left <= 1;
     beats.push(Object.assign({}, base, {
       kind: "month", who: j.warden, bg: cellUrl(port), eyebrow: te("jail.eyebrow", { port: name }),
       title: te("jail.month_of", { n, months: j.months }),
-      cap: bankLine(lastMonth ? "jail.month_last" : "jail.month", key, { port: name }),
+      cap: j.dialogue?.month || bankLine(lastMonth ? "jail.month_last" : "jail.month", key, { port: name }),
+      say: sayOf("month"),
       button: "jail_serve", label: lastMonth ? te("jail.btn_last") : te("jail.btn_serve"), last: true }));
     return beats;
   }
@@ -329,7 +330,7 @@ const Jail = (() => {
     const name = portName(f.port);
     return [
       { kind: "door", who: f.warden, port: f.port, bg: cellUrl(f.port), eyebrow: te("freed.eyebrow", { port: name }),
-        title: te("freed.title"), cap: bankLine("jail.free", key, { port: name }), say: sayOf("free"), ticks: null },
+        title: te("freed.title"), cap: f.dialogue || bankLine("jail.free", key, { port: name }), say: sayOf("free"), ticks: null },
       { kind: "costs", who: f.warden, port: f.port, bg: cellUrl(f.port), freed: f, button: "jail_free", last: true }
     ];
   }
@@ -365,6 +366,11 @@ const Jail = (() => {
     me.armedAt = b.last ? Date.now() : 0;
     drawBeat(b);
     sfx(me, b);
+    const voiced = !!(b.say && b.say.clip && typeof Voice !== "undefined" && Voice.enabled() && !Voice.muted());
+    const tag = "jail:" + me.key + ":" + me.i;
+    if (voiced && !(b.last && told.has("C|" + me.key))) {
+      Voice.say([Object.assign({ tag, text: b.say.text }, b.say.clip)], { group: "jail", front: true });
+    }
     if (b.last) {
       told.add("C|" + me.key);
       try { sessionStorage.setItem(TOLD_KEY, JSON.stringify(Array.from(told).slice(-40))); } catch (e) { /* memory only */ }
@@ -373,9 +379,6 @@ const Jail = (() => {
       return;
     }
     // the line this screen waits for, the way the Sea Battle's pictures do: until it has been said
-    const voiced = !!(b.say && b.say.clip && typeof Voice !== "undefined" && Voice.enabled() && !Voice.muted());
-    const tag = "jail:" + me.key + ":" + me.i;
-    if (voiced) Voice.say([Object.assign({ tag, text: b.say.text }, b.say.clip)], { group: "jail", front: true });
     const quiet = Math.min(9000, Math.max(MIN_BEAT_MS, String(b.cap || "").length * PER_CHAR_MS + 1600));
     const idx = me.i;
     me.timer = setInterval(() => {

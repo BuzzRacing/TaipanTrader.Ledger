@@ -535,7 +535,7 @@ function setFigure(id, art, who) {
   if (last?.url === url) return;
   const state = { url }; figureStates.set(id, state);
   if (!url) {
-    pane.innerHTML = who ? `<div class="missing"><b>${esc(name)}</b><p>Her portrait is being prepared.</p></div>` : '';
+    pane.innerHTML = who ? `<div class="missing"><b>${esc(name)}</b><p>Portrait is being prepared.</p></div>` : '';
     return;
   }
   const image = new Image();
@@ -595,7 +595,7 @@ function render() {
   const right = scene?.side === 'right';
   setFigure('hv-persona', right && view.peerArt ? view.peerArt : view.art, right && view.peerArt ? scene.peer : view.who);
   setFigure('hv-counterpart', scene?.peer && view.peerArt ? right ? view.art : view.peerArt : null, scene?.peer && view.peerArt ? right ? view.who : scene.peer : '');
-  const background = view.backdrop?.u || Media.items('scene', 'loading').find(x => (x.g || []).includes('table-cabin'))?.u || (tableArt.cabin ? '/assets/table/' + tableArt.cabin : '');
+  const background = view.backdrop?.u || Media.items('scene', 'loading').find(x => (x.g || []).includes('table-cabin'))?.u || (tableArt.cabin ? '/assets/table/' + tableArt.cabin : '/assets/ceremony-harbor.png');
   setBackdrop(background);
   const story = update('hv-story', `<div class="hv-caption"><h1>${esc(view.title)}</h1>`
     + (view.text ? `<blockquote>${esc(view.text)}</blockquote>` : '')

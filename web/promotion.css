@@ -112,13 +112,13 @@ body.in-promo #app { visibility: hidden; }
   min-height: 0; max-height: 100%; padding: clamp(.6rem, 2.4vh, 1.6rem) clamp(.8rem, 2.4vw, 2.4rem); box-sizing: border-box; }
 
 /* the sheet */
-.pm-cert { --ink: #3a2815; --oxb: #7a1f24; --gilt: #9a6b1f; --paper-hi: #f7edd3; --paper-lo: #dcc590;
+.pm-cert { --ink: #1b2a33; --oxb: #1f5f7a; --gilt: #2e7d6b; --paper-hi: #f6f8f0; --paper-lo: #cfdfd5;
   position: relative; box-sizing: border-box; width: min(100%, 40em); max-height: 100%; min-height: 0; overflow: hidden;
   font-size: clamp(10px, min(1.62vh, 1.35vw), 17px); text-align: center; color: var(--ink);
   padding: 2.5em 3.1em 2.3em; font-family: "Alegreya", var(--serif), Georgia, serif;
   background: radial-gradient(ellipse at 50% 0, rgba(255, 255, 255, .6), transparent 62%),
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42  0 0 0 0 .3  0 0 0 0 .14  0 0 0 .26 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
-    linear-gradient(160deg, var(--paper-hi), #ecdcb4 55%, var(--paper-lo));
+    linear-gradient(160deg, var(--paper-hi), #ecf0e4 55%, var(--paper-lo));
   box-shadow: inset 0 0 3.2em rgba(122, 78, 28, .38), inset 0 0 .4em rgba(90, 55, 20, .5), 0 1.6em 4.5em rgba(0, 0, 0, .75);
   border-radius: .25em; animation: sfLedgerArrive .8s cubic-bezier(.16, 1, .3, 1) both; }
 .pm-cert::before { content: ""; position: absolute; inset: .85em; border: .22em double var(--oxb); pointer-events: none; }

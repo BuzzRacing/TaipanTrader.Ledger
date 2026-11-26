@@ -2978,11 +2978,11 @@ class Game:
         return True
 
     def _pa_greeting(self, p, officer):
-        """Which greeting the officer gives on this visit (a key), or None: drawn from a deck of the
-        30 shared greetings (l.customs_welcome.N) and her own (l.customs_welcome.<officer>.N),
-        shuffled per house and per officer (engine _draw_keys), so none repeats until all are heard."""
-        keys = ["l.customs_welcome.{}".format(i) for i in self._bank("l.customs_welcome")]
-        keys += ["l.customs_welcome.{}.{}".format(officer, i) for i in self._bank("l.customs_welcome." + officer)]
+        """Use the officer's own deck, falling back to the shared deck for a custom cast member."""
+        prefix = "l.customs_welcome." + officer
+        keys = ["{}.{}".format(prefix, i) for i in self._bank(prefix)]
+        if not keys:
+            keys = ["l.customs_welcome.{}".format(i) for i in self._bank("l.customs_welcome")]
         return self._draw_keys(p, "pa:" + officer, keys)
 
     def customs_view(self, p):
@@ -3016,10 +3016,11 @@ class Game:
             if not say or not str(TEXT.get(say, "")).strip():
                 say = "l.customs_home"
             out["welcome"] = tx(say, line=out["line"], port=name)
-        elif cu["free"]:
-            out["welcome"] = tx("l.customs_free", line=out["line"], port=name)
-        elif not cu["lines"]:
-            out["welcome"] = tx("l.customs_empty", port=name)
+        elif cu["free"] or not cu["lines"]:
+            key = "l.customs_welcome.{}.clear".format(cu["officer"])
+            if not str(TEXT.get(key, "")).strip():
+                key = "l.customs_free" if cu["free"] else "l.customs_empty"
+            out["welcome"] = tx(key, line=out["line"], port=name)
         else:
             say = cu.get("say")                  # a key; a number in saves from before the officers' own lines
             key = say if isinstance(say, str) else "l.customs_welcome.{}".format(say) if say is not None else "l.customs_welcome"

@@ -3,7 +3,7 @@
 /* The Voyage Certificate (21 Nov 2026; project doc "SeaTrader Voyage Certificate"; certificate.py, cert_text.py).
 
    When the books close each Captain is handed a certificate: a 1920 x 1080 wallpaper with the home port
-   behind, the home Mayor fading in from the left, the woman who defined the voyage fading in from the
+   behind, the home Mayor fading in from the left, the speaker who defined the voyage fading in from the
    right, and the Captain's finish down the middle. It is PAINTED on a canvas at the true size, so the
    picture on screen is exactly the PNG that "Save as wallpaper" downloads.
 
@@ -21,7 +21,7 @@
    is laid across the whole width; an ordinary upright portrait is set at the edge and feathered.
 
    The choice of pictures (the recipe) is kept by the server, so the certificate opens the same way next
-   time. "Change the pictures" draws fresh ones and steps to the next woman the voyage earned. */
+   time. "Change the pictures" draws fresh ones and steps to the next speaker the voyage earned. */
 
 var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : {}, {
   "cert.title": "Certificate of the Voyage", "cert.place": "{ord} of {n} Houses",
@@ -37,7 +37,7 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
   "cert.battles_none": "None fought", "cert.battles_none_sub": "A quiet sea all voyage",
   "cert.signed": "Her Worship the Mayor", "cert.mayor": "Mayor of {port}", "cert.closed": "The books are closed",
   "cert.save": "Save as wallpaper", "cert.change": "Change the pictures", "cert.continue": "Continue to the Ledger",
-  "cert.close": "Close", "cert.again": "Hear her again",
+  "cert.close": "Close", "cert.again": "Hear the line again",
   "cert.hold": "On an iPad, press and hold the picture and choose Save to Photos.",
   "cert.working": "Sealing your certificate…",
   "cert.failed": "The certificate could not be drawn. The Ledger of the Voyage has every figure.",
@@ -47,8 +47,8 @@ var T_FALLBACK = Object.assign(typeof T_FALLBACK !== "undefined" ? T_FALLBACK : 
 
 const Certificate = (() => {
   const W = 1920, H = 1080, CX = W / 2;
-  const COL = 1076;                       // the words keep to the middle 56% (desktop icons only ever cover the women)
-  const INK = "#120d0a", IVORY = "#f3e6c8", CREAM = "#fff1cf", BRASS = "#c9a25a", GOLD = "#e7bf72", PALE = "#e9dcc0";
+  const COL = 1076;                       // the words keep to the middle 56% (desktop icons only ever cover the speakers)
+  const INK = "#0b161d", IVORY = "#eef1e2", CREAM = "#fff1cf", BRASS = "#d6a84e", GOLD = "#e7bf72", PALE = "#e9dcc0";
   const HARBOR = "/assets/ceremony-harbor.png";
   const SIDE_SLIDE = 260;                 // how far a picture made for its side is slid toward the edge (px of 1920)
   const PLAIN_SLIDE = 420;                // the same for an ordinary wide picture, which has her nearer the middle
@@ -86,10 +86,10 @@ const Certificate = (() => {
     if (tag) {
       const by = scene => Media.items(kind, subject, "", false, scene).filter(i => tagged(i, tag));
       const mine = by("certificate");
-      // pictures made by the batch for a side carry `side`: the woman already stands at that edge of her frame
+      // pictures made by the batch for a side carry `side`: the speaker already stands at that edge of the frame
       return (mine.length ? mine : by("wallpaper")).map(i => Object.assign({}, i, { side: true }));   // a media.js from before the certificate files them there
     }
-    return Media.items(kind, subject, role, false);
+    return Media.items(kind, subject, role, false).filter(i => !role || i.r.includes(role));
   }
   /* The first of these lists that has anything; each entry is {id, u}. */
   function pool(...lists) {
@@ -109,14 +109,12 @@ const Certificate = (() => {
   const plain = url => (url ? [{ id: "", u: url }] : []);
 
   function choose(recipe) {
-    const home = facts.home, woman = facts.women[step] || facts.women[0];
-    const g = (D && D.graphics) || {};
-    pick.bg = draw1(pool(library("port", home, "", "cert-backdrop"), library("port", home, "arrival"), library("port", home, "banner"),
-      plain((g.ports || {})[home]), plain(HARBOR)), recipe && recipe.bg, last.bg);
+    const home = facts.home, speaker = facts.speakers[step] || facts.speakers[0];
+    pick.bg = draw1(pool(library("port", home, "", "cert-backdrop"), plain(HARBOR)), recipe && recipe.bg, last.bg);
     pick.mayor = draw1(pool(library("port", home, "", "cert-left"), library("port", home, "mayor"), plain(castOf("mayor").portrait)),
       recipe && recipe.mayor, last.mayor);
-    pick.persona = draw1(pool(library("persona", woman.who, "", "cert-right"), library("persona", woman.who, "portrait"),
-      library("persona", woman.who, ""), plain(castOf(woman.who).portrait)), recipe && recipe.persona, last.persona);
+    pick.persona = draw1(pool(library("persona", speaker.who, "", "cert-right"), library("persona", speaker.who, "portrait"),
+      library("persona", speaker.who, ""), plain(castOf(speaker.who).portrait)), recipe && recipe.persona, last.persona);
     last = { bg: (pick.bg || {}).id || "", mayor: (pick.mayor || {}).id || "", persona: (pick.persona || {}).id || "" };
   }
 
@@ -187,20 +185,20 @@ const Certificate = (() => {
     c.fillRect(0, 0, W, H);
     if (im) {
       cover(c, im, 0, 0, W, H, .5, .4);
-      c.fillStyle = "rgba(24, 15, 9, .30)";            // dusk: the picture sits back so the words can stand on it
+      c.fillStyle = "rgba(18, 40, 58, .38)";            // dusk: the picture sits back so the words can stand on it
       c.fillRect(0, 0, W, H);
     }
     const g = c.createRadialGradient(CX, 518, 0, CX, 518, 845);
-    g.addColorStop(0, "rgba(14, 9, 7, .62)");
-    g.addColorStop(.58, "rgba(14, 9, 7, .50)");
-    g.addColorStop(1, "rgba(14, 9, 7, .10)");
+    g.addColorStop(0, "rgba(11, 22, 29, .62)");
+    g.addColorStop(.58, "rgba(11, 22, 29, .50)");
+    g.addColorStop(1, "rgba(11, 22, 29, .10)");
     c.fillStyle = g;
     c.fillRect(0, 0, W, H);
   }
 
-  /* One woman, feathered toward the centre. A wide picture lies across the whole frame (she was composed at
+  /* One speaker, feathered toward the centre. A wide picture lies across the whole frame (the figure was composed at
      that side of it); an upright portrait stands at the edge. */
-  function paintWoman(c, im, side) {
+  function paintPortrait(c, im, side) {
     if (!im) return;
     const k = scratch(), x = k.getContext("2d");
     const wide = im.naturalWidth / im.naturalHeight > 1.2;
@@ -210,7 +208,7 @@ const Certificate = (() => {
       // made for this side: she already stands in her third of the frame, but that is still too near the words,
       // so the whole picture is slid out by SIDE_SLIDE and fades out sooner
       x.save(); x.translate(left ? -SIDE_SLIDE : SIDE_SLIDE, 0); cover(x, im, 0, 0, W, H, left ? 0 : 1, .5); x.restore();
-      from = left ? 0 : W; to = left ? 640 : W - 640;   // her dark, empty side never covers the port
+      from = left ? 0 : W; to = left ? 640 : W - 640;   // the dark, empty side never covers the port
       solid = .7; soft = .9;
     } else if (wide) {
       // An ordinary wide picture is laid across the whole frame and she lands near the middle, behind the words.
@@ -242,10 +240,10 @@ const Certificate = (() => {
 
   function paintFrame(c) {
     const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "rgba(14, 9, 7, .55)");
-    g.addColorStop(.16, "rgba(14, 9, 7, 0)");
-    g.addColorStop(.74, "rgba(14, 9, 7, 0)");
-    g.addColorStop(1, "rgba(14, 9, 7, .88)");
+    g.addColorStop(0, "rgba(11, 22, 29, .55)");
+    g.addColorStop(.16, "rgba(11, 22, 29, 0)");
+    g.addColorStop(.74, "rgba(11, 22, 29, 0)");
+    g.addColorStop(1, "rgba(11, 22, 29, .88)");
     c.fillStyle = g;
     c.fillRect(0, 0, W, H);
     c.lineWidth = 2; c.strokeStyle = "rgba(201, 162, 90, .55)"; c.strokeRect(19, 19, W - 38, H - 38);
@@ -260,7 +258,7 @@ const Certificate = (() => {
     c.textAlign = "center"; c.textBaseline = "alphabetic";
     const px = fit(c, brand, 1000, 96, s => `${s}px ${F.title}`, 48), y = 122;
     shadow(c, "#07090e", 14, 6);
-    c.fillStyle = "#5a3217";
+    c.fillStyle = "#2c4655";
     c.fillText(brand, CX, y + 3);
     calm(c);
     const g = c.createLinearGradient(0, y - px * .82, 0, y + px * .2);
@@ -390,7 +388,7 @@ const Certificate = (() => {
     const worth = money(f.worth);
     fit(c, worth, COL - 200, 86, s => `bold ${s}px ${F.body}`, 48);
     shadow(c, "#000", 26, 10);
-    c.fillStyle = "#5a3217"; c.fillText(worth, CX, 668);
+    c.fillStyle = "#2c4655"; c.fillText(worth, CX, 668);
     calm(c);
     c.fillStyle = "#ffe6ad"; c.fillText(worth, CX, 665);
     const span = tx(f.years ? "cert.span" : "cert.span_short", { first: f.first || "", last: f.last || "", years: f.years, len: lengthOf(f.years), port: f.home_name || portName(f.home) });
@@ -443,11 +441,11 @@ const Certificate = (() => {
     c.save();
     shadow(c, "rgba(0,0,0,.7)", 16, 6);
     const g = c.createRadialGradient(CX - 14, sy - 18, 4, CX, sy, r);
-    g.addColorStop(0, "#b8402c"); g.addColorStop(.62, "#7a1d14"); g.addColorStop(1, "#4d100b");
+    g.addColorStop(0, "#3f9a7f"); g.addColorStop(.62, "#1f5f7a"); g.addColorStop(1, "#12283a");
     c.fillStyle = g; c.beginPath(); c.arc(CX, sy, r, 0, Math.PI * 2); c.fill();
     c.restore();
     c.lineWidth = 2; c.strokeStyle = BRASS; c.beginPath(); c.arc(CX, sy, r - 1, 0, Math.PI * 2); c.stroke();
-    c.fillStyle = "#f1c9a8"; c.font = `46px ${F.body}`;
+    c.fillStyle = IVORY; c.font = `46px ${F.body}`;
     c.textBaseline = "middle";
     c.fillText(has("voy.seal") ? t("voy.seal") : "終", CX, sy + 2);
     c.textBaseline = "alphabetic";
@@ -497,7 +495,7 @@ const Certificate = (() => {
     const tok = typeof store === "function" ? store("seatrader_token") : "";
     const url = "/api/certificate?token=" + encodeURIComponent(tok || "") + (typeof screenFamily === "function" && screenFamily() ? "&family=1" : "");
     return fetch(url).then(r => r.json()).then(r => {
-      if (!r || !r.ok || !r.women || !r.women.length) return null;
+      if (!r || !r.ok || !r.speakers || !r.speakers.length) return null;
       facts = r; factsFor = gid;
       return r;
     }).catch(() => null);
@@ -510,7 +508,7 @@ const Certificate = (() => {
     busy = true;
     el.classList.remove("cert-done");
     q(".cert-save").disabled = q(".cert-change").disabled = true;
-    const F = fonts(), woman = facts.women[step] || facts.women[0];
+    const F = fonts(), speaker = facts.speakers[step] || facts.speakers[0];
     const seat = ((S && S.players) || []).find(p => p.id === facts.id) || (S && S.me) || {};
     const crestUrl = typeof Faces !== "undefined" ? Faces.of(Object.assign({ name: facts.name, firm: facts.firm }, seat)).crest : "";
     const badgeUrl = facts.rank_id && typeof Ranks !== "undefined" ? Ranks.url(facts.rank_id) : "";
@@ -523,7 +521,7 @@ const Certificate = (() => {
     const wait = ms => new Promise(r => setTimeout(r, staged && !reduced() ? ms : 0));
     const layers = [
       () => paintBackdrop(c, bg),
-      () => { paintWoman(c, mayor, "left"); paintWoman(c, persona, "right"); paintFrame(c); },
+      () => { paintPortrait(c, mayor, "left"); paintPortrait(c, persona, "right"); paintFrame(c); },
       () => paintTitle(c, F),
       () => { paintHeadline(c, F); paintWho(c, F, art); },
       () => paintFigures(c, F),
@@ -553,32 +551,32 @@ const Certificate = (() => {
     el.classList.add("cert-done");
     q(".cert-save").disabled = !pngUrl;
     q(".cert-change").disabled = false;
-    caption(woman);
-    speak(woman);
-    remember(woman);
+    caption(speaker);
+    speak(speaker);
+    remember(speaker);
   }
 
-  function caption(woman) {
+  function caption(speaker) {
     const p = q(".cert-line");
     if (!p) return;
-    const text = family() ? woman.family || woman.text : woman.text;
+    const text = family() ? speaker.family || speaker.text : speaker.text;
     if (!text) { p.hidden = true; return; }
-    const name = woman.name || castOf(woman.who).name || "";
+    const name = speaker.name || castOf(speaker.who).name || "";
     p.innerHTML = `<b>${esc(name)}</b><span>${esc(text)}</span>` +
-      (woman.clip && typeof Voice !== "undefined" && Voice.enabled() ? `<button type="button" class="cert-again" aria-label="${esc(tx("cert.again"))}" title="${esc(tx("cert.again"))}">&#9834;</button>` : "");
+      (speaker.clip && typeof Voice !== "undefined" && Voice.enabled() ? `<button type="button" class="cert-again" aria-label="${esc(tx("cert.again"))}" title="${esc(tx("cert.again"))}">&#9834;</button>` : "");
     p.hidden = false;
     const again = p.querySelector(".cert-again");
-    if (again) again.addEventListener("click", () => speak(woman));
+    if (again) again.addEventListener("click", () => speak(speaker));
   }
-  function speak(woman) {
-    if (!woman || !woman.clip || typeof Voice === "undefined") return;
+  function speak(speaker) {
+    if (!speaker || !speaker.clip || typeof Voice === "undefined") return;
     Voice.only("certificate");            // only she is heard while the certificate is open
     hush = true;
     Voice.drop("certificate");
-    Voice.say([Object.assign({ tag: woman.name || "", text: woman.text }, woman.clip)], { group: "certificate", front: true });
+    Voice.say([Object.assign({ tag: speaker.name || "", text: speaker.text }, speaker.clip)], { group: "certificate", front: true });
   }
-  function remember(woman) {
-    const rec = { bg: last.bg, mayor: last.mayor, persona: last.persona, who: woman.who };
+  function remember(speaker) {
+    const rec = { bg: last.bg, mayor: last.mayor, persona: last.persona, who: speaker.who };
     const was = facts.recipe || {};
     if (["bg", "mayor", "persona", "who"].every(k => (was[k] || "") === (rec[k] || ""))) return;
     facts.recipe = rec;
@@ -589,7 +587,7 @@ const Certificate = (() => {
 
   function change() {
     if (busy || !facts) return;
-    step = (step + 1) % facts.women.length;
+    step = (step + 1) % facts.speakers.length;
     choose(null);
     hint("");
     paint(false);
@@ -632,7 +630,7 @@ const Certificate = (() => {
     if (el !== mine) return;
     if (!f) { status(tx("cert.failed")); return; }
     const recipe = f.recipe || null;
-    step = Math.max(0, f.women.findIndex(w => recipe && w.who === recipe.who));
+    step = Math.max(0, f.speakers.findIndex(w => recipe && w.who === recipe.who));
     last = { bg: "", mayor: "", persona: "" };
     choose(recipe);
     paint(!opts.quick);
@@ -651,12 +649,11 @@ const Certificate = (() => {
   const studio = {
     /* The library (Media.setup shape), the world (ports, goods, graphics, brand) and the money sign. */
     world(w) { D = w; },
-    /* Every picture that can stand in each place for these facts and this woman, certificate pictures first. */
+    /* Every picture that can stand in each place for these facts and this speaker, certificate pictures first. */
     pictures(f, who) {
-      const home = f.home, g = (D && D.graphics) || {};
+      const home = f.home;
       return {
-        bg: union(library("port", home, "", "cert-backdrop"), library("port", home, "arrival"), library("port", home, "banner"),
-          plain((g.ports || {})[home]), plain(HARBOR)),
+        bg: union(library("port", home, "", "cert-backdrop"), plain(HARBOR)),
         mayor: union(library("port", home, "", "cert-left"), library("port", home, "mayor")),
         persona: union(library("persona", who, "", "cert-right"), library("persona", who, "portrait"), library("persona", who, "")),
       };
@@ -677,7 +674,7 @@ const Certificate = (() => {
       const art = { crest, badge, badgeRound: /\/media\/rank\//.test(badgeUrl) };
       const c = canvas.getContext("2d");
       c.clearRect(0, 0, W, H);
-      [() => paintBackdrop(c, bg), () => { paintWoman(c, mayor, "left"); paintWoman(c, persona, "right"); paintFrame(c); },
+      [() => paintBackdrop(c, bg), () => { paintPortrait(c, mayor, "left"); paintPortrait(c, persona, "right"); paintFrame(c); },
         () => paintTitle(c, F), () => { paintHeadline(c, F); paintWho(c, F, art); }, () => paintFigures(c, F), () => paintFoot(c, F),
       ].forEach(layer => { c.save(); try { layer(); } catch (e) { /* one layer failing never loses the rest */ } c.restore(); });
       return true;

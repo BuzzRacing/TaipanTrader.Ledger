@@ -1,5 +1,6 @@
 {
   "base_url": "http://192.168.1.213:8189",
+  "reference_base_url": "http://192.168.1.213:8188",
   "workflow": "imagegen/qwen_image_2_1_portrait.json",
   "timeout_seconds": 300,
   "poll_seconds": 2,

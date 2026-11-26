@@ -117,7 +117,7 @@
     if (!here() || st.pid !== pid) return;
     if (!r.ok) { status(r.error || "That Captain could not be read."); return; }
     st.f = r;
-    st.who = (r.women[0] || (r.others || [])[0] || {}).who || "gamemaster";
+    st.who = (r.speakers[0] || (r.others || [])[0] || {}).who || "gamemaster";
     st.sel = { bg: null, mayor: null, persona: null };
     pictures(false);
     drawPick(); drawSections(); repaint();
@@ -148,7 +148,7 @@
         `<option value="${e(g.id)}"${g.id === st.game ? " selected" : ""}>${e(stamp(g.updated || g.started) || g.id)}${g.current ? " · latest" : ""} · ${e(g.id)}</option>`).join("")}</select></label>
       <label class="cs-f"><span>Captain</span><select id="cs-captain"${st.houses.length ? "" : " disabled"}>${st.houses.map(h =>
         `<option value="${e(h.id)}"${h.id === st.pid ? " selected" : ""}>${e(h.place ? h.place + ". " : "")}${e(h.name)} · ${e(h.firm)} · ${e(cash(h.worth))}</option>`).join("")}</select></label>
-      <label class="cs-check"><input type="checkbox" id="cs-fam"${st.fam ? " checked" : ""}> Family-friendly pictures</label>`;
+      `;
   }
 
   const tiles = (key, list) => !list.length ? '<p class="muted small">No pictures for this yet. Queue some with Queue_Certificate_Pictures.bat.</p>'
@@ -170,7 +170,7 @@
       case "backdrop": return tiles("bg", st.pics.bg);
       case "left": return tiles("mayor", st.pics.mayor);
       case "right": {
-        const all = (f.women || []).map(w => [w.who, w.name || w.who]).concat((f.others || []).map(w => [w.who, (w.name || w.who) + " (not earned)"]));
+        const all = (f.speakers || []).map(w => [w.who, w.name || w.who]).concat((f.others || []).map(w => [w.who, (w.name || w.who) + " (not earned)"]));
         return pick("who", "Woman", all, st.who) + tiles("persona", st.pics.persona);
       }
       case "headline": {
@@ -215,7 +215,7 @@
   function caption() {
     const p = $s("#cs-line");
     if (!p || !st.f) return;
-    const w = (st.f.women || []).find(x => x.who === st.who);
+    const w = (st.f.speakers || []).find(x => x.who === st.who);
     if (!w || !w.text) { p.hidden = true; return; }
     p.innerHTML = `<b>${e(w.name || w.who)}</b><span>${e(st.fam ? w.family || w.text : w.text)}</span>`;
     p.hidden = false;
@@ -263,7 +263,6 @@
     }
     if (t.id === "cs-game" && ev.type === "change") { if (t.value) loadGame(t.value); return; }
     if (t.id === "cs-captain" && ev.type === "change") { loadCaptain(t.value); return; }
-    if (t.id === "cs-fam" && ev.type === "change") { st.fam = t.checked; st.lib = null; if (st.pid) { loadCaptain(st.pid); } loadLibrary(); return; }
     if (t.dataset && t.dataset.ok) {
       if (t.checked) st.ok.add(t.dataset.ok); else st.ok.delete(t.dataset.ok);
       count(); return;

@@ -52,11 +52,11 @@ const Thresholds = (() => {
   }
   function shell(kind, id, quote, content, status) {
     ensure();
-    const logo = picture("brand", "favicon");
-    const background = picture("brand", "page_bg");
+    const logo = D.graphics?.favicon || "/assets/branding/taipan-trader-mark.svg";
+    const background = D.graphics?.page_bg || "/assets/ceremony-harbor.png";
     const utilities = `<footer class="footer"><span>${th("join.url", {url: "<b>" + esc(S.join_url) + "</b>"})}</span><a href="/board" target="_blank" rel="noopener">${te("threshold.board")}</a></footer>`;
     const notice = failed ? `<p class="note" role="status">${te("threshold.art_failed")} ${btn(te("threshold.retry"), "threshold_retry")}</p>` : "";
-    return `<div class="threshold ${kind}"${background ? ` style="--threshold-bg:url('${esc(background)}')"` : ""}><div class="shell"><header class="brand"><div class="brand-left">${logo ? image(logo, "") : ""}<div><div class="wordmark">${esc(brandName(D.brand))}</div><div class="caption">${esc(D.brand.tagline)}</div></div></div><span class="pill">${status}</span></header><main class="stage">${persona(id, quote)}<section class="work">${notice}${content}</section></main>${utilities}</div></div>`;
+    return `<div class="threshold ${kind}"${background ? ` style="--threshold-bg:url('${esc(background)}')"` : ""}><div class="shell"><header class="brand"><div class="brand-left"><img src="${esc(logo)}" alt=""><div><div class="wordmark">${esc(brandName(D.brand))}</div><div class="caption">${esc(D.brand.tagline)}</div></div></div><span class="pill">${status}</span></header><main class="stage">${persona(id, quote)}<section class="work">${notice}${content}</section></main>${utilities}</div></div>`;
   }
   function join() {
     const late = S.phase === "port" ? `<p class="note">${te("join.late")}</p>` : S.phase === "ended" ? `<p class="note">${te("join.over")}</p>` : "";

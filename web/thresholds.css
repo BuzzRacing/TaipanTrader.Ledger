@@ -157,7 +157,7 @@
 
 @media(prefers-reduced-motion:reduce){.threshold *{transition:none!important}
 }
-.threshold .art-placeholder{display:grid;place-items:center;min-height:44px;background:radial-gradient(ellipse,var(--deck-leather),var(--deck-night));color:var(--gold);font:32px var(--title)}
+.threshold .art-placeholder{display:grid;place-items:center;min-height:44px;background:radial-gradient(ellipse,var(--deck-oxblood),var(--deck-night));color:var(--gold);font:32px var(--title)}
 .threshold .persona>.art-placeholder{height:100%;min-height:300px}
 .threshold .eyebrow{font-family:var(--special)}
 .threshold .work{background:linear-gradient(180deg,color-mix(in srgb,var(--deck-lacquer) 45%,transparent),transparent)}

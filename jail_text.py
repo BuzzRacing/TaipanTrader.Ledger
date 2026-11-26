@@ -4,7 +4,7 @@ messages keep their usual l. / n. / m. / e. groups."""
 
 EN = {
     # ---- arrests (Captain's log, read by that port's warden) ---------------------------------------
-    "l.jail_standing": "Your name in {port} is mud. The warden's women were waiting on the wharf: {months} month{s} in the {port} gaol, Captain.",
+    "l.jail_standing": "Your name in {port} is mud. The warden's guards were waiting on the wharf: {months} month{s} in the {port} gaol, Captain.",
     "l.jail_hostile": "{port} has no love for your house. You were marched off the wharf in irons: {months} month{s} in the {port} gaol.",
     "l.jail_contraband": "The contraband was enough for the warden. You go below with it: {months} month{s} in the {port} gaol.",
     "l.jail_slip": "The Mayor of {port} wanted more than her double dues. Your fleet stays at anchor and you sit {months} month{s} in her gaol.",
@@ -99,7 +99,7 @@ EN = {
     "jail.month_last.1": "One more month of damp stone, and then the whole town gets to forget you were ever clever.",
     "jail.month_last.2": "The warden wishes you a pleasant final month, and means it, which is unsettling.",
     "jail.free.0": "The key turns for the last time. {port} lets you out into the sunlight, thinner, wiser and a good deal rougher around the edges.",
-    "jail.free.1": "The warden holds the door a moment longer than she needs to. Then she lets you go. Don't come back, Captain.",
+    "jail.free.1": "The warden holds the door a moment before letting you go. Don't come back, Captain.",
     "jail.free.2": "Out you walk, blinking, into a harbour that has not missed you at all.",
     "jail.story.next": "Tap to go on",
     "jail.hold.lead": "{months} month{s} in the {port} gaol.",
@@ -148,9 +148,75 @@ FAMILY = {
     "freed.drunk": "The crew spent {lost} of the silver aboard on shore leave while you were inside.",
 }
 
+WARDEN_LINES = {
+    "hongkong": (
+        "Coat on the peg. Boots under the bench. I ran a watch before I ran this gaol, Captain.",
+        "Two rounds a day and you still haven't caught me miscounting. I admire your persistence.",
+        "Fold the blanket square, Captain. Last inspection.",
+        "Coat, boots, freedom. Count all three before you leave.",
+    ),
+    "singapore": (
+        "Pearl's Hill, Captain. I'd offer you the breeze, but the shutters have first claim.",
+        "I've heard three versions of how you got here. The cook's has a tiger in it.",
+        "Last month. Want me to tell the cook the true story, or shall we keep the tiger?",
+        "Off you go. If anybody asks, the tiger was enormous.",
+    ),
+    "manila": (
+        "I keep two things at the Bilibid, Captain. The keys and my silence. You may rely on both.",
+        "Hear the bells? They ring for the whole city. There's no need to count them all.",
+        "One last month, Captain. Think what you'll say to your crew when you see them.",
+        "Go in peace, Captain. The next bell is yours to hear from the street.",
+    ),
+    "saigon": (
+        "Pick a card, Captain. It changes absolutely nothing, but it gives us something to talk about.",
+        "Would you like another game? I promise to look surprised if you win.",
+        "Last hand, Captain. If you ever work out how I do it, keep it to yourself.",
+        "That's the game. Take the card with you. I have more decks than you have excuses.",
+    ),
+    "nagasaki": (
+        "Your name goes here, Captain. No title is needed. The brush has only so much room.",
+        "The rain changed direction last night. That's one thing in here worth keeping track of.",
+        "One month remains. I have left space beside your name for the date.",
+        "There. One stroke through the name. The record is closed.",
+    ),
+    "foochow": (
+        "Sit by the river side of the cell. The other side gets the sun at the wrong hour.",
+        "The tea is ready. I brought two cups this time. I am capable of reform.",
+        "The Min is rising, Captain. By the time you leave, the boats will be using the upper steps.",
+        "Use the upper steps if the river is high. I'd prefer our next conversation to be over tea.",
+    ),
+    "shanghai": (
+        "Stand here. State your name. Save the long version for the court.",
+        "I had a clerk check your mail. He says your crew misses you. I saw no need to check his arithmetic.",
+        "One month left. Start making a list of what you'll do first. Keep it short.",
+        "Door open. Papers in hand. Keep moving, Captain.",
+    ),
+    "bangkok": (
+        "Here is a lotus for the sill, Captain. The door must stay shut. The window needn't.",
+        "I brought a fresh flower. The gardener insists on knowing which colour you prefer.",
+        "One more month. The gardener says this bud will open before you go. I think it will be close.",
+        "The lotus is yours, Captain. The gardener would be very disappointed if you left it behind.",
+    ),
+    "batavia": (
+        "Rule one: read the notice. Rule two: the small print is also the notice.",
+        "A request to shorten the rules has been received. It now has rules of its own.",
+        "Last month. There is a form for that. I have already filled it in, which surprised us both.",
+        "You may go. Leaving without a farewell is permitted under the revised rule.",
+    ),
+    "calcutta": (
+        "Blanket, water, sugared almond. I can do something about the first three, Captain.",
+        "Do you play chess? I've been waiting nine weeks for Bristol to move a pawn.",
+        "One more month, Captain. Bristol has finally written back. The pawn stays where it is.",
+        "Back to your ships. Leave the blanket. Take the almonds. I know which you'll miss.",
+    ),
+}
+EN.update({f"jail.warden.{port}.{stage}": line
+           for port, lines in WARDEN_LINES.items()
+           for stage, line in zip(("irons", "month", "month_last", "free"), lines)})
+
 # Spoken versions (cast.SAY): the warden says these without the numbers.
 SAY = {
-    "l.jail_standing": "Your name in {port} is mud, Captain. My women were waiting for you on the wharf. You'll be my guest a while.",
+    "l.jail_standing": "Your name in {port} is mud, Captain. My guards were waiting for you on the wharf. You'll be my guest a while.",
     "l.jail_hostile": "{port} has no love for your house, Captain. Into the irons with you.",
     "l.jail_contraband": "The contraband goes in my storeroom, Captain. And you go in my cell.",
     "l.jail_slip": "Slipping away in the dark, Captain? The Mayor asked me to keep you. Your ships stay where they are.",

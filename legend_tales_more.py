@@ -37,11 +37,11 @@ MORE = {
              "nodes": {
                  "open": {
                      "beats": [
-                         (T, "The bell has stopped, Captain, and a woman is on your gangway holding a purse "
-                             "she can barely lift. Pretty enough to be trouble, rich enough to be worth it."),
-                         (P, "Dona Ines de Albuquerque. Passage to anywhere that is not here. I will pay "
+                         (T, "A woman on the gangway holds a purse she can barely lift. She looks over her "
+                             "shoulder each time a lighter knocks against the quay."),
+                         (P, "Dona Beatriz de Albuquerque. Passage to anywhere that is not here. I will pay "
                              "three times the fare and answer no questions. Does the cabin lock from inside?",
-                             "Dona Ines de Albuquerque. Passage to anywhere that is not here. I will pay "
+                             "Dona Beatriz de Albuquerque. Passage to anywhere that is not here. I will pay "
                              "three times the fare and answer no questions. Is the cabin quiet?"),
                      ],
                      "choices": [("take", "Take the triple fare and ask nothing", "take"),
@@ -154,8 +154,8 @@ MORE = {
                      "fx": [("silver", -0.5), ("standing", "here", -1)], "end": True},
                  "threw": {
                      "beats": [
-                         (T, "Bell stopped, Captain. There is a woman beside me with salt in her hair, "
-                             "and she would like her purse back."),
+                         (T, "I know the sound of water on these boards. That second set of footsteps "
+                             "isn't mine. She has come for her purse."),
                          (P, "The sea was kinder than the crew. It was only your hand on the rope "
                              "that was cold."),
                          (T, "She took her purse out of your hold, and some of your hold with it."),
@@ -189,8 +189,8 @@ MORE = {
              "nodes": {
                  "open": {
                      "beats": [
-                         (T, "Listen close, darling. Madam Wu sells old debts by the pound, and she has "
-                             "sold you a peach: the bond on Nyonya Bee-Lian's only ship."),
+                         (T, "Madam Wu sold you a piece of paper. Nyonya Bee-Lian calls it her only ship. "
+                             "I heard both versions from this very stool."),
                          (B, "A good paper, Captain. The Mayor will enforce it to the letter. I would "
                              "so like you to enforce it to the spirit.",
                              "A good paper, Captain. The Mayor will enforce it to the letter. I would "
@@ -201,8 +201,8 @@ MORE = {
                                  ("forgive", "Tear it up", "forgive")]},
                  "seize": {
                      "beats": [
-                         (T, "The Mayor's bailiffs took her ship at dawn. Nobody loves a bailiff, but "
-                             "everyone loves the captain who hires one."),
+                         (T, "The bailiffs took her ship at dawn. That was the only morning I ever heard "
+                             "the whole quay go quiet at once."),
                      ],
                      "fx": [("silver", 1.5), ("standing", "singapore", -2), ("flag", "seized"),
                             ("news", "n.legend_bond_seized")], "end": True},
@@ -356,8 +356,8 @@ MORE = {
              "nodes": {
                  "open": {
                      "beats": [
-                         (T, "Sit, Captain. The paddies failed, and Saigon is thin. The dealers have "
-                             "noticed you have a hold, and so has the Mayor."),
+                         (T, "The paddies have failed. Watch who comes down to the quay first, Captain. "
+                             "The dealers have silver. The Mayor has a town to feed."),
                          (M, "The dealers offer you five times the price. I offer only gratitude and a "
                              "little harbour goodwill. Both are hard to eat, and both keep."),
                      ],

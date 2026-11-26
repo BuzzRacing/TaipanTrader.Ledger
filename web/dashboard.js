@@ -210,7 +210,7 @@ function towerHtml() {
   });
   const foot = solo() ? (F.ghost && F.ghost.kind === "best" ? "" : W("tower.foot.par")) : W("tower.foot.n", { n: hs.length });
   return `<div class="tw-title"><span>${We("tower")}</span><b>${esc(S.date || "")}</b></div>
-    <div class="tw-rows${hs.length > 5 ? " dense" : ""}">${rows.join("") || `<p class="pw-note" style="color:#bfa77a;padding:10px">${We("date.lobby")}</p>`}</div>
+    <div class="tw-rows${hs.length > 5 ? " dense" : ""}">${rows.join("") || `<p class="pw-note" style="color:#a1b9af;padding:10px">${We("date.lobby")}</p>`}</div>
     ${foot ? `<div class="tw-foot">${esc(foot)}</div>` : ""}`;
 }
 /* The Command Center keeps the tower on the Career tab and the chalkboard on Now (the stage has the full width),
@@ -230,21 +230,21 @@ function arc(r, a0, a1) {
 function dialSvg(i, zones) {
   let s = `<svg viewBox="0 0 200 200" aria-hidden="true"><defs><radialGradient id="dface${i}" cx="50%" cy="40%"><stop offset="0" stop-color="#fbf0d4"/><stop offset="1" stop-color="#e2cfa4"/></radialGradient>
     <linearGradient id="dbrass${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6d98c"/><stop offset=".5" stop-color="#b48a3a"/><stop offset="1" stop-color="#f0d48a"/></linearGradient></defs>
-    <circle cx="100" cy="104" r="94" fill="url(#dbrass${i})"/><circle cx="100" cy="104" r="86" fill="url(#dface${i})" stroke="#6b452d" stroke-width="2"/>`;
+    <circle cx="100" cy="104" r="94" fill="url(#dbrass${i})"/><circle cx="100" cy="104" r="86" fill="url(#dface${i})" stroke="#385d64" stroke-width="2"/>`;
   zones.forEach((c, z) => { s += `<path d="${arc(74, -120 + z * 80, -120 + (z + 1) * 80 - 2)}" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="butt" opacity=".85"/>`; });
   for (let t = 0; t <= 10; t++) {
     const a = DEG(-120 + t * 24), r0 = 60, r1 = t % 5 === 0 ? 50 : 54;
-    s += `<line x1="${(100 + r0 * Math.sin(a)).toFixed(1)}" y1="${(104 - r0 * Math.cos(a)).toFixed(1)}" x2="${(100 + r1 * Math.sin(a)).toFixed(1)}" y2="${(104 - r1 * Math.cos(a)).toFixed(1)}" stroke="#2a170e" stroke-width="${t % 5 === 0 ? 3 : 1.6}"/>`;
+    s += `<line x1="${(100 + r0 * Math.sin(a)).toFixed(1)}" y1="${(104 - r0 * Math.cos(a)).toFixed(1)}" x2="${(100 + r1 * Math.sin(a)).toFixed(1)}" y2="${(104 - r1 * Math.cos(a)).toFixed(1)}" stroke="#1b2a33" stroke-width="${t % 5 === 0 ? 3 : 1.6}"/>`;
   }
-  s += `<text id="dv${i}" x="100" y="150" text-anchor="middle" font-size="34" font-family="Georgia,serif" fill="#2a170e"></text>
-    <g class="needle" id="dn${i}" style="transform:rotate(-120deg)"><path d="M96 108 L100 28 L104 108 Z" fill="#8a2219"/></g>
-    <circle cx="100" cy="104" r="9" fill="url(#dbrass${i})" stroke="#2a170e" stroke-width="1.5"/></svg>`;
+  s += `<text id="dv${i}" x="100" y="150" text-anchor="middle" font-size="34" font-family="Georgia,serif" fill="#1b2a33"></text>
+    <g class="needle" id="dn${i}" style="transform:rotate(-120deg)"><path d="M96 108 L100 28 L104 108 Z" fill="#1f5f7a"/></g>
+    <circle cx="100" cy="104" r="9" fill="url(#dbrass${i})" stroke="#1b2a33" stroke-width="1.5"/></svg>`;
   return s;
 }
 const DIAL_ZONES = [
-  ["#1f5c46", "#c9a34e", "#8a2219"],     // months left: the game runs out
-  ["#1f5c46", "#c9a34e", "#8a2219"],     // barometer: fair to typhoon
-  ["#8a2219", "#c9a34e", "#1f5c46"]      // hull: wrecked to sound
+  ["#1f5c46", "#d6a84e", "#1f5f7a"],     // months left: the game runs out
+  ["#1f5c46", "#d6a84e", "#1f5f7a"],     // barometer: fair to typhoon
+  ["#1f5f7a", "#d6a84e", "#1f5c46"]      // hull: wrecked to sound
 ];
 let dialsBuilt = false;
 function buildDials() {
@@ -395,7 +395,7 @@ function renderTape() {
     const h = house(e.pid), cls = ["tp"];
     if (fresh.has(e.n)) cls.push("new");
     if (HOT.has(e.type) || e.sort === "crash") cls.push("hot"); else if (e.type === "won" || e.type === "promotion" || e.sort === "boom") cls.push("good");
-    return `<div class="${cls.join(" ")}" style="--house:${h ? hcol(h) : "#8a2219"}"><span>${tapeText(e)}</span>${e.turn != null && dateOfTurn(e.turn) ? `<small>${esc(dateOfTurn(e.turn))}</small>` : ""}</div>`;
+    return `<div class="${cls.join(" ")}" style="--house:${h ? hcol(h) : "#1f5f7a"}"><span>${tapeText(e)}</span>${e.turn != null && dateOfTurn(e.turn) ? `<small>${esc(dateOfTurn(e.turn))}</small>` : ""}</div>`;
   }).join("");
   const el = update("pw-tape-track", html);
   if (el && fresh.size) tapeClick();
@@ -416,7 +416,7 @@ function raceChart(w, h) {
   let s = `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(W("race.title"))}" style="display:block;overflow:visible">`;
   for (let i = 0; i <= 4; i++) {
     const v = lo + (hi - lo) * i / 4, yy = y(v);
-    s += `<line x1="${L}" x2="${w - R}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#c9a34e" stroke-opacity=".25"/>
+    s += `<line x1="${L}" x2="${w - R}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#d6a84e" stroke-opacity=".25"/>
       <text x="${L - 6}" y="${(yy + 5).toFixed(1)}" text-anchor="end" font-size="14" fill="#c4b18d">${kfmt(v)}</text>`;
   }
   for (let i = 0; i <= 3; i++) {
@@ -424,7 +424,7 @@ function raceChart(w, h) {
     s += `<text x="${x(t).toFixed(1)}" y="${h - 6}" text-anchor="${i === 0 ? "start" : i === 3 ? "end" : "middle"}" font-size="13" fill="#c4b18d">${esc(label)}</text>`;
   }
   if (g) {
-    s += `<polyline fill="none" stroke="#6b452d" stroke-opacity=".55" stroke-width="3" stroke-dasharray="3 7" stroke-linecap="round" points="${g.curve.map((v, i) => x(t0 + i).toFixed(1) + "," + y(v).toFixed(1)).join(" ")}"/>`;
+    s += `<polyline fill="none" stroke="#385d64" stroke-opacity=".55" stroke-width="3" stroke-dasharray="3 7" stroke-linecap="round" points="${g.curve.map((v, i) => x(t0 + i).toFixed(1) + "," + y(v).toFixed(1)).join(" ")}"/>`;
   }
   hs.forEach(hh => {
     const pts = hh.months.map(m => x(m.turn).toFixed(1) + "," + y(m.worth).toFixed(1)).join(" "), last = hh.months[hh.months.length - 1];
@@ -465,7 +465,7 @@ function pageRace() {
   const legend = hs.map(h => `<li style="--house:${hcol(h)}"><span class="pw-dot"></span><b>${esc(h.firm)}</b><span class="num">${money(h.worth)}</span></li>`).join("");
   const left = `<h2>${We("race.title")}<small>${We("race.sub")}</small></h2>
     <div class="pg"><div>${raceChart(520, 410)}</div>
-    <ul class="pw-list">${legend}${F.ghost ? `<li><span class="pw-dot" style="background:transparent;border:2px dotted #6b452d"></span><b>${esc(F.ghost.kind === "best" ? W("ghost.best") : W("ghost.par"))}</b><span class="num">${money(F.ghost.final)}</span></li>` : ""}</ul></div>`;
+    <ul class="pw-list">${legend}${F.ghost ? `<li><span class="pw-dot" style="background:transparent;border:2px dotted #385d64"></span><b>${esc(F.ghost.kind === "best" ? W("ghost.best") : W("ghost.par"))}</b><span class="num">${money(F.ghost.final)}</span></li>` : ""}</ul></div>`;
   const tower = TABS ? `<div class="pw-tower cc-tower${solo() ? " solo" : ""}">${towerHtml()}</div>` : "";
   const lc = leadChanges().slice(0, 6);
   const changes = lc.length ? `<ul class="pw-list">${lc.map(c => `<li style="grid-template-columns:1fr auto"><b class="${c.up ? "up" : "down"}">${c.text}</b><small>${esc(c.date)}</small></li>`).join("")}</ul>`
@@ -684,7 +684,7 @@ function watchJumps() {
 }
 
 
-/* ---------------------------------------------------------------- the women --
+/* ---------------------------------------------------------------- the cast --
    Every moment of the race has a woman to go with it. One stands on the line all the time (the host card under the
    tower, who changes with the page) and when something big happens she steps forward: a spotlight takes the whole
    book for ten seconds, her picture (portrait, a clip if she has one; never a wallpaper or masthead scene) full height, F1 style
@@ -694,16 +694,16 @@ function watchJumps() {
 let CAST = {};
 const FALLBACK_WHO = {
   gamemaster: ["Madame Anahit Sarkissian", "Mistress of the Table & Queen of the Hour", "#b48cf0"],
-  narrator: ["Roxana Cama", "First Mate & Queen of the Black Log", "#c9a34e"],
+  narrator: ["Roxana Cama", "First Mate & Queen of the Black Log", "#d6a84e"],
   bookmaker: ["Isabel “Fan-Tan Bella” da Rocha", "Bookmaker of the Golden Fan", "#e0705a"],
   pirate: ["Admiral Li Yue", "Pirate Queen of the South China Sea", "#d0644f"],
   bosun: ["Patrick “Powder” O’Rourke", "Bosun & Master Gunner", "#e0a050"],
   taxlady: ["Mrs. Evelyn Marlowe", "Registrar of the Merchant Houses", "#7fc4a2"],
-  crier: ["Tommy Marsh", "Gazette Crier & Keeper of Rumours", "#e8d4ae"],
-  mayor: ["The Mayor", "Mayor of the Port", "#c9a34e"]
+  crier: ["Tommy Marsh", "Gazette Crier & Keeper of Rumours", "#d8e7dc"],
+  mayor: ["The Mayor", "Mayor of the Port", "#d6a84e"]
 };
 function who(cid) {
-  const c = CAST[cid] || {}, f = FALLBACK_WHO[cid] || [cid, "", "#c9a34e"];
+  const c = CAST[cid] || {}, f = FALLBACK_WHO[cid] || [cid, "", "#d6a84e"];
   return { cid, name: c.name || f[0], title: c.title || f[1], color: /^#[0-9a-f]{3,8}$/i.test(c.color || "") ? c.color : f[2] };
 }
 const cleanScreen = () => { try { return screenFamily() || Media.family(); } catch (e) { return false; } };

@@ -52,6 +52,16 @@ with open(PATH, encoding="utf-8") as f:
 th = cfg.setdefault("theme", {})
 th.setdefault("colors", {}).update(COLORS)
 th.update(FONTS)
+art = cfg.setdefault("graphics", {})
+if art.get("logo") == "/assets/branding/crimson-ledger-logo-v01.png":
+    art["logo"] = ""
+for slot in ("masthead_bg", "page_bg", "board_bg"):
+    if art.get(slot) == "/uploads/historical-{}.webp".format(slot.removesuffix("_bg")):
+        art[slot] = "/assets/ceremony-harbor.png"
+if art.get("favicon") == "/assets/branding/crimson-ledger-icon-v01.png":
+    art["favicon"] = "/assets/branding/taipan-trader-mark.svg"
+if art.get("admin_masthead_bg") == "/assets/branding/crimson-ledger-command-center-v01.webp":
+    art["admin_masthead_bg"] = "/assets/ceremony-harbor.png"
 for key, name in CLASS_NAMES.items():
     if isinstance((cfg.get("ships") or {}).get(key), dict):
         cfg["ships"][key]["name"] = name

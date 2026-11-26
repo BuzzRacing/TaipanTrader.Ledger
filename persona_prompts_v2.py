@@ -139,9 +139,9 @@ LOOKS = {'narrator': {'who': '{adult} Parsi woman (age 41), the pirate first mat
              'motion': 'spectacles pushed up into her hair, a pencil tapped against her lip, fog drifting past the '
                        'window'},
  'bookkeeper': {'who': "{adult} French-Indian woman (age 38), Mademoiselle Celeste Vautrin, the House's private "
-                       'bookkeeper reclining in a leather chair in a lamplit counting room above the Hong Kong '
-                       'wharf, a great crimson-bound ledger open across her lap, quill in her ink-stained fingers, '
-                       'gold wire spectacles low on her nose, a smouldering gaze over the rims',
+                       'bookkeeper seated upright at a rosewood desk in a lamplit counting room above the Hong Kong '
+                       'wharf, a great crimson-bound ledger open before her, quill in her ink-stained fingers, '
+                       'gold wire spectacles low on her nose, a wry appraising gaze over the rims',
                 'clean': 'black silk blouse buttoned to the collar under an oxblood waistcoat, gold wire spectacles',
                 'light': 'candle glow, warm brass and silver highlights, deep red shadows, intimate',
                 'motion': 'candle flame flickering, the quill drawn slowly across her lower lip, a page turning'},
@@ -166,7 +166,7 @@ LOOKS = {'narrator': {'who': '{adult} Parsi woman (age 41), the pirate first mat
                     'light': 'slatted tropical light striping her skin, warm and humid, soft shutter shadows',
                     'motion': 'the gold coin flipping and catching the light, shutter light sliding across her skin, '
                               'absinthe swirling in the glass'},
- 'officer_nagasaki': {'who': '{adult} Japanese man (age 40), slender and composed, hair in a neat topknot, the '
+ 'officer_nagasaki': {'who': '{adult} Japanese man (age 35), slender and composed, hair in a neat topknot, the '
                              'ledger-keeper of the Dejima customs house in Nagasaki at a low lacquered desk with '
                              'brush, abacus and open ledger, calm unblinking gaze',
                       'clean': 'deep indigo silk kimono and hakama, neatly worn',
@@ -178,14 +178,14 @@ LOOKS = {'narrator': {'who': '{adult} Parsi woman (age 41), the pirate first mat
                      'clean': 'jade-green silk qipao buttoned to the collar',
                      'light': 'soft river light through lattice, pearly green, dreamy and warm',
                      'motion': 'steam rising from the teapot, tea pouring in a slow stream, lattice shadows moving'},
- 'officer_shanghai': {'who': '{adult} Ningbo Chinese man (age 46), imposing and broad, shaven forehead and long '
+ 'officer_shanghai': {'who': '{adult} Ningbo Chinese man (age 37), imposing and broad, shaven forehead and long '
                              'queue, the collector of the Bund behind a carved desk, clerks waiting, the Shanghai '
                              'riverfront behind him, commanding amused gaze',
                       'clean': 'fitted oxblood brocade magua jacket over a black silk robe, mandarin hat with a '
                                'coral button',
                       'light': 'crisp Bund morning light, bright and glossy, crisp rim light on his hair',
                       'motion': 'baton tapping, brocade shifting in the river wind, a slow lift of one eyebrow'},
- 'officer_bangkok': {'who': '{adult} Siamese man (age 50), dignified court official with close-cropped greying hair, '
+ 'officer_bangkok': {'who': '{adult} Siamese man (age 42), dignified court official with close-cropped greying hair, '
                             "keeper of the King's river tolls at Bangkok in a teak pavilion over the Chao Phraya, "
                             'jasmine garland in hand, gracious steady gaze',
                      'clean': 'gold-threaded silk raj pattern jacket buttoned high over a silk chong kraben',
@@ -193,14 +193,14 @@ LOOKS = {'narrator': {'who': '{adult} Parsi woman (age 41), the pirate first mat
                      'motion': 'jasmine petals drifting, river light rippling across the gold, silk stirring in the '
                                'breeze'},
  'officer_batavia': {'who': '{adult} Dutch woman (age 39), the strict Port Authority officer of Batavia in a '
-                            'whitewashed VOC customs hall, a riding crop resting across an open ledger, spectacles '
-                            'low on her nose, pale blonde hair pinned tight, a stern stare with a hint of wicked '
-                            'enjoyment',
+                            'whitewashed VOC customs hall, a long brass ruler resting across an open ledger, spectacles '
+                            'low on her nose, pale blonde hair pinned tight, a stern stare with a flicker of dry '
+                            'amusement',
                      'clean': 'severe black lace-collared gown buttoned to the throat, long black gloves',
                      'light': 'cool whitewashed hall light with a warm hard accent, crisp and glossy',
                      'motion': 'the crop tapping once per column, dust drifting in the hall light, a slow lowering '
                                'of her spectacles'},
- 'officer_calcutta': {'who': '{adult} English man (age 55), sleek and silver-haired with a waxed moustache, the '
+ 'officer_calcutta': {'who': '{adult} English man (age 46), sleek and silver-haired with a waxed moustache, the '
                              'collector of the port of Calcutta at a vast mahogany desk in a hall of pillars, '
                              'punkahs swaying, strongboxes behind him, sweet poisonous smile',
                       'clean': 'midnight-purple frock coat over a silk waistcoat, ruby tie pin, white gloves',

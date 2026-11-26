@@ -5,7 +5,7 @@ left of the story screen as Powder does in a sea battle:
 
   teller_temple   Mother Chen Sui-lan, keeper of the lantern at the sea goddess's temple. Serene, knowing,
                   teases you about the ending she has already read.
-  teller_tavern   Josefina "La Golondrina" Reyes, a tavern singer who has sailed with everyone. Bawdy and
+  teller_tavern   Josefina "La Golondrina" Reyes, a tavern singer who has sailed everywhere. Boisterous and
                   funny, and swears she was there for all of it.
   teller_drowned  Morwenna Teague, the drowned bride, whom only the Captain can see. She appears when the
                   bell stops, which is why the month waits.
@@ -14,8 +14,8 @@ Each Legend names the one who tells it; Admin > Legends can hand them all to one
 
 THE LEGENDS' CHARACTERS answer on the right of the screen, as the enemy does in a battle. Keyed legend_<name>.
 
-All invented adult women, all editable in Admin > Cast & Voices. Pictures are filed in the Media Library under
-Personas > (her name) and queued as NSFW + clean pairs with Queue_Storyteller_Pairs.bat."""
+The storytellers are editable in Admin > Cast & Voices. Pictures are filed in the Media Library under
+their persona entries."""
 
 TELLERS = {
     "teller_temple": dict(
@@ -35,13 +35,13 @@ TELLERS = {
         prompt='An {adult} Chinese woman (age 47), Mother Chen Sui-lan, graceful and full-figured with a calm beautiful face, long black hair pinned up with red lacquer pins, the keeper of the lantern at a sea goddess temple on the Fujian coast kneeling beside a great glowing red paper lantern, incense smoke curling around her, gilded carvings of waves and dragons behind, an open scroll across her lap, a serene knowing smile as if she has already read the ending, crimson and gold silk temple robe worn closed with a high collar, red lantern glow and incense haze on gold, warm and devotional, {style}'),
     "teller_tavern": dict(
         name="Josefina \"La Golondrina\" Reyes", title="Singer at the Sign of the Swallow", age=34, origin="Manila",
-        home_port="manila", color="#c7802b", voice_id="Julia", speaking_rate=1.02,
-        delivery="warm, bawdy and quick, a tavern singer telling it over the rim of a glass and laughing at her "
+        home_port="manila", color="#c7802b", voice_id="Dalisay", speaking_rate=1.08,
+        delivery="warm, boisterous and quick, a tavern singer keeping time on the table and laughing at her "
                  "own best lines",
-        catchphrase="I was there, Captain. I was always there. Buy me a drink and I'll tell you who was under the table.",
+        catchphrase="I was there, Captain. If I wasn't, the story clearly needed me.",
         bio="Josefina has sung in every waterfront tavern from Calcutta to Nagasaki and sailed, by her own count, "
-            "with every captain worth the trouble. They call her the Swallow because she always comes back, and "
-            "because of a story she tells about a bishop. She knows which legends are true, having started several.",
+            "on every ship worth naming. They call her the Swallow because she always comes back, usually with "
+            "a better chorus and three contradictory witnesses. She knows which legends are true, having started several.",
         quirk="Taps the rhythm of the story on her glass, and stops dead when it turns dangerous.",
         vice="Rum, applause, other people's secrets and the last word.",
         secret="She cannot swim, and has never once told a story about herself that was true.",
@@ -49,7 +49,7 @@ TELLERS = {
         prompt='An {adult} Spanish-Filipina woman (age 34), Josefina "La Golondrina" Reyes, vivid with warm brown skin, a mass of dark curls and gold hoop earrings, a tavern singer on a small stage in a smoky waterfront tavern, seated on the edge of a table with a guitar across her knee and a glass of rum raised, head thrown back in a wicked laugh, scarlet off-shoulder blouse with a modest neckline and a tiered skirt, warm lantern light, smoky amber haze, sailors\' silhouettes behind, {style}'),
     "teller_drowned": dict(
         name="Morwenna Teague", title="The Drowned Bride", age=29, origin="Cornwall, and the Paracels",
-        home_port="hongkong", color="#3f7f8c", voice_id="Elizabeth", speaking_rate=0.86,
+        home_port="hongkong", color="#3f7f8c", voice_id="Rosalind", speaking_rate=0.88,
         delivery="soft, close and amused, a drowned woman murmuring in the Captain's ear while the world stands "
                  "still; cold water and warm mischief",
         catchphrase="The bell has stopped, Captain. That means you're mine for a little while.",
@@ -79,18 +79,18 @@ TELLERS = {
         prompt='An {adult} Japanese woman (age 30), Princess Otohime, tall and exquisite with ink-black hair falling to her hips and pinned with coral and gold, the daughter of the Dragon King in an undersea palace of coral and lacquer, a small black lacquer box tied with a red cord in both hands, a great sea turtle at her side, an amused regal dangerous smile, high-collared sea-blue and silver court robe trailing in the water, ropes of pearls, shafts of green light falling through the water, pearl shimmer, deep teal, {style}'),
     # ---- The second set (25 Nov 2026) -------------------------------------------------------------------
     "legend_passenger": dict(
-        name="Dona Ines de Albuquerque", title="The Passenger Who Pays Too Well", age=36, origin="Goa",
+        name="Dona Beatriz de Albuquerque", title="The Passenger Who Pays Too Well", age=36, origin="Goa",
         home_port="calcutta", color="#8a2f4a", voice_id="Sarah", speaking_rate=0.95,
         delivery="low, polished and a little hunted, a Goan lady who has learned to be charming at doors she is "
                  "afraid of",
         catchphrase="Passage to anywhere that is not here, Captain. I will pay for the silence.",
-        bio="Dona Ines married a Portuguese shipping agent in Goa and buried him within the year, with debts she "
+        bio="Dona Beatriz married a Portuguese shipping agent in Goa and buried him within the year, with debts she "
             "had never seen. She ran with his pearls and her prayer book, and has been paying for a quiet cabin "
             "ever since. She tips like a duchess and prays like a sinner, and the sea has a way of noticing both.",
         quirk="Tells her rosary over the bedcovers, and counts the locks on any door she passes.",
         vice="Port wine, good locks and captains who do not ask where she is from.",
         secret="She never stole the pearls. He gave them to her, the night before the creditors came.",
-        stats={"cunning": 7, "nerve": 6, "charm": 9, "greed": 4},
+        stats={"cunning": 7, "nerve": 5, "charm": 9, "greed": 4},
         prompt="An {adult} Goan-Portuguese woman (age 36), elegant and full-figured with olive skin and dark hair "
                "half-pinned under a black lace mantilla, a widow travelling in secret in 1860, in a lamp-lit ship's "
                "cabin with a heavy purse and a rosary on the table, wearing a deep wine-red travelling dress "
@@ -101,7 +101,7 @@ TELLERS = {
         home_port="singapore", color="#2f8a5b", voice_id="Ashley", speaking_rate=0.98,
         delivery="warm, quick and a little theatrical, a Peranakan trader who negotiates the way other women "
                  "haggle: with eye contact and a plan",
-        catchphrase="I have one ship, Captain, and several admirers. Let us see which of them is the cheaper.",
+        catchphrase="I have one ship, Captain, and three creditors. Let us see which one blinks first.",
         bio="Bee-Lian runs freight from Singapore to Malacca on a single sound ship and a great many promises. She "
             "signed the ship over as security to a lender who sold the paper to a lender who sold it to Madam Wu, "
             "and now it sits on the desk of a foreign captain who has never met her. She dresses to be underestimated.",
@@ -109,7 +109,7 @@ TELLERS = {
         vice="Fine tea, fine cloth, a good gamble and friends with long memories.",
         secret="The squall that sank her second ship was a gambling table. She has not told anyone, including "
                "her bookkeeper.",
-        stats={"cunning": 9, "nerve": 7, "charm": 8, "greed": 6},
+        stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 7},
         prompt="An {adult} Peranakan Chinese woman (age 44), poised and full-figured with sleek dark hair in a "
                "chignon pinned with gold, a Singapore shipping merchant in 1860 standing at a harbour counting "
                "house desk with a stack of bills of lading and a lacquered fan, wearing a fitted embroidered "

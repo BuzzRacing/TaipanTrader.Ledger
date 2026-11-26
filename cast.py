@@ -233,17 +233,17 @@ CHARACTERS = {
         "brand_link": "",
         "age": 38, "origin": "Pondicherry", "home_port": "hongkong", "color": "#8e1f2c", "portrait": "",
         "voice_id": "Olivia", "speaking_rate": 0.9,
-        "delivery": "slow, husky and teasing, a French bookkeeper purring figures as if each one were a confession",
+        "delivery": "crisp, dry and warmly exact, a French-Indian bookkeeper who turns every total into a verdict",
         "catchphrase": "Every column balances in the end, Captain. I simply take my time getting there.",
-        "bio": "Céleste learned her double entry in a Pondicherry counting house and her bad habits in the cabins of "
-               "the captains who hired her. She has kept the private books of four trading houses, ruined one, and "
-               "married none. Now she keeps yours, in a crimson-bound ledger nobody else is allowed to touch, "
-               "in a lamplit room above the wharf where every captain eventually comes to settle up.",
-        "quirk": "Licks the tip of her quill before she writes a loss, and smiles while she does it.",
-        "vice": "Red ink, French brandy and captains who read their own accounts aloud to her.",
-        "secret": "She keeps a second ledger of what every captain in the harbour is really worth, and charges dearly for a peek.",
+        "bio": "Céleste learned mental arithmetic in her mother's Pondicherry spice shop and double entry in the "
+               "counting house upstairs. She has kept the private books of four trading houses, saved two from "
+               "ruin, and closed a third before its owner noticed. Now she keeps yours in a crimson-bound ledger "
+               "nobody else is allowed to touch, and can spot a bad voyage before the ink is dry.",
+        "quirk": "Draws a tiny ship beside every entry that saves the House from disaster.",
+        "vice": "Red ink, candied ginger and proving a confident captain wrong to the penny.",
+        "secret": "She keeps a private page of predictions and has correctly named the winning House three voyages running.",
         "stats": {"cunning": 8, "nerve": 6, "charm": 9, "greed": 5},
-        "portrait_prompt": "An {adult} French-Indian woman (age 38), Mademoiselle Celeste Vautrin, the House's private bookkeeper reclining in a leather chair in a lamplit counting room above the Hong Kong wharf, a great crimson-bound ledger open across her lap, quill in her ink-stained fingers, gold wire spectacles low on her nose, a smouldering gaze over the rims, black silk blouse buttoned to the collar under an oxblood waistcoat, gold wire spectacles, candle glow, warm brass and silver highlights, deep red shadows, intimate, {style}",
+        "portrait_prompt": "An {adult} French-Indian woman (age 38), Mademoiselle Celeste Vautrin, the House's private bookkeeper seated upright at a rosewood desk in a lamplit counting room above the Hong Kong wharf, a great crimson-bound ledger open before her, quill in her ink-stained fingers, gold wire spectacles low on her nose, a wry appraising gaze over the rims, black silk blouse buttoned to the collar under an oxblood waistcoat, candle glow, warm brass and silver highlights, deep red shadows, exacting and composed, {style}",
     },
     # The Thieves (21 Nov 2026): the face of the Accounting Ledger's "Thieves" tile (robbed ashore and from store).
     # She reads the mugging and warehouse-robbery lines (LINE_DEFAULTS below). Voice is provisional: cast her in
@@ -290,7 +290,7 @@ CHARACTERS = {
 _OFFICERS = {
     "officer_singapore": dict(
         name='Mr. Edmund Thornbury', title='Customs Master of the Singapore Roads', age=44, origin="Bath, England",
-        home_port="singapore", color="#6f8f4e", voice_id='Theodore', speaking_rate=0.92,
+        home_port="singapore", color="#6f8f4e", voice_id='Desmond', speaking_rate=0.96,
         delivery='languid, upper-class English and gently bored, cheerful out of sheer idleness',
         catchphrase="Oh, don't trouble yourself with the paperwork, old chap. Neither do I.",
         bio='Younger son of a Bath clergyman, Edmund took the Singapore desk because nobody else wanted the heat. He runs the cheapest wharf in the East from a rattan chair, a glass of lime cordial sweating at his elbow, and judges a captain by his manners rather than his manifest.',
@@ -301,7 +301,7 @@ _OFFICERS = {
         prompt='An {adult} English man (age 44), portly and genial with thinning sandy hair, the languid Port Authority officer of Singapore lounging in a rattan chair on a shaded colonial wharf-office veranda, a glass of lime cordial in one hand and a customs stamp dangling forgotten from the other, ceiling fan and palms, heavy-lidded amused gaze, rumpled white linen suit with a loosened cravat and a straw boater, hot dappled veranda light through palms, hazy and honeyed, {style}'),
     "officer_manila": dict(
         name="Doña Inés Villaraza", title="Collector of the Manila Aduana", age=38, origin="Seville and Manila",
-        home_port="manila", color="#a8323a", voice_id="Julia", speaking_rate=0.98,
+        home_port="manila", color="#a8323a", voice_id="Maricel", speaking_rate=1.0,
         delivery='warm, honeyed Spanish-accented English, charming you while she counts your cargo',
         catchphrase="Such a beautiful cargo, Captain. It would be a shame to let it leave Manila.",
         bio="Inés married the richest trading house in Manila and then quietly took over its customs post as well. "
@@ -313,11 +313,11 @@ _OFFICERS = {
         stats={"cunning": 6, "nerve": 6, "charm": 9, "greed": 9},
         prompt='An {adult} Spanish-Filipina woman (age 38), the charming Port Authority officer of Manila in a carved narra-wood customs office, fan of Manila embroidery in one hand, ivory customs seal in the other, bales of silk behind her, inviting smile and hungry eyes, black lace mantilla gown with a high neckline and a crimson silk sash, warm candlelight on carved wood, golden and soft, lace shadows across her skin, {style}'),
     "officer_saigon": dict(
-        name="Madame Céleste Durand", title="Directrice of the Saigon Customs House", age=33, origin="Marseille",
-        home_port="saigon", color="#5b4a8c", voice_id="Olivia", speaking_rate=1.0,
+        name="Madame Marguerite Durand", title="Directrice of the Saigon Customs House", age=33, origin="Marseille",
+        home_port="saigon", color="#5b4a8c", voice_id="Hélène", speaking_rate=1.04,
         delivery='French, theatrical and mercurial, sweet one moment and icy the next',
         catchphrase="Today I am in a good mood, mon capitaine. Tomorrow? Who knows.",
-        bio="Céleste came out with the French fleet in 1859 as an admiral's secretary and stayed when he sailed home. The new colonial customs house was her reward. She runs it on whim, and no two captains ever get the same Madame Durand.",
+        bio="Marguerite came out with the French fleet in 1859 as an admiral's secretary and stayed when he sailed home. The new colonial customs house was her reward. She runs it on whim, and no two captains ever get the same Madame Durand.",
         quirk="Changes her mind halfway through stamping your papers.",
         vice='Strong coffee, opera, and the thrill of being unpredictable.',
         secret='She keeps a lucky coin in her glove and flips it when she cannot decide what to do with you.',
@@ -325,18 +325,18 @@ _OFFICERS = {
         prompt='An {adult} French woman (age 33), the mercurial colonial Port Authority officer of Saigon reclining on a chaise in a shuttered customs house, a glass of absinthe and a gold coin on the table beside an open ledger, a teasing sidelong smile, violet silk day dress with a high neckline and a tricolour sash, slatted tropical light striping her skin, warm and humid, soft shutter shadows, {style}'),
     "officer_nagasaki": dict(
         name='Okada Shin', title="Ledger-Keeper of the Dejima Customs House", age=35, origin="Nagasaki",
-        home_port="nagasaki", color="#3c4f6b", voice_id='Shaun', speaking_rate=0.9,
+        home_port="nagasaki", color="#3c4f6b", voice_id='Satoshi', speaking_rate=0.90,
         delivery="soft, quiet and precise, every word placed like a stamp; unsettlingly calm",
         catchphrase="Your ledger says one thing, Captain. Your eyes say another.",
         bio='Shin grew up translating Dutch manifests on Dejima and learned that every captain lies in the same three places. He audits more holds than any officer in the East and finds something in most of them. Captains leave his office feeling they have confessed to everything.',
         quirk="Never blinks while you speak.",
         vice="Perfect columns, warm sake, and the moment a liar's voice cracks.",
-        secret="She can read four languages upside down, including the one you think is private.",
+        secret="He can read four languages upside down, including the one you think is private.",
         stats={"cunning": 10, "nerve": 7, "charm": 6, "greed": 4},
-        prompt='An {adult} Japanese man (age 40), slender and composed, hair in a neat topknot, the ledger-keeper of the Dejima customs house in Nagasaki at a low lacquered desk with brush, abacus and open ledger, calm unblinking gaze, deep indigo silk kimono and hakama, neatly worn, soft paper-lantern glow, pale and quiet, delicate shadows, {style}'),
+        prompt='An {adult} Japanese man (age 35), slender and composed, hair in a neat topknot, the ledger-keeper of the Dejima customs house in Nagasaki at a low lacquered desk with brush, abacus and open ledger, calm unblinking gaze, deep indigo silk kimono and hakama, neatly worn, soft paper-lantern glow, pale and quiet, delicate shadows, {style}'),
     "officer_foochow": dict(
         name="Madam Lin Bao-zhu", title="Tea-House Collector of the Min River", age=40, origin="Foochow",
-        home_port="foochow", color="#2f6b3a", voice_id="Ashley", speaking_rate=0.95,
+        home_port="foochow", color="#2f6b3a", voice_id="Mei", speaking_rate=0.95,
         delivery="unhurried and smoky, a tea-house hostess who negotiates like a pirate",
         catchphrase="Sit, Captain. Drink my tea. Then we will talk about what you really carry.",
         bio="Bao-zhu ran the finest tea house on the Min River before the treaty made Foochow a customs port. She "
@@ -348,18 +348,18 @@ _OFFICERS = {
         prompt='An {adult} Chinese woman (age 40), the Port Authority officer of Foochow serving tea in a customs house hung with tea-chest labels, jade pins in her black hair, a steaming clay teapot tilted in her hand, a slow knowing smile, jade-green silk qipao buttoned to the collar, soft river light through lattice, pearly green, dreamy and warm, {style}'),
     "officer_shanghai": dict(
         name='Mr. Fong Wing-kei', title="Collector of the Bund", age=37, origin="Ningbo",
-        home_port="shanghai", color="#9b2d20", voice_id='Hades', speaking_rate=1.05,
+        home_port="shanghai", color="#9b2d20", voice_id='Ming', speaking_rate=1.08,
         delivery='brisk, commanding and amused, a powerful man who enjoys being obeyed',
         catchphrase="On my wharf, Captain, nothing moves unless I say so. Not even you.",
         bio="Wing-kei clawed his way from a Ningbo comprador's son to the most powerful desk on the Bund. Shanghai hungers for arms, spices and Indian goods, and so does he. If your hold carries what the city wants, he will have it, at your price or at his.",
-        quirk="Snaps her fingers once, and two clerks appear.",
+        quirk="Snaps his fingers once, and two clerks appear.",
         vice='Power, French cologne, and making proud captains wait.',
-        secret="Half the Bund's warehouses pay her rent through a cousin.",
+        secret="Half the Bund's warehouses pay him rent through a cousin.",
         stats={"cunning": 8, "nerve": 9, "charm": 7, "greed": 8},
-        prompt='An {adult} Ningbo Chinese man (age 46), imposing and broad, shaven forehead and long queue, the collector of the Bund behind a carved desk, clerks waiting, the Shanghai riverfront behind him, commanding amused gaze, fitted oxblood brocade magua jacket over a black silk robe, mandarin hat with a coral button, crisp Bund morning light, bright and glossy, crisp rim light on his hair, {style}'),
+        prompt='An {adult} Ningbo Chinese man (age 37), imposing and broad, shaven forehead and long queue, the collector of the Bund behind a carved desk, clerks waiting, the Shanghai riverfront behind him, commanding amused gaze, fitted oxblood brocade magua jacket over a black silk robe, mandarin hat with a coral button, crisp Bund morning light, bright and glossy, crisp rim light on his hair, {style}'),
     "officer_bangkok": dict(
         name='Khun Luang Somchai', title="Keeper of the King's River Tolls", age=42, origin="Bangkok",
-        home_port="bangkok", color="#b07a1c", voice_id='Carter', speaking_rate=0.9,
+        home_port="bangkok", color="#b07a1c", voice_id='Boonleng', speaking_rate=0.91,
         delivery='gentle, patient and gracious, with steel underneath; he forgives once',
         catchphrase="A small mistake, Captain, is forgiven. Make it twice and I will remember your face forever.",
         bio="A nobleman of the Siamese court, Somchai keeps the King's river tolls with impeccable manners. Honest captains find him the warmest friend in the East and are welcomed back like family. Liars find his memory long.",
@@ -367,10 +367,10 @@ _OFFICERS = {
         vice='Jasmine, temple bells, and the slow ruin of captains who disappointed him.',
         secret='He keeps a garden behind the customs house, with a stone for every captain he never forgave.',
         stats={"cunning": 7, "nerve": 6, "charm": 9, "greed": 4},
-        prompt="An {adult} Siamese man (age 50), dignified court official with close-cropped greying hair, keeper of the King's river tolls at Bangkok in a teak pavilion over the Chao Phraya, jasmine garland in hand, gracious steady gaze, gold-threaded silk raj pattern jacket buttoned high over a silk chong kraben, warm river-reflected light on gold leaf, glowing and serene, {style}"),
+        prompt="An {adult} Siamese man (age 42), dignified court official with close-cropped greying hair, keeper of the King's river tolls at Bangkok in a teak pavilion over the Chao Phraya, jasmine garland in hand, gracious steady gaze, gold-threaded silk raj pattern jacket buttoned high over a silk chong kraben, warm river-reflected light on gold leaf, glowing and serene, {style}"),
     "officer_batavia": dict(
         name="Mevrouw Anneke van der Berg", title="Tollmistress of the Batavia Roads", age=39, origin="Rotterdam",
-        home_port="batavia", color="#e07b1f", voice_id="Wendy", speaking_rate=0.96,
+        home_port="batavia", color="#e07b1f", voice_id="Katrien", speaking_rate=1.0,
         delivery='crisp, dry Dutch precision with a wicked streak of humour; strict and enjoys it',
         catchphrase="Every guilder, Captain. I count every single one. Slowly.",
         bio='Anneke learned her trade from the old Sound Toll clerks at Elsinore, where captains first declared their own cargo and the Crown could buy it at their word. She brought the rule to Batavia and enforces it with a long brass ruler.',
@@ -378,7 +378,7 @@ _OFFICERS = {
         vice="Genever, lace, and a captain sweating under her questions.",
         secret='She has never once needed the ruler for measuring.',
         stats={"cunning": 9, "nerve": 8, "charm": 5, "greed": 5},
-        prompt='An {adult} Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC customs hall, a riding crop resting across an open ledger, spectacles low on her nose, pale blonde hair pinned tight, a stern stare with a hint of wicked enjoyment, severe black lace-collared gown buttoned to the throat, long black gloves, cool whitewashed hall light with a warm hard accent, crisp and glossy, {style}'),
+        prompt='An {adult} Dutch woman (age 39), the strict Port Authority officer of Batavia in a whitewashed VOC customs hall, a long brass ruler resting across an open ledger, spectacles low on her nose, pale blonde hair pinned tight, a stern stare with a flicker of dry amusement, severe black lace-collared gown buttoned to the throat, long black gloves, cool whitewashed hall light with a warm hard accent, crisp and glossy, {style}'),
     "officer_calcutta": dict(
         name='Mr. Horace Blackwood', title="Collector of the Port of Calcutta", age=46, origin="London and Calcutta",
         home_port="calcutta", color="#4a2a5c", voice_id='Clive', speaking_rate=0.94,
@@ -389,11 +389,11 @@ _OFFICERS = {
         vice="Rubies, gossip, and the sound of a strongbox closing on someone else's silver.",
         secret='Two of his three fathers-in-law were captains who under-declared.',
         stats={"cunning": 9, "nerve": 8, "charm": 8, "greed": 10},
-        prompt='An {adult} English man (age 55), sleek and silver-haired with a waxed moustache, the collector of the port of Calcutta at a vast mahogany desk in a hall of pillars, punkahs swaying, strongboxes behind him, sweet poisonous smile, midnight-purple frock coat over a silk waistcoat, ruby tie pin, white gloves, swaying punkah shadows, deep plum and gold, luxurious and slow, {style}'),
+        prompt='An {adult} English man (age 46), sleek and silver-haired with a waxed moustache, the collector of the port of Calcutta at a vast mahogany desk in a hall of pillars, punkahs swaying, strongboxes behind him, sweet poisonous smile, midnight-purple frock coat over a silk waistcoat, ruby tie pin, white gloves, swaying punkah shadows, deep plum and gold, luxurious and slow, {style}'),
     # Hong Kong's desk for visiting houses (a captain whose home is Hong Kong meets the Registrar instead).
     "officer_hongkong": dict(
         name="Senhora Isabel Rebelo", title="Collector of Victoria Harbour", age=33, origin="Macau",
-        home_port="hongkong", color="#8a3b4a", voice_id="Rocio", speaking_rate=0.95,
+        home_port="hongkong", color="#8a3b4a", voice_id="Leonor", speaking_rate=1.01,
         delivery='low and honeyed, Portuguese-accented English; charming and close, with a blade under every compliment',
         catchphrase="I know every hiding place on a ship, Captain. I built half of them.",
         bio="Isabel grew up on her father's lorchas, running opium and silver past the Macau forts. When the Rebelos "
@@ -419,13 +419,6 @@ for _cid, _o in _OFFICERS.items():
     _o["brand_link"], _o["portrait"] = "", ""
     _o["portrait_prompt"] = _o.pop("prompt")
     CHARACTERS[_cid] = _o
-# Voices Inworld does not have (Elizabeth, Julia, Priya) are replaced by the Easy-pass casting voices, so every
-# default persona has a voice that exists. Only the defaults: a voice set in Voice Library is never touched.
-for _cid, _v in {"officer_singapore": "Wendy", "officer_manila": "Marta", "officer_bangkok": "Liwa",
-                 "warden_singapore": "Tala", "warden_manila": "Rocio", "warden_bangkok": "Minji",
-                 "warden_calcutta": "Winifred", "teller_tavern": "Dalisay", "teller_drowned": "Rosalind"}.items():
-    if _cid in CHARACTERS:
-        CHARACTERS[_cid]["voice_id"] = _v
 # Taipan Trader's cast is a mix of men and women; these are the men (voicelib checks voices against it).
 MEN = frozenset({"bosun", "banker", "comprador", "shipwright", "customs", "crier",
                  "officer_singapore", "officer_nagasaki", "officer_shanghai", "officer_bangkok", "officer_calcutta",

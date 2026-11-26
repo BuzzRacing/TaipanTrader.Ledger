@@ -438,6 +438,7 @@ def check_act(g, p, kind):
 
 # ---------------------------------------------------------------- view --
 def view(g, p):
+    e = E()
     j = p.get("jail") if jailed(p) else None
     out = {"plea": None, "jail": None, "last": p.get("jail_last"), "freed": p.get("jail_freed"),
            "months_total": int(p.get("jail_months", 0))}
@@ -452,6 +453,16 @@ def view(g, p):
                        "last": j.get("last") or {}, "warden": warden_of(j["port"]), "fresh": bool(j.get("fresh")),
                        "ready": bool(p.get("ready")), "by": ACCUSERS.get(j["charge"], "mayor"),
                        "fine": int(j.get("fine", 0)), "paid": int(j.get("paid", 0))}
+        stage = "month_last" if j["left"] <= 1 else "month"
+        out["jail"]["dialogue"] = {
+            slot: e.tx(key) for slot, key in (
+                ("irons", f"jail.warden.{j['port']}.irons"),
+                ("month", f"jail.warden.{j['port']}.{stage}"),
+            ) if key in e.TEXT
+        }
     if out["freed"]:
         out["freed"] = dict(out["freed"], warden=warden_of(out["freed"]["port"]))
+        key = f"jail.warden.{out['freed']['port']}.free"
+        if key in e.TEXT:
+            out["freed"]["dialogue"] = e.tx(key)
     return out

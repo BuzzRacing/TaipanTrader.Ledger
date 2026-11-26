@@ -33,7 +33,7 @@ LON_MIN, LON_MAX, LAT_MIN, LAT_MAX = 85.0, 135.0, -10.0, 35.0
 
 DEFAULTS = {
     "brand": {
-        "title_a": "Crimson", "title_b": "Ledger",
+        "title_a": "Taipan", "title_b": "Trader",
         "tagline": "Trading the China seas, 1860",
         "currency": "$",
         "lender": "Madam Wu Lian",
@@ -45,22 +45,22 @@ DEFAULTS = {
     },
     "theme": {
         "colors": {
-            "paper": "#f6eedb", "card": "#fbf6e9", "ink": "#2a2118", "muted": "#75664f",
-            "rule": "#d9c9a3", "teak": "#45291a", "teak-2": "#5d3a24", "on-dark": "#f6e7c4",
-            "highlight": "#e8b84a", "vermilion": "#b3261e", "jade": "#2f6b5a", "gold": "#b08a2e",
-            "btn": "#efe2c2", "btn-border": "#c9b383", "tabs": "#ead9b1", "input": "#fffdf6",
-            "sea": "#cfdcd3", "land": "#e9dcb8",
-            "board-bg": "#1f1410", "board-panel": "#2c1d15", "board-ink": "#f1e4c3",
-            "deck-night": "#15100c", "deck-lacquer": "#2a1b14", "deck-oxblood": "#7b2428", "deck-brass": "#c9a34e",
-            "deck-jade": "#2f6b5a", "deck-ivory": "#f1e3c5", "deck-storm": "#385467", "deck-leather": "#6b452d",
+            "paper": "#ecf0e4", "card": "#f6f8f0", "ink": "#1b2a33", "muted": "#5a6b68",
+            "rule": "#b7c8bb", "teak": "#173447", "teak-2": "#245069", "on-dark": "#e8f1ea",
+            "highlight": "#d9a441", "vermilion": "#b5462a", "jade": "#2e7d6b", "gold": "#c08a2e",
+            "btn": "#dce7de", "btn-border": "#98b2a5", "tabs": "#cfdfd5", "input": "#fbfcf7",
+            "sea": "#b4d2d4", "land": "#e4dcc2", "board-bg": "#0e1b23", "board-panel": "#16303d",
+            "board-ink": "#e2ede6", "deck-night": "#0b161d", "deck-lacquer": "#12283a", "deck-oxblood": "#1f5f7a",
+            "deck-brass": "#d6a84e", "deck-jade": "#3f9a7f", "deck-ivory": "#eef1e2", "deck-storm": "#4f7488",
+            "deck-leather": "#6e5a3e",
         },
         "player_colors": ["#b3261e", "#2d4a8a", "#2f7d5b", "#c58a1b",
                           "#7a3b7d", "#1f7f8c", "#7a4a22", "#4f5d6b"],
-        "font_title": '"Uncial Antiqua", "Palatino Linotype", Palatino, Georgia, serif',
-        "font_serif": '"MedievalSharp", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif',
-        "font_sans": '"Alegreya", "Palatino Linotype", Palatino, Georgia, serif',
-        "font_special": '"Almendra SC", "Palatino Linotype", Palatino, Georgia, serif',
-        "web_fonts": "Uncial Antiqua | MedievalSharp | Alegreya:ital,wght@0,400;0,700;1,400;1,700 | Almendra SC",
+        "font_title": '"IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif',
+        "font_serif": '"Libre Caslon Text", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif',
+        "font_sans": '"Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif',
+        "font_special": '"IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif',
+        "web_fonts": "IM Fell English SC | Libre Caslon Text:ital,wght@0,400;0,700;1,400",
         "font_size": 16,
         "radius": 8,
         "ambient_seconds": 40,
@@ -68,12 +68,12 @@ DEFAULTS = {
         "custom_css": "",
     },
     "graphics": {
-        "logo": "/assets/branding/crimson-ledger-logo-v01.png",
-        "favicon": "/assets/branding/crimson-ledger-icon-v01.png",
-        "masthead_bg": "/uploads/historical-masthead.webp",
-        "admin_masthead_bg": "/assets/branding/crimson-ledger-command-center-v01.webp",
-        "page_bg": "/uploads/historical-page.webp",
-        "board_bg": "/uploads/historical-board.webp",
+        "logo": "",
+        "favicon": "/assets/branding/taipan-trader-mark.svg",
+        "masthead_bg": "/assets/ceremony-harbor.png",
+        "admin_masthead_bg": "/assets/ceremony-harbor.png",
+        "page_bg": "/assets/ceremony-harbor.png",
+        "board_bg": "/assets/ceremony-harbor.png",
         "chart_bg": "/uploads/historical-chart-v3.svg",
         "goods": {
             "opium": "/uploads/historical-cargo-opium.webp",
@@ -457,7 +457,7 @@ DEFAULTS = {
         # Cargo Tiers (24 Nov 2026): as a captain reaches each step's rank, cargo with that tier in "enters" joins their
         # market and cargo with it in "leaves" is bought out and goes. Off: everyone trades the original nine.
         # Not wired into the engine yet (engine.TIERS_READY), so the switch does nothing for now.
-        "tiers": {"enabled": False, "steps": ["merchant", "merchant_prince"], "seeded_v1": False},
+        "tiers": {"enabled": False, "steps": ["merchant", "merchant_prince"], "seeded_v1": False, "rows_v2": False},
         "registrar": {"enabled": True, "stale_months": 2, "held_first": True,
                       "hot_enabled": True, "hot_home_chance": 0.25, "hot_away_chance": 0.1,
                       "hot_every": 3, "hot_lead": 1, "hot_months": 2, "hot_hold": True,
@@ -539,15 +539,20 @@ DEFAULTS = {
         "tea":       {"name": "Tea", "family_name": "", "base": 70, "vol": 0.08, "depth": 2000, "enters": 0, "leaves": 1, "contraband": False, "ban_odds": 0.0},
         "rice":      {"name": "Rice", "family_name": "", "base": 14, "vol": 0.07, "depth": 3000, "enters": 0, "leaves": 1, "contraband": False, "ban_odds": 0.0},
         "general":   {"name": "General Cargo", "family_name": "", "base": 9, "vol": 0.07, "depth": 3000, "enters": 0, "leaves": 1, "contraband": False, "ban_odds": 0.0},
-        # Cargo Tiers (24 Nov 2026), six real China Seas luxuries that join as a captain climbs. They are
-        # in the table but not in play yet: engine.TIERS_READY. Base prices, swings and depths are
-        # placeholders until the balance pass. Ambergris is the second batch's wild cargo.
-        "camphor":   {"name": "Camphor", "family_name": "", "base": 5500, "vol": 0.08, "depth": 400, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
-        "sandalwood": {"name": "Sandalwood", "family_name": "", "base": 6500, "vol": 0.08, "depth": 350, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
-        "ginseng":   {"name": "Ginseng", "family_name": "", "base": 8000, "vol": 0.10, "depth": 300, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
-        "jade":      {"name": "Jade", "family_name": "", "base": 11000, "vol": 0.10, "depth": 250, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
-        "pearls":    {"name": "Pearls", "family_name": "", "base": 15000, "vol": 0.12, "depth": 200, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
-        "ambergris": {"name": "Ambergris", "family_name": "", "base": 20000, "vol": 0.12, "depth": 150, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        # Cargo Tiers (24 Nov 2026), six real China Seas luxuries that join as a captain climbs (rules.tiers).
+        # Balanced 25 Nov 2026 against the Pi's own economy and rank ladder (tests/pi_economy.py, tests/tiers_market_scan.py
+        # ceiling): dearer than opium, swingier than the old placeholders, and thinner than the retained cargoes.
+        # Best-case income per cargo over a 10-year game (perfect foresight, one load a month), median: camphor ~135M,
+        # sandalwood ~220M, ginseng ~395M, jade ~420M, pearls ~575M, ambergris ~675M, against Porcelain 390M, Silk 585M,
+        # Opium 700M, Gold 705M, Marijuana 1.1B. Price x depth, the money one price move of 25% takes, runs from about
+        # $4M (camphor) to $8M (ambergris): gold is $5.8M. Ambergris is the second batch's wild cargo in the shipped
+        # defaults only: the Pi's wild list is Gold, Marijuana, Silk and Tea, and Marijuana stays at every tier.
+        "camphor":   {"name": "Camphor", "family_name": "", "base": 9000, "vol": 0.20, "depth": 450, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "sandalwood": {"name": "Sandalwood", "family_name": "", "base": 11000, "vol": 0.25, "depth": 450, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "ginseng":   {"name": "Ginseng", "family_name": "", "base": 14000, "vol": 0.30, "depth": 450, "enters": 1, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "jade":      {"name": "Jade", "family_name": "", "base": 20000, "vol": 0.32, "depth": 340, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "pearls":    {"name": "Pearls", "family_name": "", "base": 28000, "vol": 0.35, "depth": 280, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
+        "ambergris": {"name": "Ambergris", "family_name": "", "base": 40000, "vol": 0.40, "depth": 200, "enters": 2, "leaves": 0, "contraband": False, "ban_odds": 0.0},
     },
     "regions": {
         "north":  {"name": "Yellow Sea & Japan", "typhoon": 0.02, "squalls": 0.20, "label_lon": 126, "label_lat": 29,
@@ -652,6 +657,10 @@ OLD_DEPTHS = {"opium": 60, "gold": 90, "silk": 160, "porcelain": 250, "arms": 25
 SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
 # Cargo Tiers (24 Nov 2026): the luxuries that join saved cargo tables once (see validate).
 TIER_GOODS = ("camphor", "sandalwood", "ginseng", "jade", "pearls", "ambergris")
+# What a settings file seeded in phase 1 holds for the six luxuries (base, vol, depth); the balance pass of 25 Nov 2026 moves
+# a row that is still exactly this to the shipped numbers, once (rules.tiers.rows_v2). A row you edited is left alone.
+TIER_OLD_ROWS = {"camphor": (5500, 0.08, 400), "sandalwood": (6500, 0.08, 350), "ginseng": (8000, 0.10, 300),
+                 "jade": (11000, 0.10, 250), "pearls": (15000, 0.12, 200), "ambergris": (20000, 0.12, 150)}
 # Game 3 review (19 Nov 2026): the swingiest cargoes are calmed once to at most these monthly swings.
 CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
 # Game 5 review (20 Nov 2026): the old shipped Savage storm numbers and what they become (see load_config).
@@ -2246,6 +2255,13 @@ def validate(raw):
         if "ambergris" in cfg["goods"] and "ambergris" not in wg and "porcelain" in wg:
             cfg["rules"]["market"]["wild_goods"] = wg + ["ambergris"]
         tr["seeded_v1"] = True
+    if not tr.get("rows_v2"):
+        for key, old in TIER_OLD_ROWS.items():
+            gd = cfg["goods"].get(key)
+            if gd and (float(gd.get("base", 0)), float(gd.get("vol", 0)), float(gd.get("depth", 0))) == tuple(float(x) for x in old):
+                for field in ("base", "vol", "depth"):
+                    gd[field] = DEFAULTS["goods"][key][field]
+        tr["rows_v2"] = True
     rank_ids = [r["id"] for r in cfg["ranks"]]
     tr["steps"] = [r for r in dict.fromkeys(tr.get("steps") or []) if r in rank_ids]
     for key, gd in cfg["goods"].items():

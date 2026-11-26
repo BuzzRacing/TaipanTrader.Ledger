@@ -4,11 +4,13 @@ A turn-based trading game for 1 to 8 players, set in the Far East of the 1860s a
 
 Taipan Trader is a family-friendly fork of Crimson Ledger (D:\SeaTrader), forked 25 November 2026:
 
-- **Clean only.** The content rating is locked to Family-friendly (config.py, media.py, server.py); the adult option is gone from Admin. NSFW pictures were not copied, NSFW picture jobs are refused (media.Jobs._push), every persona prompt is the dressed look (persona_prompts_v2.py), and the Art Bible page is hidden.
+- **Clean only.** The content rating is locked to Family-friendly (config.py, media.py, server.py). Inherited pictures flagged during the prompt audit are disabled, adult picture prompts are refused, and persona prompts use the dressed look (persona_prompts_v2.py).
 - **A mixed cast.** Sixteen characters are men (cast.MEN): the bosun, banker, comprador, shipwright, customs inspector, crier, five Port Authority officers and five wardens. Their old pictures were women and were dropped; their cards show initials until new portraits are made. taipan_text.py rewords lines about them and about "the officer" / "the warden".
 - **Runs beside Crimson Ledger.** Port 8775 (Crimson Ledger uses 8765). Launch with Launch_TaipanTrader.bat. Raspberry Pi, deploy and picture-queue scripts were left out.
 - The Inworld voice key is not copied; paste it in Admin > Voices to hear the cast.
 - **Staying in step with Crimson Ledger.** GitHub: BuzzRacing/TaipanTrader (`origin`). Crimson Ledger is the `upstream` remote (BuzzRacing/SeaTrader). Push Crimson Ledger first, then double-click **Sync_From_Crimson_Ledger.bat**: it merges upstream `main`, keeps Taipan's own `config/settings.json` and `config/media.json`, runs `tests/taipan_clean_test.py` and pushes. If lines clash, it stops and lists the files.
+
+In **Admin > Media Library**, new pictures use Qwen Image 2.1 with prompt enhancement. Open a reviewed persona portrait with **Edit and regenerate** and tick **Use this picture as the identity reference** to make another expression or scene with the same face. **Render a native 2K master** is available for 3:4 portraits and 16:9 scenes.
 
 ## Play
 
@@ -58,10 +60,10 @@ Session continuity (21 November 2026): Study B approved and implemented locally.
 | Brand | Game title, tagline, currency symbol, and the names of the moneylender, pirate lord, bank and winner's title. |
 | Look & Style | Every colour, the four fonts (game title, name headers, general text, special text), the web fonts to download, text size, corner roundness, the eight house colours and your own CSS, with a live preview. |
 | Graphics | Logo, tab icon, backgrounds, a painted chart to replace the drawn coastlines, and a picture for each cargo, port and ship. |
-| Art Bible | The Historical private-release visual canon: 1860 China Seas art direction, palette, typography, adult nudity and kink rules, cultural and historical guardrails, exact asset specifications, AI Farm prompt builder, reusable recipes and an approval checklist. |
+| Art Bible | Family-friendly art direction for the 1860 China Seas, with the porcelain-blue and jade palette, typography, asset specs, AI Farm prompt studio, reusable recipes, and an approval checklist. |
 | Cast & Voices | The characters who read the game aloud: profile cards with portrait, Inworld voice, story and stats; auditions; who reads which line; the Inworld key. See Voices below. |
 | Language & Text | Every line of wording. Reword English or add whole languages. |
-| Ratings & Difficulty | Content rating (Historical private adult or Family-friendly sharing), difficulty levels, and the ranks players earn. Family-friendly also locks the Art Bible prompt studio to dressed, non-erotic direction; it does not replace artwork already uploaded under Graphics. |
+| Ratings & Difficulty | Family-friendly content rating, difficulty levels, and the ranks players earn. |
 | Game Setup, Economy, Cargo, Ports, Ships, Weather & Seas, Pirates & Customs | Every rule and number in the game, and the tables of cargoes, ports, ships and seas. |
 | Backup & Access | Named presets, automatic backups of each save, export and import, reset, and the admin password. |
 
@@ -69,7 +71,7 @@ The Admin page needs no password on the computer running the game. Other devices
 
 Settings live in the `config` folder, uploaded images in `web/uploads`, games in `saves`, records in `journal`, spoken lines in `cache/voice`. Delete `config` to return to the defaults.
 
-The admin header has its own **Graphics > Main artwork > Command Center banner** slot, linked to **Media Library > Brand > Command Center banner**. Upload or pick a replacement in Graphics and press **Save & apply**. It previews in the header while editing. Use a wide panorama with dark, quiet space on the left; the header crops the center strip. The bundled painting is `web/assets/branding/crimson-ledger-command-center-v01.webp`. Files placed in `web/media/brand/admin_masthead_bg/` can be imported with **Scan folders**, then selected in Graphics.
+The admin header has its own **Graphics > Main artwork > Command Center banner** slot, linked to **Media Library > Brand > Command Center banner**. Upload or pick a replacement in Graphics and press **Save & apply**. It previews in the header while editing. Use a wide panorama with dark, quiet space on the left; the header crops the center strip. The bundled harbor painting is `web/assets/ceremony-harbor.png`. Files placed in `web/media/brand/admin_masthead_bg/` can be imported with **Scan folders**, then selected in Graphics.
 
 ## Captain's Report
 
@@ -112,7 +114,7 @@ Every player has a Tally Book: their numbers as charts, heat maps and records. O
 
 ## Cinematic Table / Harbor View
 
-Open `/table` (or `Launch_HarborView.bat`) on the second monitor. The solo spectator view is a 1920×1080 stage that scales to fit: a brass-framed sea chart in an 1860 ship's cabin, large cast artwork, and Madame Anahit hosting between scenes. There is no title masthead. The director follows journalled business, travels between ports, and gives storms, battles, customs, jail, promotions and Legends their own character-led scenes. The chart remains as a locator during cinematic scenes. Existing Media Library images are used first; dedicated images use `table-host`, `table-sly`, `table-happy`, `table-storm`, `table-angry` and `table-cabin` tags.
+Open `/table` (or `Launch_HarborView.bat`) on the second monitor. The solo spectator view is a 1920×1080 stage that scales to fit: a brass-framed sea chart over a period harbor backdrop, large cast artwork, and Madame Anahit hosting between scenes. There is no title masthead. The director follows journalled business, travels between ports, and gives storms, battles, customs, jail, promotions and Legends their own character-led scenes. The chart remains as a locator during cinematic scenes. Character art comes from the Media Library. Dedicated images use `table-host`, `table-sly`, `table-happy`, `table-storm`, `table-angry` and `table-cabin` tags.
 
 The discreet controls offer Pause/Resume (presentation only; gameplay continues), Skip, Sea chart, Linger, Sound and Quit. Space pauses, Right Arrow skips, and Escape returns to the chart. Sound uses the same mixer as the player screen. When the Table's audio is running, other windows on the same computer yield only the channels enabled at the Table; closing, muting or pausing the Table restores them. Reload existing player windows once after this update to load the audio coordination code.
 

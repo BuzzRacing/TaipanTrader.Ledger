@@ -130,7 +130,8 @@ def test_a_legend_opens_on_the_landfall_and_takes_no_time():
     turn = g.s["turn"]
     v = g.view("p1", {"p1"})["me"]["legend"]
     assert v["tale"] == "palace" and v["n"] == 1 and v["of"] == 3 and v["teller"] == "teller_drowned"
-    assert len(v["beats"]) == 2 and all(b["text"] and b["side"] == "left" for b in v["beats"])
+    assert len(v["beats"]) == 3 and all(b["text"] and b["side"] == "left" for b in v["beats"])
+    assert v["beats"][0]["text"] == engine.tx("legend.frame.teller_drowned.0")
     assert [c["key"] for c in v["choices"]] == ["free", "sell", "keep"] and not v["done"]
     assert any("Palace Beneath the Waves" in line for line in p["log"])
     cash = p["cash"]
@@ -305,7 +306,9 @@ def test_the_storyteller_follows_the_admin_setting():
     g, p = new_game()
     sail(g, p, "nagasaki")
     assert p["legend"]["teller"] == "teller_tavern"
-    assert all(b["who"] == "teller_tavern" for b in g.view("p1", {"p1"})["me"]["legend"]["beats"])
+    beats = g.view("p1", {"p1"})["me"]["legend"]["beats"]
+    assert all(b["who"] == "teller_tavern" for b in beats)
+    assert beats[0]["text"] == engine.tx("legend.frame.teller_tavern.0")
     setup(legend__teller="random")
     g, p = new_game()
     sail(g, p, "nagasaki")

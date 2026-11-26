@@ -80,7 +80,7 @@ def play_some(seeds, **kw):
     raise AssertionError("no bot game finished for seeds {}".format(list(seeds)))
 
 
-def test_every_speaker_has_her_lines():
+def test_every_speaker_has_lines():
     for who in cert_text.SPEAKERS:
         good, bad = cert_text.bank(who, "good"), cert_text.bank(who, "bad")
         assert len(good) >= 4 and len(bad) >= 2, who
@@ -98,7 +98,7 @@ def test_lines_are_clean_of_amounts_and_have_family_wording():
         assert len(line) <= 190, key          # one short line
 
 
-def test_the_rule_picks_the_woman_the_voyage_earned():
+def test_the_rule_picks_the_speaker_the_voyage_earned():
     engine.configure()
     base = {"won": 0, "fights_war": 0, "fights_pirate": 0, "interest": 0, "taxes": 0, "seized_value": 0, "losses": 0,
             "bankrupt": 0, "tax_port": None, "best_sale": None, "worth": 1_000_000, "start": 1000, "place": 1}
@@ -148,15 +148,15 @@ def test_a_finished_game_gives_every_house_a_certificate():
             assert c["worth"] == h["final_worth"] == int(game.worth(game.s["players"][h["id"]]))   # as the standings show
             assert c["houses"] == len(book["houses"]) and 1 <= c["place"] <= c["houses"]
             assert c["home_name"] and c["years"] == 5 and c["first"] and c["last"]
-            assert c["women"] and c["women"][-1]["who"] == "gamemaster"
-            for w in c["women"]:
+            assert c["speakers"] and c["speakers"][-1]["who"] == "gamemaster"
+            for w in c["speakers"]:
                 assert w["who"] in engine.CFG["characters"], w
                 assert w["text"] and w["family"] and "{" not in w["text"] and "{" not in w["family"], w
                 assert (".bad." in w["key"]) == c["bad"], w
-            assert certificate.facts(gid, h["id"])["women"] == c["women"]        # the same line every time
+            assert certificate.facts(gid, h["id"])["speakers"] == c["speakers"]        # the same line every time
             assert c["recipe"] is None
         pid = book["houses"][0]["id"]
-        who = certificate.facts(gid, pid)["women"][0]["who"]
+        who = certificate.facts(gid, pid)["speakers"][0]["who"]
         saved = certificate.recipe_set(gid, pid, {"bg": "m12ab34cd", "mayor": "m99", "persona": "../x", "who": who,
                                                   "extra": "dropped"})
         assert saved == {"bg": "m12ab34cd", "mayor": "m99", "who": who}

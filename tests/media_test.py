@@ -21,6 +21,7 @@ with open(os.path.join(media.UPLOAD_DIR, "portrait-bosun-abcdef12.png"), "wb") a
     f.write(PNG)
 cfg = config.defaults()
 cfg["characters"]["bosun"]["portrait"] = "/uploads/portrait-bosun-abcdef12.png"
+cfg["characters"]["bosun"]["portrait_prompt"] = "Legacy portrait with nude glamour"
 try:
     lib = media.load(cfg)
     first = lib["items"][0]
@@ -31,12 +32,21 @@ try:
     clip = media.add_bytes(b"\x00" * 64, ".mp4", "persona", "bosun", ["speaking"], (), False, "upload")
     assert clip["type"] == "video" and safe["url"].startswith("/media/persona/bosun/")
     cfg["content"]["rating"] = "historical"
-    assert len(media.public(cfg)["items"]["persona"]["bosun"]) == 3
+    assert {i["id"] for i in media.public(cfg)["items"]["persona"]["bosun"]} == {safe["id"], clip["id"]}
     cfg["content"]["rating"] = "family"
     pub = media.public(cfg)["items"]["persona"]["bosun"]
     assert {i["id"] for i in pub} == {safe["id"], clip["id"]}, pub
     assert media.is_blocked(first["url"], cfg)
     assert media.safe_cast({"bosun": {"portrait": first["url"]}}, cfg)["bosun"]["portrait"] == safe["url"]
+    media.update([safe["id"]], {"reviewed": True})
+    assert media.identity_reference(safe["id"], "bosun", cfg) == media.path_for(safe["url"])
+    for item_id, subject in [(safe["id"], "crier"), (first["id"], "bosun"), (clip["id"], "bosun")]:
+        try:
+            media.identity_reference(item_id, subject, cfg)
+        except media.MediaError:
+            pass
+        else:
+            raise AssertionError("Invalid identity reference was accepted")
     # Scan: a dropped file in an nsfw folder is tagged NSFW, roles come from the folder name.
     d = os.path.join(media.MEDIA_DIR, "persona", "crier", "speaking", "nsfw")
     os.makedirs(d)

@@ -6,9 +6,10 @@ checked against every kind, subject and role the game defines in media.py and co
 Family-friendly counts come from the 18 Nov copy on BIGBOX (config/media.json), so
 treat that section as approximate.
 
-House rules for every prompt below: women only (no men anywhere, either side of a
-fight), 1860 China Seas, the Art Bible style. Persona mood shots reuse that persona's
-own cast portrait prompt with the mood clause added (as the mood-set did).
+This is an inherited Crimson Ledger inventory. Its cast assignments, counts, and
+costume notes are historical. For Taipan Trader, use the current family-friendly
+cast and Media Library roles. Set scenes in the 1860 South China Seas with mixed
+crews. Use a reviewed portrait as the reference for a persona's mood variants.
 Shapes: personas 3:4, ports/scenes/services 16:9, ship cards 16:9, cargo icons 1:1,
 rank badges 1:1 (256 px like the others).
 
