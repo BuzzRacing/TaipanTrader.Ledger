@@ -652,6 +652,22 @@ OLD_DEPTHS = {"opium": 60, "gold": 90, "silk": 160, "porcelain": 250, "arms": 25
 SEEDED_SHIPS = ("gunboat", "countryship", "flagship")
 # Cargo Tiers (24 Nov 2026): the luxuries that join saved cargo tables once (see validate).
 TIER_GOODS = ("camphor", "sandalwood", "ginseng", "jade", "pearls", "ambergris")
+
+
+def tier_gaps(cfg):
+    """[(port key, tier)] for every port that trades no cargo at some tier (Cargo Tiers phase 6, advice only): a captain
+    at that rank would have nothing to deal in there. A cargo is in the tier's table when it has joined (enters <= tier)
+    and has not left (leaves is 0 or above the tier); a port's forbidden list takes it out of that port. The Admin page
+    shows the same check as a warning and never blocks a save."""
+    tiers = len((cfg["rules"].get("tiers") or {}).get("steps") or ()) + 1
+    out = []
+    for port_key, port in cfg["ports"].items():
+        banned = set(port.get("forbidden") or ())
+        for t in range(tiers):
+            if not any(int(g.get("enters", 0) or 0) <= t and not (int(g.get("leaves", 0) or 0) and t >= int(g["leaves"]))
+                       and k not in banned for k, g in cfg["goods"].items()):
+                out.append((port_key, t))
+    return out
 # Game 3 review (19 Nov 2026): the swingiest cargoes are calmed once to at most these monthly swings.
 CALM_VOLS = {"porcelain": 0.2, "tea": 0.3, "silk": 0.2}
 # Game 5 review (20 Nov 2026): the old shipped Savage storm numbers and what they become (see load_config).

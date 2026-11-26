@@ -55,6 +55,10 @@ EN = {
     "man.e_gate": "The Manual could not open just now. Try again in a moment.",
     "man.forbid.title": "Cargoes a port does not trade",
     "man.forbid.note": "Some ports do not trade some cargoes at all. Nobody there will ever mention it: the cargo is simply not on the market, and it is never a tip, a headline or a line on the tax desk. Cargo you already carry stays in your hold until you reach a port that trades it.",
+    "man.tiers.title": "What the market trades at each rank",
+    "man.tiers.note": "The cargo on the market changes as your house climbs. When you reach a new rank and are back at your home port, the old dealers close out the cargo that is leaving, aboard and in warehouses, and pay you the going price for it in silver, so nothing is lost. Commissions for that cargo are cancelled without a fee. Finer goods take its place. If a house goes bankrupt it starts again from the first row.",
+    "man.tiers.start": "Before your first step up",
+    "man.tiers.here": "you are here",
 
     # ---- tabs, titles, kickers ----
     "man.cover.tab": "Start here", "man.cover.title": "How to win in one page", "man.cover.kicker": "From the First Mate",

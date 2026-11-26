@@ -454,6 +454,36 @@ def main():
             padded += cu_lines[r["good"]]["assess"] >= 1.5 and r["tax"] > int(math.ceil(cu["rate"] * r["value"] - 1e-9))
         break
     assert padded, "no padded line paid more than the cargo's worth"
+    # Visible standing (25 Nov 2026): standing and port shares cut her padding, and the desk says by how much.
+    for seed in range(40):
+        g, p = arrive(seed, "calcutta")
+        if p.get("customs") and p["customs"]["status"] == "declare":
+            break
+    port = p["port"]
+    def chance(rep, held):
+        p["rep"][port] = rep
+        g._share_book(port)[p["id"]] = held
+        return g.padding_odds(p, port)
+    lo, mid, hi = chance(100, 0)["chance"], chance(50, 0)["chance"], chance(0, 0)["chance"]
+    assert lo < mid < hi, (lo, mid, hi)
+    assert abs(chance(100, 0)["standing"] - 0.5) < 1e-9 and abs(chance(0, 0)["standing"] - 1.5) < 1e-9
+    assert chance(50, 5)["chance"] < mid and chance(50, 10)["chance"] == 0.0, chance(50, 10)
+    assert 0.08 <= engine.R["customs"].get("assess_pad", 0.12) <= 0.2
+    for rep, held in ((100, 0), (50, 0), (0, 0), (50, 3), (80, 9)):
+        p["rep"][port] = rep
+        g._share_book(port)[p["id"]] = held
+        p["customs"] = None
+        g._open_customs(p)
+        cu = p["customs"]
+        pad = g.view("p1", ["p1"])["me"]["customs"]["pad"]
+        assert set(pad) == {"standing", "held", "shares", "total"} and all(isinstance(v, int) for v in pad.values()), pad
+        assert (pad["standing"] > 0) == (rep > 50) and (pad["standing"] < 0) == (rep < 50), (rep, pad)
+        assert pad["held"] == held and (pad["shares"] > 0) == (held > 0), pad
+        if held == 9:                                                        # nearly every share held: she all but never pads him
+            assert pad["total"] >= 90 and all(ln["assess"] < 1.5 for ln in cu["lines"]), (pad, cu["lines"])
+    for k in ("customs.pad_head", "customs.pad_standing", "customs.pad_shares", "customs.pad_tip"):
+        assert str(engine.TEXT.get(k, "")).strip(), k
+    g._share_book(port).pop(p["id"], None)
     off = no_spot(config.defaults())
     off["rules"]["customs"]["assess_on"] = False
     engine.configure(off)

@@ -116,6 +116,11 @@ function leftPage(c) {
     h += `<h3>${esc(t("man.forbid.title"))}</h3><p class="mn-note">${esc(t("man.forbid.note"))}</p>
       <table class="mn-forbid"><tbody>${fb.map(r => `<tr><th>${esc(r.port)}</th><td>${r.goods.map(esc).join(", ")}</td></tr>`).join("")}</tbody></table>`;
   }
+  const tb = (M.book.tiers || []);
+  if (c.id === "market" && tb.length) {
+    h += `<h3>${esc(t("man.tiers.title"))}</h3><p class="mn-note">${esc(t("man.tiers.note"))}</p>
+      <table class="mn-forbid mn-tiers"><tbody>${tb.map(r => `<tr${r.here ? ' class="mn-here"' : ""}><th>${esc(r.rank || t("man.tiers.start"))}${r.here ? ` <small>${esc(t("man.tiers.here"))}</small>` : ""}</th><td>${r.goods.map(esc).join(", ")}</td></tr>`).join("")}</tbody></table>`;
+  }
   return h;
 }
 

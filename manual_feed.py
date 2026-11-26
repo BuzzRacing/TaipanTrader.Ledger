@@ -25,7 +25,7 @@ def view(game, token):
         return {"ok": False, "seat": True, "error": engine.tx("man.e_seat")}
     me = game.s["players"].get(pid) or {}
     return {"ok": True, "seated": True, "name": me.get("name", ""), "firm": me.get("firm", ""),
-            "chapters": manual_text.chapters(), "forbidden": forbidden_table()}
+            "chapters": manual_text.chapters(), "forbidden": forbidden_table(), "tiers": tiers_table(me)}
 
 
 def forbidden_table():
@@ -33,6 +33,21 @@ def forbidden_table():
     only place the game ever says so: outside the game world, in the Manual, never from a port."""
     return [{"port": engine.PORTS[k]["name"], "goods": [engine.GOODS[g]["name"] for g in engine.GOODS if g in gone]}
             for k, gone in engine.FORBIDDEN.items() if k in engine.PORTS and gone]
+
+
+def tiers_table(me):
+    """[{rank, goods, here}] one row per tier while the Cargo Tiers switch is on, else [] (Cargo Tiers, 25 Nov 2026).
+    rank is the rank title that opens the tier (None for the start). It is the Manual's table of what the market
+    trades at each rank; the captain's own row is marked."""
+    if not engine.tiers_on():
+        return []
+    titles = {r["id"]: r["title"] for r in engine.CFG["ranks"]}
+    steps = engine.R["tiers"].get("steps") or []
+    mine = engine.tier_of(me) if me else -1
+    return [{"rank": titles.get(steps[t - 1]) if t else None,
+             "goods": [engine.GOODS[g]["name"] for g in engine.GOODS if engine.in_table(t, g)],
+             "here": t == mine}
+            for t in range(engine.tier_count() + 1)]
 
 
 def say(game, token, key, family=False):

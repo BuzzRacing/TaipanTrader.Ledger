@@ -263,6 +263,17 @@ const Customs = (() => {
     return n.pay === "less" ? "< " + money(n.tax.correct) : money(n.due);
   }
 
+  /* What his standing and shares are worth against her padding (engine padding_odds): whole percents, never an amount. */
+  function padLine(c) {
+    const p = c.pad;
+    if (!p || (!p.standing && !p.shares)) return "";
+    const sgn = v => (v > 0 ? "−" : "+") + Math.abs(v) + "%";
+    const bits = [];
+    if (p.standing) bits.push(`<span class="${p.standing > 0 ? "up" : "dn"}">${te("customs.pad_standing", { pct: sgn(p.standing) })}</span>`);
+    if (p.shares) bits.push(`<span class="up">${te("customs.pad_shares", { n: p.held, pct: sgn(p.shares) })}</span>`);
+    return `<p class="cx-pad" title="${te("customs.pad_tip")}"><small>${te("customs.pad_head")}</small> ${bits.join(" · ")}</p>`;
+  }
+
   function declareHtml(c) {
     const n = numbers(c);
     shownState = n.state; shownMood = n.mood;
@@ -272,6 +283,7 @@ const Customs = (() => {
       ${greeting(c)}
       ${tipHtml(c)}
       <p class="cx-tell" data-cx="tell">${esc(tell(c, n))}</p>
+      ${padLine(c)}
       <div class="cx-lines">${n.lines.map(l => lineRow(c, l)).join("")}</div>
       <p class="eyebrow cx-pay-head">${te(n.pay ? "customs.pay_head" : "customs.pay_pick")}</p>
       ${payButtons(c, n)}

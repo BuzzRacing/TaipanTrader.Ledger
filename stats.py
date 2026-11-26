@@ -477,6 +477,13 @@ def _walk(events, ps, extra=None):
             # Running costs (Game 3 review, 19 Nov 2026): crew wages monthly, the great house and patronage yearly.
             h.line("upkeep" if typ == "upkeep" else "estate_upkeep", -float(e.get("amount") or 0))
             continue
+        if cat == "finance" and typ == "tier_step":
+            # Cargo Tiers (25 Nov 2026): the dealers close out the cargo that leaves the table, paid in silver at what the
+            # cargo was worth. One line in "where the silver went"; the hold's cost basis goes with the cargo.
+            for ln in e.get("lines") or ():
+                h.remove(ln.get("good"), int(ln.get("qty") or 0))
+            h.line("tier_buyout", float(e.get("total") or 0))
+            continue
         if typ == "interest" and cat == "finance":
             b, d = e.get("bank") or [0, 0], e.get("debt") or [0, 0]
             h.line("bank_interest", b[1] - b[0])

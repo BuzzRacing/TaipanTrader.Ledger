@@ -73,14 +73,20 @@ def test_ambergris_is_a_wild_cargo():
     assert "ambergris" in config.defaults()["rules"]["market"]["wild_goods"]
 
 
-def test_engine_keeps_the_luxuries_out_of_play():
-    for enabled in (False, True):                       # the switch does nothing until TIERS_READY
+def test_the_switch_decides_whether_the_luxuries_are_in_play():
+    """TIERS_READY is True since phase 5 (25 Nov 2026), so rules.tiers.enabled alone decides."""
+    assert engine.TIERS_READY
+    for enabled in (False, True):
         cfg = config.defaults()
         cfg["rules"]["tiers"]["enabled"] = enabled
         engine.configure(cfg)
-        assert list(engine.GOODS) == NINE, (enabled, list(engine.GOODS))
-        assert not any(g in LUXURIES for ports in engine.FORBIDDEN.values() for g in ports)
-        assert engine.FORBIDDEN.get("shanghai") == {"porcelain", "rice"}, engine.FORBIDDEN
+        if enabled:
+            assert list(engine.GOODS) == NINE + list(LUXURIES), list(engine.GOODS)
+            assert engine.FORBIDDEN.get("calcutta") and "camphor" in engine.FORBIDDEN["calcutta"]
+        else:
+            assert list(engine.GOODS) == NINE, list(engine.GOODS)
+            assert not any(g in LUXURIES for ports in engine.FORBIDDEN.values() for g in ports)
+        assert engine.FORBIDDEN.get("shanghai") >= {"porcelain", "rice"}, engine.FORBIDDEN
     engine.configure(config.defaults())
 
 

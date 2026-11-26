@@ -103,3 +103,7 @@ body.manual #app { height: 100%; }
 .mn-forbid th { text-align: left; font-weight: 600; padding: .22rem .8rem .22rem 0; white-space: nowrap; vertical-align: top; }
 .mn-forbid td { padding: .22rem 0; border-bottom: 1px solid rgba(120, 90, 40, .25); }
 .mn-forbid tr:last-child td { border-bottom: 0; }
+
+/* Cargo Tiers (25 Nov 2026): what the market trades at each rank; the captain's own row is marked. */
+.mn-tiers .mn-here th, .mn-tiers .mn-here td { font-weight: 700; }
+.mn-tiers th small { display: block; font-weight: 400; font-style: italic; opacity: .75; }
