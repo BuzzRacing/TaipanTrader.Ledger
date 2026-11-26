@@ -28,6 +28,9 @@ if errorlevel 1 (
 set "PY=python"
 where py >nul 2>nul
 if not errorlevel 1 set "PY=py -3"
+%PY% tools\taipan_admin_css.py
+git add web\taipan-admin.css
+git diff --cached --quiet || git commit -q -m "Rebuild Taipan Admin colours after the Crimson Ledger merge"
 %PY% tests\taipan_clean_test.py
 if errorlevel 1 (
   echo.
